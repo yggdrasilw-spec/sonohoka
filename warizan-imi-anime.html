@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>わり算アニメーション</title>
+<style>
+:root{
+  --bg:#f5f7fb;
+  --line:#d7dce8;
+  --blue:#2563eb;
+  --purple:#7c3aed;
+  --yellow:#d4a900;
+  --remText:#b10012;
+  --red:#dc2626;
+  --darkblue:#1d4ed8;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  background:var(--bg);
+  font-family:"Yu Gothic","Hiragino Sans","Meiryo",sans-serif;
+  overflow:auto;
+}
+
+#app{
+  width:100vw;
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:10px;
+  gap:10px;
+}
+
+.controls{
+  width:min(100%,980px);
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+  align-items:end;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:12px;
+}
+
+.control{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.control label{
+  font-size:13px;
+  font-weight:bold;
+}
+
+input{
+  width:72px;
+  padding:7px 8px;
+  font-size:16px;
+  border-radius:10px;
+  border:1px solid #bbb;
+}
+
+/* ===== 表紙 ===== */
+#cover{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100dvh;
+  background:var(--bg);
+  padding:20px;
+}
+
+#coverInner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+  width:min(100%, 520px);
+}
+
+.coverTitle{
+  font-size:clamp(28px,7vw,42px);
+  font-weight:900;
+  color:#1e293b;
+}
+
+.coverSub{
+  font-size:clamp(13px,3vw,16px);
+  color:#64748b;
+}
+
+.coverInputRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px 20px;
+}
+
+.coverInputGroup{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+}
+
+.coverInputGroup label{
+  font-size:12px;
+  color:#64748b;
+}
+
+.coverInputGroup input{
+  width:72px;
+  padding:8px;
+  font-size:22px;
+  font-weight:bold;
+  text-align:center;
+  border-radius:10px;
+  border:2px solid var(--line);
+}
+
+.coverDivSign{
+  font-size:32px;
+  font-weight:900;
+  color:#334155;
+  padding-top:16px;
+}
+
+.coverMaterialRow{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  width:100%;
+}
+
+.coverMaterialLabel{
+  font-size:13px;
+  color:#64748b;
+  font-weight:bold;
+}
+
+.coverMaterialBtns{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+.materialBtn{
+  background:#f1f5f9;
+  border:2px solid var(--line);
+  border-radius:12px;
+  padding:8px 12px;
+  font-size:22px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  transition:all .15s;
+  line-height:1;
+}
+
+.materialBtn span{
+  font-size:11px;
+  color:#64748b;
+  font-weight:bold;
+}
+
+.materialBtn.selected{
+  background:#dbeafe;
+  border-color:#2563eb;
+}
+
+.materialBtn.selected span{
+  color:#1d4ed8;
+}
+
+.coverNotice{
+  color:#dc2626;
+  font-size:13px;
+  min-height:18px;
+}
+
+.coverAbstractRow{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  width:100%;
+}
+
+.coverAbstractLabel{
+  font-size:13px;
+  color:#475569;
+  font-weight:bold;
+}
+
+.toggleSwitch{
+  position:relative;
+  display:inline-block;
+  width:46px;
+  height:26px;
+  flex-shrink:0;
+}
+
+.toggleSwitch input{ opacity:0; width:0; height:0; }
+
+.toggleSlider{
+  position:absolute;
+  inset:0;
+  background:#cbd5e1;
+  border-radius:26px;
+  cursor:pointer;
+  transition:.3s;
+}
+
+.toggleSlider:before{
+  content:"";
+  position:absolute;
+  width:20px; height:20px;
+  left:3px; bottom:3px;
+  background:#fff;
+  border-radius:50%;
+  transition:.3s;
+}
+
+.toggleSwitch input:checked + .toggleSlider{ background:#2563eb; }
+.toggleSwitch input:checked + .toggleSlider:before{ transform:translateX(20px); }
+
+.coverCards{
+  display:flex;
+  gap:14px;
+  width:100%;
+  flex-wrap:wrap;
+}
+
+.coverCard{
+  flex:1;
+  min-width:180px;
+  border:none;
+  border-radius:18px;
+  padding:20px 16px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  transition:transform .15s, box-shadow .15s;
+  text-align:center;
+}
+
+.coverCard:active{
+  transform:scale(.97);
+}
+
+.cardA{
+  background:linear-gradient(135deg,#dbeafe,#eff6ff);
+  box-shadow:0 4px 18px rgba(37,99,235,.15);
+}
+
+.cardB{
+  background:linear-gradient(135deg,#fef3c7,#fffbeb);
+  box-shadow:0 4px 18px rgba(217,119,6,.15);
+}
+
+.coverCardIcon{ font-size:36px; }
+
+.coverCardTitle{
+  font-size:clamp(15px,4vw,18px);
+  font-weight:900;
+  color:#1e293b;
+}
+
+.coverCardDesc{
+  font-size:clamp(11px,2.5vw,13px);
+  color:#475569;
+  line-height:1.4;
+}
+
+.coverCardSub{
+  font-size:11px;
+  color:#94a3b8;
+}
+
+/* モード2画面 */
+#mode2{
+  display:none;
+  min-height:100dvh;
+  background:var(--bg);
+  padding:16px;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+
+.m2Card{
+  width:min(100%,600px);
+  background:#fff;
+  border-radius:16px;
+  border:1px solid var(--line);
+  padding:24px 20px;
+  min-height:320px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.m2Text{
+  font-size:clamp(14px,3.5vw,18px);
+  color:#334155;
+  line-height:1.6;
+  font-weight:bold;
+  min-height:2em;
+}
+
+.m2EqBlock{
+  font-size:clamp(18px,4vw,28px);
+  font-weight:900;
+  line-height:2;
+  letter-spacing:.04em;
+  color:#1e293b;
+}
+
+.m2Line{
+  display:block;
+  line-height:1.9;
+}
+
+.m2EqRow{
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+}
+
+.m2SideBox{
+  background:#f1f5f9;
+  border:2px solid var(--line);
+  border-radius:10px;
+  padding:8px 12px;
+  font-size:clamp(12px,3vw,15px);
+  font-weight:bold;
+  line-height:1.9;
+  color:#334155;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+
+.m2SideBox .underline{
+  text-decoration:underline;
+  text-decoration-color:#2563eb;
+  text-underline-offset:3px;
+  text-decoration-thickness:2px;
+  color:#1e293b;
+}
+
+.cRed   { color:#dc2626; }
+.cBlack { color:#1e293b; }
+.cPurple{ color:var(--purple); }
+.cBlue  { color:#1d4ed8; }
+.cYellow{ color:var(--yellow); }
+.cGray  { color:#94a3b8; }
+
+.m2Divider{
+  border:none;
+  border-top:3px solid #334155;
+  margin:4px 0;
+  width:min(200px, 60%);
+}
+
+.m2NextBtn{
+  align-self:flex-end;
+  background:var(--blue);
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  padding:12px 28px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+  margin-top:auto;
+}
+
+.m2NextBtn:disabled{
+  background:#94a3b8;
+}
+
+.m2Answer{
+  font-size:clamp(22px,5vw,34px);
+  font-weight:900;
+  line-height:1.6;
+}
+
+.m2RemainCalc{
+  font-size:clamp(16px,4vw,24px);
+  font-weight:900;
+  color:#334155;
+  line-height:2;
+}
+
+.typeBtnWrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+}
+
+.typeDesc{
+  font-size:10px;
+  color:#555;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+  text-align:center;
+  line-height:1.2;
+}
+
+.typeBtnA{
+  background:#2563eb;
+  color:#fff;
+  font-size:15px;
+  padding:9px 14px;
+  border-radius:12px;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+  min-width:80px;
+}
+
+.typeBtnB{
+  background:#d97706;
+  color:#fff;
+  font-size:15px;
+  padding:9px 14px;
+  border-radius:12px;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+  min-width:80px;
+}
+
+button{
+  border:none;
+  border-radius:12px;
+  padding:11px 16px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+#startBtn{
+  background:var(--blue);
+  color:#fff;
+}
+
+#appBackBtn{
+  background:#e2e8f0;
+  color:#334155;
+}
+
+#nextBtn{
+  background:#222;
+  color:#fff;
+}
+
+.notice{
+  color:#c40000;
+  font-weight:bold;
+  min-height:1.5em;
+  text-align:center;
+}
+
+#topText{
+  width:min(100%,980px);
+  min-height:72px;
+  text-align:center;
+  font-size:clamp(18px,4vw,30px);
+  font-weight:bold;
+  line-height:1.5;
+}
+
+#middleText{
+  width:min(100%,980px);
+  min-height:64px;
+  text-align:center;
+  font-size:clamp(16px,3.5vw,24px);
+  font-weight:bold;
+  line-height:1.5;
+}
+
+#stage{
+  width:min(100%,980px);
+  flex:1;
+  min-height:180px;
+  background:#fff;
+  border-radius:2px;
+  border:1px solid var(--line);
+  position:relative;
+  overflow:hidden;
+}
+
+.layer{
+  position:absolute;
+  inset:0;
+}
+
+#platesLayer{ z-index:2; }
+#groupLayer{ z-index:6; }
+#ghostLayer{ z-index:4; }
+#dotLayer{ z-index:5; }
+#captionLayer{ z-index:15; pointer-events:none; }
+#coverLayer{ z-index:20; pointer-events:none; }
+
+.dot{
+  position:absolute;
+  border-radius:50%;
+  background:#ff6767;
+  box-shadow:0 3px 6px rgba(0,0,0,.2);
+  transform:translate(-50%,-50%);
+  transition:left .8s ease, top .8s ease, transform .25s cubic-bezier(.36,1.6,.5,1), opacity .2s ease;
+}
+
+.dot.emoji{
+  background:transparent;
+  box-shadow:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.4em;
+  line-height:1;
+  border-radius:0;
+  transition:left .8s ease, top .8s ease, transform .25s cubic-bezier(.36,1.6,.5,1), opacity .2s ease;
+}
+
+.ghost{
+  background:transparent;
+  border:2px dashed #999;
+  box-shadow:none;
+}
+
+.plate{
+  position:absolute;
+  border:4px solid #555;
+  border-radius:2px;
+  background:#fff;
+  overflow:hidden;
+  transform-origin: center center;
+  transition: transform .25s cubic-bezier(.36,1.6,.5,1), opacity .2s ease;
+}
+
+.sourceBoxBlue{
+  position:absolute;
+  border:4px dashed #3b82f6;
+  border-radius:0;
+  background:rgba(59,130,246,.04);
+  pointer-events:none;
+  z-index:2;
+}
+
+.sourceLabel{
+  position:absolute;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:#1d4ed8;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:900;
+  pointer-events:none;
+  box-shadow:0 2px 5px rgba(0,0,0,.15);
+  z-index:3;
+}
+
+.unionBoxPurple{
+  position:absolute;
+  border:5px solid var(--purple);
+  border-radius:0;
+  background:transparent;
+  pointer-events:none;
+  z-index:1;
+}
+
+.remainRing{
+  position:absolute;
+  border:5px solid var(--yellow);
+  border-radius:50%;
+  background:rgba(255,220,0,.12);
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  z-index:2;
+}
+
+.cover{
+  position:absolute;
+  background:rgba(80,80,80,.55);
+  border:3px solid rgba(30,30,30,.85);
+  border-radius:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:clamp(34px,8vw,56px);
+  font-weight:900;
+  color:#fff;
+  opacity:0;
+  transition:opacity .35s;
+  pointer-events:none;
+  z-index:30;
+}
+
+#stageCaption{
+  position:absolute;
+  left:0;
+  top:0;
+  width:100%;
+  text-align:center;
+  font-size:clamp(18px,4.3vw,28px);
+  font-weight:900;
+  line-height:1.35;
+  color:#222;
+  opacity:0;
+  transition:opacity .2s ease;
+  z-index:35;
+  pointer-events:none;
+}
+
+#bottomText{
+  width:min(100%,980px);
+  min-height:80px;
+  text-align:center;
+  font-size:clamp(24px,5vw,42px);
+  font-weight:bold;
+  color:var(--remText);
+  line-height:1.4;
+}
+
+.eqBox{
+  display:inline-block;
+  min-width:1.4em;
+  padding:0 .2em;
+  border:4px solid #222;
+  background:#fff2a8;
+  border-radius:10px;
+}
+
+.purpleNum{ color:var(--purple); font-weight:900; }
+.yellowNum{ color:var(--yellow); font-weight:900; }
+
+.bigEq{
+  font-size:clamp(32px,7vw,56px);
+  font-weight:900;
+  letter-spacing:.05em;
+}
+
+.blinkBox{
+  animation: boxBlink 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes boxBlink{
+  from{ background:#fff2a8; border-color:#222; }
+  to{   background:#ffe000; border-color:#b8860b; }
+}
+
+.filledBox{
+  background:#fff2a8;
+  border-color:var(--purple);
+  color:var(--purple);
+  animation: fillPop .35s cubic-bezier(.36,1.6,.5,1) both;
+}
+
+@keyframes fillPop{
+  from{ transform:scale(.5); opacity:0; }
+  to{   transform:scale(1);  opacity:1; }
+}
+
+</style>
+</head>
+<body>
+<!-- 表紙画面 -->
+<div id="cover">
+  <div id="coverInner">
+    <div class="coverTitle">わり算を学ぼう</div>
+    <div class="coverSub">もんだいを入れてモードをえらんでね</div>
+    <div class="coverMaterialRow">
+      <div class="coverMaterialLabel">なにを分ける？</div>
+      <div class="coverMaterialBtns" id="materialBtns">
+        <button class="materialBtn selected" data-thing="0">🍓<span>いちご</span></button>
+        <button class="materialBtn" data-thing="1">🌸<span>花</span></button>
+        <button class="materialBtn" data-thing="2">🃏<span>カード</span></button>
+        <button class="materialBtn" data-thing="3">✏️<span>鉛筆</span></button>
+        <button class="materialBtn" data-thing="4">🍊<span>みかん</span></button>
+      </div>
+    </div>
+    <div class="coverMaterialRow">
+      <div class="coverMaterialLabel">なにに分ける？</div>
+      <div class="coverMaterialBtns" id="containerBtns">
+        <button class="materialBtn selected" data-cont="0">🍽️<span>お皿</span></button>
+        <button class="materialBtn" data-cont="1">🪴<span>鉢</span></button>
+        <button class="materialBtn" data-cont="2">📦<span>箱</span></button>
+        <button class="materialBtn" data-cont="3">👜<span>袋</span></button>
+        <button class="materialBtn" data-cont="4">🧺<span>かご</span></button>
+      </div>
+    </div>
+    <div class="coverInputRow">
+      <div class="coverInputGroup">
+        <label>わられる数</label>
+        <input type="number" id="coverDividend" value="9" min="0" max="99">
+      </div>
+      <div class="coverDivSign">÷</div>
+      <div class="coverInputGroup">
+        <label>わる数</label>
+        <input type="number" id="coverDivisor" value="6" min="1" max="9">
+      </div>
+    </div>
+    <div id="coverNotice" class="coverNotice"></div>
+    <div class="coverAbstractRow">
+      <span class="coverAbstractLabel">アニメの途中でシンプルな図に切り替える</span>
+      <label class="toggleSwitch">
+        <input type="checkbox" id="abstractToggle" checked>
+        <span class="toggleSlider"></span>
+      </label>
+    </div>
+    <div class="coverCards">
+      <button class="coverCard cardA" id="goModeA">
+        <div class="coverCardIcon">🍓</div>
+        <div class="coverCardTitle">アニメで意味を理解</div>
+        <div class="coverCardDesc">絵を動かして、わり算の意味をたしかめよう</div>
+        <div class="coverCardSub">等分除（Aタイプ）・包含除（Bタイプ）</div>
+      </button>
+      <button class="coverCard cardB" id="goModeB">
+        <div class="coverCardIcon">✏️</div>
+        <div class="coverCardTitle">計算してたしかめよう</div>
+        <div class="coverCardDesc">式だけで答えを出せるって、すごい！</div>
+        <div class="coverCardSub">あなあきかけ算で考えよう</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+  <div class="controls">
+    <div class="typeBtnWrap">
+      <span id="typeDesc" class="typeDesc">1つ分（ずつ）の数をもとめる</span>
+      <button id="typeBtn" class="typeBtnA">Aタイプ</button>
+    </div>
+    <div class="control">
+      <label>わられる数</label>
+      <input type="number" id="dividend" value="9" min="0" max="99">
+    </div>
+    <div class="control">
+      <label>わる数</label>
+      <input type="number" id="divisor" value="6" min="1" max="9">
+    </div>
+    <button id="startBtn">開始</button>
+    <button id="nextBtn">次へ</button>
+    <button id="appBackBtn">← 表紙</button>
+  </div>
+
+  <div class="notice" id="notice"></div>
+
+  <div id="topText"></div>
+  <div id="middleText"></div>
+
+  <div id="stage">
+    <div class="layer" id="platesLayer"></div>
+    <div class="layer" id="groupLayer"></div>
+    <div class="layer" id="ghostLayer"></div>
+    <div class="layer" id="dotLayer"></div>
+    <div class="layer" id="captionLayer">
+      <div id="stageCaption"></div>
+    </div>
+    <div class="layer" id="coverLayer"></div>
+  </div>
+
+  <div id="bottomText"></div>
+</div>
+
+<!-- モード2画面 -->
+<div id="mode2">
+  <div class="controls">
+    <div class="control">
+      <label>わられる数</label>
+      <input type="number" id="m2Dividend" value="9" min="0" max="99">
+    </div>
+    <div class="control">
+      <label>わる数</label>
+      <input type="number" id="m2Divisor" value="6" min="1" max="9">
+    </div>
+    <button id="m2StartBtn">開始</button>
+    <button id="m2NextBtn">次へ</button>
+    <button id="m2BackBtn">← 表紙</button>
+  </div>
+  <div class="notice" id="m2Notice"></div>
+  <div class="m2Card" id="m2Card">
+    <div class="m2Text" id="m2Text"></div>
+    <div class="m2EqBlock" id="m2Eq"></div>
+    <div id="m2RemainArea"></div>
+  </div>
+</div>
+
+<script>
+const topText = document.getElementById("topText");
+const middleText = document.getElementById("middleText");
+const bottomText = document.getElementById("bottomText");
+const notice = document.getElementById("notice");
+
+const platesLayer = document.getElementById("platesLayer");
+const groupLayer = document.getElementById("groupLayer");
+const ghostLayer = document.getElementById("ghostLayer");
+const dotLayer = document.getElementById("dotLayer");
+const coverLayer = document.getElementById("coverLayer");
+const stageCaption = document.getElementById("stageCaption");
+
+// ===== 素材定義 =====
+const THINGS = [
+  { emoji:"🍓", name:"いちご", unit:"こ" },
+  { emoji:"🌸", name:"花",     unit:"本" },
+  { emoji:"🃏", name:"カード", unit:"枚" },
+  { emoji:"✏️", name:"鉛筆",   unit:"本" },
+  { emoji:"🍊", name:"みかん", unit:"こ" },
+];
+const CONTAINERS = [
+  { name:"お皿", counter:"まい" },
+  { name:"鉢",   counter:"こ" },
+  { name:"箱",   counter:"こ" },
+  { name:"袋",   counter:"ふくろ" },
+  { name:"かご", counter:"こ" },
+];
+let selectedThing     = THINGS[0];
+let selectedContainer = CONTAINERS[0];
+let doAbstract = true;
+
+document.getElementById("abstractToggle").addEventListener("change", e => {
+  doAbstract = e.target.checked;
+});
+
+// 素材選択
+document.getElementById("materialBtns").addEventListener("click", e => {
+  const btn = e.target.closest(".materialBtn[data-thing]");
+  if(!btn) return;
+  document.querySelectorAll(".materialBtn[data-thing]").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedThing = THINGS[parseInt(btn.dataset.thing)];
+});
+
+// 入れ物選択
+document.getElementById("containerBtns").addEventListener("click", e => {
+  const btn = e.target.closest(".materialBtn[data-cont]");
+  if(!btn) return;
+  document.querySelectorAll(".materialBtn[data-cont]").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedContainer = CONTAINERS[parseInt(btn.dataset.cont)];
+});
+
+// 後方互換用
+Object.defineProperty(window, "selectedMaterial", {
+  get(){ return { ...selectedThing, container: selectedContainer.name }; }
+});
+
+// ===== 画面切替 =====
+const coverEl  = document.getElementById("cover");
+const appEl    = document.getElementById("app");
+const mode2El  = document.getElementById("mode2");
+
+function showCover(){ coverEl.style.display="flex"; appEl.style.display="none"; mode2El.style.display="none"; }
+function showApp()  { coverEl.style.display="none"; appEl.style.display="flex"; mode2El.style.display="none"; }
+function showMode2(){ coverEl.style.display="none"; appEl.style.display="none"; mode2El.style.display="flex"; }
+
+function getCoverValues(){
+  const d = parseInt(document.getElementById("coverDividend").value);
+  const v = parseInt(document.getElementById("coverDivisor").value);
+  const notice = document.getElementById("coverNotice");
+  if(!Number.isInteger(d)||!Number.isInteger(v)||d<0||v<1||d>99||v>9){
+    notice.textContent="わられる数0〜99、わる数1〜9で入力してください。";
+    return null;
+  }
+  notice.textContent="";
+  return { d, v };
+}
+
+document.getElementById("goModeA").addEventListener("click", () => {
+  const vals = getCoverValues(); if(!vals) return;
+  document.getElementById("dividend").value = vals.d;
+  document.getElementById("divisor").value  = vals.v;
+  showApp();
+  setTimeout(() => startAnimation(), 100);
+});
+
+
+document.getElementById("goModeB").addEventListener("click", () => {
+  const vals = getCoverValues(); if(!vals) return;
+  document.getElementById("m2Dividend").value = vals.d;
+  document.getElementById("m2Divisor").value  = vals.v;
+  showMode2();
+  setTimeout(() => startMode2(vals.d, vals.v), 100);
+});
+
+document.getElementById("m2BackBtn").addEventListener("click", showCover);
+document.getElementById("m2StartBtn").addEventListener("click", () => {
+  const d = parseInt(document.getElementById("m2Dividend").value);
+  const v = parseInt(document.getElementById("m2Divisor").value);
+  const notice = document.getElementById("m2Notice");
+  if(!Number.isInteger(d)||!Number.isInteger(v)||d<0||v<1||d>99||v>9){
+    notice.textContent="わられる数0〜99、わる数1〜9で入力してください。";
+    return;
+  }
+  notice.textContent="";
+  startMode2(d, v);
+});
+
+// ===== モード2 =====
+// 色付きスパンのヘルパー
+function cr(text, cls){ return `<span class="${cls}">${text}</span>`; }
+
+async function startMode2(dividend, divisor){
+  const quotient  = Math.floor(dividend / divisor);
+  const remainder = dividend % divisor;
+  const product   = quotient * divisor;
+
+  const m2Text = document.getElementById("m2Text");
+  const m2Eq   = document.getElementById("m2Eq");
+  const m2Rem  = document.getElementById("m2RemainArea");
+
+  // 式パーツ（色付き）
+  const D  = cr(dividend, "cRed");    // 9（赤）
+  const V  = cr(divisor,  "cBlack");  // 6（黒）
+  const Q  = cr(quotient, "cPurple"); // 1（紫）
+  const P  = cr(product,  "cBlue");   // 6（青）
+  const R  = cr(remainder,"cYellow"); // 3（黄）
+  const Q2 = `<span class="eqBox blinkBox">□</span>`;
+
+  // 行ごとのHTML
+  const line1     = `<span class="m2Line">${D}÷${V}＝${cr("？","cGray")}</span>`;
+  const line2hole = `<span class="m2Line">${V}×${Q2}＝${D}</span>`;
+  const line2fill = `<span class="eqBox filledBox" style="color:var(--purple)">${quotient}</span>`;
+  const line2ans  = `<span class="m2Line">${V}×${Q}＝${P}</span>`;
+  const line3     = `<span class="m2Line">${D}−${P}＝${R}</span>`;
+  const lineFinal = `<span class="m2Line">${cr("だから","cBlack")}&nbsp;${D}÷${V}＝${Q}&nbsp;あまり&nbsp;${R}</span>`;
+  const line2fillEq = `<span class="m2Line">${V}×${line2fill}＝${D}</span>`;
+
+  const m2Next = document.getElementById("m2NextBtn");
+  function waitM2(){
+    return new Promise(res => {
+      m2Next.disabled = false;
+      m2Next.onclick = () => { m2Next.disabled = true; res(); };
+    });
+  }
+
+  function setEq(...lines){ m2Eq.innerHTML = lines.join(""); }
+
+  // S1
+  m2Text.innerHTML = "たくさんの数を分けるときには<br>わり算を使うよ。";
+  m2Eq.innerHTML = ""; m2Rem.innerHTML = "";
+  await waitM2();
+
+  // S2
+  m2Text.innerHTML = `${dividend}このいちごがあって、<br>1人に${divisor}こずつ分けるとき、<br>何人に分けられる？`;
+  await waitM2();
+
+  // S3
+  m2Text.innerHTML = "これは、わり算だね！";
+  setEq(line1);
+  await waitM2();
+
+  // S4
+  m2Text.innerHTML = "あなあきかけ算で考えるよ。";
+  setEq(line1, line2hole);
+  await waitM2();
+
+  // S4.5: 九九リストを横に表示
+  m2Text.innerHTML = `${divisor}のだんの九九で考えると…`;
+  // divisorの段を最大9まで列挙、dividendを超えた最初のもので止める
+  const kuList = [];
+  for(let i = 1; i <= 9; i++){
+    const val = divisor * i;
+    kuList.push({ i, val });
+    if(val >= dividend) break;
+  }
+  const kuLines = kuList.map(({ i, val }) => {
+    if(val === dividend){
+      return `${divisor}×${i}＝${val}`;
+    } else if(val > dividend){
+      return `${divisor}×${i}＝${val} …大きすぎる!`;
+    } else {
+      return `${divisor}×${i}＝${val}`;
+    }
+  }).join("<br>");
+
+  m2Eq.innerHTML =
+    `<div class="m2EqRow">`+
+      `<div>${line1}${line2hole}</div>`+
+      `<div class="m2SideBox">${kuLines}</div>`+
+    `</div>`;
+  await waitM2();
+
+  if(remainder === 0){
+    // S5 わりきれる
+    m2Text.innerHTML = `ぴったりわりきれる！`;
+    setEq(line1, line2fillEq);
+    await waitM2();
+    // S6
+    m2Text.innerHTML = "だから";
+    m2Eq.innerHTML = `<span class="m2Line">${D}÷${V}＝${Q}</span><span class="m2Line" style="font-size:.7em">だね！</span>`;
+    m2Next.textContent = "もどる";
+    await waitM2();
+    showCover(); m2Next.textContent = "次へ";
+    return;
+  }
+
+  // あまりあり
+  // S5: 九九リストのアンダーライン＋式確定
+  m2Text.innerHTML = `${divisor}×${quotient}＝${product}が<br>${dividend}に一番近くて一番大きい数だね。`;
+  const kuLines5 = kuList.map(({ i, val }) => {
+    const line = `${divisor}×${i}＝${val}${val > dividend ? " …大きすぎる!" : ""}`;
+    return i === quotient
+      ? `<span class="underline">${line}</span>`
+      : line;
+  }).join("<br>");
+
+  m2Eq.innerHTML =
+    `<div class="m2EqRow">`+
+      `<div>${line1}${line2ans}</div>`+
+      `<div class="m2SideBox">${kuLines5}</div>`+
+    `</div>`;
+  await waitM2();
+
+  // S6
+  m2Text.innerHTML = `${product}を${dividend}から引くよ`;
+  m2Eq.innerHTML = line1 + line2ans + line3;
+  await waitM2();
+
+  // S7
+  m2Text.innerHTML = "だから";
+  m2Eq.innerHTML = line1 + line2ans + line3 + lineFinal;
+  await waitM2();
+  showCover();
+}
+
+let resolver = null;
+let currentType = "A"; // "A"=等分除, "B"=包含除
+
+document.getElementById("typeBtn").addEventListener("click", () => {
+  currentType = currentType === "A" ? "B" : "A";
+  const btn = document.getElementById("typeBtn");
+  btn.textContent = currentType + "タイプ";
+  btn.className = currentType === "A" ? "typeBtnA" : "typeBtnB";
+  document.getElementById("typeDesc").textContent = currentType === "A"
+    ? "1つ分（ずつ）の数をもとめる"
+    : "まとまりの数をもとめる";
+});
+
+function waitNext(){
+  return new Promise(resolve => { resolver = resolve; });
+}
+
+document.getElementById("nextBtn").addEventListener("click", () => {
+  if(resolver){
+    resolver();
+    resolver = null;
+  }
+});
+
+function sleep(ms){
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function clearAll(){
+  platesLayer.innerHTML = "";
+  groupLayer.innerHTML = "";
+  ghostLayer.innerHTML = "";
+  dotLayer.innerHTML = "";
+  coverLayer.innerHTML = "";
+  stageCaption.innerHTML = "";
+  stageCaption.style.opacity = "0";
+  topText.innerHTML = "";
+  middleText.innerHTML = "";
+  bottomText.innerHTML = "";
+  notice.innerHTML = "";
+}
+
+function make(tag, className, parent){
+  const el = document.createElement(tag);
+  if(className) el.className = className;
+  parent.appendChild(el);
+  return el;
+}
+
+function clamp(v, min, max){
+  return Math.max(min, Math.min(max, v));
+}
+
+function fitTopLayout(dividend, sw, sh){
+  const maxW = sw * 0.98;
+  const maxH = sh * 0.28;
+
+  for(let size = 28; size >= 10; size--){
+    const gapX = size * 2.05;
+    const gapY = size * 2.05;
+    const maxCols = Math.max(1, Math.floor(maxW / gapX) + 1);
+
+    for(let cols = Math.min(dividend, maxCols); cols >= 1; cols--){
+      const rows = Math.ceil(dividend / cols);
+      const width = (cols - 1) * gapX;
+      const height = (rows - 1) * gapY;
+
+      if(width <= maxW && height <= maxH){
+        return {
+          dotSize: size,
+          cols,
+          gapX,
+          gapY,
+          startX: (sw - width) / 2,
+          startY: sh * 0.10
+        };
+      }
+    }
+  }
+
+  return {
+    dotSize: 12,
+    cols: 3,
+    gapX: 24,
+    gapY: 24,
+    startX: 20,
+    startY: sh * 0.10
+  };
+}
+
+// ドット生成共通関数（emojiモードで絵文字表示）
+function spawnDots(dividend, cols, dotSize, gapX, gapY, startX, startY, useEmoji){
+  const dots = [];
+  for(let i = 0; i < dividend; i++){
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const cx = startX + col * gapX;
+    const cy = startY + row * gapY;
+    const dot = make("div", useEmoji ? "dot emoji" : "dot", dotLayer);
+    dot.style.width  = `${dotSize}px`;
+    dot.style.height = `${dotSize}px`;
+    dot.style.left = `${cx}px`;
+    dot.style.top  = `${cy}px`;
+    if(useEmoji) dot.textContent = selectedMaterial.emoji;
+    dot.style.transform = "translate(-50%,-50%) scale(0)";
+    dot.style.opacity = "0";
+    setTimeout(() => {
+      dot.style.transform = "translate(-50%,-50%) scale(1)";
+      dot.style.opacity = "1";
+    }, i * 40);
+    dots.push({ el: dot, cx, cy, rowIndex: row });
+  }
+  return dots;
+}
+
+// 絵文字ドット→赤ドットに変換するアニメ
+function abstractDots(dots){
+  return new Promise(res => {
+    dots.forEach((d, i) => {
+      setTimeout(() => {
+        d.el.classList.remove("emoji");
+        d.el.textContent = "";
+        d.el.style.background = "#ff6767";
+        d.el.style.boxShadow = "0 3px 6px rgba(0,0,0,.2)";
+        d.el.style.borderRadius = "50%";
+        // 移動アニメが効くようにtransitionを完全に戻す
+        d.el.style.transition = "left .8s ease, top .8s ease, transform .25s cubic-bezier(.36,1.6,.5,1), opacity .2s ease, background .3s ease";
+        if(i === dots.length - 1) setTimeout(res, 400);
+      }, i * 30);
+    });
+  });
+}
+
+// お皿→黒枠に変換するアニメ
+function abstractPlates(){
+  return new Promise(res => {
+    // 人型SVGをフェードアウト
+    platesLayer.querySelectorAll("svg").forEach(svg => {
+      svg.style.transition = "opacity .4s ease";
+      svg.style.opacity = "0";
+    });
+    // お皿のSVGを消してシンプルな黒枠に
+    platesLayer.querySelectorAll(".plate").forEach((plate, i) => {
+      setTimeout(() => {
+        // 内部SVGをフェードアウト
+        plate.querySelectorAll("svg").forEach(s => {
+          s.style.transition = "opacity .4s ease";
+          s.style.opacity = "0";
+        });
+        plate.style.transition = "border .4s, background .4s";
+        plate.style.border = "4px solid #555";
+        plate.style.background = "#fff";
+        plate.style.borderRadius = "2px";
+      }, i * 60);
+    });
+    setTimeout(res, 700);
+  });
+}
+
+// お皿レイアウト計算共通関数（plateCount枚分のレイアウトを返す）
+function calcPlateLayout(plateCount, sw, sh){
+  const plateGap    = clamp(sw * 0.02, 8, 18);
+  const plateWidth  = Math.min(170, (sw * 0.9 - plateGap * (plateCount - 1)) / plateCount);
+  const plateHeight = Math.min(170, sh * 0.28);
+  const totalWidth  = plateCount * plateWidth + (plateCount - 1) * plateGap;
+  const plateStartX = (sw - totalWidth) / 2;
+  const plateY      = sh * 0.58;
+  return Array.from({ length: plateCount }, (_, i) => ({
+    x: plateStartX + i * (plateWidth + plateGap),
+    y: plateY,
+    w: plateWidth,
+    h: plateHeight
+  }));
+}
+
+// 人型SVGを生成してplatesLayerに追加
+function spawnPerson(p, plateWidth, delay){
+  const personSize = Math.min(plateWidth * 0.45, 32);
+  const headR  = personSize * 0.28;
+  const bodyH  = personSize * 0.52;
+  const bodyW  = personSize * 0.62;
+  const svgH   = headR * 2 + bodyH + 2;
+  const svgW   = Math.max(bodyW, headR * 2) + 4;
+  const cx     = svgW / 2;
+  const svgNS  = "http://www.w3.org/2000/svg";
+  const svg    = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", svgW);
+  svg.setAttribute("height", svgH);
+  svg.style.cssText = `position:absolute;left:${p.x + plateWidth/2 - svgW/2}px;top:${p.y - svgH - 3}px;opacity:0;transform:scale(0.4);transform-origin:50% 100%;transition:opacity .22s ease,transform .28s cubic-bezier(.36,1.6,.5,1);z-index:3;`;
+  const head = document.createElementNS(svgNS, "circle");
+  head.setAttribute("cx", cx); head.setAttribute("cy", headR+1);
+  head.setAttribute("r", headR); head.setAttribute("fill","#222");
+  const tx1 = cx - bodyW/2, tx2 = cx + bodyW/2, ty1 = headR*2+2, ty2 = ty1+bodyH;
+  const body = document.createElementNS(svgNS, "polygon");
+  body.setAttribute("points",`${cx},${ty1} ${tx2},${ty2} ${tx1},${ty2}`);
+  body.setAttribute("fill","#222");
+  svg.appendChild(head); svg.appendChild(body);
+  platesLayer.appendChild(svg);
+  setTimeout(() => { svg.style.opacity="1"; svg.style.transform="scale(1)"; }, delay);
+  return svg;
+}
+
+// 入れ物SVGを描く（containerType: お皿/鉢/箱/袋/かご）
+function drawContainerSVG(svgNS, svg, w, h, containerType){
+  const s = Math.min(w, h);
+  switch(containerType){
+    case "お皿": {
+      // 楕円のお皿
+      const ellipse = document.createElementNS(svgNS, "ellipse");
+      ellipse.setAttribute("cx", w/2); ellipse.setAttribute("cy", h*0.72);
+      ellipse.setAttribute("rx", w*0.46); ellipse.setAttribute("ry", h*0.13);
+      ellipse.setAttribute("fill","none"); ellipse.setAttribute("stroke","#444"); ellipse.setAttribute("stroke-width","3");
+      svg.appendChild(ellipse);
+      const arc = document.createElementNS(svgNS, "path");
+      arc.setAttribute("d", `M${w*0.08},${h*0.65} Q${w*0.5},${h*0.25} ${w*0.92},${h*0.65}`);
+      arc.setAttribute("fill","none"); arc.setAttribute("stroke","#444"); arc.setAttribute("stroke-width","3");
+      svg.appendChild(arc);
+      break;
+    }
+    case "鉢": {
+      // 台形の植木鉢
+      const pot = document.createElementNS(svgNS, "polygon");
+      pot.setAttribute("points", `${w*0.25},${h*0.2} ${w*0.75},${h*0.2} ${w*0.88},${h*0.85} ${w*0.12},${h*0.85}`);
+      pot.setAttribute("fill","#fef3c7"); pot.setAttribute("stroke","#92400e"); pot.setAttribute("stroke-width","3");
+      svg.appendChild(pot);
+      const rim = document.createElementNS(svgNS, "rect");
+      rim.setAttribute("x", w*0.18); rim.setAttribute("y", h*0.14);
+      rim.setAttribute("width", w*0.64); rim.setAttribute("height", h*0.1);
+      rim.setAttribute("rx","3"); rim.setAttribute("fill","#d97706"); rim.setAttribute("stroke","none");
+      svg.appendChild(rim);
+      break;
+    }
+    case "箱": {
+      // 開いた箱（立体風）
+      const box = document.createElementNS(svgNS, "rect");
+      box.setAttribute("x", w*0.1); box.setAttribute("y", h*0.3);
+      box.setAttribute("width", w*0.8); box.setAttribute("height", h*0.6);
+      box.setAttribute("fill","#fef9c3"); box.setAttribute("stroke","#713f12"); box.setAttribute("stroke-width","3");
+      svg.appendChild(box);
+      // 左フラップ
+      const fl = document.createElementNS(svgNS, "path");
+      fl.setAttribute("d", `M${w*0.1},${h*0.3} L${w*0.1},${h*0.1} L${w*0.5},${h*0.3}`);
+      fl.setAttribute("fill","#fde68a"); fl.setAttribute("stroke","#713f12"); fl.setAttribute("stroke-width","2");
+      svg.appendChild(fl);
+      // 右フラップ
+      const fr = document.createElementNS(svgNS, "path");
+      fr.setAttribute("d", `M${w*0.9},${h*0.3} L${w*0.9},${h*0.1} L${w*0.5},${h*0.3}`);
+      fr.setAttribute("fill","#fde68a"); fr.setAttribute("stroke","#713f12"); fr.setAttribute("stroke-width","2");
+      svg.appendChild(fr);
+      break;
+    }
+    case "袋": {
+      // 巾着袋
+      const bag = document.createElementNS(svgNS, "path");
+      bag.setAttribute("d", `M${w*0.3},${h*0.25} Q${w*0.05},${h*0.5} ${w*0.12},${h*0.82} Q${w*0.5},${h*1.0} ${w*0.88},${h*0.82} Q${w*0.95},${h*0.5} ${w*0.7},${h*0.25} Z`);
+      bag.setAttribute("fill","#ddd6fe"); bag.setAttribute("stroke","#5b21b6"); bag.setAttribute("stroke-width","3");
+      svg.appendChild(bag);
+      // 口のひも
+      const tie = document.createElementNS(svgNS, "path");
+      tie.setAttribute("d", `M${w*0.28},${h*0.22} Q${w*0.5},${h*0.08} ${w*0.72},${h*0.22}`);
+      tie.setAttribute("fill","none"); tie.setAttribute("stroke","#5b21b6"); tie.setAttribute("stroke-width","3");
+      svg.appendChild(tie);
+      break;
+    }
+    case "かご": {
+      // かご（楕円＋格子）
+      const basket = document.createElementNS(svgNS, "path");
+      basket.setAttribute("d", `M${w*0.08},${h*0.45} Q${w*0.08},${h*0.9} ${w*0.5},${h*0.9} Q${w*0.92},${h*0.9} ${w*0.92},${h*0.45} Z`);
+      basket.setAttribute("fill","#fef3c7"); basket.setAttribute("stroke","#92400e"); basket.setAttribute("stroke-width","3");
+      svg.appendChild(basket);
+      // 格子線
+      for(let i=1;i<4;i++){
+        const vl = document.createElementNS(svgNS, "line");
+        vl.setAttribute("x1", w*(0.08+i*0.21)); vl.setAttribute("y1", h*0.45);
+        vl.setAttribute("x2", w*(0.08+i*0.21)); vl.setAttribute("y2", h*0.9);
+        vl.setAttribute("stroke","#92400e"); vl.setAttribute("stroke-width","1.5");
+        svg.appendChild(vl);
+      }
+      const hl = document.createElementNS(svgNS, "line");
+      hl.setAttribute("x1", w*0.08); hl.setAttribute("y1", h*0.67);
+      hl.setAttribute("x2", w*0.92); hl.setAttribute("y2", h*0.67);
+      hl.setAttribute("stroke","#92400e"); hl.setAttribute("stroke-width","1.5");
+      svg.appendChild(hl);
+      // 取っ手
+      const handle = document.createElementNS(svgNS, "path");
+      handle.setAttribute("d", `M${w*0.3},${h*0.45} Q${w*0.5},${h*0.15} ${w*0.7},${h*0.45}`);
+      handle.setAttribute("fill","none"); handle.setAttribute("stroke","#92400e"); handle.setAttribute("stroke-width","3");
+      svg.appendChild(handle);
+      break;
+    }
+  }
+}
+
+// お皿DOMを生成してplatesLayerに追加（SVGオーバーレイ付き）
+function spawnPlate(p, plateWidth, plateHeight, delay){
+  const plate = make("div", "plate", platesLayer);
+  plate.style.left = `${p.x}px`; plate.style.top = `${p.y}px`;
+  plate.style.width = `${plateWidth}px`; plate.style.height = `${plateHeight}px`;
+  plate.style.opacity = "0"; plate.style.transform = "scale(0.6)";
+  plate.style.background = "transparent";
+  plate.style.border = "none";
+  plate.style.overflow = "visible";
+
+  // 入れ物SVGをplateの上に描く
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", plateWidth);
+  svg.setAttribute("height", plateHeight);
+  svg.style.cssText = "position:absolute;left:0;top:0;overflow:visible;";
+  const mat = selectedMaterial;
+  drawContainerSVG(svgNS, svg, plateWidth, plateHeight, mat.container);
+  plate.appendChild(svg);
+
+  setTimeout(() => { plate.style.opacity="1"; plate.style.transform="scale(1)"; }, delay);
+  return plate;
+}
+
+function setCaption(html, boxRect){
+  stageCaption.innerHTML = html;
+  if(boxRect){
+    stageCaption.style.left = `${boxRect.left}px`;
+    stageCaption.style.top = `${boxRect.top + boxRect.height + 8}px`;
+    stageCaption.style.width = `${boxRect.width}px`;
+  }else{
+    stageCaption.style.left = "0px";
+    stageCaption.style.top = "0px";
+    stageCaption.style.width = "100%";
+  }
+  requestAnimationFrame(() => {
+    stageCaption.style.opacity = "1";
+  });
+}
+
+function rectUnion(rects){
+  const left = Math.min(...rects.map(r => r.left));
+  const top = Math.min(...rects.map(r => r.top));
+  const right = Math.max(...rects.map(r => r.left + r.width));
+  const bottom = Math.max(...rects.map(r => r.top + r.height));
+  return { left, top, width: right - left, height: bottom - top };
+}
+
+function boxAroundRects(rects, className, parent, pad = 10){
+  const u = rectUnion(rects);
+  const box = make("div", className, parent);
+  box.style.left = `${u.left - pad}px`;
+  box.style.top = `${u.top - pad}px`;
+  box.style.width = `${u.width + pad * 2}px`;
+  box.style.height = `${u.height + pad * 2}px`;
+  return {
+    el: box,
+    left: u.left - pad,
+    top: u.top - pad,
+    width: u.width + pad * 2,
+    height: u.height + pad * 2
+  };
+}
+
+function createPlates(divisor, sw, sh){
+  const plateGap = clamp(sw * 0.02, 8, 18);
+  const plateWidth = Math.min(170, (sw * 0.9 - plateGap * (divisor - 1)) / divisor);
+  const plateHeight = Math.min(170, sh * 0.28);
+  const totalWidth = divisor * plateWidth + (divisor - 1) * plateGap;
+  const plateStartX = (sw - totalWidth) / 2;
+  const plateY = sh * 0.58;
+
+  const plates = [];
+  for(let i = 0; i < divisor; i++){
+    const x = plateStartX + i * (plateWidth + plateGap);
+    const plate = make("div", "plate", platesLayer);
+    plate.style.left = `${x}px`;
+    plate.style.top = `${plateY}px`;
+    plate.style.width = `${plateWidth}px`;
+    plate.style.height = `${plateHeight}px`;
+    plate.style.opacity = "0";
+    plate.style.transform = "scale(0.6)";
+
+    // 順次ポップアップ（中心から拡大するためtranslateで中心補正）
+    setTimeout(() => {
+      plate.style.opacity = "1";
+      plate.style.transform = "scale(1)";
+    }, i * 60);
+
+    plates.push({ x, y: plateY, w: plateWidth, h: plateHeight });
+  }
+
+  return { plates, plateWidth, plateHeight };
+}
+
+function createRowBoxes(currentDots, roundNumber, dotSize){
+  const rows = new Map();
+  for(const d of currentDots){
+    if(!rows.has(d.rowIndex)) rows.set(d.rowIndex, []);
+    rows.get(d.rowIndex).push(d);
+  }
+
+  const rects = [];
+  [...rows.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .forEach(([, list], idx) => {
+      list.sort((a, b) => a.cx - b.cx);
+
+      const xs = list.map(d => d.cx);
+      const ys = list.map(d => d.cy);
+
+      const pad = Math.min(dotSize * 0.55, 16);
+      const stageW = groupLayer.offsetWidth;
+      const stageH = groupLayer.offsetHeight;
+      const left   = Math.max(0, Math.min(...xs) - pad);
+      const top    = Math.max(0, Math.min(...ys) - pad);
+      const right  = Math.min(stageW, Math.max(...xs) + pad);
+      const bottom = Math.min(stageH, Math.max(...ys) + pad);
+
+      const box = make("div", "sourceBoxBlue", groupLayer);
+      box.style.left = `${left}px`;
+      box.style.top = `${top}px`;
+      box.style.width = `${right - left}px`;
+      box.style.height = `${bottom - top}px`;
+
+      rects.push({ left, top, width: right - left, height: bottom - top });
+
+      if(idx === 0){
+        const label = make("div", "sourceLabel", groupLayer);
+        label.textContent = String(roundNumber + 1);
+        // 円の中心をboxの左上角に合わせる（半径8px分右下にずらす）
+        label.style.left = `${left - 8}px`;
+        label.style.top  = `${top  - 8}px`;
+      }
+    });
+
+  return rects;
+}
+
+function createRemainRings(remainDots, dotSize){
+  const rects = [];
+  for(const d of remainDots){
+    const size = dotSize * 1.75;
+    const ring = make("div", "remainRing", groupLayer);
+    ring.style.width = `${size}px`;
+    ring.style.height = `${size}px`;
+    ring.style.left = `${d.cx}px`;
+    ring.style.top = `${d.cy}px`;
+    rects.push({
+      left: d.cx - size / 2,
+      top: d.cy - size / 2,
+      width: size,
+      height: size
+    });
+  }
+  return rects;
+}
+
+function recolorBlueBoxesToPurple(){
+  groupLayer.querySelectorAll(".sourceBoxBlue").forEach(el => {
+    el.classList.remove("sourceBoxBlue");
+    el.classList.add("unionBoxPurple");
+  });
+}
+
+// ドットの行ごとのrectを受け取り、凹型SVGアウトラインを描く
+function drawConcaveOutline(rowRects, parent, pad){
+  pad = 0;
+  if(rowRects.length === 0) return null;
+
+  // 上からソート
+  const sorted = [...rowRects].sort((a, b) => a.top - b.top);
+
+  // 見た目の段にグループ化
+  const lines = [];
+  for(const r of sorted){
+    const last = lines[lines.length - 1];
+    if(last && Math.abs(r.top - last[0].top) < r.height * 0.5){
+      last.push(r);
+    } else {
+      lines.push([r]);
+    }
+  }
+
+  // 各段のエッジを集計
+  const lineEdges = lines.map(line => ({
+    left:   Math.min(...line.map(r => r.left)),
+    right:  Math.max(...line.map(r => r.left + r.width)),
+    top:    Math.min(...line.map(r => r.top)),
+    bottom: Math.max(...line.map(r => r.top + r.height)),
+  }));
+
+  const first      = lineEdges[0];
+  const last       = lineEdges[lineEdges.length - 1];
+  const secondLast = lineEdges.length >= 2 ? lineEdges[lineEdges.length - 2] : null;
+
+  // 頂点を直接座標で指定（押し出し計算なし）
+  let pts;
+  if(lineEdges.length === 1 || !secondLast || Math.abs(last.right - first.right) < 0.5){
+    // 長方形：4頂点
+    pts = [
+      { x: first.left  - pad, y: first.top    - pad },
+      { x: first.right + pad, y: first.top    - pad },
+      { x: last.right  + pad, y: last.bottom  + pad },
+      { x: last.left   - pad, y: last.bottom  + pad },
+    ];
+  } else {
+    // L字：6頂点
+    // （最終-1）段右下と最終段右上はyを揃える
+    const midY = secondLast.bottom;
+    pts = [
+      { x: first.left       - pad, y: first.top      - pad }, // 1段目 左上
+      { x: first.right      + pad, y: first.top      - pad }, // 1段目 右上
+      { x: secondLast.right + pad, y: midY                 }, // (最終-1)段 右下
+      { x: last.right       + pad, y: midY                 }, // 最終段 右上 ← yを揃える
+      { x: last.right       + pad, y: last.bottom    + pad }, // 最終段 右下
+      { x: last.left        - pad, y: last.bottom    + pad }, // 最終段 左下
+    ];
+  }
+
+  // SVG描画
+  const svgLeft   = Math.min(...pts.map(p => p.x)) - 2;
+  const svgTop    = Math.min(...pts.map(p => p.y)) - 2;
+  const svgRight  = Math.max(...pts.map(p => p.x)) + 2;
+  const svgBottom = Math.max(...pts.map(p => p.y)) + 2;
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.style.position = "absolute";
+  svg.style.left = svgLeft + "px";
+  svg.style.top  = svgTop  + "px";
+  svg.style.width  = (svgRight - svgLeft) + "px";
+  svg.style.height = (svgBottom - svgTop) + "px";
+  svg.style.overflow = "visible";
+  svg.style.pointerEvents = "none";
+  svg.style.zIndex = "3";
+
+  const d = pts.map((p, i) =>
+    (i === 0 ? "M" : "L") +
+    (p.x - svgLeft).toFixed(1) + "," + (p.y - svgTop).toFixed(1)
+  ).join(" ") + " Z";
+
+  const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  pathEl.setAttribute("d", d);
+  pathEl.setAttribute("fill", "none");
+  pathEl.setAttribute("stroke", "#7c3aed");
+  pathEl.setAttribute("stroke-width", "3");
+  pathEl.setAttribute("stroke-linejoin", "miter");
+  svg.appendChild(pathEl);
+  // sourceLabelより下に描画するため先頭に挿入
+  parent.insertBefore(svg, parent.firstChild);
+
+  return { left: svgLeft, top: svgTop, width: svgRight - svgLeft, height: svgBottom - svgTop };
+}
+
+document.getElementById("startBtn").addEventListener("click", startAnimation);
+document.getElementById("appBackBtn").addEventListener("click", showCover);
+
+// 初期表示は表紙
+appEl.style.display = "none";
+mode2El.style.display = "none";
+
+async function startAnimation(){
+  clearAll();
+
+  const dividend = Number(document.getElementById("dividend").value);
+  const divisor = Number(document.getElementById("divisor").value);
+
+  if(!Number.isInteger(dividend) || !Number.isInteger(divisor) || dividend < 0 || divisor <= 0 || dividend > 99 || divisor > 9){
+    notice.textContent = "わられる数0〜99、わる数1〜9で入力してください。";
+    return;
+  }
+
+  if(currentType === "B"){
+    await startAnimationB(dividend, divisor);
+    return;
+  }
+
+  const quotient = Math.floor(dividend / divisor);
+  const remainder = dividend % divisor;
+  const product = quotient * divisor;
+
+  const stageRect = document.getElementById("stage").getBoundingClientRect();
+  const sw = stageRect.width;
+  const sh = stageRect.height;
+
+  const topLayout = fitTopLayout(dividend, sw, sh);
+  const { dotSize, cols, gapX, gapY, startX, startY } = topLayout;
+
+  // お皿レイアウト計算（divisor枚分）
+  const plates = calcPlateLayout(divisor, sw, sh);
+  const plateWidth  = plates[0].w;
+  const plateHeight = plates[0].h;
+  const plateGap    = plates.length > 1 ? plates[1].x - plates[0].x - plateWidth : 0;
+
+  const usableQuotient = Math.max(1, quotient);
+  const colsInPlate = Math.min(2, usableQuotient);
+  const rowsInPlate = Math.ceil(usableQuotient / colsInPlate);
+
+  const innerPadX = clamp(plateWidth * 0.04, 4, 10);
+  const innerPadY = clamp(plateHeight * 0.05, 4, 10);
+  const usableW = plateWidth - innerPadX * 2;
+  const usableH = plateHeight - innerPadY * 2;
+  const cellW = usableW / colsInPlate;
+  const cellH = usableH / rowsInPlate;
+  // ドットサイズはcellに収まるよう上限なし（下限10px）
+  const plateDotSize = Math.max(10, Math.floor(Math.min(cellW, cellH) * 0.78));
+
+  const mat = selectedThing;
+  const cont = selectedContainer;
+
+  topText.innerHTML = "たくさんの数を分ける時にはわり算を使うよ。";
+  await waitNext();
+
+  topText.innerHTML = `${dividend}${mat.unit}の${mat.name}を、${divisor}${cont.counter}の${cont.name}に同じ数ずつ分けると、<br>１${cont.counter}分は何${mat.unit}になる？ ${dividend}÷${divisor}＝？`;
+  await waitNext();
+
+  middleText.innerHTML = `${mat.name}が${dividend}${mat.unit}あるね。`;
+  const dots = spawnDots(dividend, cols, dotSize, gapX, gapY, startX, startY, true);
+  await waitNext();
+
+  middleText.innerHTML = `${divisor}${cont.counter}の${cont.name}に分けるから、${cont.name}が${divisor}${cont.counter}だね。`;
+
+  // 人型→お皿を順次ポップアップ
+  const plateDelay = divisor * 60 * 0.5;
+  plates.forEach((p, i) => {
+    spawnPerson(p, plateWidth, i * 60);
+    spawnPlate(p, plateWidth, plateHeight, plateDelay + i * 60);
+  });
+
+  await waitNext();
+
+  middleText.innerHTML = "分けてみよう";
+  await waitNext();
+
+  // 抽象化ステップ（トグルONのときのみ）
+  if(doAbstract){
+    middleText.innerHTML = `${mat.name}でも、花でも、カードでも…${cont.name}でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+    await waitNext();
+    middleText.innerHTML = "絵がなくても、同じ考え方で分けられるよ。";
+    await Promise.all([abstractDots(dots), abstractPlates()]);
+    await waitNext();
+  }
+
+  const allBlueRects = [];
+
+  for(let round = 0; round < quotient; round++){
+    const startIndex = round * divisor;
+    const currentDots = dots.slice(startIndex, startIndex + divisor);
+
+    const rects = createRowBoxes(currentDots, round, dotSize);
+    allBlueRects.push(...rects);
+
+    await waitNext();
+
+    for(let j = 0; j < divisor; j++){
+      const d = currentDots[j];
+      const row = Math.floor(round / colsInPlate);
+      const col = round % colsInPlate;
+
+      const targetCx = plates[j].x + innerPadX + col * cellW + cellW / 2;
+      const targetCy = plates[j].y + innerPadY + row * cellH + cellH / 2;
+
+      const ghost = make("div", "dot ghost", ghostLayer);
+      ghost.style.width = `${dotSize}px`;
+      ghost.style.height = `${dotSize}px`;
+      ghost.style.left = `${d.cx}px`;
+      ghost.style.top = `${d.cy}px`;
+
+      setTimeout(() => {
+        d.el.style.left = `${targetCx}px`;
+        d.el.style.top = `${targetCy}px`;
+      }, j * 60);
+
+      d.cx = targetCx;
+      d.cy = targetCy;
+    }
+
+    await sleep(divisor * 60 + 900);
+    await waitNext();
+  }
+
+  if(remainder === 0){
+    for(let i = 0; i < divisor; i++){
+      const cover = make("div", "cover", coverLayer);
+      cover.textContent = "?";
+      cover.style.left = `${plates[i].x + 10}px`;
+      cover.style.top = `${plates[i].y + 10}px`;
+      cover.style.width = `${plates[i].w - 20}px`;
+      cover.style.height = `${plates[i].h - 20}px`;
+      requestAnimationFrame(() => {
+        cover.style.opacity = "1";
+      });
+    }
+
+    await waitNext();
+
+    // ステップ7: □×divisor＝dividend を大きく表示
+    middleText.innerHTML = `<span class="bigEq"><span class="eqBox blinkBox">□</span> × ${divisor} ＝ ${dividend}</span>`;
+    await waitNext();
+
+    // ステップ8: □の中に答えを入れる
+    middleText.innerHTML = `<span class="bigEq"><span class="eqBox filledBox">${quotient}</span> × ${divisor} ＝ ${dividend}</span>`;
+    await waitNext();
+
+    coverLayer.innerHTML = "";
+    bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">１人分は${quotient}こだね。</span>`;
+    return;
+  }
+
+  // ステップ7: シンプルに一言
+  middleText.innerHTML = `あまりがある（わりきれない）もんだいだね。`;
+  await waitNext();
+
+  // S8: 青枠はそのまま（recolorしない）
+  // 凹型SVGアウトラインを描く
+  let s8CaptionText = `${quotient}×${divisor}＝<span class="purpleNum">${product}</span>`;
+  let outlineRect = null;
+  if(allBlueRects.length > 0){
+    outlineRect = drawConcaveOutline(allBlueRects, groupLayer, 10);
+  }
+  setCaption(s8CaptionText, outlineRect);
+
+  await waitNext();
+
+  // S9: あまりドットに黄リングを付ける。stageCaptionにS8の式＋改行＋あまり式を追記。黄楕円全体は出さない。
+  const remainDots = dots.slice(product);
+  createRemainRings(remainDots, dotSize);
+
+  const s9CaptionText = s8CaptionText + `<br>${dividend}−<span class="purpleNum">${product}</span>＝<span class="yellowNum">${remainder}</span>`;
+  setCaption(s9CaptionText, outlineRect);
+
+  await waitNext();
+
+  bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient} あまり ${remainder}`;
+}
+
+// ===== Bタイプ（包含除）=====
+async function startAnimationB(dividend, divisor){
+  const stage = document.getElementById("stage");
+  const sw = stage.offsetWidth;
+  const sh = stage.offsetHeight;
+
+  const quotient  = Math.floor(dividend / divisor);
+  const remainder = dividend % divisor;
+  const product   = quotient * divisor;
+
+  const { dotSize, cols, gapX, gapY, startX, startY } = fitTopLayout(dividend, sw, sh);
+
+  // お皿レイアウトをquotient枚分で事前計算
+  const plateCount  = Math.max(quotient, 1);
+  const allPlates   = calcPlateLayout(plateCount, sw, sh);
+  const plateWidth  = allPlates[0].w;
+  const plateHeight = allPlates[0].h;
+
+  const colsInPlate = Math.ceil(Math.sqrt(divisor));
+  const rowsInPlate = Math.ceil(divisor / colsInPlate);
+  const innerPadX   = clamp(plateWidth * 0.04, 4, 10);
+  const innerPadY   = clamp(plateHeight * 0.05, 4, 10);
+  const usableW     = plateWidth  - innerPadX * 2;
+  const usableH     = plateHeight - innerPadY * 2;
+  const cellW       = usableW / colsInPlate;
+  const cellH       = usableH / rowsInPlate;
+
+  // --- S1 ---
+  topText.innerHTML = "たくさんの数を分ける時にはわり算を使うよ。";
+  await waitNext();
+
+  // --- S2 ---
+  const matB = selectedThing;
+  const contB = selectedContainer;
+  topText.innerHTML = `${dividend}${matB.unit}の${matB.name}を、${contB.name}１${contB.counter}に${divisor}${matB.unit}ずつ入れると、<br>${contB.name}は何${contB.counter}いる？ ${dividend}÷${divisor}＝？`;
+  await waitNext();
+
+  // --- S3 ドット出現（Aと共通）---
+  middleText.innerHTML = `${matB.name}が${dividend}${matB.unit}あるね。`;
+  const dots = spawnDots(dividend, cols, dotSize, gapX, gapY, startX, startY, true);
+  await waitNext();
+
+  // --- S4 1人目＋1枚目だけポップアップ（位置はallPlates[0]で確定済み）---
+  middleText.innerHTML = `１${contB.counter}に${divisor}${matB.unit}ずつ入れるから、まず${contB.name}を１${contB.counter}用意しよう。`;
+  spawnPerson(allPlates[0], plateWidth, 0);
+  spawnPlate(allPlates[0], plateWidth, plateHeight, 120);
+  await waitNext();
+
+  // --- S5 ---
+  middleText.innerHTML = "分けてみよう";
+  await waitNext();
+
+  // 抽象化ステップ（トグルONのときのみ）
+  if(doAbstract){
+    middleText.innerHTML = `${matB.name}でも、花でも、カードでも…${contB.name}でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+    await waitNext();
+    middleText.innerHTML = "絵がなくても、同じ考え方で分けられるよ。";
+    await Promise.all([abstractDots(dots), abstractPlates()]);
+    await waitNext();
+  }
+
+  // --- S6 ループ ---
+  const allBlueRects = [];
+
+  for(let round = 0; round < quotient; round++){
+    const startIndex  = round * divisor;
+    const currentDots = dots.slice(startIndex, startIndex + divisor);
+
+    const rects = createRowBoxes(currentDots, round, dotSize);
+    allBlueRects.push(...rects);
+    await waitNext();
+
+    // ドットをallPlates[round]に移動
+    const targetPlate = allPlates[round];
+    for(let j = 0; j < divisor; j++){
+      const d    = currentDots[j];
+      const row2 = Math.floor(j / colsInPlate);
+      const col2 = j % colsInPlate;
+      const targetCx = targetPlate.x + innerPadX + col2 * cellW + cellW / 2;
+      const targetCy = targetPlate.y + innerPadY + row2 * cellH + cellH / 2;
+      const ghost = make("div", "dot ghost", ghostLayer);
+      ghost.style.width = `${dotSize}px`; ghost.style.height = `${dotSize}px`;
+      ghost.style.left = `${d.cx}px`; ghost.style.top = `${d.cy}px`;
+      setTimeout(() => { d.el.style.left=`${targetCx}px`; d.el.style.top=`${targetCy}px`; }, j * 60);
+      d.cx = targetCx; d.cy = targetCy;
+    }
+    await sleep(divisor * 60 + 600);
+    await waitNext();
+
+    // 次のお皿をポップアップ
+    if(round < quotient - 1){
+      const np = allPlates[round + 1];
+      if(doAbstract){
+        // 抽象化済み：シンプル黒枠のみ
+        const nextPlate = make("div", "plate", platesLayer);
+        nextPlate.style.left = `${np.x}px`; nextPlate.style.top = `${np.y}px`;
+        nextPlate.style.width = `${plateWidth}px`; nextPlate.style.height = `${plateHeight}px`;
+        nextPlate.style.border = "4px solid #555";
+        nextPlate.style.background = "#fff";
+        nextPlate.style.opacity = "0"; nextPlate.style.transform = "scale(0.6)";
+        setTimeout(() => { nextPlate.style.opacity="1"; nextPlate.style.transform="scale(1)"; }, 120);
+      } else {
+        // 抽象化なし：人型＋SVG入れ物
+        spawnPerson(np, plateWidth, 0);
+        spawnPlate(np, plateWidth, plateHeight, 120);
+      }
+      await sleep(400);
+    }
+  }
+
+  // --- あまりなし ---
+  if(remainder === 0){
+    middleText.innerHTML = "いくつできたかな？";
+    const labels = groupLayer.querySelectorAll(".sourceLabel");
+    labels.forEach((lbl, i) => {
+      if(i >= allPlates.length) return;
+      const p = allPlates[i];
+      lbl.style.transition = "left .6s ease, top .6s ease";
+      setTimeout(() => {
+        lbl.style.left = `${p.x + plateWidth / 2 - 8}px`;
+        lbl.style.top  = `${p.y + plateHeight / 2 - 8}px`;
+      }, i * 120);
+    });
+    await waitNext();
+
+    middleText.innerHTML = `<span class="bigEq">${divisor} × <span class="eqBox blinkBox">□</span> ＝ ${dividend}</span>`;
+    await waitNext();
+
+    middleText.innerHTML = `<span class="bigEq">${divisor} × <span class="eqBox filledBox">${quotient}</span> ＝ ${dividend}</span>`;
+    await waitNext();
+
+    bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">${quotient}人に分けられたね。</span>`;
+    return;
+  }
+
+  // --- あまりあり ---
+  middleText.innerHTML = "あまりがある（わりきれない）もんだいだね。";
+  await waitNext();
+
+  let s8Caption = `${quotient}×${divisor}＝<span class="purpleNum">${product}</span>`;
+  let outlineRect = null;
+  if(allBlueRects.length > 0) outlineRect = drawConcaveOutline(allBlueRects, groupLayer, 0);
+  setCaption(s8Caption, outlineRect);
+  await waitNext();
+
+  const remainDots = dots.slice(product);
+  createRemainRings(remainDots, dotSize);
+  setCaption(s8Caption + `<br>${dividend}−<span class="purpleNum">${product}</span>＝<span class="yellowNum">${remainder}</span>`, outlineRect);
+  await waitNext();
+
+  bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient} あまり ${remainder}`;
+}
+
+</script>
+</body>
+</html>

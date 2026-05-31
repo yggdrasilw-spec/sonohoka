@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>算数・わり算の筆算デジタルノート (アニメーション強化版)</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        /* 設定エリア */
+        .config-area {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        input[type="text"] {
+            width: 70px;
+            font-size: 18px;
+            padding: 4px 8px;
+            text-align: center;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+        }
+        .btn-blue {
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            padding: 6px 18px;
+            font-size: 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* 問いかけ・選択エリア */
+        .question-zone {
+            background-color: #fff7ed;
+            border: 2px solid #f97316;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 960px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .question-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-weight: bold;
+            color: #ea580c;
+        }
+        .select-box {
+            font-size: 16px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 2px solid #f97316;
+            background: white;
+            color: #c2410c;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* メインレイアウト */
+        .workspace {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            max-width: 1000px;
+            align-items: flex-start;
+        }
+
+        /* 筆算ノート */
+        .notebook-wrapper {
+            background: white;
+            border: 2px solid #b8c6d2;
+            border-radius: 12px;
+            padding: 50px;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        .division-grid {
+            display: grid;
+            position: relative;
+        }
+
+        .grid-cell {
+            width: 46px;
+            height: 46px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 2;
+            border-right: 1px dashed #e2e8f0;
+            border-bottom: 1px dashed #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .cell-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .main-num {
+            font-size: 28px;
+            font-weight: bold;
+            color: #334155;
+            line-height: 46px;
+        }
+        
+        /* 上から下へ数字が滑り降りるおろすアニメーション */
+        @keyframes digit-drop {
+            0% {
+                transform: translateY(var(--drop-start-y));
+                color: #cbd5e1;
+                opacity: 0.4;
+            }
+            40% {
+                color: #cbd5e1;
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .digit-dropping {
+            animation: digit-drop 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .top-num {
+            position: absolute;
+            top: -4px;
+            font-size: 15px;
+            font-weight: bold;
+            z-index: 5;
+        }
+        .slash-line {
+            position: absolute;
+            top: 5%; left: 5%; width: 90%; height: 90%;
+            background: linear-gradient(to top left, transparent 46%, #ef4444 49%, #ef4444 51%, transparent 54%);
+            display: none;
+            z-index: 4;
+            pointer-events: none;
+        }
+        .red-border {
+            box-shadow: inset 0 0 0 3px #ef4444 !important;
+            border-radius: 4px;
+        }
+
+        .border-top-solid { border-top: 3px solid #1e293b !important; }
+        .border-bottom-solid { border-bottom: 3px solid #1e293b !important; }
+        .gray-guide { color: #cbd5e1; font-size: 22px; }
+        .added-zero { color: #0284c7; } 
+
+        /* 光るマスのエフェクト */
+        .active-target {
+            background-color: rgba(255, 152, 0, 0.2) !important;
+            box-shadow: inset 0 0 0 3.5px #ff9800, 0 4px 12px rgba(255, 152, 0, 0.45) !important;
+            border-radius: 6px;
+            z-index: 10 !important;
+            animation: rich-pulse-animation 1.2s infinite ease-in-out;
+        }
+
+        @keyframes rich-pulse-animation {
+            0% {
+                transform: scale(1);
+                box-shadow: inset 0 0 0 3.5px #ff9800, 0 4px 8px rgba(255, 152, 0, 0.3);
+                background-color: rgba(255, 152, 0, 0.15) !important;
+            }
+            50% {
+                transform: scale(1.06);
+                box-shadow: inset 0 0 0 4px #f97316, 0 8px 20px rgba(249, 115, 22, 0.55);
+                background-color: rgba(255, 152, 0, 0.35) !important;
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: inset 0 0 0 3.5px #ff9800, 0 4px 8px rgba(255, 152, 0, 0.3);
+                background-color: rgba(255, 152, 0, 0.15) !important;
+            }
+        }
+
+        .fusen-mask {
+            position: absolute;
+            background-color: rgba(253, 224, 71, 0.45);
+            border-left: 3px dashed #eab308;
+            z-index: 8;
+            pointer-events: none;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        /* コントロール */
+        .control-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 420px;
+        }
+        .narration-card {
+            background-color: #f0fdf4;
+            border-left: 6px solid #22c55e;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #166534;
+            min-height: 60px;
+            line-height: 1.5;
+        }
+        
+        .brain-card {
+            background-color: #ffffff;
+            border: 2px dashed #94a3b8;
+            padding: 16px;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+        .btn-nav {
+            flex: 1;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        #btn-next { background-color: #22c55e; color: white; }
+        #btn-prev { background-color: #94a3b8; color: white; }
+        .btn-nav:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+
+        #hint-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>わり算の筆算 シミュレーター</h1>
+
+    <div class="config-area">
+        <label style="font-weight: bold;">問題：
+            <input type="text" id="num-dividend" value="85"> ÷ <input type="text" id="num-divisor" value="7">
+        </label>
+        <button class="btn-blue" id="btn-init">問題作成</button>
+    </div>
+
+    <div class="question-zone" id="question-zone">
+        <div class="question-row">
+            <span>🚨 この問題はわり切れないよ！どうやって計算する？</span>
+            <select class="select-box" id="calc-route">
+                <option value="remainder">あまりを出す 【4年生向け】</option>
+                <option value="advance" selected>小数でわり進める 【5年生向け】</option>
+            </select>
+        </div>
+        <div class="question-row" id="gaisu-sub-row" style="display: none; border-top: 1px dashed #f97316; padding-top: 10px;">
+            <span>➔ 何の位までの概数（がいすう）にする？</span>
+            <select class="select-box" id="gaisu-target">
+                <option value="0">一の位までの概数 (小数第1位を四捨五入)</option>
+                <option value="1" selected>小数第一位までの概数 (小数第2位を四捨五入)</option>
+                <option value="2">小数第二位までの概数 (小数第3位を四捨五入)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="notebook-wrapper" id="notebook-container">
+            <svg id="hint-svg"></svg>
+            <div id="fusen" class="fusen-mask"></div>
+            <div class="division-grid" id="division-grid"></div>
+        </div>
+
+        <div class="control-panel">
+            <div class="narration-card" id="narration"></div>
+            <div class="brain-card" id="brain-work" style="display: none;"></div>
+            <div class="btn-group">
+                <button class="btn-nav" id="btn-prev" disabled>もどる</button>
+                <button class="btn-nav" id="btn-next" disabled>すすむ ＞</button>
+            </div>
+        </div>
+    </div>
+<script>
+function sanitizeInput(str) {
+    let half = str.replace(/[０-９]/g, function(s) {
+        return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+    });
+    half = half.replace(/．/g, '.');
+    return half.replace(/[^0-9.]/g, '');
+}
+
+function parseNumberMeta(numStr) {
+    const dotIdx = numStr.indexOf('.');
+    if (dotIdx === -1) {
+        return { digits: numStr, dotAfter: numStr.length, hasDot: false, decimalPlaces: 0 };
+    } else {
+        return { digits: numStr.replace('.', ''), dotAfter: dotIdx, hasDot: true, decimalPlaces: numStr.length - 1 - dotIdx };
+    }
+}
+
+function generateBrainWorkHtml(currentTargetValue, divisorInt) {
+    if (currentTargetValue === 0 || currentTargetValue < divisorInt) return "";
+    if (divisorInt < 10) {
+        let correctK = Math.floor(currentTargetValue / divisorInt);
+        let html = `<div style="font-size:14px; color:#334155;"><b>🧠 あたまの中の九九 (${divisorInt}のだん)</b><br><div style="margin-top:6px; padding-left:10px; border-left:3px solid #0284c7; line-height:1.6;">`;
+        for (let k = 1; k <= 9; k++) {
+            let p = divisorInt * k;
+            if (k === correctK) {
+                html += `<div style="background-color: #fef08a; border: 2px solid #eab308; display:inline-block; padding: 2px 8px; margin: 2px 0; border-radius: 4px; font-weight: bold; color:#854d0e;">★ ${divisorInt} × ${k} = ${p} </div><br>`;
+            } else if (p > currentTargetValue) {
+                html += `<div style="color: #cbd5e1; margin: 2px 0;">${divisorInt} × ${k} = ${p}</div>`;
+            } else {
+                html += `<div style="color: #64748b; margin: 2px 0;">${divisorInt} × ${k} = ${p}</div>`;
+            }
+        }
+        html += `</div></div>`;
+        return html;
+    }
+    return "";
+}
+
+class AdvancedDivisionEngine {
+    static checkWillDivideOut(dividendStr, divisorStr) {
+        const divParse = parseNumberMeta(divisorStr);
+        const dvdParse = parseNumberMeta(dividendStr);
+        let baseDvdDigits = dvdParse.digits;
+        const finalDvdDotAfter = dvdParse.dotAfter + divParse.decimalPlaces;
+        if (finalDvdDotAfter > baseDvdDigits.length) {
+            baseDvdDigits += "0".repeat(finalDvdDotAfter - baseDvdDigits.length);
+        }
+        const divisorInt = parseInt(divParse.digits, 10);
+        let currentRem = 0;
+        for(let i=0; i<baseDvdDigits.length; i++) {
+            let currentDivStr = (i === 0 && currentRem === 0) ? baseDvdDigits[i] : (currentRem.toString() + baseDvdDigits[i]);
+            currentRem = parseInt(currentDivStr, 10) % divisorInt;
+        }
+        let extra = 0;
+        while (currentRem > 0 && extra < 6) {
+            currentRem = (currentRem * 10) % divisorInt;
+            extra++;
+        }
+        return (currentRem === 0);
+    }
+
+    static generateSteps(dividendStr, divisorStr, route, gaisuTargetValue) {
+        const divParse = parseNumberMeta(divisorStr);
+        const dvdParse = parseNumberMeta(dividendStr);
+        const D = divParse.decimalPlaces; 
+        
+        let baseDvdDigits = dvdParse.digits;
+        const finalDvdDotAfter = dvdParse.dotAfter + D;
+        if (finalDvdDotAfter > baseDvdDigits.length) {
+            baseDvdDigits += "0".repeat(finalDvdDotAfter - baseDvdDigits.length);
+        }
+
+        const divisorInt = parseInt(divParse.digits, 10);
+        let extraZeros = 0;
+
+        if (route === "remainder") {
+            extraZeros = 0;
+        } else if (route === "advance" && gaisuTargetValue !== null) {
+            let requiredDigitsLength = finalDvdDotAfter + gaisuTargetValue + 1;
+            if (baseDvdDigits.length < requiredDigitsLength) {
+                extraZeros = requiredDigitsLength - baseDvdDigits.length;
+            }
+        } else {
+            let currentRem = 0;
+            for(let i=0; i<baseDvdDigits.length; i++) {
+                let currentDivStr = (i === 0 && currentRem === 0) ? baseDvdDigits[i] : (currentRem.toString() + baseDvdDigits[i]);
+                currentRem = parseInt(currentDivStr, 10) % divisorInt;
+            }
+            while (currentRem > 0 && extraZeros < 6) {
+                currentRem = (currentRem * 10) % divisorInt;
+                extraZeros++;
+            }
+        }
+
+        let dvdDigits = baseDvdDigits + "0".repeat(extraZeros);
+        const M = divParse.digits.length;
+        const N = dvdDigits.length;
+        
+        const steps = [];
+        const initialCells = [];
+
+        for(let j=0; j<M; j++) initialCells.push({ r: 1, c: j, char: divParse.digits[j] });
+        for(let j=0; j<dvdParse.digits.length; j++) initialCells.push({ r: 1, c: M + j, char: dvdParse.digits[j] });
+
+        const showDotsInThisProblem = dvdParse.hasDot || divParse.hasDot || (route === "advance");
+
+        const baseDots = {
+            divOriginal: (divParse.hasDot && showDotsInThisProblem) ? divParse.dotAfter : null,
+            divCurrent: (divParse.hasDot && showDotsInThisProblem) ? divParse.dotAfter : null,
+            dvdOriginal: (showDotsInThisProblem) ? dvdParse.dotAfter + M : null,
+            dvdCurrent: (showDotsInThisProblem) ? dvdParse.dotAfter + M + D : null,
+            quotient: null, remainder: null, isMoved: false,
+            showDvdOrigInit: dvdParse.hasDot && showDotsInThisProblem
+        };
+
+        let currentMaskFromCol = null;
+
+        steps.push({
+            phase: "init",
+            description: `まずは筆算の形に数字を書きましょう。`,
+            dots: { ...baseDots }, writeCells: [], maskFromCol: currentMaskFromCol, pulseBoxes: []
+        });
+
+        let currentDots = { ...baseDots };
+        const zerosFromMove = finalDvdDotAfter > dvdParse.digits.length ? finalDvdDotAfter - dvdParse.digits.length : 0;
+
+        if (D > 0 && showDotsInThisProblem) {
+            currentDots.divCurrent = M;
+            currentDots.dvdCurrent = dvdParse.dotAfter + M + D;
+            currentDots.isMoved = true;
+            const writeCells = [];
+            if (zerosFromMove > 0) {
+                for (let j = 0; j < zerosFromMove; j++) {
+                    writeCells.push({ r: 1, c: M + dvdParse.digits.length + j, char: "0", isNewZero: true });
+                }
+            }
+            steps.push({
+                phase: "move-dots",
+                description: `【小数点のいどう】わる数を整数にするために小数点を右に移します。`,
+                dots: { ...currentDots }, writeCells: writeCells, maskFromCol: currentMaskFromCol, pulseBoxes: []
+            });
+        }
+
+        let currentRemainder = 0;
+        let currentDividendStr = "";
+        let currentRow = 2;
+        let hasFirstQuotientStarted = false; 
+        let quotientPositions = Array(N).fill("");
+
+        for (let i = 0; i < N; i++) {
+            const currentDigit = dvdDigits[i];
+            currentDividendStr = (i === 0 && currentRemainder === 0) ? currentDigit : (currentRemainder.toString() + currentDigit);
+            const currentTargetValue = parseInt(currentDividendStr, 10);
+            const targetCol = M + i;
+            const brainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt);
+
+            currentMaskFromCol = targetCol + 1;
+
+            let hideText = `【かくす】 ${currentTargetValue} の中に ${divisorInt} はいくつあるかな？`;
+            if (i > 0) {
+                hideText = `【かくす】位１つ分、かくしていた部分をずらすよ。 ${currentTargetValue} の中に ${divisorInt} はいくつあるかな？`;
+            }
+
+            steps.push({
+                phase: "hide",
+                description: hideText,
+                dots: { ...currentDots }, maskFromCol: currentMaskFromCol, brainHtml: brainHtml, pulseBoxes: []
+            });
+
+            if (currentTargetValue < divisorInt) {
+                if (!hasFirstQuotientStarted) {
+                    steps.push({
+                        phase: "skip",
+                        description: `商は立ちません。次の桁をいっしょに見ます。`,
+                        dots: { ...currentDots }, writeCells: [{ r: 0, c: targetCol, char: "✕", isGuide: true }],
+                        maskFromCol: currentMaskFromCol, pulseBoxes: []
+                    });
+                    currentRemainder = currentTargetValue;
+                } else {
+                    quotientPositions[i] = "0";
+                    steps.push({
+                        phase: "build-zero",
+                        description: `【たてる】商に「0」を書きます。`,
+                        dots: { ...currentDots }, writeCells: [{ r: 0, c: targetCol, char: "0" }], 
+                        pulseBoxes: [{ r: 0, c: targetCol }], maskFromCol: currentMaskFromCol
+                    });
+                    if (i < N - 1) {
+                        const nextDigit = dvdDigits[i + 1];
+                        const isExtraZero = (i + 1 >= baseDvdDigits.length);
+                        const dropCells = [{ r: currentRow, c: targetCol + 1, char: nextDigit }];
+                        if (isExtraZero) dropCells.push({ r: 1, c: targetCol + 1, char: "0", isNewZero: true });
+                        steps.push({
+                            phase: "drop",
+                            description: `【おろす】次の位をおろします。`,
+                            dots: { ...currentDots }, writeCells: dropCells, 
+                            pulseBoxes: dropCells.map(dc => ({ r: dc.r, c: dc.c })), maskFromCol: currentMaskFromCol
+                        });
+                        currentRow++; 
+                    }
+                    currentRemainder = currentTargetValue;
+                }
+                continue; 
+            }
+
+            hasFirstQuotientStarted = true;
+            const quotientDigit = Math.floor(currentTargetValue / divisorInt);
+            quotientPositions[i] = quotientDigit.toString();
+
+            steps.push({
+                phase: "build",
+                description: `【たてる】商に 「${quotientDigit}」 が立ちます。`,
+                dots: { ...currentDots }, writeCells: [{ r: 0, c: targetCol, char: quotientDigit.toString() }], 
+                pulseBoxes: [{ r: 0, c: targetCol }], brainHtml: brainHtml, maskFromCol: currentMaskFromCol
+            });
+
+            const product = quotientDigit * divisorInt;
+            const productStr = product.toString();
+            const multiplyCells = [];
+            for (let j = 0; j < productStr.length; j++) {
+                multiplyCells.push({ r: currentRow, c: targetCol - (productStr.length - 1) + j, char: productStr[j], borderBottom: true });
+            }
+            steps.push({
+                phase: "multiply",
+                description: `【かける】 ${quotientDigit} × ${divisorInt} ＝ ${product} を書きます。`,
+                dots: { ...currentDots }, writeCells: multiplyCells, 
+                pulseBoxes: multiplyCells.map(mc => ({ r: mc.r, c: mc.c })), maskFromCol: currentMaskFromCol
+            });
+            currentRow++;
+
+            currentRemainder = currentTargetValue - product;
+            const isLastDigit = (i === N - 1);
+            const subtractCells = [];
+            const remStr = currentRemainder.toString();
+            for (let j = 0; j < remStr.length; j++) {
+                subtractCells.push({ r: currentRow, c: targetCol - (remStr.length - 1) + j, char: remStr[j] });
+            }
+            steps.push({
+                phase: "subtract",
+                description: `【ひく】 引き算をして、あまりは ${currentRemainder} です。`,
+                dots: { ...currentDots }, writeCells: subtractCells, 
+                pulseBoxes: subtractCells.map(sc => ({ r: sc.r, c: sc.c })), maskFromCol: currentMaskFromCol
+            });
+
+            if (!isLastDigit) {
+                const nextDigit = dvdDigits[i + 1];
+                const isExtraZero = (i + 1 >= baseDvdDigits.length);
+                const dropCells = [{ r: currentRow, c: targetCol + 1, char: nextDigit }];
+                if (isExtraZero) dropCells.push({ r: 1, c: targetCol + 1, char: "0", isNewZero: true });
+                steps.push({
+                    phase: "drop",
+                    description: `【おろす】 下の位をおろして計算を続けます。`,
+                    dots: { ...currentDots }, writeCells: dropCells, 
+                    pulseBoxes: dropCells.map(dc => ({ r: dc.r, c: dc.c })), maskFromCol: currentMaskFromCol
+                });
+                currentRow++;
+            }
+        }
+
+        if (route === "advance" && showDotsInThisProblem) {
+            currentDots.showDvdOrigInit = true; 
+            currentDots.quotient = finalDvdDotAfter + M;
+            steps.push({
+                phase: "quotient-dot",
+                description: `【小数点】商の小数点を、わられる数の小数点の真上に打ちます。`,
+                dots: { ...currentDots }, maskFromCol: currentMaskFromCol, pulseBoxes: []
+            });
+        }
+
+        let finalGaisuCells = [];
+        if (route === "advance" && gaisuTargetValue !== null) {
+            let checkIdx = finalDvdDotAfter + gaisuTargetValue; 
+            let checkDigit = parseInt(quotientPositions[checkIdx], 10);
+            let targetName = gaisuTargetValue === 0 ? "一の位" : gaisuTargetValue === 1 ? "小数第一位" : "小数第二位";
+            
+            let isRoundUp = (checkDigit >= 5);
+            let description = `【概数にする】${targetName}までの概数にするために、一つ下のマスの「${checkDigit}」を四捨五入します。`;
+            description += isRoundUp ? ` 「5以上」なので【切り上げ】です！` : ` 「4以下」なので【切り捨て】です！`;
+
+            finalGaisuCells.push({
+                r: 0, c: M + checkIdx, char: checkDigit.toString(),
+                hasSlash: true, topChar: "0", isRedBorder: true
+            });
+
+            if (isRoundUp) {
+                let idx = checkIdx - 1;
+                let carry = 1;
+                while (idx >= 0 && carry > 0) {
+                    let d = parseInt(quotientPositions[idx], 10);
+                    if (isNaN(d)) d = 0;
+                    let newD = d + carry;
+                    if (newD >= 10) {
+                        finalGaisuCells.push({
+                            r: 0, c: M + idx, char: d.toString(),
+                            hasSlash: true, topChar: "0"
+                        });
+                        carry = 1;
+                    } else {
+                        finalGaisuCells.push({
+                            r: 0, c: M + idx, char: d.toString(),
+                            hasSlash: true, topChar: newD.toString()
+                        });
+                        carry = 0;
+                    }
+                    idx--;
+                }
+            }
+
+            steps.push({
+                phase: "round-off",
+                description: description,
+                dots: { ...currentDots },
+                writeCells: [...finalGaisuCells],
+                maskFromCol: currentMaskFromCol,
+                pulseBoxes: finalGaisuCells.map(fc => ({ r: fc.r, c: fc.c }))
+            });
+        }
+
+        const completeWriteCells = [];
+        if (finalGaisuCells.length > 0) {
+            finalGaisuCells.forEach(cell => completeWriteCells.push({ ...cell }));
+        }
+
+        steps.push({
+            phase: "complete",
+            description: route === "remainder" 
+                ? `【完成！】これ以上おろす数がないので、ここで終わりです！ 商は ${quotientPositions.join("")}、あまりは ${currentRemainder} になります。`
+                : `【完成！】概数の商が求められました！素晴らしい！`,
+            dots: { ...currentDots },
+            writeCells: completeWriteCells,
+            maskFromCol: currentMaskFromCol, pulseBoxes: []
+        });
+
+        return { initialCells, steps, totalRows: currentRow + 1, totalCols: M + N, M, N };
+    }
+}
+
+let appState = null;
+let currentStepIdx = 0;
+let gridData = [];
+
+function initSimulation() {
+    const dividendInput = document.getElementById('num-dividend');
+    const divisorInput = document.getElementById('num-divisor');
+    
+    dividendInput.value = sanitizeInput(dividendInput.value.trim());
+    divisorInput.value = sanitizeInput(divisorInput.value.trim());
+
+    const dividendStr = dividendInput.value;
+    const divisorStr = divisorInput.value;
+    
+    if (!dividendStr || !divisorStr) return;
+
+    const isDivideOut = AdvancedDivisionEngine.checkWillDivideOut(dividendStr, divisorStr);
+    const questionZone = document.getElementById('question-zone');
+    const gaisuSubRow = document.getElementById('gaisu-sub-row');
+    
+    let route = "advance"; 
+    let gaisuTargetValue = null;
+
+    if (!isDivideOut) {
+        questionZone.style.display = "flex";
+        route = document.getElementById('calc-route').value;
+        
+        if (route === "advance") {
+            gaisuSubRow.style.display = "flex";
+            gaisuTargetValue = parseInt(document.getElementById('gaisu-target').value, 10);
+        } else {
+            gaisuSubRow.style.display = "none";
+        }
+    } else {
+        questionZone.style.display = "none";
+    }
+
+    appState = AdvancedDivisionEngine.generateSteps(dividendStr, divisorStr, route, gaisuTargetValue);
+    currentStepIdx = 0;
+
+    gridData = Array(appState.totalRows).fill(null).map(() => 
+        Array(appState.totalCols).fill(null).map(() => ({ 
+            char: "", isGuide: false, borderTop: false, borderBottom: false, isNewZero: false,
+            hasSlash: false, topChar: "", isRedBorder: false, isDropping: false, dropDistance: 0
+        }))
+    );
+
+    appState.initialCells.forEach(cell => { gridData[cell.r][cell.c].char = cell.char; });
+    for (let c = appState.M; c < appState.totalCols; c++) { gridData[1][c].borderTop = true; }
+
+    renderGridStructure();
+    applyStepUI();
+    updateButtons();
+}
+
+function renderGridStructure() {
+    const gridEl = document.getElementById('division-grid');
+    gridEl.innerHTML = "";
+    gridEl.style.gridTemplateColumns = `repeat(${appState.totalCols}, 46px)`;
+    for (let r = 0; r < appState.totalRows; r++) {
+        for (let c = 0; c < appState.totalCols; c++) {
+            const cellMeta = gridData[r][c];
+            const cellDiv = document.createElement('div');
+            cellDiv.classList.add('grid-cell'); cellDiv.id = `cell-${r}-${c}`;
+            if (cellMeta.borderTop) cellDiv.classList.add('border-top-solid');
+            if (cellMeta.borderBottom) cellDiv.classList.add('border-bottom-solid');
+            if (cellMeta.isNewZero) cellDiv.classList.add('added-zero');
+            if (cellMeta.isRedBorder) cellDiv.classList.add('red-border');
+            
+            const container = document.createElement('div');
+            container.classList.add('cell-container');
+            
+            const topNum = document.createElement('div');
+            topNum.classList.add('top-num');
+            topNum.innerText = cellMeta.topChar || "";
+            if (cellMeta.topChar === "0") {
+                topNum.style.color = "#ef4444"; 
+            } else if (cellMeta.topChar) {
+                topNum.style.color = "#22c55e"; 
+            }
+            
+            const mainNum = document.createElement('div');
+            mainNum.classList.add('main-num');
+            
+            if (cellMeta.isDropping) {
+                mainNum.classList.add('digit-dropping');
+                mainNum.style.setProperty('--drop-start-y', `-${cellMeta.dropDistance}px`);
+            }
+
+            if (cellMeta.isGuide) {
+                mainNum.innerHTML = `<span class="gray-guide">✕</span>`;
+            } else {
+                mainNum.innerText = cellMeta.char;
+            }
+            
+            const slash = document.createElement('div');
+            slash.classList.add('slash-line');
+            if (cellMeta.hasSlash) {
+                slash.style.display = "block";
+            }
+            
+            container.appendChild(topNum);
+            container.appendChild(mainNum);
+            container.appendChild(slash);
+            cellDiv.appendChild(container);
+            
+            gridEl.appendChild(cellDiv);
+        }
+    }
+}
+
+function clearSvg() {
+    const svg = document.getElementById('hint-svg');
+    svg.innerHTML = `
+        <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#2196f3"/>
+            </marker>
+        </defs>
+    `;
+}
+
+function drawDropArrow(fromR, fromC, toR, toC) {
+    const svg = document.getElementById('hint-svg');
+    const containerRect = document.getElementById('notebook-container').getBoundingClientRect();
+    
+    const fromCell = document.getElementById(`cell-${fromR}-${fromC}`);
+    const toCell = document.getElementById(`cell-${toR}-${toC}`);
+    if (!fromCell || !toCell) return;
+    
+    const fromRect = fromCell.getBoundingClientRect();
+    const toRect = toCell.getBoundingClientRect();
+    
+    const x = (fromRect.left + fromRect.right) / 2 - containerRect.left;
+    const yStart = fromRect.bottom - containerRect.top - 5; 
+    const yEnd = toRect.top - containerRect.top + 2; 
+    
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", x);
+    line.setAttribute("y1", yStart);
+    line.setAttribute("x2", x);
+    line.setAttribute("y2", yEnd);
+    line.setAttribute("stroke", "#2196f3");
+    line.setAttribute("stroke-width", "2.5");
+    line.setAttribute("stroke-dasharray", "4,3");
+    line.setAttribute("marker-end", "url(#arrow)");
+    svg.appendChild(line);
+}
+
+function applyStepUI() {
+    document.querySelectorAll('.grid-cell').forEach(el => el.classList.remove('active-target'));
+    clearSvg(); 
+    document.getElementById('fusen').style.display = "none";
+    if (!appState || appState.steps.length === 0) return;
+    
+    for (let r = 0; r < appState.totalRows; r++) {
+        for (let c = 0; c < appState.totalCols; c++) {
+            gridData[r][c].isDropping = false;
+        }
+    }
+    for (let c = 0; c < appState.totalCols; c++) {
+        if (gridData[0] && gridData[0][c]) {
+            gridData[0][c].hasSlash = false;
+            gridData[0][c].topChar = "";
+            gridData[0][c].isRedBorder = false;
+        }
+    }
+
+    drawDivisionCurve();
+
+    const step = appState.steps[currentStepIdx];
+    document.getElementById('narration').innerText = step.description;
+
+    const brainCard = document.getElementById('brain-work');
+    if (step.brainHtml) {
+        brainCard.innerHTML = step.brainHtml;
+        brainCard.style.display = "block";
+    } else {
+        brainCard.style.display = "none";
+    }
+
+    if (step.writeCells) {
+        step.writeCells.forEach(wc => {
+            gridData[wc.r][wc.c].char = wc.char;
+            if (wc.isGuide) gridData[wc.r][wc.c].isGuide = true;
+            if (wc.borderBottom) gridData[wc.r][wc.c].borderBottom = true;
+            if (wc.isNewZero) gridData[wc.r][wc.c].isNewZero = true;
+            
+            if (wc.hasSlash) gridData[wc.r][wc.c].hasSlash = true;
+            if (wc.topChar) gridData[wc.r][wc.c].topChar = wc.topChar;
+            if (wc.isRedBorder) gridData[wc.r][wc.c].isRedBorder = true;
+            
+            if (step.phase === "drop" && wc.r > 1) {
+                gridData[wc.r][wc.c].isDropping = true;
+                gridData[wc.r][wc.c].dropDistance = (wc.r - 1) * 46; 
+            }
+        });
+        renderGridStructure();
+    }
+
+    if (step.phase === "drop" && step.writeCells) {
+        step.writeCells.forEach(wc => {
+            if (wc.r > 1) {
+                drawDropArrow(1, wc.c, wc.r, wc.c); 
+            }
+        });
+    }
+
+    drawDecimalDots(step);
+
+    if (step.pulseBoxes && step.pulseBoxes.length > 0) {
+        step.pulseBoxes.forEach(box => {
+            const target = document.getElementById(`cell-${box.r}-${box.c}`);
+            if (target) target.classList.add('active-target');
+        });
+    }
+
+    if (step.maskFromCol !== null && step.maskFromCol < appState.totalCols) {
+        const fusen = document.getElementById('fusen');
+        const containerRect = document.getElementById('notebook-container').getBoundingClientRect();
+        const startCellRect = document.getElementById(`cell-0-${step.maskFromCol}`).getBoundingClientRect();
+        const endCellRect = document.getElementById(`cell-${appState.totalRows-1}-${appState.totalCols-1}`).getBoundingClientRect();
+        
+        fusen.style.left = (startCellRect.left - containerRect.left) + "px";
+        fusen.style.top = (startCellRect.top - containerRect.top) + "px";
+        fusen.style.width = (endCellRect.right - startCellRect.left) + "px";
+        fusen.style.height = (endCellRect.bottom - startCellRect.top) + "px"; 
+        fusen.style.display = "block";
+    }
+}
+
+function drawDivisionCurve() {
+    const svg = document.getElementById('hint-svg');
+    const divisorLen = appState.M;
+    const targetCell = document.getElementById(`cell-1-${divisorLen}`);
+    if (!targetCell) return;
+    const containerRect = document.getElementById('notebook-container').getBoundingClientRect();
+    const cellRect = targetCell.getBoundingClientRect();
+    const x = cellRect.left - containerRect.left;
+    const yTop = cellRect.top - containerRect.top;
+    const yBottom = cellRect.bottom - containerRect.top;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x} ${yTop} Q ${x + 12} ${(yTop + yBottom)/2} ${x} ${yBottom}`);
+    path.setAttribute("stroke", "#1e293b"); path.setAttribute("stroke-width", "3"); path.setAttribute("fill", "none"); svg.appendChild(path);
+}
+
+function drawDecimalDots(step) {
+    const svg = document.getElementById('hint-svg');
+    const containerRect = document.getElementById('notebook-container').getBoundingClientRect();
+    
+    function getBoundary(r, c) {
+        let cell = c > 0 ? document.getElementById(`cell-${r}-${c-1}`) : document.getElementById(`cell-${r}-${c}`);
+        if (!cell) return null; 
+        const rect = cell.getBoundingClientRect();
+        return { 
+            x: c > 0 ? (rect.right - containerRect.left) : (rect.left - containerRect.left), 
+            y: rect.bottom - containerRect.top - 7 
+        };
+    }
+    
+    const dots = step.dots;
+    if (dots.divOriginal !== null) {
+        const pt = getBoundary(1, dots.divOriginal);
+        if (pt) {
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", "4.5"); c.setAttribute("fill", "#334155"); svg.appendChild(c);
+        }
+    }
+    if (dots.dvdOriginal !== null) {
+        const pt = getBoundary(1, dots.dvdOriginal);
+        if (pt) {
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", "4.5"); c.setAttribute("fill", "#334155"); svg.appendChild(c);
+        }
+    }
+    if (dots.quotient !== null) {
+        const ptQuot = getBoundary(0, dots.quotient);
+        if (ptQuot) {
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", ptQuot.x); c.setAttribute("cy", ptQuot.y); c.setAttribute("r", "4.5"); c.setAttribute("fill", "#ef4444"); svg.appendChild(c);
+        }
+    }
+}
+
+function updateButtons() {
+    document.getElementById('btn-prev').disabled = (currentStepIdx === 0);
+    document.getElementById('btn-next').disabled = (currentStepIdx >= appState.steps.length - 1);
+}
+
+document.getElementById('num-dividend').addEventListener('input', function(e) {
+    e.target.value = sanitizeInput(e.target.value);
+});
+document.getElementById('num-divisor').addEventListener('input', function(e) {
+    e.target.value = sanitizeInput(e.target.value);
+});
+
+document.getElementById('btn-init').addEventListener('click', initSimulation);
+document.getElementById('calc-route').addEventListener('change', initSimulation);
+document.getElementById('gaisu-target').addEventListener('change', initSimulation);
+document.getElementById('btn-next').addEventListener('click', () => {
+    if (currentStepIdx < appState.steps.length - 1) { currentStepIdx++; applyStepUI(); updateButtons(); }
+});
+document.getElementById('btn-prev').addEventListener('click', () => {
+    if (currentStepIdx > 0) {
+        currentStepIdx--; const targetIdx = currentStepIdx; initSimulation();
+        while(currentStepIdx < targetIdx) { currentStepIdx++; applyStepUI(); }
+        updateButtons();
+    }
+});
+initSimulation();
+</script>
+</body>
+</html>

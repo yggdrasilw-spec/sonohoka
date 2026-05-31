@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>長さの加法・減法アニメーション</title>
+  <style>
+    :root{
+      --bg:#f6f8fc;
+      --panel:rgba(255,255,255,.92);
+      --ink:#1f2937;
+      --muted:#64748b;
+      --cm:#ef4444;
+      --mm:#2563eb;
+      --line:#facc15;
+      --shadow:0 18px 45px rgba(15,23,42,.12);
+      --radius:22px;
+      --px-per-mm:17;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      overflow:hidden;
+      font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+      background:radial-gradient(circle at top,#ffffff 0%,var(--bg) 60%,#eaf0ff 100%);
+      color:var(--ink);
+    }
+    .app{
+      height:100vh;
+      padding:10px;
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+      gap:10px;
+    }
+    .bar,.stage,.footer{
+      background:var(--panel);
+      border:1px solid rgba(148,163,184,.22);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(10px);
+    }
+    .bar{
+      padding:10px 12px;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;
+      gap:10px;
+      align-items:center;
+    }
+    .side{
+      min-width:0;
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:8px;
+      align-items:center;
+    }
+    .side.right{justify-self:end}
+    .side-title{
+      font-size:12px;
+      font-weight:800;
+      color:var(--muted);
+      letter-spacing:.04em;
+      white-space:nowrap;
+      padding:0 2px;
+    }
+    .length-card{
+      min-width:0;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:4px;
+    }
+    .length-preview{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      font-size:clamp(16px,1.8vw,22px);
+      font-weight:900;
+      line-height:1;
+      white-space:nowrap;
+    }
+    .length-preview .cm{color:var(--cm)}
+    .length-preview .mm{color:var(--mm)}
+    .steppers{
+      display:grid;
+      grid-template-columns:repeat(4,auto);
+      gap:6px;
+      align-items:stretch;
+    }
+    .step-block{
+      display:grid;
+      grid-template-rows:auto auto auto;
+      justify-items:center;
+      gap:3px;
+      min-width:54px;
+    }
+    .step-label{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:800;
+      line-height:1;
+    }
+    .btn{
+      border:none;
+      border-radius:999px;
+      cursor:pointer;
+      user-select:none;
+      font-weight:900;
+      transition:transform .08s ease, opacity .15s ease, background .15s ease;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .btn:active{transform:translateY(1px)}
+    .small{
+      width:28px;
+      height:24px;
+      line-height:1;
+      font-size:15px;
+      background:#eef2ff;
+      color:#1d4ed8;
+    }
+    .value{
+      min-width:30px;
+      text-align:center;
+      font-size:16px;
+      font-weight:900;
+      padding:3px 0;
+      border-radius:8px;
+      background:#f8fafc;
+      border:1px solid rgba(148,163,184,.18);
+    }
+    .op-wrap{
+      display:grid;
+      justify-items:center;
+      gap:6px;
+    }
+    .op-btn{
+      width:52px;
+      height:52px;
+      border-radius:999px;
+      background:#111827;
+      color:#fff;
+      font-size:22px;
+      box-shadow:0 12px 30px rgba(17,24,39,.15);
+    }
+    .action-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    .action{
+      border:none;
+      border-radius:999px;
+      padding:10px 14px;
+      font-size:14px;
+      font-weight:900;
+      cursor:pointer;
+      background:#2563eb;
+      color:#fff;
+      box-shadow:0 12px 28px rgba(37,99,235,.16);
+    }
+    .secondary{
+      background:#e5e7eb;
+      color:#111827;
+      box-shadow:none;
+    }
+    .sound-btn{
+      border:none;
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:18px;
+      cursor:pointer;
+      background:#f0fdf4;
+      color:#16a34a;
+      box-shadow:0 4px 12px rgba(22,163,74,.18);
+      transition:transform .08s ease, background .2s ease, color .2s ease, box-shadow .2s ease;
+      -webkit-tap-highlight-color:transparent;
+      line-height:1;
+    }
+    .sound-btn.off{
+      background:#f1f5f9;
+      color:#94a3b8;
+      box-shadow:none;
+    }
+    .sound-btn:active{transform:translateY(1px)}
+    .stage{
+      position:relative;
+      overflow:hidden;
+      min-height:0;
+      display:flex;
+      align-items:stretch;
+      justify-content:stretch;
+      padding:8px;
+    }
+    svg{
+      width:100%;
+      height:100%;
+      display:block;
+    }
+    .footer{
+      padding:8px 12px;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:6px;
+    }
+    .equation{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px 14px;
+      align-items:center;
+      justify-content:center;
+      font-size:clamp(15px,1.9vw,22px);
+      font-weight:900;
+      line-height:1.35;
+      text-align:center;
+    }
+    .equation .cm{color:var(--cm)}
+    .equation .mm{color:var(--mm)}
+    .result{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:10px;
+      font-size:clamp(16px,2vw,24px);
+      font-weight:900;
+      min-height:1.4em;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#f8fafc;
+      border:1px solid rgba(148,163,184,.22);
+      color:#334155;
+      font-size:13px;
+      font-weight:800;
+    }
+    .tiny{
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+      line-height:1.35;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="bar">
+      <div class="side">
+        <div class="side-title">左</div>
+        <div class="length-card">
+          <div class="length-preview" id="leftPreview"></div>
+          <div class="steppers" id="leftSteppers"></div>
+        </div>
+      </div>
+
+      <div class="op-wrap">
+        <button class="btn op-btn" id="opBtn">＋</button>
+        <div class="badge" id="modeBadge">加法</div>
+      </div>
+
+      <div class="side right">
+        <div class="length-card">
+          <div class="length-preview" id="rightPreview" style="justify-content:flex-end;"></div>
+          <div class="steppers" id="rightSteppers" style="justify-content:flex-end;"></div>
+        </div>
+        <div class="side-title">右</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;align-self:stretch;">
+        <div class="action-row">
+          <button class="action" id="animateBtn">アニメ開始</button>
+          <button class="btn secondary action" id="resetBtn" style="padding:10px 14px;">リセット</button>
+          <button class="sound-btn" id="soundBtn" title="音のオン/オフ">🔊</button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;align-self:flex-start;">
+          <button class="btn small" id="scaleDownBtn" style="width:28px;height:24px;font-size:16px;">－</button>
+          <div id="scaleDisplay" style="min-width:46px;text-align:center;font-size:12px;font-weight:900;padding:3px 5px;border-radius:8px;background:#f8fafc;border:1px solid rgba(148,163,184,.25);color:#1f2937;">100%</div>
+          <button class="btn small" id="scaleUpBtn" style="width:28px;height:24px;font-size:16px;">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <svg id="svg" viewBox="0 0 2200 760" aria-label="長さの加法・減法アニメーション">
+        <defs>
+          <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity=".14"/>
+          </filter>
+          <linearGradient id="yellowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ffe55b"/>
+            <stop offset="100%" stop-color="#facc15"/>
+          </linearGradient>
+        </defs>
+
+        <g id="sceneRoot">
+          <g id="labels" font-family="system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif">
+          </g>
+
+          <g id="tracks"></g>
+          <g id="units"></g>
+          <g id="resultLayer"></g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="footer">
+      <div class="equation" id="equation"></div>
+      <div class="result" id="resultText"></div>
+      <div class="tiny">cm 部分は赤、mm 部分は青。区切り線と黄色いラインを単位ごとに分けて、下に集めるアニメーションです。</div>
+    </div>
+  </div>
+
+<script>
+/* =====================================================
+   長さの加法アニメーション — 新仕様
+   ===================================================== */
+(() => {
+  'use strict';
+
+  /* ── 定数 ── */
+  const PX   = 17;          // 1mm = 17px
+  const CMpx = 10 * PX;    // 1cm = 170px
+  const LX   = 60;          // 左の線 X
+  const RX   = 1200;        // 右の線 X（横並びレイアウト）
+  const TY   = 50;          // 上段 Y（左の線）
+  const CX   = 60;          // まとめる場所 X
+  const VB_W = 2200;        // SVG viewBox 幅
+  const NS   = 'http://www.w3.org/2000/svg';
+  const C    = { cm:'#ef4444', mm:'#2563eb' };
+
+  // 左の線が7cm以上のとき上下レイアウトに切り替える
+  const LAYOUT_THRESHOLD_CM = 7;
+  const TY2      = 190;   // 右の線のY（上下レイアウト時）
+  const CY_SIDE  = 210;   // まとめる場所 Y（横並びレイアウト）
+  const CY_STACK = 340;   // まとめる場所 Y（上下レイアウト時）
+
+  // viewBox高さ
+  const VB_H_SIDE  = 640;
+  const VB_H_STACK = 780;
+  // 減法専用レイアウト定数
+  const SUB_TY_TOP = 50;   // 上段（被減数）Y
+  const SUB_TY_BOT = 210;  // 下段（減数）Y
+  const VB_H_SUB   = 560;  // 減法viewBox高さ（まとめる場所不要で低め）
+
+  // 現在のレイアウトに応じた値を返すヘルパー（加法用）
+  const isStack = () => state.op === '−' || state.op === '差' || state.left.cm >= LAYOUT_THRESHOLD_CM;
+  const getRX   = () => isStack() ? LX : RX;
+  const getRY   = () => isStack() ? TY2 : TY;
+  const getCY   = () => isStack() ? CY_STACK : CY_SIDE;
+
+  // まとめる場所の線の合計幅(px)を計算し、はみ出す場合のスケールを返す
+  // 合計16cmを超えると CX + totalMm*PX > VB_W になり得る
+  function calcScale() {
+    const totalMm = (state.left.cm + state.right.cm) * 10
+                  + state.left.mm + state.right.mm;
+    const endX = CX + totalMm * PX;
+    const margin = 80; // 右端に少し余白
+    const available = VB_W - margin;
+    // 合計が18cmを超えたら縮小（18cm = 3060px、CX=60を足すと3120 > 2200）
+    const MAX_FREE_CM = 18;
+    const maxFreeEndX = CX + MAX_FREE_CM * CMpx; // 18cmまでは縮小しない
+    if (endX <= maxFreeEndX) return 1;
+    return available / endX;
+  }
+
+  /* ── state ── */
+  const state = { left:{cm:3,mm:4}, right:{cm:2,mm:7}, op:'+', animating:false, manualScale:1.0 };
+
+  /* ── DOM refs ── */
+  const svg         = document.getElementById('svg');
+  const sceneRoot   = document.getElementById('sceneRoot');
+  const gTracks     = document.getElementById('tracks');
+  const gUnits      = document.getElementById('units');
+  const gResult     = document.getElementById('resultLayer');
+  const leftPreview = document.getElementById('leftPreview');
+  const rightPreview= document.getElementById('rightPreview');
+  const leftSteppers= document.getElementById('leftSteppers');
+  const rightSteppers=document.getElementById('rightSteppers');
+  const opBtn       = document.getElementById('opBtn');
+  const modeBadge   = document.getElementById('modeBadge');
+  const animateBtn  = document.getElementById('animateBtn');
+  const resetBtn    = document.getElementById('resetBtn');
+  const equation    = document.getElementById('equation');
+  const resultText  = document.getElementById('resultText');
+
+  /* ── 音声エンジン ── */
+  let soundOn = true;
+  const soundBtn = document.getElementById('soundBtn');
+
+  function updateSoundBtn() {
+    soundBtn.textContent = soundOn ? '🔊' : '🔇';
+    soundBtn.classList.toggle('off', !soundOn);
+    soundBtn.title = soundOn ? '音をオフにする' : '音をオンにする';
+  }
+  soundBtn.addEventListener('click', () => { soundOn = !soundOn; updateSoundBtn(); });
+  updateSoundBtn();
+
+  // AudioContext（初回インタラクションで生成）
+  let _ctx = null;
+  let _masterGain = null;
+
+  function getCtx() {
+    if (!_ctx) {
+      _ctx = new (window.AudioContext || window.webkitAudioContext)();
+      _masterGain = _ctx.createGain();
+      _masterGain.connect(_ctx.destination);
+    }
+    if (_ctx.state === 'suspended') _ctx.resume();
+    return _ctx;
+  }
+
+  // 全効果音を即時停止
+  function stopAllSound() {
+    if (_masterGain) {
+      _masterGain.gain.setValueAtTime(0, _ctx.currentTime);
+      // 少し後に戻す（次の操作に備えて）
+      setTimeout(() => { if (_masterGain) _masterGain.gain.setValueAtTime(1, _ctx.currentTime); }, 200);
+    }
+  }
+
+  // 基本的なビープ音を生成
+  function beep({ freq=440, type='sine', vol=0.18, dur=0.12, attack=0.01, decay=0.06 }={}) {
+    if (!soundOn) return;
+    const ctx = getCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(_masterGain);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + attack);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + attack + decay + dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + attack + decay + dur + 0.05);
+  }
+
+  // コイン音（セグメント移動時）
+  function playCoin() {
+    beep({ freq:880, type:'triangle', vol:0.15, dur:0.06, attack:0.005, decay:0.09 });
+  }
+
+  // cmグループ移動音（少し太め）
+  function playCm() {
+    beep({ freq:440, type:'triangle', vol:0.18, dur:0.08, attack:0.008, decay:0.1 });
+    setTimeout(()=>beep({ freq:550, type:'triangle', vol:0.12, dur:0.05, attack:0.005, decay:0.07 }), 50);
+  }
+
+  // mmグループ移動音（軽め高め）
+  function playMm() {
+    beep({ freq:660, type:'sine', vol:0.13, dur:0.05, attack:0.005, decay:0.07 });
+  }
+
+  // テキスト出現音
+  function playPop() {
+    beep({ freq:523, type:'sine', vol:0.14, dur:0.08, attack:0.01, decay:0.12 });
+  }
+
+  // 繰り上がり点滅音
+  function playBlink() {
+    beep({ freq:740, type:'square', vol:0.08, dur:0.04, attack:0.005, decay:0.05 });
+  }
+
+  // ぶー（操作ブロック時）
+  function playBuzz() {
+    beep({ freq:120, type:'sawtooth', vol:0.25, dur:0.30, attack:0.01, decay:0.25 });
+    setTimeout(()=>beep({ freq:100, type:'sawtooth', vol:0.18, dur:0.20, attack:0.01, decay:0.20 }), 120);
+  }
+
+  // 単位グループを一瞬光らせる（移動着地後に呼ぶ）
+  function flashUnit(g, color) {
+    const paths = [...g.querySelectorAll('path')];
+    const lines = [...g.querySelectorAll('line')];
+    const origSw  = paths[0]?.getAttribute('stroke-width') ?? '7';
+    const origFilt = paths[0]?.getAttribute('filter') ?? 'none';
+
+    // 光らせる
+    [...paths, ...lines].forEach(el => {
+      el.setAttribute('stroke-width', String(Number(origSw) + 7));
+      el.setAttribute('filter', 'url(#glowFilter)');
+    });
+
+    // 300ms 後にフェードアウトして元に戻す
+    setTimeout(() => {
+      [...paths, ...lines].forEach(el => {
+        el.style.transition = 'stroke-width 250ms ease, opacity 250ms ease';
+        el.setAttribute('stroke-width', origSw);
+        el.removeAttribute('filter');
+      });
+    }, 300);
+  }
+
+  // 数字のみ読み上げ — SpeechSynthesisは遅延が大きいので
+  // Web Audioで数字に対応した音程ビープを即時再生する
+  const NUMBER_FREQS = [
+    262, 294, 330, 349, 392, 440, 494, 523, 587, 659, 698 // 0〜10
+  ];
+  function speakNumber(n) {
+    if (!soundOn) return;
+    const freq = NUMBER_FREQS[Math.min(n, NUMBER_FREQS.length - 1)] || 440;
+    beep({ freq, type:'sine', vol:0.22, dur:0.13, attack:0.008, decay:0.10 });
+  }
+
+  // 完成ファンファーレ
+  function playFanfare() {
+    if (!soundOn) return;
+    const ctx = getCtx();
+    const notes = [
+      {freq:523.25, t:0},
+      {freq:659.25, t:0.12},
+      {freq:783.99, t:0.24},
+      {freq:1046.5, t:0.38},
+    ];
+    notes.forEach(({freq, t})=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + t);
+      gain.gain.setValueAtTime(0, ctx.currentTime + t);
+      gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.28);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.32);
+    });
+  }
+
+  // ── 読み上げ管理 ──
+  // 中断用トークン：stopSpeech() だけが上げる。speakAndWait は読み取り専用で使う
+  let _ttsGen = 0;
+  let _ttsResolve = null; // 現在待機中の speakAndWait の resolve
+  let _ttsDelayTimer = null; // 80ms遅延タイマー（stopSpeech でキャンセル）
+  let _ttsEstTimer = null;   // 推定待機タイマー（stopSpeech でキャンセル）
+
+  function getJaVoice() {
+    if (!window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices();
+    return voices.find(v=>v.lang==='ja-JP') || voices.find(v=>v.lang.startsWith('ja')) || null;
+  }
+
+  // 読み上げを即時停止し、待機中の speakAndWait を即 resolve して解放する
+  function stopSpeech() {
+    _ttsGen++;
+    if (_ttsDelayTimer) { clearTimeout(_ttsDelayTimer); _ttsDelayTimer = null; }
+    if (_ttsEstTimer)   { clearTimeout(_ttsEstTimer);   _ttsEstTimer = null; }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (_ttsResolve) { _ttsResolve(); _ttsResolve = null; }
+  }
+
+  // 読み上げが終わるまで待つ Promise
+  // ・stopSpeech() が呼ばれたら即 resolve（中断）
+  // ・Chrome の「cancel 直後 onend 誤爆」を避けるため speak() は 80ms 遅延
+  // ・フォールバック: maxMs 後に強制 resolve
+  function speakAndWait(text, maxMs=5000) {
+    return new Promise(resolve => {
+      if (!soundOn || !window.speechSynthesis) { resolve(); return; }
+
+      const myGen = _ttsGen;
+
+      let settled = false;
+      let timer = null;
+
+      function done(reason) {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        _ttsResolve = null;
+        resolve();
+      }
+
+      _ttsResolve = () => done('stopSpeech');
+
+      _ttsDelayTimer = setTimeout(() => {
+        _ttsDelayTimer = null;
+        if (myGen !== _ttsGen) { done('interrupted'); return; }
+
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.lang   = 'ja-JP';
+        utt.rate   = 1.0;
+        utt.pitch  = 1.1;
+        utt.volume = 0.9;
+        const jaVoice = getJaVoice();
+        if (jaVoice) utt.voice = jaVoice;
+
+        // onend が発火すれば理想だが、Chrome(file://)では発火しないため
+        // テキスト長から読み上げ時間を推定して待つ
+        // 実測: 約160ms/文字 + 余裕500ms
+        const estimatedMs = Math.max(1200, text.length * 160 + 500);
+        utt.onend = () => done('onend');
+        // onerror は無視（interrupted が誤爆するため）
+
+        _ttsEstTimer = setTimeout(() => { _ttsEstTimer = null; done('estimated'); }, estimatedMs);
+        timer = _ttsEstTimer;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utt);
+      }, 80);
+    });
+  }
+
+  // voiceschanged で音声リストをプリロード
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.addEventListener?.('voiceschanged', () => {
+      window.speechSynthesis.getVoices();
+    });
+  }
+  const el = (tag, attrs={}) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k,v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+  // sleep：state.animating が false になったら即 resolve（リセット時に中断）
+  function sleep(ms) {
+    return new Promise(r => {
+      const t = setTimeout(r, ms);
+      const check = setInterval(() => {
+        if (!state.animating) { clearTimeout(t); clearInterval(check); r(); }
+      }, 30);
+      // 正常終了時もインターバルをクリア
+      setTimeout(() => clearInterval(check), ms + 50);
+    });
+  }
+
+  /* ── 単純計算 ── */
+  const totMm  = s => s.cm*10 + s.mm;
+  const resMm  = () => { const a=totMm(state.left),b=totMm(state.right); return state.op==='+'?a+b:a-b; };
+
+  /* ── UI 更新 ── */
+  function updateModeUI() {
+    opBtn.textContent = state.op === '＋' ? '＋' : state.op === '−' ? '−' : state.op === '差' ? '差' : state.op;
+    modeBadge.textContent = state.op === '+' ? '加法' : state.op === '−' ? '減法①' : '減法②';
+    // operatorTextはbuildScene内で更新される
+  }
+  function setPreviewValues() {
+    document.getElementById('leftCmVal').textContent  = state.left.cm;
+    document.getElementById('leftMmVal').textContent  = state.left.mm;
+    document.getElementById('rightCmVal').textContent = state.right.cm;
+    document.getElementById('rightMmVal').textContent = state.right.mm;
+  }
+  function renderPreviewTexts() {
+    leftPreview.innerHTML  = `<span class="cm">${state.left.cm}cm</span><span class="mm">${state.left.mm}mm</span>`;
+    rightPreview.innerHTML = `<span class="cm">${state.right.cm}cm</span><span class="mm">${state.right.mm}mm</span>`;
+    setPreviewValues();
+  }
+  function updateEquation() {
+    const L=state.left, R=state.right, op=state.op;
+    const lm=totMm(L), rm=totMm(R);
+    const signed= op==='+'?lm+rm:lm-rm;
+    const sign  = signed<0?'-':'';
+    const abs   = Math.abs(signed);
+    const rCm   = Math.floor(abs/10), rMm = abs%10;
+    // 減法で答えのcmが0の場合は省略
+    const subResultHtml = rCm > 0
+      ? `${sign}<span class="cm">${rCm}cm</span><span class="mm">${rMm}mm</span>`
+      : `${sign}<span class="mm">${rMm}mm</span>`;
+    equation.innerHTML = op==='+'
+      ? `<span><span class="cm">${L.cm}cm</span><span class="mm">${L.mm}mm</span> + <span class="cm">${R.cm}cm</span><span class="mm">${R.mm}mm</span></span><span>=</span><span class="cm">${Math.floor((lm+rm)/10)}cm</span><span class="mm">${(lm+rm)%10}mm</span>`
+      : `<span><span class="cm">${L.cm}cm</span><span class="mm">${L.mm}mm</span> − <span class="cm">${R.cm}cm</span><span class="mm">${R.mm}mm</span></span><span>=</span><span>${subResultHtml}</span>`;
+    const subAnswerHtml = rCm > 0
+      ? `だから答えは <span class="cm">${sign}${rCm}cm</span><span class="mm">${rMm}mm</span>`
+      : `だから答えは <span class="mm">${sign}${rMm}mm</span>`;
+    resultText.innerHTML = op==='+'
+      ? `だから合わせて <span class="cm">${rCm}cm</span><span class="mm">${rMm}mm</span>`
+      : subAnswerHtml;
+  }
+
+  /* ── Steppers ── */
+  function makeSteppers(container, side) {
+    container.innerHTML = `
+      <div class="step-block">
+        <button class="btn small" data-side="${side}" data-unit="cm" data-delta="1">▲</button>
+        <div class="value" id="${side}CmVal"></div>
+        <button class="btn small" data-side="${side}" data-unit="cm" data-delta="-1">▼</button>
+        <div class="step-label">cm</div>
+      </div>
+      <div class="step-block">
+        <button class="btn small" data-side="${side}" data-unit="mm" data-delta="1">▲</button>
+        <div class="value" id="${side}MmVal"></div>
+        <button class="btn small" data-side="${side}" data-unit="mm" data-delta="-1">▼</button>
+        <div class="step-label">mm</div>
+      </div>`;
+  }
+  // アニメ中ブロック用のトースト管理
+  let _blockToastTimer = null;
+  function showBlockToast() {
+    playBuzz();
+    let toast = document.getElementById('blockToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'blockToast';
+      toast.style.cssText = [
+        'position:fixed','top:50%','left:50%',
+        'transform:translate(-50%,-50%)',
+        'background:#1f2937','color:#fff',
+        'font-size:16px','font-weight:900',
+        'padding:14px 24px','border-radius:999px',
+        'box-shadow:0 8px 32px rgba(0,0,0,.3)',
+        'pointer-events:none','z-index:9999',
+        'transition:opacity 300ms ease','opacity:0',
+      ].join(';');
+      toast.textContent = 'アニメの途中では長さは変えられないよ！';
+      document.body.appendChild(toast);
+    }
+    if (_blockToastTimer) clearTimeout(_blockToastTimer);
+    requestAnimationFrame(()=>{ toast.style.opacity='1'; });
+    _blockToastTimer = setTimeout(()=>{
+      toast.style.opacity='0';
+      _blockToastTimer = null;
+    }, 1800);
+  }
+
+  function changeValue(side, unit, delta) {
+    if (state.animating) { showBlockToast(); return; }
+    const s = state[side];
+    if (unit==='cm') s.cm = Math.max(0,Math.min(25,s.cm+delta));
+    if (unit==='mm') s.mm = Math.max(0,Math.min(9, s.mm+delta));
+    renderAll();
+  }
+
+  /* ── SVGテキスト（多色 tspan） ── */
+  function svgTextParts(x, y, fontSize, parts) {
+    // parts: [{text, color}]
+    const t = el('text',{
+      x, y, 'text-anchor':'middle',
+      'font-size':fontSize, 'font-weight':'900',
+      'font-family':"system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif",
+      'paint-order':'stroke', stroke:'rgba(255,255,255,.9)',
+      'stroke-width':'6','stroke-linejoin':'round', opacity:'0'
+    });
+    parts.forEach(p => {
+      const sp = el('tspan',{fill:p.color});
+      sp.textContent = p.text;
+      t.appendChild(sp);
+    });
+    return t;
+  }
+  function svgText(x, y, fontSize, color, content) {
+    const t = el('text',{
+      x, y, 'text-anchor':'middle',
+      'font-size':fontSize, 'font-weight':'900',
+      'font-family':"system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif",
+      fill:color,
+      'paint-order':'stroke', stroke:'rgba(255,255,255,.9)',
+      'stroke-width':'6','stroke-linejoin':'round', opacity:'0'
+    });
+    t.textContent = content;
+    return t;
+  }
+  function fadeIn(elem, ms=350) {
+    return new Promise(resolve => {
+      elem.style.transition = `opacity ${ms}ms ease`;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        elem.setAttribute('opacity','1');
+        setTimeout(resolve, ms);
+      }));
+    });
+  }
+
+  /* ── 黄色バー（単体） ── */
+  function makeBar(x, y, width) {
+    return el('rect',{
+      x, y:y+34, width, height:16, rx:8,
+      fill:'url(#yellowGrad)', opacity:'0.96'
+    });
+  }
+
+  /* ── 単位グループ（黄バー＋円弧＋区切り線＋ラベル） ── */
+  function makeUnit(x, y, width, kind, index) {
+    const g = el('g',{ transform:`translate(${x},${y})`, 'data-kind':kind });
+    const arcLift = kind==='cm'?30:24;
+    const sw      = kind==='cm'?7:6;
+    const dw      = kind==='cm'?6:5;
+    const color   = C[kind];
+    const label   = kind==='cm'?`${index+1}cm`:`${index+1}mm`;
+
+    // mmの偶数番（index 1,3,5… = 2mm,4mm,6mm…）は円弧の上、奇数番は下
+    const numY = (kind==='mm' && index%2===1) ? 10 : 93;
+    const anchor = 'middle';
+
+    g.appendChild(el('rect',{x:0,y:34,width,height:16,rx:8,fill:'url(#yellowGrad)',opacity:'0.96'}));
+    g.appendChild(el('path',{d:`M 0 34 Q ${width/2} ${34-arcLift} ${width} 34`,
+      fill:'none',stroke:color,'stroke-width':sw,'stroke-linecap':'round'}));
+    g.appendChild(el('line',{x1:width,y1:28,x2:width,y2:56,
+      stroke:color,'stroke-width':dw,'stroke-linecap':'round'}));
+    const num = el('text',{x:width/2,y:numY,'text-anchor':anchor,
+      'font-size':kind==='cm'?21:20,'font-weight':'900',fill:color,
+      'paint-order':'stroke',stroke:'rgba(255,255,255,.92)',
+      'stroke-width':5,'stroke-linejoin':'round'});
+    num.textContent = label;
+    g.appendChild(num);
+    return g;
+  }
+
+  /* ── 黄色バーのみの連結グループ（円弧・区切りなし） ── */
+  function makeBarGroup(x, y, totalMmVal) {
+    const g = el('g',{transform:`translate(${x},${y})`,'data-role':'bargroup'});
+    const w = totalMmVal * PX;
+    g.appendChild(el('rect',{x:0,y:34,width:w,height:16,rx:8,fill:'url(#yellowGrad)',opacity:'0.96'}));
+    return g;
+  }
+
+  /* ── シーンのリセット描画 ── */
+  function buildScene() {
+    gTracks.innerHTML = '';
+    gUnits.innerHTML  = '';
+    gResult.innerHTML = '';
+
+    const stack = isStack();
+    const RXcur = getRX();
+    const RYcur = getRY();
+    const CYcur = getCY();
+    const scale = state.manualScale;
+
+    // SVGのviewBoxを更新
+    const vbH = (state.op === '−' || state.op === '差') ? VB_H_SUB : (stack ? VB_H_STACK : VB_H_SIDE);
+    svg.setAttribute('viewBox', `0 0 ${VB_W} ${vbH}`);
+
+    // sceneRoot にスケールをかける（原点基準）
+    sceneRoot.setAttribute('transform', scale !== 1 ? `scale(${scale})` : '');
+
+    // ラベルはすべて廃止
+    const labelsG = document.getElementById('labels');
+    labelsG.innerHTML = '';
+
+    const lTot = totMm(state.left);
+    const rTot = totMm(state.right);
+    const resTot = Math.abs(resMm());
+
+    // トラック（下敷きバー）
+    const makeTrack = (x, y, w) => {
+      const g = el('g');
+      g.appendChild(el('rect',{x,y:y+34,width:Math.max(w,80),height:16,rx:8,fill:'#fff7b3',opacity:'0.55'}));
+      return g;
+    };
+    gTracks.appendChild(makeTrack(LX, TY, lTot*PX));
+    gTracks.appendChild(makeTrack(RXcur, RYcur, rTot*PX));
+    if (state.op !== '−' && state.op !== '差') {
+      gTracks.appendChild(makeTrack(CX, CYcur, resTot*PX));
+    }
+
+    // 左の線の単位群
+    let cur = 0;
+    for(let i=0;i<state.left.cm;i++){
+      const g = makeUnit(LX+cur, TY, CMpx, 'cm', i);
+      g.dataset.side='left'; g.dataset.srcX=LX+cur; g.dataset.srcY=TY;
+      gUnits.appendChild(g); cur+=CMpx;
+    }
+    for(let i=0;i<state.left.mm;i++){
+      const g = makeUnit(LX+cur, TY, PX, 'mm', i);
+      g.dataset.side='left'; g.dataset.srcX=LX+cur; g.dataset.srcY=TY;
+      gUnits.appendChild(g); cur+=PX;
+    }
+
+    // 右の線の単位群
+    cur = 0;
+    for(let i=0;i<state.right.cm;i++){
+      const g = makeUnit(RXcur+cur, RYcur, CMpx, 'cm', i);
+      g.dataset.side='right'; g.dataset.srcX=RXcur+cur; g.dataset.srcY=RYcur;
+      gUnits.appendChild(g); cur+=CMpx;
+    }
+    for(let i=0;i<state.right.mm;i++){
+      const g = makeUnit(RXcur+cur, RYcur, PX, 'mm', i);
+      g.dataset.side='right'; g.dataset.srcX=RXcur+cur; g.dataset.srcY=RYcur;
+      gUnits.appendChild(g); cur+=PX;
+    }
+  }
+
+  function renderAll() {
+    updateModeUI();
+    renderPreviewTexts();
+    updateEquation();
+    buildScene();
+    // フッターの答えは最初は非表示
+    equation.style.opacity='0';
+    resultText.style.opacity='0';
+  }
+
+  /* ── SVGに貼るテキストノード管理 ── */
+  function clearOverlay() {
+    document.getElementById('animOverlay')?.remove();
+    document.getElementById('ghostLayer')?.remove();
+  }
+  function getOverlay() {
+    let g = document.getElementById('animOverlay');
+    if (!g) {
+      g = el('g',{id:'animOverlay'});
+      sceneRoot.appendChild(g);  // sceneRootに入れてscaleが効くようにする
+    }
+    return g;
+  }
+
+  /* ── 発光フィルター確保 ── */
+  function ensureGlow() {
+    if (document.getElementById('glowFilter')) return;
+    const defs = svg.querySelector('defs');
+    const f = el('filter',{id:'glowFilter',x:'-30%',y:'-30%',width:'160%',height:'160%'});
+    const blur = el('feGaussianBlur',{stdDeviation:'4',result:'blur'});
+    const merge = el('feMerge');
+    merge.appendChild(el('feMergeNode',{in:'blur'}));
+    merge.appendChild(el('feMergeNode',{in:'SourceGraphic'}));
+    f.appendChild(blur); f.appendChild(merge);
+    defs.appendChild(f);
+  }
+
+
+  /* ==========================================
+     減法アニメーション
+  ========================================== */
+  async function animateSubtract(overlay, aborted, diffContext = null) {
+    const L = state.left, R = state.right;
+    const TY_TOP = SUB_TY_TOP;
+    const TY_BOT = SUB_TY_BOT;
+
+    // ゴースト（薄い残影）を元の位置に追加
+    {
+      const ghostLayer = el('g',{id:'ghostLayer','pointer-events':'none'});
+      [...gUnits.querySelectorAll('g[data-side]')].forEach(g => {
+        const clone = g.cloneNode(true);
+        clone.removeAttribute('style');
+        clone.setAttribute('opacity','0.18');
+        ghostLayer.appendChild(clone);
+      });
+      gTracks.appendChild(ghostLayer);
+    }
+
+    // 上段（左＝被減数）・下段（右＝減数）グループを取得
+    const allGroups  = [...gUnits.querySelectorAll('g[data-side]')];
+    const topGroups  = allGroups.filter(g=>g.dataset.side==='left');
+    const botGroups  = allGroups.filter(g=>g.dataset.side==='right');
+    const topCmGs    = topGroups.filter(g=>g.dataset.kind==='cm');
+    const topMmGs    = topGroups.filter(g=>g.dataset.kind==='mm');
+    const botCmGs    = botGroups.filter(g=>g.dataset.kind==='cm');
+    const botMmGs    = botGroups.filter(g=>g.dataset.kind==='mm');
+
+    // 斜め点線を上端から下端へ伸ばすヘルパー
+    // x1,y1=始点（上ユニット中央）, x2,y2=終点（下ユニット中央）
+    function makeDashedLineDiag(x1, y1, x2, y2, color) {
+      const line = el('line',{
+        x1:x1, y1:y1, x2:x1, y2:y1,   // 最初は始点に縮めた状態
+        stroke:color, 'stroke-width':'4',
+        'stroke-dasharray':'10 6',
+        'stroke-linecap':'round',
+        opacity:'0.9'
+      });
+      overlay.appendChild(line);
+      return line;
+    }
+    async function stretchDiagLine(line, tx, ty, ms=400) {
+      return new Promise(resolve=>{
+        const start = performance.now();
+        const x1 = parseFloat(line.getAttribute('x1'));
+        const y1 = parseFloat(line.getAttribute('y1'));
+        function step(now){
+          const t = Math.min((now-start)/ms, 1);
+          const ease = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+          line.setAttribute('x2', x1 + (tx-x1)*ease);
+          line.setAttribute('y2', y1 + (ty-y1)*ease);
+          if(t<1) requestAnimationFrame(step);
+          else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    // transformからX座標を取得するヘルパー
+    function getTransformX(g) {
+      const tr = g.getAttribute('transform') || '';
+      const m = tr.match(/translate\(\s*([^,\s)]+)/);
+      return m ? parseFloat(m[1]) : parseFloat(g.dataset.srcX || '0');
+    }
+
+    // 1ユニット分の「点線伸ばし→両方光らせる→フェードアウト」
+    async function cancelPair(topG, botG, color) {
+      const topX  = getTransformX(topG);
+      const botX  = getTransformX(botG);
+      const topW  = topG.dataset.kind==='cm' ? CMpx : PX;
+      const botW  = botG.dataset.kind==='cm' ? CMpx : PX;
+      // 上ユニット中央→下ユニット中央を結ぶ斜め点線
+      const sx = topX + topW/2;
+      const sy = TY_TOP + 42;   // 黄バーの下端あたり
+      const ex = botX + botW/2;
+      const ey = TY_BOT + 34;   // 下段黄バーの上端あたり
+
+      const line = makeDashedLineDiag(sx, sy, ex, ey, color);
+      await stretchDiagLine(line, ex, ey, 350);
+      if(aborted()){line.remove();return;}
+
+      // 両方光らせる
+      [topG, botG].forEach(g=>{
+        g.querySelectorAll('path,line').forEach(p=>{
+          p.setAttribute('filter','url(#glowFilter)');
+          p.setAttribute('stroke-width', g.dataset.kind==='cm'?'14':'12');
+        });
+      });
+      playBlink(); playBlink();
+      await sleep(280);
+      if(aborted()){line.remove();return;}
+
+      // フェードアウト（点線・上下ユニット）
+      await Promise.all([line, topG, botG].map(g=>new Promise(res=>{
+        const a = g.animate([{opacity:1},{opacity:0}],{duration:350,easing:'ease-out',fill:'forwards'});
+        a.onfinish = res;
+      })));
+      line.remove();
+      topG.remove();
+      botG.remove();
+    }
+
+    /* ── 導入テキスト「上から下をひいていくよ。」 ── */
+    {
+      const introX = LX + (Math.max(L.cm,R.cm)*CMpx + Math.max(L.mm,R.mm)*PX) / 2;
+      const introT = svgText(introX, TY_TOP - 20, 30, '#111827', '上から下をひいて（けして）いくよ。');
+      overlay.appendChild(introT);
+      await fadeIn(introT, 350); playPop();
+      await speakAndWait('うえから したを ひいて（けして）いくよ。', 2500);
+      if(aborted()) return;
+      await sleep(200);
+      introT.remove();
+    }
+
+    /* ── cm 同士を消す ── */
+    const cmCount = Math.min(topCmGs.length, botCmGs.length);
+    if (cmCount > 0) {
+      const cmHintX = LX + Math.min(topCmGs.length, botCmGs.length) * CMpx / 2;
+      const cmHint = svgText(cmHintX, TY_TOP - 20, 28, C.cm, 'cmとcmをつなげて、けそう。');
+      overlay.appendChild(cmHint);
+      await fadeIn(cmHint, 300); playPop();
+      await speakAndWait('せんちめーとると せんちめーとるを つなげて、けそう。', 2500);
+      if(aborted()) return;
+      await sleep(150);
+      cmHint.remove();
+    }
+    for(let i=0; i<cmCount; i++){
+      if(aborted()) return;
+      await cancelPair(topCmGs[i], botCmGs[i], C.cm);
+      speakNumber(i+1);
+      await sleep(120);
+    }
+    if(aborted()) return;
+    await sleep(300);
+
+    /* ── mm 同士を消す（繰り下がり対応） ── */
+    // 下段mmの残りリストを可変で管理
+    let botMmRemaining = [...botMmGs];
+    let topMmRemaining = [...topMmGs];
+    let didBorrow = false;  // 繰り下がりが発生したか
+    let borrowedMmGroups = []; // 繰り下がりで生成した10mmグループ
+
+    if (botMmRemaining.length > 0) {
+      const mmHintX = LX + Math.max(topCmGs.length, botCmGs.length)*CMpx + Math.min(topMmGs.length, botMmGs.length)*PX/2;
+      const mmHint = svgText(mmHintX, TY_TOP - 20, 28, C.mm, 'mmとmmをつなげて、けそう。');
+      overlay.appendChild(mmHint);
+      await fadeIn(mmHint, 300); playPop();
+      await speakAndWait('みりめーとると みりめーとるを つなげて、けそう。', 2500);
+      if(aborted()) return;
+      await sleep(150);
+      mmHint.remove();
+    }
+
+    while (botMmRemaining.length > 0) {
+      if(aborted()) return;
+
+      if (topMmRemaining.length === 0) {
+        // ── 繰り下がり発生 ──
+        didBorrow = true;
+
+        // 「ん？ひけないね。どうする？」
+        const questionX = LX + (Math.max(L.cm,R.cm)*CMpx + Math.max(L.mm,R.mm)*PX)/2;
+        const qText = svgText(questionX, TY_BOT + 100, 30, '#dc2626', 'ん？ひけないね。どうする？');
+        overlay.appendChild(qText);
+        await fadeIn(qText, 350); playPop();
+        await speakAndWait('ん？ひけないね。どうする？', 2500);
+        if(aborted()) return;
+        await sleep(300);
+
+        // 上段の一番右のcmを光らせて点滅
+        const curCmGs = [...gUnits.querySelectorAll('g[data-side=left][data-kind=cm]')];
+        if (curCmGs.length === 0) break; // cmもない場合はbreak
+        const targetCm = curCmGs[curCmGs.length - 1];
+        const targetCmX = parseFloat(targetCm.getAttribute('transform').match(/translate\(([^,]+)/)[1]);
+
+        for(let b=0;b<4;b++){
+          const on = b%2===0;
+          targetCm.querySelectorAll('path,line').forEach(p=>{
+            p.setAttribute('stroke-width', on?'14':'7');
+            p.setAttribute('filter', on?'url(#glowFilter)':'none');
+          });
+          if(on) playBlink();
+          await sleep(220);
+        }
+        if(aborted()) return;
+
+        // cmをフェードアウト
+        await new Promise(res=>{
+          const a = targetCm.animate([{opacity:1},{opacity:0}],{duration:350,easing:'ease-out',fill:'forwards'});
+          a.onfinish = res;
+        });
+        targetCm.remove();
+
+        // 同じ位置に10個のmmをフェードイン
+        const newMms = [];
+        for(let m=0; m<10; m++){
+          const ng = makeUnit(targetCmX + m*PX, TY_TOP, PX, 'mm', m);
+          ng.setAttribute('opacity','0');
+          ng.dataset.side = 'left';  // querySelectorAllで検索できるよう設定
+          ng.dataset.srcX = String(targetCmX + m*PX);
+          ng.dataset.srcY = String(TY_TOP);
+          gUnits.appendChild(ng);
+          newMms.push(ng);
+        }
+        await Promise.all(newMms.map(ng=>new Promise(res=>{
+          const a = ng.animate([{opacity:0},{opacity:1}],{duration:300,easing:'ease-in',fill:'forwards'});
+          a.onfinish = ()=>{ ng.setAttribute('opacity','1'); res(); };
+        })));
+        borrowedMmGroups.push(...newMms);
+        topMmRemaining = [...newMms];
+
+        // 「1cmを10mmにかえる（くりさげる）と、まだひけるね」
+        const borrowText = svgText(questionX, TY_BOT + 145, 28, '#2563eb', '1cmを10mmにかえる（くりさげる）と、まだひけるね');
+        overlay.appendChild(borrowText);
+        await fadeIn(borrowText, 350); playPop();
+        await speakAndWait('いちせんちめーとるを じゅうみりめーとるに かえる、くりさげると、まだ ひけるね', 4000);
+        if(aborted()) return;
+        await sleep(300);
+      }
+
+      // 通常のmm消去
+      await cancelPair(topMmRemaining[0], botMmRemaining[0], C.mm);
+      speakNumber(botMmGs.length - botMmRemaining.length + 1);
+      topMmRemaining.shift();
+      botMmRemaining.shift();
+      await sleep(100);
+    }
+    if(aborted()) return;
+    await sleep(400);
+
+    /* ── 残りcmを右にスライドして残りmmにくっつける ── */
+    const remTopCm  = [...gUnits.querySelectorAll('g[data-side=left][data-kind=cm]')];
+    // 上段のmm: 元のtopMmGs + 繰り下がりで生成したborrowedMmGroups のうちDOMに残っているもの
+    const remTopMm  = [...gUnits.querySelectorAll('g[data-side=left][data-kind=mm]'),
+                       ...borrowedMmGroups.filter(g=>g.isConnected)];
+    // 重複除去（borrowedMmGroupsはdata-side=leftで生成されているので重複する可能性あり）
+    const remTopMmUniq = [...new Set(remTopMm)].filter(g=>g.isConnected);
+    const resCm     = remTopCm.length;
+    // 正しい答えをstateから直接計算（DOMカウントが狂う場合の保険）
+    const totalLeftMm = totMm(L);
+    const totalRightMm = totMm(R);
+    const diffMm = totalLeftMm - totalRightMm;
+    const resCmCalc   = Math.floor(Math.abs(diffMm) / 10) * (diffMm >= 0 ? 1 : -1);
+    const resMmCalcVal = Math.abs(diffMm) % 10;
+    // DOMベースの残り数が正しければそれを使い、0になってしまった場合は計算値を使う
+    const resMmVal  = remTopMmUniq.length > 0 ? remTopMmUniq.length : resMmCalcVal;
+    const resCmFinal = resCm > 0 ? resCm : Math.floor(Math.abs(diffMm) / 10);
+
+    if (resCmFinal > 0) {
+      remTopCm.forEach((g, i) => {
+        g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
+        g.setAttribute('transform', `translate(${LX + i*CMpx}, ${TY_TOP})`);
+        const t = g.querySelector('text');
+        if (t) t.textContent = `${i+1}cm`;
+      });
+      const cmEndX = LX + resCmFinal * CMpx;
+      remTopMmUniq.forEach((g, i) => {
+        g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
+        g.setAttribute('transform', `translate(${cmEndX + i*PX}, ${TY_TOP})`);
+      });
+      await sleep(450);
+      if(aborted()) return;
+    }
+
+    // 残りmmラベル更新（最後だけmm付き）
+    remTopMmUniq.forEach((g,i)=>{
+      const t=g.querySelector('text');
+      if(t) t.textContent = i===remTopMmUniq.length-1 ? `${i+1}mm` : `${i+1}`;
+    });
+
+    /* ── 差モード専用：残った部分を右スライドして差の矢印と長さが一致することを確認 ── */
+    if (diffContext) {
+      const { diffArrow, chiText, diffLeftX, diffRightX, midY: dMidY, diffCmVal: dCmVal, diffMmVal: dMmVal } = diffContext;
+      const diffPx = diffRightX - diffLeftX;  // 差の矢印の長さ(px)
+
+      // 残った部分のDOMグループをまとめる
+      const remGroups = [...gUnits.querySelectorAll('g[data-side=left]')].filter(g => g.isConnected);
+
+      if (remGroups.length > 0) {
+        // 「のこったのは○cm○mmだね。」テキストを表示
+        const nokoriParts = resCmFinal > 0
+          ? [
+              {text:'残ったのは ',color:'#111827'},
+              {text:`${resCmFinal}cm`,color:C.cm},
+              {text:`${resMmVal}mm`,color:C.mm},
+              {text:'だね。',color:'#111827'},
+            ]
+          : [
+              {text:'残ったのは ',color:'#111827'},
+              {text:`${resMmVal}mm`,color:C.mm},
+              {text:'だね。',color:'#111827'},
+            ];
+        const nokoriSpeech = resCmFinal > 0
+          ? `のこったのは ${resCmFinal}せんちめーとる ${resMmVal}みりめーとる だね。`
+          : `のこったのは ${resMmVal}みりめーとる だね。`;
+        const nokoriForm = svgTextParts(LX + resCmFinal*CMpx + resMmVal*PX + 220, TY_TOP + 20, 28, nokoriParts);
+        overlay.appendChild(nokoriForm);
+        await fadeIn(nokoriForm, 350); playPop();
+        await speakAndWait(nokoriSpeech, 3200);
+        if(aborted()) return;
+        await sleep(400);
+
+        // 残った部分を右スライド：上段右端を diffRightX に合わせる（差の矢印と同じ長さ）
+        const remPx = resCmFinal*CMpx + resMmVal*PX;
+        const slideToX = diffRightX - remPx;  // 右端が diffRightX になる左端X
+
+        await speakAndWait('のこった ぶぶんを みぎに うごかして、ちがいの ながさと くらべよう。', 3500);
+        if(aborted()) return;
+
+        remGroups.forEach((g, i) => {
+          g.style.transition = 'transform 500ms cubic-bezier(.4,0,.2,1)';
+          const kind = g.dataset.kind;
+          const idx = remGroups.filter((gg,ii) => ii < i && gg.dataset.kind === kind).length;
+          const baseX = slideToX + (kind === 'cm' ? idx * CMpx : resCmFinal * CMpx + idx * PX);
+          g.setAttribute('transform', `translate(${baseX},${TY_TOP})`);
+        });
+        playCoin();
+        await sleep(550);
+        if(aborted()) return;
+
+        // 差の矢印を強調点滅
+        for(let b=0;b<4;b++){
+          diffArrow.setAttribute('opacity', b%2===0 ? '1' : '0.2');
+          playBlink();
+          await sleep(150);
+        }
+        diffArrow.setAttribute('opacity','1');
+        await sleep(300);
+        if(aborted()) return;
+
+        nokoriForm.remove();
+      }
+
+      // 「○cm○mmが、ちがいになるね。」最終テキスト
+      const finalDiffParts = dCmVal > 0
+        ? [
+            {text:`${dCmVal}cm`,color:C.cm},
+            {text:`${dMmVal}mm`,color:C.mm},
+            {text:'が、ちがいになるね。',color:'#111827'},
+          ]
+        : [
+            {text:`${dMmVal}mm`,color:C.mm},
+            {text:'が、ちがいになるね。',color:'#111827'},
+          ];
+      const finalDiffSpeech = dCmVal > 0
+        ? `${dCmVal}せんちめーとる ${dMmVal}みりめーとる が、ちがいになるね。`
+        : `${dMmVal}みりめーとる が、ちがいになるね。`;
+      // diffArrow の下に配置
+      const finalDiffY = dMidY + 40;
+      const finalDiffX = (diffLeftX + diffRightX) / 2;
+      const finalDiffForm = svgTextParts(finalDiffX, finalDiffY, 32, finalDiffParts);
+      overlay.appendChild(finalDiffForm);
+      await fadeIn(finalDiffForm, 400); playFanfare();
+      await speakAndWait(finalDiffSpeech, 4000);
+      if(aborted()) return;
+      for(let rep=0;rep<3;rep++){
+        await new Promise(resolve=>{
+          const a = finalDiffForm.animate(
+            [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
+            {duration:500,easing:'ease-in-out'}
+          );
+          a.onfinish = resolve;
+        });
+        await sleep(80);
+      }
+
+      await sleep(400);
+      updateEquation();
+      equation.style.transition='opacity 400ms ease';
+      resultText.style.transition='opacity 400ms ease';
+      equation.style.opacity='1';
+      resultText.style.opacity='1';
+      return;  // 差モードはここで終了（通常の式表示はスキップ）
+    }
+
+    /* ── 通常の「のこったのは」テキスト（差モード以外の減法①） ── */
+    {
+      const lineEndX = LX + resCmFinal*CMpx + resMmVal*PX;
+      const nokoriParts = resCmFinal > 0
+        ? [
+            {text:'のこったのは ',color:'#111827'},
+            {text:`${resCmFinal}cm`,color:C.cm},
+            {text:`${resMmVal}mm`,color:C.mm},
+            {text:'だね！',color:'#111827'},
+          ]
+        : [
+            {text:'のこったのは ',color:'#111827'},
+            {text:`${resMmVal}mm`,color:C.mm},
+            {text:'だね！',color:'#111827'},
+          ];
+      const nokoriSpeech = resCmFinal > 0
+        ? `のこったのは ${resCmFinal}せんちめーとる ${resMmVal}みりめーとる だね！`
+        : `のこったのは ${resMmVal}みりめーとる だね！`;
+      const nokoriForm = svgTextParts(lineEndX + 180, TY_TOP + 20, 28, nokoriParts);
+      overlay.appendChild(nokoriForm);
+      await fadeIn(nokoriForm, 350); playPop();
+      await speakAndWait(nokoriSpeech, 3500);
+      if(aborted()) return;
+      await sleep(400);
+    }
+
+    /* ── テキスト表示（繰り下がりあり＝筆算、なし＝通常式） ── */
+    // 画面右側に固定配置（筆算テキストは縦に長くなるため、右半分の空きスペースを使う）
+    const rightPanelX = 1400;  // 画面右側の中心X
+    const centerX = LX + (Math.max(L.cm,R.cm)*CMpx + Math.max(L.mm,R.mm)*PX)/2;
+    const TXT_Y1  = TY_TOP + 80;  // 上段ラインのすぐ下から開始（右パネルのY起点）
+
+    if (!didBorrow) {
+      /* 繰り下がりなし：通常の式表示（右パネルに配置） */
+      const TXT_Y2 = TXT_Y1 + 55;
+      const TXT_Y3 = TXT_Y1 + 115;
+      const TXT_Y4 = TXT_Y1 + 175;
+
+      // cm同士のひき算（0cmにならない場合のみ表示）
+      if (resCmFinal > 0 || L.cm > 0) {
+        const cmLabel = svgText(rightPanelX, TXT_Y1, 28, C.cm, 'cmからcmをひくと');
+        overlay.appendChild(cmLabel);
+        await fadeIn(cmLabel, 300); playPop(); await sleep(200);
+        if(aborted()) return;
+
+        const cmParts = [
+          {text:`${L.cm}cm`,color:C.cm},{text:' － ',color:'#111827'},
+          {text:`${R.cm}cm`,color:C.cm},{text:' ＝ ',color:'#111827'},
+          {text: resCmFinal > 0 ? `${resCmFinal}cm` : '0cm',color:C.cm},
+        ];
+        const cmForm = svgTextParts(rightPanelX, TXT_Y2, 32, cmParts);
+        overlay.appendChild(cmForm);
+        await fadeIn(cmForm, 300); playPop();
+        await speakAndWait(`せんちめーとるから せんちめーとるをひくと、${L.cm}せんちめーとる ひく ${R.cm}せんちめーとる は ${resCmFinal}せんちめーとる`, 5000);
+        if(aborted()) return;
+        await sleep(200);
+      }
+
+      const mmLabel = svgText(rightPanelX, TXT_Y3, 28, C.mm, 'mmからmmをひくと');
+      overlay.appendChild(mmLabel);
+      await fadeIn(mmLabel, 300); playPop(); await sleep(200);
+      if(aborted()) return;
+
+      const mmParts = [
+        {text:`${L.mm}mm`,color:C.mm},{text:' － ',color:'#111827'},
+        {text:`${R.mm}mm`,color:C.mm},{text:' ＝ ',color:'#111827'},
+        {text:`${resMmVal}mm`,color:C.mm},
+      ];
+      const mmForm = svgTextParts(rightPanelX, TXT_Y4, 32, mmParts);
+      overlay.appendChild(mmForm);
+      await fadeIn(mmForm, 300); playPop();
+      await speakAndWait(`みりめーとるから みりめーとるをひくと、${L.mm}みりめーとる ひく ${R.mm}みりめーとる は ${resMmVal}みりめーとる`, 5000);
+      if(aborted()) return;
+      await sleep(300);
+
+      // 答えまとめ（0cmは省略）
+      const ansParts = resCmFinal > 0
+        ? [
+            {text:'だから答えは ',color:'#111827'},
+            {text:`${resCmFinal}cm`,color:C.cm},
+            {text:`${resMmVal}mm`,color:C.mm},
+            {text:'！',color:'#111827'},
+          ]
+        : [
+            {text:'だから答えは ',color:'#111827'},
+            {text:`${resMmVal}mm`,color:C.mm},
+            {text:'！',color:'#111827'},
+          ];
+      const ansSpeech = resCmFinal > 0
+        ? `だから こたえは ${resCmFinal}せんちめーとる ${resMmVal}みりめーとる！`
+        : `だから こたえは ${resMmVal}みりめーとる！`;
+      const ansForm = svgTextParts(rightPanelX, TXT_Y4+65, 36, ansParts);
+      overlay.appendChild(ansForm);
+      await fadeIn(ansForm, 400);
+      playFanfare();
+      await speakAndWait(ansSpeech, 4000);
+      if(aborted()) return;
+      for(let rep=0;rep<3;rep++){
+        await new Promise(resolve=>{
+          const a = ansForm.animate(
+            [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
+            {duration:500,easing:'ease-in-out'}
+          );
+          a.onfinish = resolve;
+        });
+        await sleep(80);
+      }
+
+    } else {
+      /* 繰り下がりあり：筆算で説明（右パネルに配置） */
+      // 繰り下がり後の正しい答え
+      const totalTopMm  = L.mm + 10;          // 繰り下がりで+10
+      const totalTopCm  = L.cm - 1;           // 1cm借りた
+      const ansMm = totalTopMm - R.mm;
+      const ansCm = totalTopCm - R.cm;
+
+      const introText = svgText(rightPanelX, TXT_Y1, 28, '#111827', 'cmとmmをそろえて筆算で考えよう');
+      overlay.appendChild(introText);
+      await fadeIn(introText, 300); playPop();
+      await speakAndWait('せんちめーとると みりめーとるを そろえて ひっさんで かんがえよう', 3500);
+      if(aborted()) return;
+      await sleep(200);
+
+      /* 筆算を描画 */
+      await drawHissanBorrow(overlay, L, R, totalTopCm, totalTopMm, ansCm, ansMm, rightPanelX, TXT_Y1 + 55, aborted);
+      if(aborted()) return;
+    }
+
+    await sleep(400);
+    // フッター
+    updateEquation();
+    equation.style.transition='opacity 400ms ease';
+    resultText.style.transition='opacity 400ms ease';
+    equation.style.opacity='1';
+    resultText.style.opacity='1';
+  }
+
+  /* ── 繰り下がり筆算描画 ── */
+
+  async function drawHissanBorrow(overlay, L, R, topCmAfter, topMmAfter, ansCm, ansMm, cx, baseY, aborted) {
+    /*
+     * ノート式の繰り下がり筆算
+     *
+     * レイアウトイメージ（参考画像に合わせた縦列構成）：
+     *
+     *         │  cm  │  mm  │
+     *   補助  │ topCm│ topMm│   ← 補助計算専用の行（最上部）
+     *   元数  │  L.cm│  L.mm│   ← 元の数。cm に左上→右下の斜線
+     *   下    │  R.cm│  R.mm│   ← 引く数
+     *   ─────────────────────
+     *   答    │ ansCm│ ansMm│
+     *
+     * ポイント：
+     * ・補助計算の数字は最上段の専用行にのみ表示する
+     * ・元の数の行には補助数字を載せない
+     * ・斜線は左上 → 右下（＼）
+     */
+
+    // ─── レイアウト定数 ───
+    const COL_SEP = cx;           // cm列とmm列を区切る縦線のX
+    const COL_CM  = cx - 90;      // cm列 数字中心X
+    const COL_MM  = cx + 90;      // mm列 数字中心X
+    const LEFT_X  = cx - 220;     // 左端（－記号・縦線）
+
+    const ROW_HDR = baseY;        // ヘッダー（cm / mm）
+    const ROW_AUX = baseY + 58;    // 補助計算行
+    const ROW_TOP = baseY + 118;   // 被減数行（元の数）
+    const ROW_BOT = baseY + 178;   // 減数行
+    const ROW_ANS = baseY + 248;   // 答え行
+    const FS      = 40;            // 本文フォントサイズ
+    const FS_SM   = 22;            // 小書き（繰り下がり注記）フォントサイズ
+
+    // ─── ヘルパー ───
+    function ht(x, y, txt, color, fs=FS, anchor='middle') {
+      const t = el('text',{
+        x, y, 'text-anchor': anchor,
+        'font-size': fs, 'font-weight': '900',
+        'font-family': "system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif",
+        fill: color, opacity: '0',
+        'paint-order':'stroke', stroke:'rgba(255,255,255,.85)',
+        'stroke-width':'4','stroke-linejoin':'round'
+      });
+      t.textContent = txt;
+      overlay.appendChild(t);
+      return t;
+    }
+    function hline(x1,y1,x2,y2,color='#1f2937',sw=3,dash='') {
+      const ln = el('line',{x1,y1,x2,y2,stroke:color,'stroke-width':sw,
+        'stroke-linecap':'round',opacity:'0'});
+      if(dash) ln.setAttribute('stroke-dasharray', dash);
+      overlay.appendChild(ln);
+      return ln;
+    }
+    // 斜線（cmに引く×線）
+    function strikeThrough(x, y, w=28, color='#dc2626', sw=4) {
+      // 左上→右下 の斜め線1本（ノートの斜線スタイル）
+      const ln = el('line',{
+        x1: x - w, y1: y - FS + 8,
+        x2: x + w, y2: y + 12,
+        stroke: color, 'stroke-width': sw,
+        'stroke-linecap': 'round', opacity: '0'
+      });
+      overlay.appendChild(ln);
+      return ln;
+    }
+
+    // ─── ① ヘッダー（cm・mm） ───
+    // 縦区切り線（cm列とmm列の間）
+    const vLine = hline(COL_SEP, ROW_HDR - 30, COL_SEP, ROW_BOT + 24, '#94a3b8', 2);
+    // 左の縦線（筆算枠の左端）
+    const vLineL = hline(LEFT_X + 30, ROW_HDR - 30, LEFT_X + 30, ROW_BOT + 24, '#94a3b8', 2);
+    const hCm = ht(COL_CM, ROW_HDR, 'cm', C.cm, 24);
+    const hMm = ht(COL_MM, ROW_HDR, 'mm', C.mm, 24);
+    await Promise.all([fadeIn(vLine,200), fadeIn(vLineL,200), fadeIn(hCm,250), fadeIn(hMm,250)]);
+    if(aborted()) return;
+    await sleep(200);
+
+    // ─── ② 元の数（被減数）を表示 ───
+    const topCmEl = ht(COL_CM, ROW_TOP, `${L.cm}`, C.cm);
+    const topMmEl = ht(COL_MM, ROW_TOP, `${L.mm}`, C.mm);
+    await Promise.all([fadeIn(topCmEl,250), fadeIn(topMmEl,250)]);
+    playPop();
+    if(aborted()) return;
+    await sleep(500);
+
+    // ─── ③ 減数（下の数）とマイナス記号 ───
+    const minSign = ht(LEFT_X + 55, ROW_BOT, '−', '#111827');
+    const botCmEl = ht(COL_CM, ROW_BOT, `${R.cm}`, C.cm);
+    const botMmEl = ht(COL_MM, ROW_BOT, `${R.mm}`, C.mm);
+    await Promise.all([fadeIn(minSign,200), fadeIn(botCmEl,250), fadeIn(botMmEl,250)]);
+    playPop();
+    if(aborted()) return;
+    await sleep(300);
+
+    // 横線（上下の区切り）
+    const horzLine = hline(LEFT_X + 30, ROW_BOT + 22, COL_MM + 80, ROW_BOT + 22, '#1f2937', 3);
+    await fadeIn(horzLine, 200);
+    if(aborted()) return;
+    await sleep(500);
+
+    // ─── ④ mmが引けないことを示す ───
+    await speakAndWait(`まず、みりめーとるの くらいを けいさん。${L.mm}から${R.mm}は ひけないから、せんちめーとるから かりるよ。`, 4500);
+    if(aborted()) return;
+
+    // mmを赤く点滅させて「引けない」を表現
+    for(let b=0;b<4;b++){
+      const on = b%2===0;
+      topMmEl.setAttribute('fill', on?'#f87171':C.mm);
+      topMmEl.setAttribute('font-size', on?'48':'40');
+      if(on) playBlink();
+      await sleep(220);
+    }
+    topMmEl.setAttribute('font-size','40');
+    if(aborted()) return;
+    await sleep(200);
+
+    // ─── ⑤ cm列に斜線を引く（cmから1借りる） ───
+    await speakAndWait(`せんちめーとるの ${L.cm} から 1 かりて、${topCmAfter} にするよ。`, 3000);
+    if(aborted()) return;
+
+    // 斜線アニメ（左上→右下）
+    const strike = strikeThrough(COL_CM, ROW_TOP);
+    await fadeIn(strike, 250); playBlink();
+    await sleep(260);
+    if(aborted()) return;
+
+    // ─── ⑤-2 補助計算専用の行を最上部に表示 ───
+    // 元の数の上に、補助計算だけを独立して表示する
+    const auxCmEl = ht(COL_CM, ROW_AUX, `${topCmAfter}`, C.cm);
+    const auxMmEl = ht(COL_MM, ROW_AUX, `10`, C.mm);
+    await Promise.all([fadeIn(auxCmEl, 300), fadeIn(auxMmEl, 300)]);
+    playPop();
+    if(aborted()) return;
+    await sleep(400);
+
+    // ─── ⑥ mmの計算 ───
+    await speakAndWait(`${topMmAfter}から${R.mm}をひくと、${ansMm}みりめーとる！`, 2800);
+    if(aborted()) return;
+
+    const ansMmEl = ht(COL_MM, ROW_ANS, `${ansMm}`, C.mm);
+    await fadeIn(ansMmEl, 300); playPop();
+    await sleep(400);
+    if(aborted()) return;
+
+    // ─── ⑦ cmの計算 ───
+    if (ansCm > 0) {
+      await speakAndWait(`つぎに、せんちめーとるの くらい。${topCmAfter}から${R.cm}をひくと、${ansCm}せんちめーとる！`, 4000);
+      if(aborted()) return;
+      const ansCmEl = ht(COL_CM, ROW_ANS, `${ansCm}`, C.cm);
+      await fadeIn(ansCmEl, 300); playPop();
+      await sleep(400);
+      if(aborted()) return;
+    } else {
+      await speakAndWait(`せんちめーとるの くらいは ${topCmAfter}から${R.cm}で、ぴったりゼロだね。`, 3000);
+      if(aborted()) return;
+      await sleep(300);
+    }
+
+    // ─── ⑧ 答えまとめ ───
+    const finalParts = ansCm > 0
+      ? [
+          {text:'だから答えは ',color:'#111827'},
+          {text:`${ansCm}cm`,color:C.cm},
+          {text:`${ansMm}mm`,color:C.mm},
+          {text:'！',color:'#111827'},
+        ]
+      : [
+          {text:'だから答えは ',color:'#111827'},
+          {text:`${ansMm}mm`,color:C.mm},
+          {text:'！',color:'#111827'},
+        ];
+    const finalSpeech = ansCm > 0
+      ? `だから こたえは ${ansCm}せんちめーとる ${ansMm}みりめーとる！`
+      : `だから こたえは ${ansMm}みりめーとる！`;
+    const finalForm = svgTextParts(cx, ROW_ANS + 65, 36, finalParts);
+    overlay.appendChild(finalForm);
+    await fadeIn(finalForm, 400);
+    playFanfare();
+    await speakAndWait(finalSpeech, 4000);
+    if(aborted()) return;
+
+    for(let rep=0;rep<3;rep++){
+      await new Promise(resolve=>{
+        const a = finalForm.animate(
+          [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
+          {duration:500,easing:'ease-in-out'}
+        );
+        a.onfinish = resolve;
+      });
+      await sleep(80);
+    }
+  }
+
+
+  /* ==========================================
+     メインアニメーション
+  ========================================== */
+
+  async function animateDifference() {
+    if (state.animating) return;
+    state.animating = true;
+    animateBtn.disabled = true;
+    animateBtn.style.opacity = '0.7';
+
+    ensureGlow();
+    clearOverlay();
+
+    function aborted() { return !state.animating; }
+    function cleanup() {
+      state.animating = false;
+      animateBtn.disabled = false;
+      animateBtn.style.opacity = '1';
+    }
+
+    // 差モード：右（下）の方が長い場合はL・Rを入れ替えて処理
+    if (totMm(state.right) > totMm(state.left)) {
+      // 入れ替えアニメを見せてから実行
+      renderAll();
+      const overlay0 = getOverlay();
+      const swapMsg = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#dc2626', '下から上をひくよ。上下を入れかえるね！');
+      overlay0.appendChild(swapMsg);
+      await fadeIn(swapMsg, 320); playBuzz();
+      await speakAndWait('したから うえを ひくよ。うえしたを いれかえるね！', 2800);
+      if (aborted()) { cleanup(); return; }
+      await sleep(300);
+
+      // 上下を入れ替えた際の線が上→下へスワップするアニメ
+      const topUnits = [...gUnits.querySelectorAll('g[data-side=left]')];
+      const botUnits = [...gUnits.querySelectorAll('g[data-side=right]')];
+      const swapDy = SUB_TY_BOT - SUB_TY_TOP;
+      const dur = 480;
+      const startT = performance.now();
+      await new Promise(resolve => {
+        function step(now) {
+          const t = Math.min((now - startT) / dur, 1);
+          const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+          topUnits.forEach(g => {
+            const base = parseFloat(g.getAttribute('transform')?.match(/translate\([\d.]+,([\d.]+)\)/)?.[1] ?? SUB_TY_TOP);
+            g.setAttribute('transform', g.getAttribute('transform').replace(/translate\(([\d.]+),([\d.]+)\)/, (_, x) => `translate(${x},${SUB_TY_TOP + swapDy * ease})`));
+          });
+          botUnits.forEach(g => {
+            g.setAttribute('transform', g.getAttribute('transform').replace(/translate\(([\d.]+),([\d.]+)\)/, (_, x) => `translate(${x},${SUB_TY_BOT - swapDy * ease})`));
+          });
+          if (t < 1) requestAnimationFrame(step);
+          else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+      playCoin();
+      await sleep(300);
+      if (aborted()) { cleanup(); return; }
+
+      // state を入れ替えて再描画
+      [state.left, state.right] = [state.right, state.left];
+      clearOverlay();
+      renderAll();
+      await sleep(200);
+    } else {
+      renderAll();
+    }
+
+    const L = state.left, R = state.right;
+    const overlay = getOverlay();
+
+    function ensureDiffArrowDefs() {
+      const defs = svg.querySelector('defs');
+      if (!defs || document.getElementById('diffArrowMarker')) return;
+      // 矢印マーカー（strokeWidth 基準で確実に表示）
+      // sw=7 の場合、markerWidth:6 → 三角サイズ = 7×6 = 42px
+      // refX:6 = 先端が線の端に一致
+      const marker = el('marker', {
+        id: 'diffArrowMarker',
+        markerWidth: '6', markerHeight: '6',
+        refX: '6', refY: '3',
+        orient: 'auto-start-reverse',
+        markerUnits: 'strokeWidth'
+      });
+      const path = el('path', { d: 'M 0 0 L 6 3 L 0 6 z', fill: '#dc2626' });
+      marker.appendChild(path);
+      defs.appendChild(marker);
+    }
+
+    function makeOLine(x1, y1, x2, y2, attrs = {}) {
+      const ln = el('line', Object.assign({
+        x1, y1, x2, y2,
+        stroke: attrs.stroke || '#111827',
+        'stroke-width': attrs.sw || 4,
+        'stroke-linecap': attrs.linecap || 'round',
+        opacity: attrs.opacity || '0'
+      }, attrs.extra || {}));
+      if (attrs.dash) ln.setAttribute('stroke-dasharray', attrs.dash);
+      if (attrs.startArrow) ln.setAttribute('marker-start', 'url(#diffArrowMarker)');
+      if (attrs.endArrow) ln.setAttribute('marker-end', 'url(#diffArrowMarker)');
+      overlay.appendChild(ln);
+      return ln;
+    }
+
+    function makeText(x, y, txt, color = '#111827', fs = 30) {
+      return svgText(x, y, fs, color, txt);
+    }
+
+    function showText(elem, ms = 320) {
+      return fadeIn(elem, ms);
+    }
+
+    function animateLineTo(line, next, ms = 360) {
+      return new Promise(resolve => {
+        const start = performance.now();
+        const from = {
+          x1: parseFloat(line.getAttribute('x1')),
+          y1: parseFloat(line.getAttribute('y1')),
+          x2: parseFloat(line.getAttribute('x2')),
+          y2: parseFloat(line.getAttribute('y2')),
+        };
+        function step(now) {
+          const t = Math.min((now - start) / ms, 1);
+          const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+          ['x1', 'y1', 'x2', 'y2'].forEach(k => {
+            if (next[k] != null) {
+              const v = from[k] + (next[k] - from[k]) * ease;
+              line.setAttribute(k, String(v));
+            }
+          });
+          if (t < 1) requestAnimationFrame(step);
+          else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    async function fadeRemove(elem, ms = 300) {
+      return new Promise(resolve => {
+        const anim = elem.animate([
+          { opacity: 1 },
+          { opacity: 0 }
+        ], { duration: ms, easing: 'ease-out', fill: 'forwards' });
+        anim.onfinish = () => { elem.remove(); resolve(); };
+      });
+    }
+
+    function lineCenters() {
+      const topY = SUB_TY_TOP + 42;
+      const botY = SUB_TY_BOT + 42;
+      const topX1 = LX;
+      const botX1 = LX;
+      const topX2 = LX + totMm(L) * PX;
+      const botX2 = LX + totMm(R) * PX;
+      return { topY, botY, topX1, botX1, topX2, botX2 };
+    }
+
+    // 差の値を事前計算（animateSubtractに渡す）
+    const diffTotalMm = Math.abs(totMm(L) - totMm(R));
+    const diffCmVal = Math.floor(diffTotalMm / 10);
+    const diffMmVal = diffTotalMm % 10;
+
+    try {
+      ensureDiffArrowDefs();
+      const { topY, botY, topX1, botX1, topX2, botX2 } = lineCenters();
+      const longIsTop = totMm(L) >= totMm(R);
+      const longY = longIsTop ? topY : botY;
+      const shortY = longIsTop ? botY : topY;
+      const longX1 = longIsTop ? topX1 : botX1;
+      const longX2 = longIsTop ? topX2 : botX2;
+      const shortX2 = longIsTop ? botX2 : topX2;
+      // diffLeftX/diffRightX はちょうど線の端に合わせる（はみ出しなし）
+      const diffLeftX = shortX2;
+      const diffRightX = longX2;
+      const commonLeftX = LX;
+      const commonRightX = shortX2;
+      const centerX = (commonLeftX + diffRightX) / 2;
+      const midY = (topY + botY) / 2;
+      const topBandY = topY - 44;
+      const botBandY = botY + 36;
+
+      const intro1 = makeText(centerX, topBandY - 10, '２つの線の長さのちがい（どれだけ、ながい。どれだけ、みじかい）をもとめるよ。', '#111827', 28);
+      overlay.appendChild(intro1);
+      await showText(intro1, 320);
+      playPop();
+      await speakAndWait('ふたつのせんの ながさの ちがいを もとめるよ。どれだけ ながい。どれだけ みじかい。', 5000);
+      if (aborted()) return;
+      await sleep(120);
+
+      // 垂直点線（ちょうど線の端に合わせる、はみ出しなし）
+      const vShort = makeOLine(diffLeftX, topY - 18, diffLeftX, botY + 18, {
+        stroke: '#64748b', sw: 3, dash: '8 6', opacity: '0.9'
+      });
+      const vLong = makeOLine(diffRightX, topY - 18, diffRightX, botY + 18, {
+        stroke: '#64748b', sw: 3, dash: '8 6', opacity: '0.9'
+      });
+      await fadeIn(vShort, 250);
+      await fadeIn(vLong, 250);
+      if (aborted()) return;
+
+      // 両端矢印：ちょうど diffLeftX〜diffRightX、線太く（sw:7）、矢印小さめ
+      const diffArrow = makeOLine(diffLeftX, midY, diffLeftX, midY, {
+        stroke: '#dc2626', sw: 7, opacity: '0.0', startArrow: true, endArrow: true
+      });
+      await fadeIn(diffArrow, 10);
+      await animateLineTo(diffArrow, { x2: diffRightX }, 420);
+      playPop();
+      if (aborted()) return;
+
+      // 「ちがいはここだね」を矢印の右側に表示（最後まで残す）
+      const chiText = makeText(diffRightX + 220, midY + 12, 'ちがいはここだね', '#dc2626', 30);
+      overlay.appendChild(chiText);
+      await showText(chiText, 280);
+      playPop();
+      await speakAndWait('ちがいは、ここだね。', 2200);
+      if (aborted()) return;
+      await sleep(240);
+
+      const intro3 = makeText(centerX, botBandY + 72, 'ちがいを求めるには、同じ部分をけしてしまえばいいね。', '#111827', 28);
+      overlay.appendChild(intro3);
+      await showText(intro3, 320);
+      playPop();
+      await speakAndWait('ちがいを もとめるには、おなじ ぶぶんを けしてしまえば いいね。', 5000);
+      if (aborted()) return;
+      await sleep(160);
+
+      const sameArrow = makeOLine(commonLeftX, shortY, commonLeftX, shortY, {
+        stroke: '#2563eb', sw: 5, opacity: '0.95', startArrow: true, endArrow: true
+      });
+      await animateLineTo(sameArrow, { x2: commonRightX }, 420);
+      playBlink();
+      if (aborted()) return;
+      await sleep(220);
+
+      const intro4 = makeText(centerX, botBandY + 120, '長い方から、同じ部分を、ひくってことは、ひき算だね。', '#111827', 28);
+      overlay.appendChild(intro4);
+      await showText(intro4, 320);
+      playPop();
+      await speakAndWait('ながいほうから、おなじ ぶぶんを ひくってことは、ひきざんだね。', 4500);
+      if (aborted()) return;
+      await sleep(120);
+
+      const longArrow = makeOLine(longX1, longY, longX1, longY, {
+        stroke: '#ef4444', sw: 5, opacity: '0.95', startArrow: true, endArrow: true
+      });
+      await animateLineTo(longArrow, { x2: longX2 }, 420);
+      playBlink();
+      if (aborted()) return;
+      await sleep(180);
+
+      await animateLineTo(sameArrow, { y1: longY, y2: longY }, 280);
+      for (let i = 0; i < 3; i++) {
+        sameArrow.setAttribute('opacity', i % 2 === 0 ? '1' : '0.15');
+        playBlink();
+        await sleep(140);
+      }
+      await fadeRemove(sameArrow, 160);
+      if (aborted()) return;
+
+      await animateLineTo(longArrow, { x1: diffLeftX }, 360);
+      playBlink();
+      await sleep(220);
+
+      const intro5 = makeText(centerX, botBandY + 168, 'では、ひきざんをやってみよう', '#111827', 30);
+      overlay.appendChild(intro5);
+      await showText(intro5, 320);
+      playPop();
+      await speakAndWait('では、ひきざんを やってみよう。', 2500);
+      if (aborted()) return;
+      await sleep(260);
+
+      // intro1〜5, longArrow を削除し diffArrow, chiText, vShort, vLong は残す
+      [intro1, intro3, intro4, intro5, longArrow].forEach(e => {
+        if (e && e.parentNode) e.remove();
+      });
+
+      // 同じoverlayを渡す（diffArrow, chiTextが持ち越される）
+      await animateSubtract(overlay, aborted, { diffArrow, chiText, diffLeftX, diffRightX, midY, diffCmVal, diffMmVal });
+    } finally {
+      cleanup();
+    }
+  }
+
+  async function animateCombine() {
+    if (state.op === '差') {
+      await animateDifference();
+      return;
+    }
+    if (state.animating) return;
+    state.animating = true;
+    animateBtn.disabled = true;
+    animateBtn.style.opacity = '0.7';
+
+    ensureGlow();
+    clearOverlay();
+    renderAll();
+
+    // 中断チェック：リセットで state.animating=false になったら即終了
+    function aborted() { return !state.animating; }
+
+    const overlay = getOverlay();
+
+    if (state.op === '−') {
+      // 減法①：右（下）の方が大きい場合はエラー表示して入れ替え確認
+      if (totMm(state.right) > totMm(state.left)) {
+        const errMsg = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#dc2626', 'ひけないよ！大きい方から小さい方をひくよ。');
+        overlay.appendChild(errMsg);
+        await fadeIn(errMsg, 320); playBuzz();
+        await speakAndWait('ひけないよ！おおきいほうから ちいさいほうをひくよ。', 3000);
+        if (aborted()) { state.animating=false; animateBtn.disabled=false; animateBtn.style.opacity='1'; return; }
+        await sleep(200);
+
+        // 「入れかえて実行？」ボタンを HTML 上に表示
+        const swapResult = await new Promise(resolve => {
+          const panel = document.createElement('div');
+          panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:3px solid #dc2626;border-radius:16px;padding:24px 32px;z-index:100;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.18);';
+          panel.innerHTML = '<div style="font-size:22px;font-weight:700;color:#111827;margin-bottom:18px;">入れかえて実行？</div>';
+          const yesBtn = document.createElement('button');
+          yesBtn.textContent = 'はい';
+          yesBtn.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:20px;font-weight:700;padding:10px 32px;margin:0 10px;cursor:pointer;';
+          const noBtn  = document.createElement('button');
+          noBtn.textContent  = 'いいえ';
+          noBtn.style.cssText = 'background:#dc2626;color:#fff;border:none;border-radius:10px;font-size:20px;font-weight:700;padding:10px 32px;margin:0 10px;cursor:pointer;';
+          yesBtn.onclick = () => { panel.remove(); resolve(true);  };
+          noBtn.onclick  = () => { panel.remove(); resolve(false); };
+          panel.appendChild(yesBtn);
+          panel.appendChild(noBtn);
+          document.querySelector('.stage').appendChild(panel);
+        });
+
+        if (!swapResult || aborted()) {
+          clearOverlay();
+          state.animating=false; animateBtn.disabled=false; animateBtn.style.opacity='1';
+          return;
+        }
+
+        // 入れ替えアニメ
+        clearOverlay();
+        renderAll();
+        const swapMsg2 = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#2563eb', '数値を入れかえるよ！');
+        const ov2 = getOverlay();
+        ov2.appendChild(swapMsg2);
+        await fadeIn(swapMsg2, 280); playCoin();
+
+        const topUnits2 = [...gUnits.querySelectorAll('g[data-side=left]')];
+        const botUnits2 = [...gUnits.querySelectorAll('g[data-side=right]')];
+        const swapDy2 = SUB_TY_BOT - SUB_TY_TOP;
+        const dur2 = 480;
+        const startT2 = performance.now();
+        await new Promise(resolve => {
+          function step(now) {
+            const t = Math.min((now - startT2) / dur2, 1);
+            const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+            topUnits2.forEach(g => {
+              g.setAttribute('transform', g.getAttribute('transform').replace(/translate\(([\d.]+),([\d.]+)\)/, (_, x) => `translate(${x},${SUB_TY_TOP + swapDy2 * ease})`));
+            });
+            botUnits2.forEach(g => {
+              g.setAttribute('transform', g.getAttribute('transform').replace(/translate\(([\d.]+),([\d.]+)\)/, (_, x) => `translate(${x},${SUB_TY_BOT - swapDy2 * ease})`));
+            });
+            if (t < 1) requestAnimationFrame(step);
+            else resolve();
+          }
+          requestAnimationFrame(step);
+        });
+        playCoin();
+        await sleep(300);
+
+        [state.left, state.right] = [state.right, state.left];
+        clearOverlay();
+        renderAll();
+        await sleep(200);
+      }
+      const freshOverlay = getOverlay();
+      await animateSubtract(freshOverlay, aborted);
+      state.animating = false;
+      animateBtn.disabled = false;
+      animateBtn.style.opacity = '1';
+      return;
+    }
+
+    const lTot = totMm(state.left);
+    const rTot = totMm(state.right);
+
+    // レイアウト依存の値をここで取得
+    const CY  = getCY();
+    const RXcur = getRX();
+    const RYcur = getRY();
+
+    /* ===== PHASE 1: 黄色い線を丸ごとまとめる場所へ移動 ===== */
+
+    // 移動前に各単位グループのゴースト（薄い残影）を元の位置に追加
+    {
+      const ghostLayer = el('g',{id:'ghostLayer','pointer-events':'none'});
+      [...gUnits.querySelectorAll('g[data-side]')].forEach(g => {
+        const clone = g.cloneNode(true);
+        clone.removeAttribute('style');
+        clone.setAttribute('opacity','0.18');
+        ghostLayer.appendChild(clone);
+      });
+      gTracks.appendChild(ghostLayer);
+    }
+
+    // 左の全単位グループを取得
+    const allGroups = [...gUnits.querySelectorAll('g[data-side]')];
+    const leftGroups  = allGroups.filter(g=>g.dataset.side==='left');
+    const rightGroups = allGroups.filter(g=>g.dataset.side==='right');
+
+    // 全グループにtransition設定
+    [...allGroups].forEach(g=>{
+      g.style.transition='transform 500ms cubic-bezier(.4,0,.2,1)';
+    });
+
+    // 左の線を1セグメントずつまとめる場所へスライド
+    for (const g of leftGroups) {
+      g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
+      const srcX = Number(g.dataset.srcX);
+      const dstX = CX + (srcX - LX);
+      g.setAttribute('transform', `translate(${dstX},${CY})`);
+      playCoin();
+      await sleep(120);   // 次のセグメントまで少し間を置く
+    }
+    await sleep(430);   // 最後のセグメントのtransitionが終わるまで待つ
+    if (aborted()) return;
+
+    // 右の線を1セグメントずつ、左の右端に続けてスライド
+    const leftWidthPx = lTot * PX;
+    for (const g of rightGroups) {
+      g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
+      const srcX = Number(g.dataset.srcX);
+      const dstX = CX + leftWidthPx + (srcX - RXcur);
+      g.setAttribute('transform', `translate(${dstX},${CY})`);
+      playCoin();
+      await sleep(120);
+    }
+    await sleep(430);
+    if (aborted()) return;
+
+    /* ===== 「どうやって計算する？」テキスト ===== */
+    const q = svgText(
+      CX + (lTot+rTot)*PX/2, CY + 130,
+      36, '#1e40af',
+      '長さをたすことはできそうだけど、どうやって計算する？'
+    );
+    overlay.appendChild(q);
+    await fadeIn(q, 400);
+    playPop();
+    await speakAndWait('ながさをたすことはできそうだけど、どうやってけいさんする？', 3500);
+    await sleep(400);
+    if (aborted()) return;
+
+    /* ===== PHASE 2: 円弧・区切り線を1単位ずつ正しい位置へ移動 ===== */
+    // まず「どうやって…」を消す
+    q.style.transition='opacity 300ms ease';
+    q.setAttribute('opacity','0');
+    await sleep(320);
+    q.remove();
+
+    // 移動先の計算：cm左→cm右→mm左→mm右 の順で並べる
+    // targetX を各グループに割り付け
+    const leftCmG  = leftGroups.filter(g=>g.dataset.kind==='cm'||g.querySelector('[data-kind=cm]')!=null);
+    const rightCmG = rightGroups.filter(g=>g.dataset.kind==='cm'||g.querySelector('[data-kind=cm]')!=null);
+    const leftMmG  = leftGroups.filter(g=>g.dataset.kind==='mm'||g.querySelector('[data-kind=mm]')!=null);
+    const rightMmG = rightGroups.filter(g=>g.dataset.kind==='mm'||g.querySelector('[data-kind=mm]')!=null);
+
+    // data-kind はグループ自体に設定済み
+    const leftCmGroups  = leftGroups.filter(g=>g.dataset.kind==='cm');
+    const leftMmGroups  = leftGroups.filter(g=>g.dataset.kind==='mm');
+    const rightCmGroups = rightGroups.filter(g=>g.dataset.kind==='cm');
+    const rightMmGroups = rightGroups.filter(g=>g.dataset.kind==='mm');
+
+    // まとめる場所での最終並び順：左cm→右cm→左mm→右mm
+    const orderedGroups = [...leftCmGroups,...rightCmGroups,...leftMmGroups,...rightMmGroups];
+    const widths = orderedGroups.map(g=>g.dataset.kind==='cm'?CMpx:PX);
+    let tCur = CX;
+    orderedGroups.forEach((g,i)=>{
+      g.dataset.dstX = tCur;
+      tCur += widths[i];
+    });
+
+    // 現在の「黄色バーが並んでいる位置」から「正しいcm/mm位置」へ移動
+    // Phase1 で左グループは CX+(srcX-LX) にいる、右グループは CX+lTot*PX+(srcX-RX) にいる
+    // 各グループの移動先は dstX, CY
+
+    // transition 短め
+    orderedGroups.forEach(g=>{ g.style.transition='transform 320ms cubic-bezier(.4,0,.2,1)'; });
+
+    // 「cmとmmでまとめると」テキストはあとで出す
+
+    // cm群を一単位ずつ移動（左cm→右cm）
+    const cmGroups = [...leftCmGroups,...rightCmGroups];
+    let cmTotal = 0;
+    for (const g of cmGroups) {
+      const dstX = Number(g.dataset.dstX);
+      g.setAttribute('transform', `translate(${dstX},${CY})`);
+      cmTotal++;
+      const numEl = g.querySelector('text');
+      if (numEl) numEl.textContent = `${cmTotal}`;
+      speakNumber(cmTotal);
+      const _g = g;
+      setTimeout(() => flashUnit(_g, C.cm), 320);
+      await sleep(600);
+    }
+
+    // mm群を一単位ずつ移動（左mm→右mm）
+    const mmGroups = [...leftMmGroups,...rightMmGroups];
+    let mmTotal = 0;
+    for (const g of mmGroups) {
+      const dstX = Number(g.dataset.dstX);
+      g.setAttribute('transform', `translate(${dstX},${CY})`);
+      mmTotal++;
+      const numEl = g.querySelector('text');
+      if (numEl) numEl.textContent = `${mmTotal}`;
+      speakNumber(mmTotal);
+      const _g = g;
+      setTimeout(() => flashUnit(_g, C.mm), 320);
+      await sleep(520);
+    }
+
+    await sleep(400);
+    if (aborted()) return;
+
+    /* ===== テキスト表示の共通定数 ===== */
+    const totalCmCount = state.left.cm + state.right.cm;
+    const totalMmCount = state.left.mm + state.right.mm;
+    const cmAreaW = totalCmCount * CMpx;
+    const mmAreaW = totalMmCount * PX;
+    const rawMmTotal = state.left.mm + state.right.mm;
+    const didCarry   = state.op==='+' && rawMmTotal >= 10;
+    const carryC = didCarry ? Math.floor(rawMmTotal/10) : 0;
+    const remMm  = didCarry ? rawMmTotal%10 : 0;
+
+    // テキストY座標（まとめる場所の線より下、1行分下げて被りを回避）
+    // cm と mm を同じ高さに左右並べる
+    const TXT_Y1 = CY + 130;   // 見出し行（cm・mm共通）
+    const TXT_Y2 = CY + 172;  // 式行（cm・mm共通）
+    const TXT_Y5 = CY + 228;  // 「あれ？」行
+    const TXT_Y6 = CY + 276;  // 繰り上がり結果行
+
+    // cm式の中心X（cm区間の中央）
+    const cmCenterX = CX + cmAreaW / 2;
+    // mm式の中心X（mm区間の中央、最低3mm幅確保）
+    const mmCenterX = CX + cmAreaW + Math.max(mmAreaW, PX*3) / 2;
+
+    /* ===== PHASE 2後半: cmとcmでまとめると ===== */
+    // 見出し
+    const cmLabel = svgText(cmCenterX, TXT_Y1, 30, C.cm, 'cmとcmでまとめると');
+    overlay.appendChild(cmLabel);
+    await fadeIn(cmLabel, 350);
+    playPop();
+    await sleep(300);
+
+    // cm式
+    const cmParts = [
+      {text:`${state.left.cm}cm `,color:C.cm},
+      {text:'＋ ',color:'#111827'},
+      {text:`${state.right.cm}cm`,color:C.cm},
+      {text:' ＝ ',color:'#111827'},
+      {text:`${totalCmCount}cm`,color:C.cm},
+    ];
+    const cmForm = svgTextParts(cmCenterX, TXT_Y2, 34, cmParts);
+    overlay.appendChild(cmForm);
+    await fadeIn(cmForm, 350);
+    playPop();
+    await speakAndWait(`せんちめーとると せんちめーとるで まとめると、${state.left.cm}せんちめーとる と ${state.right.cm}せんちめーとる で ${totalCmCount}せんちめーとる`, 5000);
+    await sleep(200);
+
+    /* ===== PHASE 3: mmとmmでまとめると（式はここでは11mmまで） ===== */
+    // mm見出し（cm見出しと同じ高さ）
+    const mmLabel = svgText(mmCenterX, TXT_Y1, 30, C.mm, 'mmとmmでまとめると');
+    overlay.appendChild(mmLabel);
+    await fadeIn(mmLabel, 350);
+    playPop();
+    await sleep(300);
+
+    // mm式（11mmまで。繰り上がりの＝以降はまだ出さない）
+    const mmBaseParts = [
+      {text:`${state.left.mm}mm `,color:C.mm},
+      {text:'＋ ',color:'#111827'},
+      {text:`${state.right.mm}mm`,color:C.mm},
+      {text:' ＝ ',color:'#111827'},
+      {text:`${rawMmTotal}mm`,color:C.mm},
+    ];
+    const mmForm = svgTextParts(mmCenterX, TXT_Y2, 34, mmBaseParts);
+    overlay.appendChild(mmForm);
+    await fadeIn(mmForm, 350);
+    playPop();
+    await speakAndWait(`みりめーとると みりめーとるで まとめると、${state.left.mm}みりめーとる と ${state.right.mm}みりめーとる で ${rawMmTotal}みりめーとる`, 5000);
+    await sleep(200);
+
+    /* ===== PHASE 4: 繰り上がりアニメーション（didCarryのみ） ===== */
+    if (didCarry) {
+      // 「あれ？合わせて Xcm YYmmでいいの？」
+      const questionParts = [
+        {text:'あれ？合わせて ',color:'#111827'},
+        {text:`${totalCmCount}cm`,color:C.cm},
+        {text:`${rawMmTotal}mm`,color:C.mm},
+        {text:'でいいの？',color:'#111827'},
+      ];
+      const questionForm = svgTextParts(
+        CX + (cmAreaW + mmAreaW) / 2, TXT_Y5, 32, questionParts
+      );
+      overlay.appendChild(questionForm);
+      await fadeIn(questionForm, 400);
+      playPop();
+      await speakAndWait(`あれ？あわせて ${totalCmCount}せんちめーとる ${rawMmTotal}みりめーとる でいいの？`, 4000);
+      await sleep(200);
+
+      // 繰り上がりアニメ開始：先頭10個のmmグループを点滅
+      const blinkTgts = mmGroups.slice(0, 10*carryC);
+
+      for (let b=0;b<4;b++) {
+        const on = b%2===0;
+        blinkTgts.forEach(g=>{
+          g.querySelectorAll('path').forEach(p=>{
+            p.setAttribute('stroke', on?'#93c5fd':C.mm);
+            p.setAttribute('stroke-width', on?'11':String(6));
+            p.setAttribute('filter', on?'url(#glowFilter)':'none');
+          });
+          g.querySelectorAll('line').forEach(l=>{
+            l.setAttribute('stroke', on?'#93c5fd':C.mm);
+            l.setAttribute('filter', on?'url(#glowFilter)':'none');
+          });
+          g.querySelector('rect')?.setAttribute('opacity', on?'1':'0.3');
+        });
+        if (on) playBlink();
+        await sleep(230);
+      }
+      // 点滅リセット
+      blinkTgts.forEach(g=>{
+        g.querySelectorAll('path').forEach(p=>{
+          p.setAttribute('stroke',C.mm);
+          p.setAttribute('stroke-width','6');
+          p.removeAttribute('filter');
+        });
+        g.querySelectorAll('line').forEach(l=>{ l.setAttribute('stroke',C.mm); l.removeAttribute('filter'); });
+        g.querySelector('rect')?.setAttribute('opacity','0.96');
+      });
+      await sleep(180);
+
+      // 10個のmmをその場でフェードアウト
+      await Promise.all(blinkTgts.map(g=>new Promise(resolve=>{
+        const anim = g.animate(
+          [{opacity:1},{opacity:0}],
+          {duration:400, easing:'ease-out', fill:'forwards'}
+        );
+        anim.onfinish = resolve;
+      })));
+      blinkTgts.forEach(g=>g.remove());
+
+      // 残りmmをシフト
+      const remGroups = mmGroups.slice(10*carryC);
+      const newMmStartX = CX + (state.left.cm+state.right.cm+carryC)*CMpx;
+      remGroups.forEach((g,i)=>{
+        g.style.transition='transform 320ms cubic-bezier(.4,0,.2,1)';
+        g.setAttribute('transform',`translate(${newMmStartX+i*PX},${CY})`);
+      });
+      await sleep(350);
+
+      // 繰り上がりcmをフェードイン
+      for (let c=0;c<carryC;c++) {
+        const newX = CX + (state.left.cm+state.right.cm+c)*CMpx;
+        const newG = makeUnit(newX, CY, CMpx, 'cm', state.left.cm+state.right.cm+c);
+        newG.setAttribute('opacity','0');
+        gUnits.appendChild(newG);
+        await sleep(30);
+        await new Promise(resolve=>{
+          const anim = newG.animate(
+            [{opacity:0},{opacity:1}],
+            {duration:400, easing:'ease-in', fill:'forwards'}
+          );
+          anim.onfinish = () => { newG.setAttribute('opacity','1'); resolve(); };
+        });
+      }
+      // cm フェードイン完了と同時に、残りmmのテキストを正しい数値に更新
+      remGroups.forEach((g, i) => {
+        const numEl = g.querySelector('text');
+        if (numEl) numEl.textContent = i === remGroups.length - 1 ? `${i + 1}mm` : `${i + 1}`;
+      });
+      await sleep(300);
+
+      // 「Xcm Ymm ＝ Acm Bmm だね！」と表示
+      const finalCm = totalCmCount + carryC;
+      const resultParts = [
+        {text:`${totalCmCount}cm`,color:C.cm},
+        {text:`${rawMmTotal}mm`,color:C.mm},
+        {text:' ＝ ',color:'#111827'},
+        {text:`${finalCm}cm`,color:C.cm},
+        {text:`${remMm}mm`,color:C.mm},
+        {text:'  だね！',color:'#111827'},
+      ];
+      const resultForm = svgTextParts(
+        CX + (cmAreaW + mmAreaW) / 2, TXT_Y6, 36, resultParts
+      );
+      overlay.appendChild(resultForm);
+      await fadeIn(resultForm, 400);
+      playFanfare();
+      await speakAndWait(`${totalCmCount}せんちめーとる ${rawMmTotal}みりめーとる は、${finalCm}せんちめーとる ${remMm}みりめーとる だね！`, 5000);
+
+      // pulse強調
+      for(let rep=0;rep<3;rep++){
+        await new Promise(resolve=>{
+          const anim = resultForm.animate(
+            [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
+            {duration:500, easing:'ease-in-out'}
+          );
+          anim.onfinish = resolve;
+        });
+        await sleep(80);
+      }
+    }
+
+    await sleep(400);
+
+    /* ===== PHASE 5: 式をフッターに表示 ===== */
+    updateEquation();
+    equation.style.transition='opacity 400ms ease';
+    resultText.style.transition='opacity 400ms ease';
+    equation.style.opacity='1';
+    resultText.style.opacity='1';
+    if (!didCarry) {
+      const L=state.left, R=state.right;
+      const lm=totMm(L), rm=totMm(R);
+      const tot = lm+rm;
+      const rCm=Math.floor(tot/10), rMm=tot%10;
+      playFanfare();
+      await speakAndWait(`だから あわせて ${rCm}せんちめーとる ${rMm}みりめーとる！`, 3000);
+    }
+
+    state.animating = false;
+    animateBtn.disabled = false;
+    animateBtn.style.opacity = '1';
+  }
+
+  /* ── イベント ── */
+  opBtn.addEventListener('click', ()=>{
+    state.op = state.op==='+' ? '−' : state.op==='−' ? '差' : '+';
+    renderAll();
+  });
+
+  animateBtn.addEventListener('click', animateCombine);
+
+  /* ── 拡大率ボタン ── */
+  const scaleDisplay = document.getElementById('scaleDisplay');
+  function updateScaleDisplay() {
+    scaleDisplay.textContent = Math.round(state.manualScale * 100) + '%';
+  }
+  function applyScale() {
+    const s = state.manualScale;
+    sceneRoot.setAttribute('transform', s !== 1 ? `scale(${s})` : '');
+  }
+  document.getElementById('scaleUpBtn').addEventListener('click', ()=>{
+    state.manualScale = Math.min(2.0, Math.round((state.manualScale + 0.05) * 100) / 100);
+    updateScaleDisplay();
+    applyScale();
+  });
+  document.getElementById('scaleDownBtn').addEventListener('click', ()=>{
+    state.manualScale = Math.max(0.3, Math.round((state.manualScale - 0.05) * 100) / 100);
+    updateScaleDisplay();
+    applyScale();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    stopSpeech();
+    stopAllSound();
+    state.animating = false;
+    animateBtn.disabled = false;
+    animateBtn.style.opacity = '1';
+    state.left={cm:3,mm:4};
+    state.right={cm:2,mm:7};
+    state.op='+';
+    clearOverlay();
+    renderAll();
+  });
+
+  document.addEventListener('click', e=>{
+    const btn = e.target.closest('button[data-side]');
+    if (!btn) return;
+    changeValue(btn.dataset.side, btn.dataset.unit, Number(btn.dataset.delta));
+  });
+
+  makeSteppers(leftSteppers,  'left');
+  makeSteppers(rightSteppers, 'right');
+  updateScaleDisplay();
+  renderAll();
+})();
+</script>
+</body>
+</html>
