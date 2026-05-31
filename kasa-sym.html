@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1リットルます 体積シミュレーター</title>
+    <style>
+        :root { --primary: #1ca7ff; --dark: #333; --bg: #f5f7fa; --card: #fff; }
+        body {
+            margin: 0; padding: 20px; background: var(--bg);
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: var(--dark);
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        }
+        .container {
+            width: 100%; max-width: 1000px; background: var(--card);
+            padding: 30px; border-radius: 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06); text-align: center;
+        }
+        h1 { font-size: 22px; margin-bottom: 20px; font-weight: 700; color: #444; }
+
+        /* モード切り替え */
+        .shape-toggle {
+            display: inline-flex; background: #f1f5f9; border-radius: 14px;
+            padding: 4px; margin-bottom: 20px; gap: 4px;
+        }
+        .shape-btn {
+            width: auto; height: auto; padding: 8px 18px; font-size: 14px;
+            font-weight: 700; border: none; border-radius: 10px; cursor: pointer;
+            transition: all 0.2s; background: transparent; color: #64748b;
+        }
+        .shape-btn:hover { background: #e2e8f0; transform: none; color: #333; }
+        .shape-btn.active { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(28,167,255,0.35); }
+
+        /* mLチェックボックス */
+        .ml-toggle {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; margin-bottom: 20px;
+        }
+        .ml-toggle label { font-size: 15px; font-weight: 700; color: #64748b; cursor: pointer; }
+        .ml-toggle input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); }
+
+        /* ── 入力UI共通 ── */
+        .input-ui { display: inline-flex; gap: 4px; align-items: flex-end; margin-bottom: 30px; }
+
+        /* 各桁セル */
+        .digit-cell {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+        }
+        .digit-btn {
+            width: 44px; height: 32px; font-size: 18px; font-weight: bold;
+            border: none; border-radius: 8px; cursor: pointer; line-height: 1;
+            background: #e2e8f0; color: var(--dark); transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .digit-btn:hover { background: #cbd5e1; transform: translateY(-1px); }
+        .digit-btn.up { background: #dbeafe; color: #1e40af; }
+        .digit-btn.up:hover { background: #bfdbfe; }
+        .digit-value {
+            font-size: 42px; font-weight: 800; color: var(--primary);
+            font-variant-numeric: tabular-nums; min-width: 44px; text-align: center;
+            line-height: 1.1;
+        }
+        .digit-sep {
+            font-size: 36px; font-weight: 800; color: #64748b;
+            padding-bottom: 6px; padding-left: 2px; padding-right: 2px;
+        }
+        .digit-unit {
+            font-size: 22px; font-weight: 700; color: #64748b;
+            padding-bottom: 8px; padding-left: 4px;
+        }
+
+        /* グリッド */
+        .masu-grid {
+            display: flex; flex-wrap: wrap; justify-content: center;
+            gap: 16px; margin-top: 20px;
+        }
+        .combo-grid {
+            display: flex; justify-content: center; align-items: flex-start;
+            gap: 40px; margin-top: 20px; flex-wrap: wrap;
+        }
+        .combo-section { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .combo-section-label { font-size: 13px; font-weight: 700; color: #94a3b8; letter-spacing: 0.06em; }
+        .combo-inner { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+        .masu-wrapper {
+            display: flex; flex-direction: column; align-items: center;
+            animation: fadeIn 0.3s cubic-bezier(0.16,1,0.3,1);
+            transition: width 0.3s;
+        }
+        svg { width: 100%; height: auto; }
+        .masu-label {
+            margin-top: 6px; font-size: 12px; font-weight: 700; color: #64748b;
+            background: #f1f5f9; padding: 3px 8px; border-radius: 20px;
+            white-space: nowrap;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.88) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* ── シリンジモード専用レイアウト ── */
+        /* 入力UIをシリンジモード時に左寄せにするラッパー */
+        .syringe-mode-layout {
+            display: flex;
+            align-items: flex-start;
+            gap: 0;
+            width: 100%;
+        }
+        /* 左カラム：入力UI + 棚 */
+        .syringe-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        /* 右カラム：常時表示大シリンジ */
+        .syringe-right {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-left: 16px;
+            padding-top: 4px;
+        }
+        .syringe-right svg {
+            width: clamp(80px, 12vw, 130px);
+            height: auto;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.12));
+        }
+        .syringe-right-label {
+            font-size: 12px; font-weight: 700; color: #64748b;
+            margin-top: 6px; text-align: center;
+        }
+
+        /* 棚エリア（満タンシリンジ一覧） */
+        .syringe-shelf {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            gap: 6px;
+            padding: 10px 12px;
+            background: #f0f9ff;
+            border-radius: 14px;
+            min-height: 56px;
+            border: 2px dashed #b0d8f5;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 10px;
+        }
+        .syringe-shelf-label {
+            font-size: 13px; font-weight: 700; color: #64748b;
+            margin-bottom: 2px; text-align: left;
+        }
+        .shelf-syringe {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+        }
+        .shelf-syringe svg { width: 32px; height: auto; }
+        .shelf-syringe-num {
+            font-size: 9px; font-weight: 700; color: #1ca7ff;
+        }
+
+        /* ── シリンジアニメーション用 ── */
+        /* 大シリンジラッパー：transform-originを中心に */
+        #syringe-live-svg {
+            transform-origin: center top;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity  0.4s ease;
+        }
+        /* フライングクローン（position:fixed で自由に飛ばす） */
+        .syringe-clone {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transform-origin: top left;
+        }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>体積シミュレーター</h1>
+
+    <div class="shape-toggle">
+        <button class="shape-btn active" id="btn-cylinder" onclick="setShape('cylinder')">🧪 1Lます（円筒形）</button>
+        <button class="shape-btn"        id="btn-cube"     onclick="setShape('cube')"    >📦 1Lます（立方体）</button>
+        <button class="shape-btn"        id="btn-dl"       onclick="setShape('dl')"      >🔬 1dLます</button>
+        <button class="shape-btn"        id="btn-combo"    onclick="setShape('combo')"   >🔀 併存</button>
+        <button class="shape-btn"        id="btn-syringe"  onclick="setShape('syringe')" >💉 シリンジ</button>
+    </div>
+
+    <div class="ml-toggle">
+        <input type="checkbox" id="ml-mode" onchange="updateUI()">
+        <label for="ml-mode">mL モード</label>
+    </div>
+
+    <!-- 入力UI（JS で中身を生成） -->
+    <div id="syringe-mode-wrap" style="display:none; width:100%;">
+        <div class="syringe-mode-layout">
+            <div class="syringe-left">
+                <div class="input-ui" id="input-ui-syringe" style="display:flex;justify-content:flex-start;"></div>
+                <div id="masu-area-syringe"></div>
+            </div>
+            <div class="syringe-right">
+                <svg id="syringe-live-svg" viewBox="0 0 400 820" xmlns="http://www.w3.org/2000/svg" style="width:clamp(80px,12vw,130px);height:auto;flex-shrink:0;">
+                    <defs>
+                        <style>
+                            .sl-outline { stroke: #000; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+                            .sl-thin    { stroke: #aaa; stroke-width: 2; stroke-linecap: round; }
+                            .sl-tick    { stroke: #222; stroke-width: 4; }
+                            .sl-text    { font-family: Arial,sans-serif; font-weight: bold; font-size: 28px; fill: #222; text-anchor: start; }
+                            .sl-water   { fill: #33b5e5; fill-opacity: 0.55; }
+                            .sl-plunger { fill: #333; }
+                        </style>
+                    </defs>
+                    <!-- 水 -->
+                    <path id="sl-water" class="sl-water" d="M 185,110 L 215,110 L 240,155 L 240,170 L 160,170 L 160,155 Z"/>
+                    <!-- バレル -->
+                    <path d="M 185,110 L 185,30 L 215,30 L 215,110 Z" class="sl-outline"/>
+                    <path d="M 185,110 L 160,155 M 215,110 L 240,155" class="sl-outline"/>
+                    <path d="M 160,155 L 160,720 M 240,155 L 240,720" class="sl-outline"/>
+                    <rect x="110" y="720" width="180" height="20" rx="8" class="sl-outline"/>
+                    <!-- 目盛線（縦） -->
+                    <line x1="175" y1="170" x2="175" y2="670" class="sl-thin"/>
+                    <!-- 目盛 -->
+                    <line x1="175" y1="170" x2="205" y2="170" class="sl-tick"/><text x="210" y="179" class="sl-text">0</text>
+                    <line x1="175" y1="220" x2="205" y2="220" class="sl-tick"/><text x="210" y="229" class="sl-text">1</text>
+                    <line x1="175" y1="270" x2="205" y2="270" class="sl-tick"/><text x="210" y="279" class="sl-text">2</text>
+                    <line x1="175" y1="320" x2="205" y2="320" class="sl-tick"/><text x="210" y="329" class="sl-text">3</text>
+                    <line x1="175" y1="370" x2="205" y2="370" class="sl-tick"/><text x="210" y="379" class="sl-text">4</text>
+                    <line x1="175" y1="420" x2="205" y2="420" class="sl-tick"/><text x="210" y="429" class="sl-text">5</text>
+                    <line x1="175" y1="470" x2="205" y2="470" class="sl-tick"/><text x="210" y="479" class="sl-text">6</text>
+                    <line x1="175" y1="520" x2="205" y2="520" class="sl-tick"/><text x="210" y="529" class="sl-text">7</text>
+                    <line x1="175" y1="570" x2="205" y2="570" class="sl-tick"/><text x="210" y="579" class="sl-text">8</text>
+                    <line x1="175" y1="620" x2="205" y2="620" class="sl-tick"/><text x="210" y="629" class="sl-text">9</text>
+                    <line x1="175" y1="670" x2="205" y2="670" class="sl-tick"/><text x="210" y="679" class="sl-text">10</text>
+                    <!-- プランジャー -->
+                    <g id="sl-plunger">
+                        <polygon points="186,110 214,110 239,155 239,170 161,170 161,155" class="sl-plunger"/>
+                        <path d="M 185,170 L 185,755 M 215,170 L 215,755 M 200,170 L 200,755" class="sl-outline"/>
+                        <rect x="130" y="755" width="140" height="15" rx="2" class="sl-outline" style="fill:none;"/>
+                    </g>
+                </svg>
+                <div class="syringe-right-label" id="syringe-live-label">0 mL</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通常モード入力UI -->
+    <div id="normal-mode-wrap">
+        <div class="input-ui" id="input-ui"></div>
+        <div id="masu-area"></div>
+    </div>
+
+</div><!-- /.container -->
+
+<script>
+    // ── 状態 ───────────────────────────────────────
+    let totalDL = 0;
+    let totalML = 0;
+    let currentShape = 'cylinder';
+    let masuIdCounter = 0;
+
+    // シリンジモード
+    let syringeMode = false;
+    // シリンジY座標マップ (0〜10mL)
+    const SA_Y = { 0:170,1:220,2:270,3:320,4:370,5:420,6:470,7:520,8:570,9:620,10:670 };
+
+    function isMlMode() { return document.getElementById('ml-mode').checked; }
+
+    // ── 常時表示シリンジを現在値に更新 ──────────────
+    function updateLiveSyringe(forceFill) {
+        const fill = forceFill !== undefined ? forceFill : totalML % 10;
+        const water   = document.getElementById('sl-water');
+        const plunger = document.getElementById('sl-plunger');
+        const lbl     = document.getElementById('syringe-live-label');
+        if (!water) return;
+        const targetY = SA_Y[fill] ?? 170;
+        water.setAttribute('d',
+            fill === 0
+                ? `M 185,110 L 215,110 L 240,155 L 240,170 L 160,170 L 160,155 Z`
+                : `M 185,110 L 215,110 L 240,155 L 240,${targetY} L 160,${targetY} L 160,155 Z`
+        );
+        const offset = targetY - SA_Y[0];
+        plunger.setAttribute('transform', `translate(0, ${offset})`);
+        lbl.textContent = `${fill} mL`;
+    }
+
+    // ── 桁操作 ─────────────────────────────────────
+    // 通常モード: 桁0=L, 桁1=dL
+    function changeLdL(digitIndex, delta) {
+        // digitIndex: 0=L桁, 1=dL桁
+        if (digitIndex === 1) {
+            // dL桁: キャリーオーバーあり
+            let newTotal = totalDL + delta;
+            if (newTotal < 0) newTotal = 0;
+            totalDL = newTotal;
+        } else {
+            // L桁
+            const dL = totalDL % 10;
+            const L  = Math.floor(totalDL / 10);
+            const newL = L + delta;
+            if (newL < 0 && dL === 0) return; // 0未満不可
+            totalDL = Math.max(0, newL) * 10 + dL;
+            if (newL < 0) totalDL = dL; // Lが負になったら0L+dL
+        }
+        renderInputUI();
+        renderMasu();
+    }
+
+    // ── シリンジアニメーション ────────────────────────
+    let syringeAnimLocked = false;
+
+    // 満タン：大シリンジ → 棚に縮小移動、その後空シリンジがフェードイン
+    function animFlyToShelf(onDone) {
+        syringeAnimLocked = true;
+        const bigSvg  = document.getElementById('syringe-live-svg');
+        const bigLbl  = document.getElementById('syringe-live-label');
+        const shelf   = document.getElementById('syringe-shelf-el');
+
+        // 大シリンジの画面座標
+        const bigRect = bigSvg.getBoundingClientRect();
+
+        // 棚の右端（新しい小シリンジが追加される位置）を推定
+        // 棚が存在しない or まだ空の場合は棚自体の左端を使う
+        let targetRect;
+        if (shelf) {
+            const items = shelf.querySelectorAll('.shelf-syringe');
+            if (items.length > 0) {
+                targetRect = items[items.length - 1].getBoundingClientRect();
+            } else {
+                targetRect = shelf.getBoundingClientRect();
+            }
+        } else {
+            targetRect = { left: bigRect.left, top: bigRect.top + bigRect.height };
+        }
+
+        // クローンSVGを body に追加して飛ばす
+        const clone = bigSvg.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.classList.add('syringe-clone');
+        const w = bigRect.width;
+        const h = bigRect.height;
+        clone.style.cssText = `
+            position:fixed; pointer-events:none; z-index:9999;
+            left:${bigRect.left}px; top:${bigRect.top}px;
+            width:${w}px; height:${h}px;
+            transform-origin: top left;
+            transition: none;
+        `;
+        document.body.appendChild(clone);
+
+        // 大シリンジ本体を即座に非表示（クローンが代わりに飛ぶ）
+        bigSvg.style.opacity = '0';
+        bigLbl.style.opacity = '0';
+
+        // 目標スケール（小シリンジの幅 36px に合わせる）
+        const targetScale = 36 / w;
+        const targetX = targetRect.left - bigRect.left;
+        const targetY = targetRect.top  - bigRect.top;
+
+        // 次フレームでアニメーション開始
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                clone.style.transition = 'transform 0.55s cubic-bezier(0.4,0,0.2,1), opacity 0.55s ease';
+                clone.style.transform  = `translate(${targetX}px, ${targetY}px) scale(${targetScale})`;
+                clone.style.opacity    = '0.7';
+            });
+        });
+
+        setTimeout(() => {
+            clone.remove();
+            // 棚を更新してから、空の大シリンジをフェードイン
+            updateLiveSyringe(0);
+            renderMasu();
+            renderInputUI();
+
+            // 右からフェードイン
+            bigSvg.style.transition = 'none';
+            bigSvg.style.transform  = 'translateX(40px)';
+            bigSvg.style.opacity    = '0';
+            bigLbl.style.opacity    = '0';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    bigSvg.style.transition = 'transform 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease';
+                    bigLbl.style.transition = 'opacity 0.4s ease';
+                    bigSvg.style.transform  = 'translateX(0)';
+                    bigSvg.style.opacity    = '1';
+                    bigLbl.style.opacity    = '1';
+                });
+            });
+
+            setTimeout(() => {
+                bigSvg.style.transition = '';
+                bigSvg.style.transform  = '';
+                bigLbl.style.transition = '';
+                syringeAnimLocked = false;
+                onDone();
+            }, 450);
+        }, 620);
+    }
+
+    // 0mLに：棚の最後の小シリンジ → 大シリンジ位置に拡大移動、大シリンジは右にフェードアウト
+    function animFlyFromShelf(onDone) {
+        syringeAnimLocked = true;
+        const bigSvg  = document.getElementById('syringe-live-svg');
+        const bigLbl  = document.getElementById('syringe-live-label');
+        const shelf   = document.getElementById('syringe-shelf-el');
+
+        const bigRect = bigSvg.getBoundingClientRect();
+
+        // 棚の最後の小シリンジ
+        const items = shelf ? shelf.querySelectorAll('.shelf-syringe') : [];
+        const lastItem = items.length > 0 ? items[items.length - 1] : null;
+
+        // 大シリンジを右にフェードアウト
+        bigSvg.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+        bigLbl.style.transition = 'opacity 0.35s ease';
+        bigSvg.style.transform  = 'translateX(40px)';
+        bigSvg.style.opacity    = '0';
+        bigLbl.style.opacity    = '0';
+
+        if (lastItem) {
+            const smallRect = lastItem.getBoundingClientRect();
+            const startScale = smallRect.width / bigRect.width;
+            const startX = smallRect.left - bigRect.left;
+            const startY = smallRect.top  - bigRect.top;
+
+            // クローンを小シリンジの位置・サイズで出現させて大に拡大
+            const clone = bigSvg.cloneNode(true);
+            clone.removeAttribute('id');
+            // クローンは10mL満タン状態（棚から来る）
+            const cloneWater = clone.querySelector('#sl-water') || clone.querySelector('[id]');
+            // 満タン表示に更新
+            const yFull = SA_Y[10];
+            clone.querySelector('path[id]')?.setAttribute('d',
+                `M 185,110 L 215,110 L 240,155 L 240,${yFull} L 160,${yFull} L 160,155 Z`);
+
+            clone.style.cssText = `
+                position:fixed; pointer-events:none; z-index:9999;
+                left:${bigRect.left}px; top:${bigRect.top}px;
+                width:${bigRect.width}px; height:${bigRect.height}px;
+                transform-origin: top left;
+                transform: translate(${startX}px, ${startY}px) scale(${startScale});
+                opacity: 1;
+                transition: none;
+            `;
+            document.body.appendChild(clone);
+
+            // 棚から小シリンジを一時的に非表示
+            lastItem.style.opacity = '0';
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    clone.style.transition = 'transform 0.55s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease';
+                    clone.style.transform  = 'translate(0,0) scale(1)';
+                    clone.style.opacity    = '1';
+                });
+            });
+
+            setTimeout(() => {
+                clone.remove();
+                lastItem.style.opacity = '';
+                // 大シリンジを10mL（棚から戻ってきた）で表示、左からフェードイン
+                updateLiveSyringe(10);
+                renderMasu();
+                renderInputUI();
+
+                bigSvg.style.transition = 'none';
+                bigSvg.style.transform  = 'translateX(-40px)';
+                bigSvg.style.opacity    = '0';
+                bigLbl.style.opacity    = '0';
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        bigSvg.style.transition = 'transform 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease';
+                        bigLbl.style.transition = 'opacity 0.4s ease';
+                        bigSvg.style.transform  = 'translateX(0)';
+                        bigSvg.style.opacity    = '1';
+                        bigLbl.style.opacity    = '1';
+                    });
+                });
+
+                setTimeout(() => {
+                    bigSvg.style.transition = '';
+                    bigSvg.style.transform  = '';
+                    bigLbl.style.transition = '';
+                    syringeAnimLocked = false;
+                    onDone();
+                }, 450);
+            }, 620);
+
+        } else {
+            // 棚が空なら単純にフェードインで戻す
+            setTimeout(() => {
+                bigSvg.style.transition = 'none';
+                bigSvg.style.transform  = '';
+                bigSvg.style.opacity    = '1';
+                bigLbl.style.opacity    = '1';
+                bigLbl.style.transition = '';
+                syringeAnimLocked = false;
+                onDone();
+            }, 400);
+        }
+    }
+
+    // mLモード: 桁0=千, 桁1=百, 桁2=十, 桁3=一
+    function changeML(digitIndex, delta) {
+
+        const powers = [1000, 100, 10, 1];
+        const step = delta * powers[digitIndex];
+        let newML = totalML + step;
+        if (newML < 0) newML = 0;
+
+        // シリンジモードは1mLずつ・200mL上限
+        if (syringeMode) {
+            if (digitIndex !== 3) return;
+            if (syringeAnimLocked) return;
+            if (newML > 200) newML = 200;
+            const prevML = totalML;
+            totalML = newML;
+
+            // 満タン（10mL 達成）
+            const becameFull = delta > 0 && totalML > 0 && totalML % 10 === 0;
+            // 空になった（前が1以上で今0）
+            const becameEmpty = delta < 0 && prevML % 10 === 1 && totalML % 10 === 0 && totalML < prevML;
+
+            if (becameFull) {
+                updateLiveSyringe(10);
+                renderInputUI();
+                setTimeout(() => {
+                    animFlyToShelf(() => {});
+                }, 80);
+            } else if (becameEmpty && Math.floor(totalML / 10) < Math.floor(prevML / 10)) {
+                // 満タン本数が減った（棚から1本戻ってくる）
+                animFlyFromShelf(() => {});
+            } else {
+                updateLiveSyringe();
+                renderInputUI();
+                renderMasu();
+            }
+            return;
+        }
+
+        totalML = newML;
+        renderInputUI();
+        renderMasu();
+    }
+
+    // ── 入力UI描画 ──────────────────────────────────
+    function renderInputUI() {
+        if (syringeMode) {
+            const ui = document.getElementById('input-ui-syringe');
+            // 合計mLを3桁で表示（百・十・一）、上限200
+            const h = Math.floor(totalML / 100);
+            const t = Math.floor((totalML % 100) / 10);
+            const o = totalML % 10;
+            // 百の位・十の位は直接操作できないので表示のみ、一の位だけ▲▼
+            ui.innerHTML =
+                `<div class="digit-cell">
+                    <div style="height:32px;"></div>
+                    <div class="digit-value">${h}</div>
+                    <div style="height:32px;"></div>
+                 </div>
+                 <div class="digit-cell">
+                    <div style="height:32px;"></div>
+                    <div class="digit-value">${t}</div>
+                    <div style="height:32px;"></div>
+                 </div>`
+                + digitCell(o, 'changeML(3, 1)', 'changeML(3, -1)')
+                + `<div class="digit-unit">mL</div>`;
+            return;
+        }
+        const ui = document.getElementById('input-ui');
+        if (isMlMode()) {
+            // 4桁 mL
+            const digits = mlDigits(totalML);
+            let html = '';
+            for (let i = 0; i < 4; i++) {
+                html += digitCell(digits[i],
+                    `changeML(${i}, 1)`, `changeML(${i}, -1)`);
+            }
+            html += `<div class="digit-unit">mL</div>`;
+            ui.innerHTML = html;
+        } else {
+            // L + dL
+            const L  = Math.floor(totalDL / 10);
+            const dL = totalDL % 10;
+            let html = '';
+            html += digitCell(L,  `changeLdL(0, 1)`, `changeLdL(0, -1)`);
+            html += `<div class="digit-sep">L</div>`;
+            html += digitCell(dL, `changeLdL(1, 1)`, `changeLdL(1, -1)`);
+            html += `<div class="digit-unit">dL</div>`;
+            ui.innerHTML = html;
+        }
+    }
+
+    // 長押しリピート管理
+    let _pressTimer = null;
+    let _repeatTimer = null;
+    let _touchActive = false; // タッチ操作中フラグ（mousedownの重複防止）
+
+    function startPress(callStr) {
+        // 即時1回実行
+        eval(callStr);
+        // 500ms後にリピート開始、以降80msごと
+        _pressTimer = setTimeout(() => {
+            _repeatTimer = setInterval(() => eval(callStr), 80);
+        }, 400);
+    }
+
+    function stopPress() {
+        clearTimeout(_pressTimer);
+        clearInterval(_repeatTimer);
+        _pressTimer = null;
+        _repeatTimer = null;
+    }
+
+    function onTouchStart(callStr) {
+        _touchActive = true;
+        startPress(callStr);
+    }
+
+    function onTouchEnd(e) {
+        stopPress();
+        // タッチ後に自動発火するclick/mousedownを防ぐ
+        if (e) e.preventDefault();
+        setTimeout(() => { _touchActive = false; }, 300);
+    }
+
+    function onMouseDown(callStr) {
+        if (_touchActive) return; // タッチ操作中はmousedownを無視
+        startPress(callStr);
+    }
+
+    function digitCell(value, upCall, downCall) {
+        // ontouchstart/onmousedown で長押し開始、up/leave/end で停止
+        const up   = upCall.replace(/'/g, '&apos;');
+        const down = downCall.replace(/'/g, '&apos;');
+        return `
+        <div class="digit-cell">
+            <button class="digit-btn up"
+                onmousedown="onMouseDown('${up}')"   onmouseup="stopPress()" onmouseleave="stopPress()"
+                ontouchstart="onTouchStart('${up}')" ontouchend="onTouchEnd(event)" ontouchcancel="onTouchEnd(event)">▲</button>
+            <div class="digit-value">${value}</div>
+            <button class="digit-btn down"
+                onmousedown="onMouseDown('${down}')"   onmouseup="stopPress()" onmouseleave="stopPress()"
+                ontouchstart="onTouchStart('${down}')" ontouchend="onTouchEnd(event)" ontouchcancel="onTouchEnd(event)">▼</button>
+        </div>`;
+    }
+
+    // totalML → [千,百,十,一] の配列
+    function mlDigits(ml) {
+        const thou = Math.floor(ml / 1000);
+        const rest = ml % 1000;
+        return [thou, Math.floor(rest / 100), Math.floor((rest % 100) / 10), rest % 10];
+    }
+
+    // ── SVG生成 ─────────────────────────────────────
+
+    // サイズ決定: count個のますを並べるときの wrapper幅(px)
+    function masuWidth(count) {
+        if (count <=  5) return 160;
+        if (count <= 10) return 120;
+        if (count <= 20) return  80;
+        if (count <= 50) return  50;
+        return 32;
+    }
+
+    function generateCylinderSVG(dL, labelText, width) {
+        // dL: 0〜10 (整数) → 通常  /  0.0〜10.0 (小数) → mLモード
+        masuIdCounter++;
+        const lid = `lt-${masuIdCounter}`;
+        const sid = `st-${masuIdCounter}`;
+        let liquid = '';
+        if (dL > 0) {
+            const y = 180 + (10 - dL) * 60;
+            liquid = `
+                <path d="M 50,${y} A 250,55 0 0,0 550,${y} L 550,800 A 250,55 0 0,1 50,800 Z" fill="#1ca7ff"/>
+                <ellipse cx="300" cy="${y}" rx="250" ry="55" fill="#1ca7ff"/>
+                <ellipse cx="300" cy="${y}" rx="250" ry="55" fill="none" stroke="#7cd2ff" stroke-width="6"/>
+                <path d="M 50,${y} A 250,55 0 0,0 550,${y}" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`;
+        }
+        return `
+            <div class="masu-wrapper" style="width:${width}px">
+                <svg viewBox="0 0 600 900" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <path id="${lid}" d="M 50,0 A 250,55 0 0,0 150,44"/>
+                        <path id="${sid}" d="M 50,0 A 250,55 0 0,0 100,33"/>
+                    </defs>
+                    <path d="M 50,100 L 50,800 A 250,55 0 0,0 550,800 L 550,100 A 250,55 0 0,0 50,100 Z" fill="#fff"/>
+                    ${liquid}
+                    <g fill="none" stroke="#000" stroke-width="12" stroke-linecap="round">
+                        <use href="#${lid}" transform="translate(0,180)"/>
+                        <use href="#${sid}" transform="translate(0,240)"/>
+                        <use href="#${sid}" transform="translate(0,300)"/>
+                        <use href="#${sid}" transform="translate(0,360)"/>
+                        <use href="#${sid}" transform="translate(0,420)"/>
+                        <use href="#${lid}" transform="translate(0,480)"/>
+                        <use href="#${sid}" transform="translate(0,540)"/>
+                        <use href="#${sid}" transform="translate(0,600)"/>
+                        <use href="#${sid}" transform="translate(0,660)"/>
+                        <use href="#${sid}" transform="translate(0,720)"/>
+                    </g>
+                    <path d="M 50,100 L 50,800 A 250,55 0 0,0 550,800 L 550,100" fill="none" stroke="#000" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                    <ellipse cx="300" cy="100" rx="250" ry="55" fill="none" stroke="#000" stroke-width="16"/>
+                </svg>
+                <div class="masu-label">${labelText}</div>
+            </div>`;
+    }
+
+    function generateCubeSVG(dL, labelText, width) {
+        const c = 400 - dL * 20;
+        const s = 350 - dL * 20;
+        const lp = `200 ${c}, 50 ${s}, 50 350, 200 400`;
+        const rp = `200 ${c}, 350 ${s}, 350 350, 200 400`;
+        const tp = `200 ${c}, 350 ${s}, 200 ${300 - dL * 20}, 50 ${s}`;
+        const liquid = dL > 0 ? `
+        <g opacity="0.6">
+            <polygon points="${lp}" fill="#81d4fa"/>
+            <polygon points="${rp}" fill="#4fc3f7"/>
+            <polygon points="${tp}" fill="#b3e5fc"/>
+        </g>` : '';
+        return `
+            <div class="masu-wrapper" style="width:${width}px">
+                <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                    ${liquid}
+                    <g stroke="#ccc" stroke-width="0.5">
+                        <line x1="200" y1="100" x2="350" y2="150"/><line x1="200" y1="130" x2="350" y2="180"/><line x1="200" y1="160" x2="350" y2="210"/><line x1="200" y1="190" x2="350" y2="240"/><line x1="200" y1="220" x2="350" y2="270"/><line x1="200" y1="250" x2="350" y2="300"/><line x1="230" y1="90" x2="230" y2="300"/><line x1="260" y1="80" x2="260" y2="300"/><line x1="290" y1="70" x2="290" y2="300"/><line x1="320" y1="60" x2="320" y2="300"/>
+                    </g>
+                    <path d="M50 150 L200 100 L350 150 L200 200 L50 150 L50 350 L200 400 L350 350 L350 150 L200 200 L200 400" fill="none" stroke="black" stroke-width="2"/>
+                    <g stroke="black" stroke-width="1.5">
+                        <line x1="50" y1="150" x2="200" y2="200"/><line x1="50" y1="170" x2="200" y2="220"/><line x1="50" y1="190" x2="200" y2="240"/><line x1="50" y1="210" x2="200" y2="260"/><line x1="50" y1="230" x2="200" y2="280"/><line x1="50" y1="250" x2="200" y2="300"/><line x1="50" y1="270" x2="200" y2="320"/><line x1="50" y1="290" x2="200" y2="340"/><line x1="50" y1="310" x2="200" y2="360"/><line x1="50" y1="330" x2="200" y2="380"/>
+                    </g>
+                    <g font-family="sans-serif" font-size="10" fill="black">
+                        <text x="100" y="365" transform="rotate(18,100,365)">1 dL</text><text x="100" y="345" transform="rotate(18,100,345)">2 dL</text><text x="100" y="325" transform="rotate(18,100,325)">3 dL</text><text x="100" y="305" transform="rotate(18,100,305)">4 dL</text><text x="100" y="285" transform="rotate(18,100,285)">5 dL</text><text x="100" y="265" transform="rotate(18,100,265)">6 dL</text><text x="100" y="245" transform="rotate(18,100,245)">7 dL</text><text x="100" y="225" transform="rotate(18,100,225)">8 dL</text><text x="100" y="205" transform="rotate(18,100,205)">9 dL</text><text x="100" y="185" transform="rotate(18,100,185)">10 dL</text>
+                    </g>
+                </svg>
+                <div class="masu-label">${labelText}</div>
+            </div>`;
+    }
+
+    // ── ます描画メイン ───────────────────────────────
+    function renderMasu() {
+        const area = syringeMode
+            ? document.getElementById('masu-area-syringe')
+            : document.getElementById('masu-area');
+        const ml = isMlMode();
+        const shape = currentShape;
+
+        // シリンジモード: ますは描かずシリンジ列だけ
+        if (syringeMode) {
+            renderSyringeDisplay(area);
+            return;
+        }
+
+        if (shape === 'cylinder' || shape === 'cube') {
+            // 1Lますを何個並べるか
+            const gen = shape === 'cylinder' ? generateCylinderSVG : generateCubeSVG;
+
+            let items = []; // { dL, label }
+            if (ml) {
+                // mLモード: 1mL単位で水位計算
+                // 1Lます = 1000mL → dL値 = ml/100 (0〜10)
+                const fullL  = Math.floor(totalML / 1000);
+                const remML  = totalML % 1000;
+                for (let i = 0; i < fullL; i++) items.push({ dL: 10, label: '1 L' });
+                if (remML > 0) items.push({ dL: remML / 100, label: `${remML} mL` });
+                if (items.length === 0) items.push({ dL: 0, label: '0 mL' });
+            } else {
+                const L  = Math.floor(totalDL / 10);
+                const dL = totalDL % 10;
+                for (let i = 0; i < L; i++) items.push({ dL: 10, label: '1 L (満水)' });
+                if (dL > 0) items.push({ dL, label: `${dL} dL` });
+                if (items.length === 0) items.push({ dL: 0, label: '0 L (空)' });
+            }
+
+            const w = masuWidth(items.length);
+            const cubeW = Math.round(w * 1.5); // 立方体は横広
+            const html = items.map(it =>
+                gen(it.dL, it.label, shape === 'cube' ? cubeW : w)
+            ).join('');
+            area.innerHTML = `<div class="masu-grid">${html}</div>`;
+
+        } else if (shape === 'dl' || shape === 'combo') {
+            // 1dLます幅 = 1Lます幅 / 2.154
+            // まず全体の個数を把握してサイズ決定
+
+            let totalDLCount, remML;
+            if (ml) {
+                totalDLCount = Math.floor(totalML / 100);
+                remML        = totalML % 100; // 端数mL (0〜99)
+            } else {
+                totalDLCount = totalDL;
+                remML        = 0;
+            }
+
+            if (shape === 'dl') {
+                // 1dLますのみ
+                const hasRem = ml && remML > 0;
+                const count  = totalDLCount + (hasRem ? 1 : 0) || 1;
+                const lW = masuWidth(count);
+                const dW = Math.round(lW / 2.154);
+
+                let html = '';
+                if (totalDLCount === 0 && !hasRem) {
+                    html = generateCylinderSVG(0, '0 mL', dW);
+                } else {
+                    for (let i = 0; i < totalDLCount; i++)
+                        html += generateCylinderSVG(10, '1 dL', dW);
+                    if (hasRem)
+                        html += generateCylinderSVG(remML / 100 * 10, `${remML} mL`, dW);
+                }
+                area.innerHTML = `<div class="masu-grid">${html}</div>`;
+
+            } else {
+                // 併存モード: 1Lます（円筒満水）+ 余り1dLます
+                let fullL, remDL, remMlInDl;
+                if (ml) {
+                    fullL      = Math.floor(totalML / 1000);
+                    const r    = totalML % 1000;
+                    remDL      = Math.floor(r / 100);
+                    remMlInDl  = r % 100;
+                } else {
+                    fullL     = Math.floor(totalDL / 10);
+                    remDL     = totalDL % 10;
+                    remMlInDl = 0;
+                }
+
+                const hasRemDl  = remDL > 0;
+                const hasRemMl  = ml && remMlInDl > 0;
+                const lCount    = Math.max(1, fullL);
+                const dlCount   = remDL + (hasRemMl ? 1 : 0);
+
+                const lW  = masuWidth(lCount);
+                const dlW = Math.round(masuWidth(Math.max(1, dlCount)) / 2.154);
+
+                // 1Lゾーン
+                let lHtml = '';
+                for (let i = 0; i < fullL; i++) lHtml += generateCylinderSVG(10, '1 L (満水)', lW);
+                if (fullL === 0) lHtml += generateCylinderSVG(0, '0 L (空)', lW);
+
+                // 1dLゾーン
+                let dlHtml = '';
+                for (let i = 0; i < remDL; i++) dlHtml += generateCylinderSVG(10, '1 dL', dlW);
+                if (hasRemMl) dlHtml += generateCylinderSVG(remMlInDl / 100 * 10, `${remMlInDl} mL`, dlW);
+
+                const dlSection = (hasRemDl || hasRemMl) ? `
+                    <div class="combo-section">
+                        <div class="combo-section-label">+ ${remDL} dL${hasRemMl ? ' ' + remMlInDl + ' mL' : ''}</div>
+                        <div class="combo-inner">${dlHtml}</div>
+                    </div>` : '';
+
+                area.innerHTML = `
+                    <div class="combo-grid">
+                        <div class="combo-section">
+                            <div class="combo-section-label">${fullL} L</div>
+                            <div class="combo-inner">${lHtml}</div>
+                        </div>
+                        ${dlSection}
+                    </div>`;
+            }
+        }
+
+    }
+
+    // ── シリンジ表示（シリンジモード専用） ───────────
+    function renderSyringeDisplay(area) {
+        const total      = totalML;
+        const fullCount  = Math.floor(total / 10); // 満タン本数（10mL = 1本）
+        const currentFill = total % 10;             // 進行中シリンジの現在mL（0〜9）
+
+        // シリンジSVG小アイコン（棚用）
+        // fillMl: 0〜10
+        function syringeSVG(fillMl, extraClass) {
+            const yMap = {0:170,1:220,2:270,3:320,4:370,5:420,6:470,7:520,8:570,9:620,10:670};
+            const targetY = yMap[Math.round(Math.min(10, Math.max(0, fillMl)))] ?? 170;
+            const waterPath = fillMl > 0
+                ? `<path d="M 185,110 L 215,110 L 240,155 L 240,${targetY} L 160,${targetY} L 160,155 Z" fill="#33b5e5" fill-opacity="0.65"/>
+                   <path d="M 160,${targetY} L 240,${targetY}" stroke="#7cd2ff" stroke-width="4" fill="none"/>`
+                : '';
+            const plOffset = targetY - 170;
+            const cls = extraClass ? ` class="${extraClass}"` : '';
+            return `<div${cls} style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                <svg viewBox="0 0 400 820" xmlns="http://www.w3.org/2000/svg" style="width:36px;height:auto;">
+                    ${waterPath}
+                    <path d="M 185,110 L 185,30 L 215,30 L 215,110 Z" stroke="#222" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 185,110 L 160,155 M 215,110 L 240,155" stroke="#222" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 160,155 L 160,720 M 240,155 L 240,720" stroke="#222" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="110" y="720" width="180" height="20" rx="8" stroke="#222" stroke-width="5" fill="none"/>
+                    <line x1="175" y1="170" x2="175" y2="670" stroke="#aaa" stroke-width="2"/>
+                    <line x1="175" y1="170" x2="205" y2="170" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="220" x2="205" y2="220" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="270" x2="205" y2="270" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="320" x2="205" y2="320" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="370" x2="205" y2="370" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="420" x2="205" y2="420" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="470" x2="205" y2="470" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="520" x2="205" y2="520" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="570" x2="205" y2="570" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="620" x2="205" y2="620" stroke="#222" stroke-width="4"/>
+                    <line x1="175" y1="670" x2="205" y2="670" stroke="#222" stroke-width="4"/>
+                    <g transform="translate(0,${plOffset})">
+                        <polygon points="186,110 214,110 239,155 239,170 161,170 161,155" fill="#333"/>
+                        <path d="M 185,170 L 185,755 M 215,170 L 215,755 M 200,170 L 200,755" stroke="#333" stroke-width="5" fill="none" stroke-linecap="round"/>
+                        <rect x="130" y="755" width="140" height="15" rx="2" stroke="#333" stroke-width="5" fill="none"/>
+                    </g>
+                </svg>
+                <div style="font-size:10px;font-weight:700;color:#1ca7ff;">${fillMl > 0 ? fillMl : ''}</div>
+            </div>`;
+        }
+
+        // 棚エリア（満タンシリンジを並べる）
+        let shelfHtml = '';
+        // 最後に追加されたものにアニメーションクラスを付ける
+        for (let i = 0; i < Math.min(fullCount, 100); i++) {
+            shelfHtml += syringeSVG(10, 'shelf-syringe');
+        }
+
+        let html = `<div style="display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin-top:12px;width:100%;">`;
+
+        // 棚エリア（常に表示）
+        html += `<div>
+            <div class="syringe-shelf-label">💉 満タン ${fullCount} 本（各10 mL）</div>
+            <div class="syringe-shelf" id="syringe-shelf-el">${shelfHtml || '<span style="color:#b0bec5;font-size:13px;">まだありません</span>'}</div>
+        </div>`;
+
+        // 合計ラベル
+        html += `<div style="font-size:15px;font-weight:800;color:#64748b;align-self:flex-end;">合計 ${total} mL</div>`;
+        html += '</div>';
+        area.innerHTML = html;
+    }
+
+    // ── シリンジ/通常モードのDOM切り替え ─────────────
+    function applyModeLayout() {
+        const sm = document.getElementById('syringe-mode-wrap');
+        const nm = document.getElementById('normal-mode-wrap');
+        if (syringeMode) {
+            sm.style.display = 'block';
+            nm.style.display = 'none';
+        } else {
+            sm.style.display = 'none';
+            nm.style.display = 'block';
+        }
+    }
+
+    // ── 形状切替 ────────────────────────────────────
+    function setShape(shape) {
+        if (shape === 'syringe') {
+            document.getElementById('ml-mode').checked = true;
+            // 200mL以下ならリセットせず引き継ぐ、超えていたら0にリセット
+            if (totalML > 200) totalML = 0;
+            syringeMode = true;
+        } else {
+            syringeMode = false;
+        }
+        currentShape = shape;
+        ['cylinder','cube','dl','combo','syringe'].forEach(id => {
+            document.getElementById('btn-' + id).classList.toggle('active', shape === id);
+        });
+        applyModeLayout();
+        updateLiveSyringe();
+        renderInputUI();
+        renderMasu();
+    }
+
+    // ── mLモード切替時に値を同期 ────────────────────
+    function updateUI() {
+        const ml = isMlMode();
+        if (ml) {
+            totalML = totalDL * 100;
+        } else {
+            // mLモードOFF → シリンジモードも解除して通常モードに
+            if (syringeMode) {
+                syringeMode = false;
+                currentShape = 'cylinder';
+            }
+            totalDL = Math.round(totalML / 100);
+        }
+        // ボタンのactive更新
+        ['cylinder','cube','dl','combo','syringe'].forEach(id => {
+            document.getElementById('btn-' + id).classList.toggle('active', currentShape === id);
+        });
+        applyModeLayout();
+        updateLiveSyringe();
+        renderInputUI();
+        renderMasu();
+    }
+
+    // 初期描画
+    applyModeLayout();
+    updateLiveSyringe();
+    renderInputUI();
+    renderMasu();
+</script>
+</body>
+</html>
