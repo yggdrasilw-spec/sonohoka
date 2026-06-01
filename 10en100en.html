@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>10をもとにして数の見方を広げよう</title>
+<style>
+  :root{
+    --panel:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --accent:#16a34a;
+    --accent2:#2563eb;
+    --frame:#2f8cff;
+    --line:#e5e7eb;
+    --shadow: 0 12px 28px rgba(15,23,42,.10);
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:linear-gradient(180deg,#f8fbff 0%, #f3f6fb 100%);
+    color:var(--text);
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  }
+
+  .app{
+    max-width:1100px;
+    margin:0 auto;
+    padding:16px 14px 28px;
+  }
+
+  .header{
+    display:flex;
+    gap:12px;
+    align-items:stretch;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+
+  .titlebox{
+    flex:1 1 560px;
+    background:var(--panel);
+    border:1px solid #edf2f7;
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:14px 16px;
+  }
+
+  .title{
+    margin:0 0 4px;
+    font-size:18px;
+    font-weight:900;
+    line-height:1.35;
+  }
+
+  .subtitle{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+  }
+
+  .switcher{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    background:var(--panel);
+    border:1px solid #edf2f7;
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:12px;
+  }
+
+  .switcher button,
+  .controls button,
+  .digit-btn{
+    border:none;
+    border-radius:999px;
+    padding:12px 16px;
+    font-size:15px;
+    font-weight:800;
+    cursor:pointer;
+    transition: transform .15s ease, opacity .15s ease, background .15s ease;
+    color:#fff;
+    background:var(--accent);
+  }
+
+  .switcher button.secondary,
+  .controls button.secondary,
+  .digit-btn.secondary{
+    background:#e2e8f0;
+    color:#111827;
+  }
+
+  .switcher button.active{
+    background:var(--accent2);
+    box-shadow:0 8px 18px rgba(37,99,235,.18);
+  }
+
+  .switcher button:hover,
+  .controls button:hover,
+  .digit-btn:hover{
+    transform:translateY(-1px);
+  }
+
+  .scene{
+    display:none;
+    margin-top:14px;
+  }
+  .scene.active{ display:block; }
+
+  .scene-card{
+    background:var(--panel);
+    border:1px solid #edf2f7;
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    padding:14px;
+  }
+
+  .scene-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+
+  .scene-title{
+    margin:0;
+    font-size:17px;
+    font-weight:900;
+    line-height:1.4;
+  }
+
+  .scene-desc{
+    margin:4px 0 0;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+  }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .digit-panel{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .digit-control{
+    width:74px;
+    background:#f8fbff;
+    border:1px solid #dbe4ee;
+    border-radius:16px;
+    padding:8px 8px 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    box-shadow:0 6px 16px rgba(15,23,42,.05);
+  }
+
+  .digit-label{
+    font-size:12px;
+    color:#475569;
+    font-weight:700;
+    line-height:1.1;
+  }
+
+  .digit-btn{
+    width:40px;
+    height:32px;
+    padding:0;
+    display:grid;
+    place-items:center;
+    font-size:16px;
+    line-height:1;
+  }
+
+  .digit-value{
+    width:100%;
+    height:42px;
+    display:grid;
+    place-items:center;
+    border-radius:12px;
+    background:#fff;
+    border:1px solid #d8e1ec;
+    font-size:22px;
+    font-weight:900;
+    color:#0f172a;
+  }
+
+  .readout{
+    font-size:14px;
+    color:#334155;
+    font-weight:700;
+    margin-left:4px;
+    white-space:nowrap;
+  }
+
+  .stage{
+    position:relative;
+    width:100%;
+    min-height:560px;
+    border-radius:18px;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 18% 16%, rgba(37,99,235,.06), transparent 25%),
+      radial-gradient(circle at 82% 18%, rgba(22,163,74,.06), transparent 26%),
+      linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border:1px solid var(--line);
+    user-select:none;
+    touch-action:manipulation;
+  }
+
+  .stage::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:
+      linear-gradient(to right, rgba(15,23,42,.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15,23,42,.03) 1px, transparent 1px);
+    background-size:40px 40px;
+    opacity:.22;
+    pointer-events:none;
+  }
+
+  .badge{
+    position:absolute;
+    left:16px;
+    top:14px;
+    z-index:8;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:rgba(255,255,255,.90);
+    border:1px solid #e2e8f0;
+    border-radius:999px;
+    padding:8px 12px;
+    box-shadow:0 6px 18px rgba(15,23,42,.06);
+    backdrop-filter: blur(6px);
+  }
+  .badge-num{
+    width:28px;
+    height:28px;
+    border-radius:999px;
+    background:#0f766e;
+    color:#fff;
+    display:grid;
+    place-items:center;
+    font-size:14px;
+    font-weight:900;
+    flex:0 0 auto;
+  }
+  .badge-text{
+    font-size:14px;
+    font-weight:800;
+    color:#0f172a;
+  }
+
+  .hint{
+    position:absolute;
+    right:16px;
+    top:14px;
+    z-index:8;
+    max-width:430px;
+    background:rgba(255,255,255,.92);
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+    padding:10px 12px;
+    box-shadow:0 6px 18px rgba(15,23,42,.06);
+    backdrop-filter: blur(6px);
+    font-size:13px;
+    line-height:1.55;
+    color:#334155;
+  }
+
+  .coin-wrapper{
+    position:absolute;
+    width:48px;
+    height:48px;
+    left:0;
+    top:0;
+    transform:translate(-50%,-50%) scale(1) rotate(0deg);
+    transition:
+      left .8s cubic-bezier(.2,.8,.2,1),
+      top .8s cubic-bezier(.2,.8,.2,1),
+      opacity .35s ease,
+      transform .8s cubic-bezier(.2,.8,.2,1);
+    will-change:left, top, opacity, transform;
+    filter: drop-shadow(0 4px 6px rgba(15,23,42,.16));
+    z-index:2;
+  }
+
+  .coin-svg{
+    width:100%;
+    height:100%;
+    display:block;
+    overflow:visible;
+  }
+
+  .frame{
+    position:absolute;
+    z-index:5;
+    border:5px solid var(--frame);
+    background:rgba(47,140,255,.08);
+    border-radius:12px;
+    opacity:0;
+    transition: opacity .25s ease, left .8s ease, top .8s ease, width .8s ease, height .8s ease;
+    pointer-events:none;
+  }
+  .frame.show{ opacity:1; }
+
+  .eq{
+    position:absolute;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    z-index:9;
+    min-width:300px;
+    max-width:calc(100% - 24px);
+    background:rgba(255,255,255,.95);
+    border:1px solid #dbe4ee;
+    border-radius:18px;
+    box-shadow:0 8px 20px rgba(15,23,42,.08);
+    padding:12px 16px;
+    text-align:center;
+    opacity:0;
+    transition:opacity .3s ease;
+  }
+  .eq.show{ opacity:1; }
+  .eq-main{
+    font-size:20px;
+    font-weight:900;
+    margin:0 0 4px;
+  }
+  .eq-sub{
+    margin:0;
+    font-size:14px;
+    color:#475569;
+    line-height:1.55;
+  }
+
+  .result{
+    position:absolute;
+    right:16px;
+    top:96px;
+    z-index:10;
+    background:#eff6ff;
+    border:2px solid #93c5fd;
+    color:#1d4ed8;
+    border-radius:16px;
+    padding:10px 14px;
+    font-size:18px;
+    font-weight:900;
+    box-shadow:0 10px 22px rgba(37,99,235,.10);
+    opacity:0;
+    transition:opacity .3s ease;
+    max-width:min(320px, calc(100% - 24px));
+    text-align:left;
+  }
+  .result.show{ opacity:1; }
+
+  .tag{
+    position:absolute;
+    z-index:11;
+    background:rgba(255,255,255,.96);
+    border:1px solid #dbe4ee;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:12px;
+    color:#334155;
+    box-shadow:0 6px 14px rgba(15,23,42,.08);
+    opacity:0;
+    transition: opacity .25s ease, transform .25s ease;
+    transform:translateY(4px);
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  .tag.show{
+    opacity:1;
+    transform:translateY(0);
+  }
+
+  .small-note{
+    position:absolute;
+    z-index:11;
+    background:rgba(255,255,255,.92);
+    border:1px solid #dbe4ee;
+    border-radius:12px;
+    padding:6px 10px;
+    font-size:12px;
+    color:#475569;
+    box-shadow:0 6px 14px rgba(15,23,42,.06);
+    opacity:0;
+    transition: opacity .25s ease, transform .25s ease;
+    transform:translateY(4px);
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  .small-note.show{
+    opacity:1;
+    transform:translateY(0);
+  }
+
+  @media (max-width: 760px){
+    .hint{
+      position:static;
+      max-width:none;
+      margin-top:10px;
+    }
+    .badge{
+      position:static;
+      margin-bottom:10px;
+      width:fit-content;
+    }
+    .result{
+      top:96px;
+      right:12px;
+      max-width:calc(100% - 24px);
+    }
+    .stage{ min-height:620px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="titlebox">
+      <p class="title">10をもとにして、数の見方を広げよう</p>
+      <p class="subtitle">問題1は10〜99枚の10円玉、問題2は100〜990円を上下ボタンで変えられます。</p>
+    </div>
+    <div class="switcher">
+      <button id="tab1" class="active">問題1</button>
+      <button id="tab2" class="secondary">問題2</button>
+    </div>
+  </div>
+
+  <section id="scene1" class="scene active">
+    <div class="scene-card">
+      <div class="scene-head">
+        <div>
+          <p class="scene-title">問題1：10円玉を10〜99枚まで変える</p>
+          <p class="scene-desc">第2段階から青枠をつけ、10枚ごとに100円玉1個へ変わります。枚数が多いときは自動で縮小します。</p>
+        </div>
+        <div class="controls">
+          <div class="digit-panel">
+            <div class="digit-control">
+              <div class="digit-label">十の位</div>
+              <button class="digit-btn" id="p1TensUp">▲</button>
+              <div class="digit-value" id="p1TensVal">1</div>
+              <button class="digit-btn secondary" id="p1TensDown">▼</button>
+            </div>
+            <div class="digit-control">
+              <div class="digit-label">一の位</div>
+              <button class="digit-btn" id="p1OnesUp">▲</button>
+              <div class="digit-value" id="p1OnesVal">0</div>
+              <button class="digit-btn secondary" id="p1OnesDown">▼</button>
+            </div>
+            <div class="readout" id="p1Readout">10円玉 10枚</div>
+          </div>
+          <button id="p1prev" class="secondary">もどる</button>
+          <button id="p1next">つぎへ</button>
+        </div>
+      </div>
+
+      <div id="stage1" class="stage">
+        <div class="badge"><div class="badge-num">1</div><div class="badge-text">10円玉 → 100円玉</div></div>
+        <div id="hint1" class="hint">まずは10円玉のならびを見ます。</div>
+        <div id="result1" class="result">10が10こ → 100円玉1個</div>
+        <div id="eq1" class="eq">
+          <p id="eq1main" class="eq-main">10が10こ → 100</p>
+          <p id="eq1sub" class="eq-sub">残りがあれば、そのまま10円玉で見ます</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene2" class="scene">
+    <div class="scene-card">
+      <div class="scene-head">
+        <div>
+          <p class="scene-title">問題2：100〜990円まで変える</p>
+          <p class="scene-desc">100円玉は縦にそろい、その場で10円玉10枚に変わります。最後の文字は右にずらして表示します。</p>
+        </div>
+        <div class="controls">
+          <div class="digit-panel">
+            <div class="digit-control">
+              <div class="digit-label">百の位</div>
+              <button class="digit-btn" id="p2HundredsUp">▲</button>
+              <div class="digit-value" id="p2HundredsVal">2</div>
+              <button class="digit-btn secondary" id="p2HundredsDown">▼</button>
+            </div>
+            <div class="digit-control">
+              <div class="digit-label">十の位</div>
+              <button class="digit-btn" id="p2TensUp">▲</button>
+              <div class="digit-value" id="p2TensVal">3</div>
+              <button class="digit-btn secondary" id="p2TensDown">▼</button>
+            </div>
+            <div class="readout" id="p2Readout">230円</div>
+          </div>
+          <button id="p2prev" class="secondary">もどる</button>
+          <button id="p2next">つぎへ</button>
+        </div>
+      </div>
+
+      <div id="stage2" class="stage">
+        <div class="badge"><div class="badge-num">2</div><div class="badge-text">100円玉 → 10円玉10枚</div></div>
+        <div id="hint2" class="hint">100円玉2枚と10円玉3枚を見ます。</div>
+
+        <div id="result2" class="result">10が23こ</div>
+        <div id="eq2" class="eq">
+          <p id="eq2main" class="eq-main">100円玉2枚 → 10円玉20こ</p>
+          <p id="eq2sub" class="eq-sub">10円玉3枚とあわせて 10が23こ</p>
+        </div>
+
+        <div id="tag200" class="tag">200円</div>
+        <div id="tag30" class="tag">30円</div>
+        <div id="note2" class="small-note">100円玉1枚 = 10円玉10こ</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const SVG_NS = "http://www.w3.org/2000/svg";
+let uid = 0;
+const nextId = (prefix) => `${prefix}-${++uid}`;
+
+function el(name, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+
+function clamp(n, min, max){
+  return Math.max(min, Math.min(max, n));
+}
+
+function createCoin(type, size = 48) {
+  const svg = el("svg", {
+    viewBox: "0 0 100 100",
+    width: size,
+    height: size,
+    class: `coin-svg coin-${type}`,
+    role: "img",
+    "aria-label": type === "10" ? "10円玉" : "100円玉"
+  });
+
+  const defs = el("defs");
+
+  if (type === "10") {
+    const g = nextId("grad10");
+    const s = nextId("shadow10");
+    const grad = el("radialGradient", { id: g, cx: "30%", cy: "28%", r: "72%" });
+    grad.appendChild(el("stop", { offset: "0%", "stop-color": "#f4bc8d" }));
+    grad.appendChild(el("stop", { offset: "40%", "stop-color": "#cf7a41" }));
+    grad.appendChild(el("stop", { offset: "100%", "stop-color": "#8c481f" }));
+    defs.appendChild(grad);
+
+    const filter = el("filter", { id: s, x: "-20%", y: "-20%", width: "140%", height: "140%" });
+    filter.appendChild(el("feDropShadow", { dx: "0", dy: "2", stdDeviation: "2", "flood-color": "#4b210c", "flood-opacity": ".18" }));
+    defs.appendChild(filter);
+
+    svg.appendChild(defs);
+    svg.appendChild(el("circle", { cx: "50", cy: "50", r: "46", fill: `url(#${g})`, filter: `url(#${s})` }));
+    svg.appendChild(el("circle", { cx: "50", cy: "50", r: "46", fill: "none", stroke: "#6f3616", "stroke-width": "2.3" }));
+    svg.appendChild(el("circle", { cx: "50", cy: "50", r: "39", fill: "none", stroke: "rgba(255,255,255,.20)", "stroke-width": "2.2" }));
+    svg.appendChild(el("path", { d: "M28 36 C36 28, 64 28, 72 36", fill: "none", stroke: "rgba(255,255,255,.22)", "stroke-width": "2.2", "stroke-linecap": "round" }));
+    svg.appendChild(el("path", { d: "M28 64 C36 72, 64 72, 72 64", fill: "none", stroke: "rgba(0,0,0,.12)", "stroke-width": "2.2", "stroke-linecap": "round" }));
+    svg.appendChild(el("text", {
+      x: "50", y: "58",
+      "text-anchor": "middle",
+      "font-size": "25",
+      "font-weight": "900",
+      fill: "#5b2b10",
+      "font-family": "system-ui, sans-serif"
+    })).textContent = "10";
+  } else {
+    const g = nextId("grad100");
+    const s = nextId("shadow100");
+    const grad = el("radialGradient", { id: g, cx: "28%", cy: "26%", r: "74%" });
+    grad.appendChild(el("stop", { offset: "0%", "stop-color": "#ffffff" }));
+    grad.appendChild(el("stop", { offset: "40%", "stop-color": "#e6edf5" }));
+    grad.appendChild(el("stop", { offset: "100%", "stop-color": "#9ea7b4" }));
+    defs.appendChild(grad);
+
+    const filter = el("filter", { id: s, x: "-20%", y: "-20%", width: "140%", height: "140%" });
+    filter.appendChild(el("feDropShadow", { dx: "0", dy: "2", stdDeviation: "2", "flood-color": "#475569", "flood-opacity": ".18" }));
+    defs.appendChild(filter);
+
+    svg.appendChild(defs);
+    svg.appendChild(el("circle", { cx: "50", cy: "50", r: "46", fill: `url(#${g})`, filter: `url(#${s})` }));
+    svg.appendChild(el("circle", { cx: "50", cy: "50", r: "46", fill: "none", stroke: "#7c8794", "stroke-width": "2.2" }));
+    svg.appendChild(el("circle", { cx: "50", cy: "50", r: "39", fill: "none", stroke: "rgba(255,255,255,.35)", "stroke-width": "2.2" }));
+    svg.appendChild(el("path", { d: "M29 37 C38 30, 62 30, 71 37", fill: "none", stroke: "rgba(255,255,255,.35)", "stroke-width": "2.1", "stroke-linecap": "round" }));
+    svg.appendChild(el("text", {
+      x: "50", y: "57.5",
+      "text-anchor": "middle",
+      "font-size": "20",
+      "font-weight": "900",
+      fill: "#5f6670",
+      "font-family": "system-ui, sans-serif"
+    })).textContent = "100";
+  }
+
+  return svg;
+}
+
+function createCoinWrapper(type, size) {
+  const wrap = document.createElement("div");
+  wrap.className = `coin-wrapper coin-${type}`;
+  wrap.style.width = `${size}px`;
+  wrap.style.height = `${size}px`;
+  wrap.appendChild(createCoin(type, size));
+  return wrap;
+}
+
+function setPos(node, x, y, scale = 1, rotate = 0, opacity = 1, z = 1) {
+  node.style.left = `${x}px`;
+  node.style.top = `${y}px`;
+  node.style.transform = `translate(-50%,-50%) scale(${scale}) rotate(${rotate}deg)`;
+  node.style.opacity = opacity;
+  node.style.zIndex = z;
+}
+
+function showFrame(frame, x, y, w, h) {
+  frame.style.left = `${x}px`;
+  frame.style.top = `${y}px`;
+  frame.style.width = `${w}px`;
+  frame.style.height = `${h}px`;
+  frame.classList.add("show");
+}
+
+function showTag(tag, x, y) {
+  tag.style.left = `${x}px`;
+  tag.style.top = `${y}px`;
+  tag.classList.add("show");
+}
+
+function clearDynamic(stage){
+  stage.querySelectorAll(".frame").forEach(f => f.remove());
+  stage.querySelectorAll(".coin-wrapper").forEach(c => c.remove());
+  stage.querySelectorAll(".dynamic-temp").forEach(n => n.remove());
+}
+
+function makeP1Layout(count, stageW, stageH) {
+  const blockCount = Math.ceil(count / 10);
+  const cols = 2;
+  const rows = Math.max(1, Math.ceil(blockCount / cols));
+  const baseCoin = 46;
+  const baseGapX = 8;
+  const baseGapY = 14;
+  const macroGapX = 26;
+  const macroGapY = 22;
+  const reserveRight = 280;
+  const reserveTop = 140;
+  const reserveBottom = 120;
+
+  const blockWBase = 10 * baseCoin + 9 * baseGapX;
+  const blockHBase = baseCoin;
+  const totalWBase = cols * blockWBase + (cols - 1) * macroGapX;
+  const totalHBase = rows * blockHBase + (rows - 1) * macroGapY;
+
+  const availW = Math.max(140, stageW - reserveRight - 40);
+  const availH = Math.max(140, stageH - reserveTop - reserveBottom);
+  const scale = Math.min(1, availW / totalWBase, availH / totalHBase);
+
+  const coin = baseCoin * scale;
+  const gapX = baseGapX * scale;
+  const gapY = baseGapY * scale;
+  const macroGX = macroGapX * scale;
+  const macroGY = macroGapY * scale;
+
+  const blockW = 10 * coin + 9 * gapX;
+  const blockH = coin;
+  const totalW = cols * blockW + (cols - 1) * macroGX;
+  const totalH = rows * blockH + (rows - 1) * macroGY;
+
+  const startX = Math.max(24, Math.min(stageW - reserveRight - totalW - 24, (stageW - totalW) / 2));
+  const startY = reserveTop + Math.max(0, (availH - totalH) / 2);
+
+  const blocks = [];
+  const positions = [];
+
+  for (let i = 0; i < blockCount; i++) {
+    const blockRow = Math.floor(i / cols);
+    const blockCol = i % cols;
+    const centerX = startX + blockCol * (blockW + macroGX) + blockW / 2;
+    const centerY = startY + blockRow * (blockH + macroGY) + blockH / 2;
+    const rowCount = Math.min(10, count - i * 10);
+    blocks.push({ index: i, rowCount, centerX, centerY, blockW, blockH, coin, gapX });
+
+    for (let c = 0; c < rowCount; c++) {
+      positions.push({
+        x: centerX - blockW / 2 + c * (coin + gapX) + coin / 2,
+        y: centerY,
+        blockIndex: i,
+        colIndex: c
+      });
+    }
+  }
+
+  return { scale, coin, gapX, gapY, macroGX, macroGY, blockW, blockH, blocks, positions };
+}
+
+function makeP2Layout(h, t, stageW, stageH) {
+  const baseCoin100 = 50;
+  const baseCoin10 = 46;
+  const baseGapX = 8;
+  const baseGapY = 14;
+  const macroGapX = 26;
+  const macroGapY = 22;
+  const reserveRight = 280;
+  const reserveTop = 132;
+  const reserveBottom = 110;
+
+  const blockCount = Math.max(1, h);
+  const cols = 2;
+  const rows = Math.max(1, Math.ceil(blockCount / cols));
+
+  // 100円玉1枚の見た目は小さく、最終的に入る10円玉10枚の箱は大きく取る
+  const blockWBase = 5 * baseCoin10 + 4 * baseGapX;
+  const blockHBase = 2 * baseCoin10 + baseGapY;
+  const totalWBase = cols * blockWBase + (cols - 1) * macroGapX;
+  const totalHBase = rows * blockHBase + (rows - 1) * macroGapY;
+
+  const availW = Math.max(140, stageW - reserveRight - 40);
+  const availH = Math.max(140, stageH - reserveTop - reserveBottom);
+  const scale = Math.min(1, availW / totalWBase, availH / totalHBase);
+
+  const coin10 = baseCoin10 * scale;
+  const coin100 = baseCoin100 * scale;
+  const gapX = baseGapX * scale;
+  const gapY = baseGapY * scale;
+  const macroGX = macroGapX * scale;
+  const macroGY = macroGapY * scale;
+
+  const blockW = 5 * coin10 + 4 * gapX;
+  const blockH = 2 * coin10 + gapY;
+  const totalW = cols * blockW + (cols - 1) * macroGX;
+  const totalH = rows * blockH + (rows - 1) * macroGY;
+
+  const startX = Math.max(24, Math.min(stageW - reserveRight - totalW - 24, (stageW - totalW) / 2));
+  const startY = reserveTop + Math.max(0, (availH - totalH) / 2);
+
+  const hundredBlocks = [];
+  const positions = [];
+
+  for (let i = 0; i < h; i++) {
+    const blockRow = Math.floor(i / cols);
+    const blockCol = i % cols;
+    const centerX = startX + blockCol * (blockW + macroGX) + blockW / 2;
+    const centerY = startY + blockRow * (blockH + macroGY) + blockH / 2;
+    hundredBlocks.push({ index: i, centerX, centerY, blockW, blockH });
+
+    // 変化後の10円玉10枚の位置。5列×2段
+    for (let c = 0; c < 10; c++) {
+      positions.push({
+        x: centerX - blockW / 2 + (c % 5) * (coin10 + gapX) + coin10 / 2,
+        y: centerY - blockH / 2 + Math.floor(c / 5) * (coin10 + gapY) + coin10 / 2,
+        blockIndex: i,
+        colIndex: c
+      });
+    }
+  }
+
+  const tensBlockW = 5 * coin10 + 4 * gapX;
+  const tensBlockH = 2 * coin10 + gapY;
+  const tensStartX = Math.min(stageW - reserveRight + 34, stageW - tensBlockW - 26);
+  const tensStartY = reserveTop + Math.max(0, (availH - tensBlockH) / 2);
+
+  const tensGrid = [];
+  for (let i = 0; i < t; i++) {
+    const col = Math.floor(i / 5);
+    const row = i % 5;
+    tensGrid.push({
+      x: tensStartX + col * (coin10 + gapX) + coin10 / 2,
+      y: tensStartY + row * (coin10 + gapY) + coin10 / 2
+    });
+  }
+
+  return {
+    scale,
+    coin10,
+    coin100,
+    gapX,
+    gapY,
+    macroGX,
+    macroGY,
+    blockW,
+    blockH,
+    hundredBlocks,
+    positions,
+    tensStartX,
+    tensStartY,
+    tensGrid
+  };
+}
+
+const p1 = {
+  step: 0,
+  tens: 1,
+  ones: 0,
+  stage: document.getElementById("stage1"),
+  hint: document.getElementById("hint1"),
+  eq: document.getElementById("eq1"),
+  eqMain: document.getElementById("eq1main"),
+  eqSub: document.getElementById("eq1sub"),
+  result: document.getElementById("result1"),
+  readout: document.getElementById("p1Readout"),
+  tensVal: document.getElementById("p1TensVal"),
+  onesVal: document.getElementById("p1OnesVal"),
+  coins10: [],
+  coins100: []
+};
+
+const p2 = {
+  step: 0,
+  hundreds: 2,
+  tens: 3,
+  stage: document.getElementById("stage2"),
+  hint: document.getElementById("hint2"),
+  eq: document.getElementById("eq2"),
+  eqMain: document.getElementById("eq2main"),
+  eqSub: document.getElementById("eq2sub"),
+  result: document.getElementById("result2"),
+  readout: document.getElementById("p2Readout"),
+  hundredsVal: document.getElementById("p2HundredsVal"),
+  tensVal: document.getElementById("p2TensVal"),
+  tag200: document.getElementById("tag200"),
+  tag30: document.getElementById("tag30"),
+  note: document.getElementById("note2"),
+  hundredsCoins: [],
+  tensCoins: []
+};
+
+function p1Count(){ return p1.tens * 10 + p1.ones; }
+function p2Yen(){ return p2.hundreds * 100 + p2.tens * 10; }
+
+function rebuildP1IfNeeded() {
+  const count = p1Count();
+  if (p1.coins10.length === count) return;
+
+  clearDynamic(p1.stage);
+  p1.coins10 = [];
+  p1.coins100 = [];
+
+  for (let i = 0; i < count; i++) {
+    const c = createCoinWrapper("10", 46);
+    p1.stage.appendChild(c);
+    p1.coins10.push(c);
+  }
+  const hundredCount = Math.floor(count / 10);
+  for (let i = 0; i < hundredCount; i++) {
+    const h = createCoinWrapper("100", 50);
+    h.style.display = "none";
+    p1.stage.appendChild(h);
+    p1.coins100.push(h);
+  }
+}
+
+function rebuildP2IfNeeded() {
+  const countH = p2.hundreds;
+  const totalTens = countH * 10 + p2.tens;
+  if (p2.hundredsCoins.length === countH && p2.tensCoins.length === totalTens) return;
+
+  clearDynamic(p2.stage);
+  p2.hundredsCoins = [];
+  p2.tensCoins = [];
+
+  for (let i = 0; i < countH; i++) {
+    const h = createCoinWrapper("100", 50);
+    p2.stage.appendChild(h);
+    p2.hundredsCoins.push(h);
+  }
+
+  for (let i = 0; i < totalTens; i++) {
+    const t = createCoinWrapper("10", 46);
+    t.style.display = "none";
+    p2.stage.appendChild(t);
+    p2.tensCoins.push(t);
+  }
+}
+
+function renderP1() {
+  rebuildP1IfNeeded();
+  const count = p1Count();
+  const groups = Math.floor(count / 10);
+  const rem = count % 10;
+  const stageW = p1.stage.clientWidth || 1000;
+  const stageH = p1.stage.clientHeight || 560;
+  const layout = makeP1Layout(count, stageW, stageH);
+
+  [...p1.stage.querySelectorAll(".frame")].forEach(f => f.remove());
+  p1.result.classList.remove("show");
+  p1.eq.classList.remove("show");
+
+  p1.readout.textContent = `10円玉 ${count}枚`;
+  p1.hint.innerHTML = "まずは10円玉のならびを見ます。";
+
+  p1.coins10.forEach((node, i) => {
+    const pos = layout.positions[i];
+    setPos(node, pos.x, pos.y, 1, 0, 1, 3);
+    node.style.display = "block";
+  });
+
+  for (let r = 0; r < groups; r++) {
+    const block = layout.blocks[r];
+    const hNode = p1.coins100[r];
+    if (!hNode) continue;
+    if (p1.step >= 2) {
+      setPos(hNode, block.centerX, block.centerY, 1.02, 0, 1, 8);
+      hNode.style.display = "block";
+    } else {
+      setPos(hNode, block.centerX, block.centerY, 0.2, 0, 0, 2);
+      hNode.style.display = "block";
+    }
+  }
+
+  if (p1.step >= 1) {
+    layout.blocks.slice(0, groups).forEach((block) => {
+      const frame = document.createElement("div");
+      frame.className = "frame";
+      p1.stage.appendChild(frame);
+      const boxW = block.blockW + 16;
+      const boxH = block.blockH + 16;
+      showFrame(frame, block.centerX - boxW/2, block.centerY - boxH/2, boxW, boxH);
+    });
+    p1.hint.innerHTML = "10枚ごとのまとまりを、青枠で見ます。";
+  }
+
+  if (p1.step >= 2) {
+    p1.coins10.forEach((node, i) => {
+      const blockIndex = Math.floor(i / 10);
+      node.style.opacity = blockIndex < groups ? 0 : 1;
+    });
+    p1.hint.innerHTML = `10が${count}こです。10枚ごとに100円玉へ変わります。`;
+    p1.eq.classList.add("show");
+    p1.eqMain.textContent = `10が${count}こ → ${groups}個の100円玉`;
+    p1.eqSub.textContent = rem > 0 ? `残りは10円玉${rem}枚です` : "残りはありません";
+    p1.result.classList.add("show");
+    p1.result.textContent = `10が${count}こ → ${groups}個の100円玉と${rem}枚の10円玉`;
+  }
+}
+
+function renderP2() {
+  rebuildP2IfNeeded();
+  const h = p2.hundreds;
+  const t = p2.tens;
+  const yen = p2Yen();
+  const stageW = p2.stage.clientWidth || 1000;
+  const stageH = p2.stage.clientHeight || 560;
+  const layout = makeP2Layout(h, t, stageW, stageH);
+
+  [...p2.stage.querySelectorAll(".frame")].forEach(f => f.remove());
+  p2.result.classList.remove("show");
+  p2.eq.classList.remove("show");
+  p2.tag200.classList.remove("show");
+  p2.tag30.classList.remove("show");
+  p2.note.classList.remove("show");
+  p2.hint.textContent = "";
+
+  p2.readout.textContent = `${yen}円`;
+
+  if (p2.step === 0) {
+    p2.hint.innerHTML = `100円玉が${h}枚、10円玉が${t}枚あります。`;
+
+    p2.hundredsCoins.forEach((node, i) => {
+      const p = layout.hundredBlocks[i];
+      setPos(node, p.centerX, p.centerY, 1, 0, 1, 4);
+      node.style.display = "block";
+    });
+
+    p2.tensCoins.forEach((node, i) => {
+      if (i < t) {
+        const p = layout.tensGrid[i];
+        setPos(node, p.x, p.y, 1, 0, 1, 6);
+        node.style.display = "block";
+      } else {
+        node.style.display = "none";
+      }
+    });
+  }
+
+  // step 1: 100円玉を青枠で見る。枠の大きさは、後で10円玉10枚が入る大きさにしておく
+  if (p2.step >= 1) {
+    p2.hint.innerHTML = `100円玉${h}枚を、青枠の中で見ます。`;
+    p2.hundredsCoins.forEach((node, i) => {
+      const p = layout.hundredBlocks[i];
+      setPos(node, p.centerX, p.centerY, 1, 0, 1, 5);
+      node.style.display = "block";
+
+      const frame = document.createElement("div");
+      frame.className = "frame";
+      p2.stage.appendChild(frame);
+      showFrame(frame, p.centerX - p.blockW / 2 - 8, p.centerY - p.blockH / 2 - 8, p.blockW + 16, p.blockH + 16);
+    });
+
+    p2.tensCoins.forEach((node, i) => {
+      if (i < t) {
+        const p = layout.tensGrid[i];
+        setPos(node, p.x, p.y, 1, 0, 1, 6);
+        node.style.display = "block";
+      }
+    });
+
+    if (layout.hundredBlocks[0]) {
+      showTag(p2.tag200, layout.hundredBlocks[0].centerX - 14, layout.hundredBlocks[0].centerY - 84);
+    }
+    if (layout.tensGrid[0]) {
+      showTag(p2.tag30, layout.tensGrid[0].x + 12, layout.tensGrid[0].y + 58);
+    }
+  }
+
+  // step 2: 青枠はそのまま、中身だけ100円玉→10円玉10枚に変わる
+  if (p2.step >= 2) {
+    p2.hint.innerHTML = "青枠の中で、100円玉が10円玉10枚に変わります。";
+    p2.eq.classList.add("show");
+    p2.eqMain.textContent = `100円玉${h}枚 → 10円玉${h * 10}こ`;
+    p2.eqSub.textContent = `10円玉${t}枚とあわせて 10が${h * 10 + t}こ`;
+
+    if (layout.hundredBlocks[0]) {
+      showTag(p2.tag200, layout.hundredBlocks[0].centerX - 14, layout.hundredBlocks[0].centerY - 84);
+    }
+    if (layout.tensGrid[0]) {
+      showTag(p2.tag30, layout.tensGrid[0].x + 12, layout.tensGrid[0].y + 58);
+    }
+
+    p2.note.classList.add("show");
+    p2.note.style.left = `${Math.min(stageW * 0.63, stageW - 290)}px`;
+    p2.note.style.top = `${Math.max(78, (layout.hundredBlocks[0]?.centerY ?? 180) - 110)}px`;
+
+    for (let i = 0; i < h; i++) {
+      const block = layout.hundredBlocks[i];
+
+      // 100円玉は消すが、青枠は残す
+      const hNode = p2.hundredsCoins[i];
+      setPos(hNode, block.centerX, block.centerY, 0.08, 0, 0, 2);
+
+      for (let c = 0; c < 10; c++) {
+        const idx = t + i * 10 + c;
+        let node = p2.tensCoins[idx];
+        if (!node) {
+          node = createCoinWrapper("10", 46);
+          p2.stage.appendChild(node);
+          p2.tensCoins[idx] = node;
+        }
+        const x = block.centerX - block.blockW / 2 + (c % 5) * (layout.coin10 + layout.gapX) + layout.coin10 / 2;
+        const y = block.centerY - block.blockH / 2 + Math.floor(c / 5) * (layout.coin10 + layout.gapY) + layout.coin10 / 2;
+        node.style.display = "block";
+        setPos(node, x, y, 1, 0, 1, 7);
+      }
+    }
+
+    for (let i = 0; i < t; i++) {
+      const node = p2.tensCoins[i];
+      if (!node) continue;
+      const p = layout.tensGrid[i];
+      node.style.display = "block";
+      setPos(node, p.x, p.y, 1, 0, 1, 6);
+    }
+  }
+
+  if (p2.step >= 3) {
+    p2.hint.innerHTML = `${yen}円 = 100円のまとまりと、10円のまとまりで見ます。`;
+    p2.result.classList.add("show");
+    p2.result.style.right = "18px";
+    p2.result.style.top = "96px";
+    p2.result.textContent = `10が${h * 10 + t}こ`;
+    p2.eq.classList.add("show");
+    p2.eqMain.textContent = `${h * 100}円 = ${h * 10}こ + ${t}こ`;
+    p2.eqSub.textContent = `あわせて 10が${h * 10 + t}こ`;
+  }
+}
+
+function setP1Digits(tens, ones) {
+  p1.tens = clamp(tens, 1, 9);
+  p1.ones = clamp(ones, 0, 9);
+  p1.tensVal.textContent = String(p1.tens);
+  p1.onesVal.textContent = String(p1.ones);
+  p1.step = 0;
+  if (document.getElementById("scene1").classList.contains("active")) renderP1();
+  p1.readout.textContent = `10円玉 ${p1Count()}枚`;
+}
+
+function setP2Digits(hundreds, tens) {
+  p2.hundreds = clamp(hundreds, 1, 9);
+  p2.tens = clamp(tens, 0, 9);
+  p2.hundredsVal.textContent = String(p2.hundreds);
+  p2.tensVal.textContent = String(p2.tens);
+  p2.step = 0;
+  if (document.getElementById("scene2").classList.contains("active")) renderP2();
+  p2.readout.textContent = `${p2Yen()}円`;
+}
+
+function stepP1(dir){
+  p1.step = (p1.step + dir + 4) % 4;
+  renderP1();
+}
+function stepP2(dir){
+  p2.step = (p2.step + dir + 4) % 4;
+  renderP2();
+}
+
+function activateScene(n) {
+  const s1 = document.getElementById("scene1");
+  const s2 = document.getElementById("scene2");
+  const tab1 = document.getElementById("tab1");
+  const tab2 = document.getElementById("tab2");
+
+  if (n === 1) {
+    s1.classList.add("active");
+    s2.classList.remove("active");
+    tab1.classList.add("active");
+    tab1.classList.remove("secondary");
+    tab2.classList.remove("active");
+    tab2.classList.add("secondary");
+    requestAnimationFrame(renderP1);
+  } else {
+    s2.classList.add("active");
+    s1.classList.remove("active");
+    tab2.classList.add("active");
+    tab2.classList.remove("secondary");
+    tab1.classList.remove("active");
+    tab1.classList.add("secondary");
+    requestAnimationFrame(renderP2);
+  }
+}
+
+// controls
+document.getElementById("p1TensUp").addEventListener("click", () => setP1Digits(p1.tens + 1, p1.ones));
+document.getElementById("p1TensDown").addEventListener("click", () => setP1Digits(p1.tens - 1, p1.ones));
+document.getElementById("p1OnesUp").addEventListener("click", () => setP1Digits(p1.tens, p1.ones + 1));
+document.getElementById("p1OnesDown").addEventListener("click", () => setP1Digits(p1.tens, p1.ones - 1));
+
+document.getElementById("p2HundredsUp").addEventListener("click", () => setP2Digits(p2.hundreds + 1, p2.tens));
+document.getElementById("p2HundredsDown").addEventListener("click", () => setP2Digits(p2.hundreds - 1, p2.tens));
+document.getElementById("p2TensUp").addEventListener("click", () => setP2Digits(p2.hundreds, p2.tens + 1));
+document.getElementById("p2TensDown").addEventListener("click", () => setP2Digits(p2.hundreds, p2.tens - 1));
+
+document.getElementById("tab1").addEventListener("click", () => activateScene(1));
+document.getElementById("tab2").addEventListener("click", () => activateScene(2));
+
+document.getElementById("p1next").addEventListener("click", () => stepP1(1));
+document.getElementById("p1prev").addEventListener("click", () => stepP1(-1));
+document.getElementById("p2next").addEventListener("click", () => stepP2(1));
+document.getElementById("p2prev").addEventListener("click", () => stepP2(-1));
+
+document.getElementById("stage1").addEventListener("click", () => stepP1(1));
+document.getElementById("stage2").addEventListener("click", () => stepP2(1));
+
+window.addEventListener("resize", () => {
+  if (document.getElementById("scene1").classList.contains("active")) renderP1();
+  if (document.getElementById("scene2").classList.contains("active")) renderP2();
+});
+
+// init
+setP1Digits(1, 0);
+setP2Digits(2, 3);
+activateScene(1);
+</script>
+</body>
+</html>
