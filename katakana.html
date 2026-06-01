@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カタカナことばクイズ</title>
+<style>
+body{
+  font-family:"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  margin:0;
+  background:#f4fbff;
+  color:#222;
+}
+header{
+  background:#4aa3ff;
+  color:white;
+  padding:18px;
+  text-align:center;
+  font-size:32px;
+  font-weight:bold;
+}
+#container{
+  max-width:1000px;
+  margin:auto;
+  padding:20px;
+}
+.card{
+  background:white;
+  border-radius:20px;
+  padding:20px;
+  margin-bottom:24px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.12);
+  position: relative;
+}
+.category{
+  display:inline-block;
+  background:#ffd54f;
+  padding:6px 14px;
+  border-radius:999px;
+  font-weight:bold;
+  margin-bottom:12px;
+}
+.question{
+  font-size:28px;
+  line-height:2.0;
+  margin-bottom:16px;
+  letter-spacing: 1px;
+}
+.word {
+  display: inline-block;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin: 2px 4px;
+  border-radius: 8px;
+  border-bottom: 3px dashed #b2dfdb;
+  transition: all 0.1s;
+}
+.word:hover {
+  background: #e0f2fe;
+}
+.word.selected {
+  background: #fff59d;
+  border-bottom: 3px solid #fbc02d;
+  font-weight: bold;
+}
+.word.correct-pick {
+  background: #a5d6a7 !important;
+  border-bottom: 3px solid #2e7d32 !important;
+  color: #1b5e20 !important;
+}
+.word.wrong-pick {
+  background: #ff8a80 !important;
+  border-bottom: 3px solid #c62828 !important;
+  color: #b71c1c !important;
+}
+.maru-mark {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 30px;
+  font-size: 110px;
+  color: #ff5252;
+  line-height: 1;
+  z-index: 10;
+  pointer-events: none;
+  font-weight: bold;
+  animation: popMaru 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes popMaru {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+.space {
+  display: inline-block;
+  white-space: pre;
+}
+.answerBtn{
+  padding:12px 20px;
+  font-size:24px;
+  border:none;
+  border-radius:14px;
+  background:#4aa3ff;
+  color:white;
+  cursor:pointer;
+}
+.adminBtn {
+  background: #ff9800;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+.adminBtn:hover {
+  background: #e65100;
+}
+.answer{
+  display:none;
+  margin-top:18px;
+  background:#e8f7e8;
+  padding:16px;
+  border-radius:16px;
+  font-size:24px;
+  line-height:1.7;
+}
+.correct{
+  color:#d81b60;
+  font-weight:bold;
+  font-size:30px;
+}
+.explain{
+  margin-top:10px;
+}
+.topInfo{
+  font-size:22px;
+  margin-bottom:20px;
+  line-height:1.8;
+}
+footer{
+  text-align:center;
+  padding:20px;
+  color:#666;
+}
+.smallnote{
+  margin-top:8px;
+  color:#555;
+  font-size:18px;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+.admin-table th, .admin-table td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: left;
+}
+.admin-table th {
+  background: #eee;
+  font-size: 18px;
+}
+.admin-table input {
+  width: 95%;
+  padding: 8px;
+  font-size: 18px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+}
+.delete-btn {
+  background: #ff5252;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+.action-btns {
+  display: flex;
+  gap: 10px;
+}
+.loading-notice {
+  color: #ff9800;
+  font-weight: bold;
+  margin-left: 15px;
+  display: inline-block;
+}
+</style>
+</head>
+<body>
+
+<header>
+カタカナことばクイズ １００ ＋ (クラウド版)
+</header>
+
+<div id="container">
+
+  <div id="mainView">
+    <div class="card topInfo">
+      <button id="toAdminBtn" class="answerBtn adminBtn">🛠️ オリジナルもんだい作成（せんせい向け）</button>
+      <span id="loadStatus" class="loading-notice">☁️ スプレッドシート同期中...</span>
+      <br>
+      すべて ひらがなで かかれた ぶんの なかから、<br>
+      「カタカナで かく ことば」を さがそう！<br><br>
+      👉 <strong>カタカナに なる ことばを タップして、きいろの しるしを つけよう！</strong><br><br>
+      こたえボタンを おすと、こたえと かいせつが でるよ！
+    </div>
+    <div id="quizArea"></div>
+  </div>
+
+  <div id="adminView" style="display: none;">
+    <div class="card">
+      <h2>🛠️ オリジナル問題 作成・編集 (スプレッドシート連動)</h2>
+      <p style="font-size:16px; color:#555;">
+        ※問題文の中のカタカナにする言葉は、答えに入力したカタカナを<b>「ひらがな」</b>に変えた文字列と完全に一致させてください。<br>
+        （例：答えが「バイク」なら、問題文には「ばいく」と入れてください）
+      </p>
+      
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th style="width: 7%;">番号</th>
+            <th style="width: 15%;">カテゴリ</th>
+            <th style="width: 35%;">もんだいぶん（ひらがな）</th>
+            <th style="width: 18%;">こたえ（カタカナ・「、」区切り）</th>
+            <th style="width: 20%;">かいせつ</th>
+            <th style="width: 5%;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="adminTableBody">
+        </tbody>
+      </table>
+
+      <div class="action-btns">
+        <button id="addRowBtn" class="answerBtn" style="background: #4caf50;">➕ 新しい問題を追加</button>
+        <button id="saveBtn" class="answerBtn" style="background: #2196f3;">💾 スプレッドシートに保存して戻る</button>
+        <button id="cancelBtn" class="answerBtn" style="background: #9e9e9e;">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+がんばれ！カタカナマスター！
+</footer>
+
+<script>
+// =========================================================
+// 🔑 Google WebアプリのURLを設定済みです
+// =========================================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycby9BExRz7UJ4dfJV0isnzQtgc8b9NLgdxclvXm1PILWBs3dpV4HaTwCes_epub2C_qnKQ/exec"; 
+
+// ベースとなる100問の固定データ
+const defaultQuizzes = [["1", "がいこくの くに", "あめりかから きた まいくが てがみを くれました。", "アメリカ、マイク", "アメリカは がいこくの くに、マイクは がいこくの 人の なまえです。"], ["2", "がいこくの くに", "ふらんすの ぱりで ぱんを たべました。", "フランス、パリ、パン", "フランスは くに、パリは まち、パンは 外国から来たことばです。"], ["3", "がいこくの くに", "めきしこの まちで ぴあのを ひきました。", "メキシコ、ピアノ", "メキシコは くに、ピアノは 楽器の なまえです。"], ["4", "がいこくの くに", "かなだに すむ えまが ばすに のりました。", "カナダ、エマ、バス", "カナダは くに、エマは 人の なまえ、バスは 乗り物です。"], ["5", "がいこくの くに", "いぎりすの ろんどんへ いきました。", "イギリス、ロンドン", "イギリスは くに、ロンドンは まちです。"], ["6", "がいこくの くに", "おーすとらりあで こあらを みました。", "オーストラリア、コアラ", "オーストラリアは くに、コアラは 動物の なまえです。"], ["7", "がいこくの くに", "ぶらじるの まちで まいくが うたいました。", "ブラジル、マイク", "ブラジルは くに、マイクは 人の なまえです。"], ["8", "がいこくの くに", "どいつの べるりんで しゃしんを とりました。", "ドイツ、ベルリン", "ドイツは くに、ベルリンは まちです。"], ["9", "がいこくの くに", "いたりあで ぴざと ぱすたを たべました。", "イタリア、ピザ、パスタ", "イタリアは くに、ピザと パスタは 外国から来た食べ物です。"], ["10", "がいこくの くに", "えじぷとの ぴらみっどを みました。", "エジプト、ピラミッド", "エジプトは くに、ピラミッドは 建物の なまえです。"], ["11", "まち", "にゅーよーくで とむに あいました。", "ニューヨーク、トム", "ニューヨークは まち、トムは 人の なまえです。"], ["12", "まち", "しどにーの うみは きれいです。", "シドニー", "シドニーは オーストラリアの まちです。"], ["13", "まち", "べるりんの ほてるに とまりました。", "ベルリン、ホテル", "ベルリンは まち、ホテルは 外国から来たことばです。"], ["14", "まち", "ろーまで かめらを かいました。", "ローマ、カメラ", "ローマは まち、カメラは 外国から来たことばです。"], ["15", "ひとの なまえ", "ありすが えを かいています。", "アリス", "アリスは 外国の 人の なまえです。"], ["16", "ひとの なまえ", "じょんと まいくが ぼーるで あそびました。", "ジョン、マイク、ボール", "ジョンと マイクは 人の なまえ、ボールは 外国から来たことばです。"], ["17", "ひとの なまえ", "えまが じゅーすを のみました。", "エマ、ジュース", "エマは 人の なまえ、ジュースは 飲み物の なまえです。"], ["18", "ひとの なまえ", "とむは ぴあのが じょうずです。", "トム、ピアノ", "トムは 人の なまえ、ピアノは 楽器です。"], ["19", "ひとの なまえ", "べんと いっしょに げーむを しました。", "ベン、ゲーム", "ベンは 人の なまえ、ゲームは 外国から来た遊びの なまえです。"], ["20", "ひとの なまえ", "まいくと ありすが ぱりへ いきました。", "マイク、アリス、パリ", "マイクと アリスは 人の なまえ、パリは まちです。"], ["21", "がいこくからきたことば", "あさごはんに ぱんを たべました。", "パン", "パンは 外国から来たことばです。"], ["22", "がいこくからきたことば", "てれびで えいがを みました。", "テレビ", "テレビは 外国から来たことばです。"], ["23", "がいこくからきたことば", "けーきを つくりました。", "ケーキ", "ケーキは おかしの なまえです。"], ["24", "がいこくからきたことば", "じゅーすを のみました。", "ジュース", "ジュースは 飲み物の なまえです。"], ["25", "がいこくからきたことば", "ぼーるを なげました。", "ボール", "ボールは 外国から来たことばです。"], ["26", "がいこくからきたことば", "ぴあのを ひきました。", "ピアノ", "ピアノは 楽器の なまえです。"], ["27", "がいこくからきたことば", "らんどせるを せおいました。", "ランドセル", "ランドセルは 外国語が もとです。"], ["28", "がいこくからきたことば", "あいすを たべました。", "アイス", "アイスは 冷たい おかしです。"], ["29", "がいこくからきたことば", "ばすに のりました。", "バス", "バスは 乗り物の なまえです。"], ["30", "がいこくからきたことば", "たくしーを よびました。", "タクシー", "タクシーは 車の なまえです。"], ["31", "がいこくからきたことば", "すーぷを のみました。", "スープ", "スープは しるものの なまえです。"], ["32", "がいこくからきたことば", "かれーを たべました。", "カレー", "カレーは りょうりの なまえです。"], ["33", "がいこくからきたことば", "そふぁに すわりました。", "ソファ", "ソファは いすの なまえです。"], ["34", "がいこくからきたことば", "べっどで ねました。", "ベッド", "ベッドは ねるための ものです。"], ["35", "がいこくからきたことば", "はんばーがーを たべました。", "ハンバーガー", "ハンバーガーは 食べ物の なまえです。"], ["36", "がいこくからきたことば", "げーむを しました。", "ゲーム", "ゲームは あそびの なまえです。"], ["37", "がいこくからきたことば", "みるくを のみました。", "ミルク", "ミルクは 牛乳のことです。"], ["38", "がいこくからきたことば", "れすとらんで ごはんを たべました。", "レストラン", "レストランは お店の なまえです。"], ["39", "がいこくからきたことば", "ほっとけーきを やきました。", "ホットケーキ", "ホットケーキは おかしの なまえです。"], ["40", "がいこくからきたことば", "かめらで しゃしんを とりました。", "カメラ", "カメラは 外国から来たことばです。"], ["41", "がいこくからきたことば", "らじおから おんがくが ながれています。", "ラジオ", "ラジオは 機械の なまえです。"], ["42", "がいこくからきたことば", "ぷーるで およぎました。", "プール", "プールは 水を ためた あそびばです。"], ["43", "がいこくからきたことば", "めろんぱんを かいました。", "メロンパン", "メロンパンは おかしの なまえです。"], ["44", "がいこくからきたことば", "しゅーくりーむを たべました。", "シュークリーム", "シュークリームは おかしの なまえです。"], ["45", "がいこくからきたことば", "こっぷに みずを いれました。", "コップ", "コップは みずを 入れる ものです。"], ["46", "がいこくからきたことば", "ちゃんねるを かえました。", "チャンネル", "チャンネルは てれびの 見かたに つかうことばです。"], ["47", "がいこくからきたことば", "めだるを もらいました。", "メダル", "メダルは ごほうびの なまえです。"], ["48", "がいこくからきたことば", "くりすますつりーを かざりました。", "クリスマスツリー", "クリスマスツリーは かざりつけした きです。"], ["49", "がいこくからきたことば", "さんどいっちを つくりました。", "サンドイッチ", "サンドイッチは 食べ物の なまえです。"], ["50", "がいこくからきたことば", "えぷろんを つけました。", "エプロン", "エプロンは ふくの 一部です。"], ["51", "おと", "どんどんと たいこが なりました。", "ドンドン", "たいかの おとです。"], ["52", "おと", "がたがたと くるまが ゆれました。", "ガタガタ", "ものが ゆれる おとです。"], ["53", "おと", "わんわんと いぬが ほえました。", "ワンワン", "いぬの なきごえです。"], ["54", "おと", "にゃーにゃーと ねこが ないています。", "ニャーニャー", "ねこの なきごえです。"], ["55", "おと", "ざーざーと あめが ふっています。", "ザーザー", "あめの おとです。"], ["56", "おと", "ごろごろと かみなりが なりました。", "ゴロゴロ", "かみなりの おとです。"], ["57", "おと", "ぱちぱちと はくしゅが おこりました。", "パチパチ", "はくしゅの おとです。"], ["58", "おと", "こけこっこーと にわとりが なきました。", "コケコッコー", "にわとりの なきごえです。"], ["59", "おと", "ぶーぶーと くるまが はしりました。", "ブーブー", "くるまの おとです。"], ["60", "おと", "めーめーと ひつじが ないています。", "メーメー", "ひつじの なきごえです。"], ["61", "おと", "ぴんぽーんと ちゃいむが なりました。", "ピンポーン、チャイム", "ちゃいむの おとです。"], ["62", "おと", "ざぶーんと うみに はいりました。", "ザブーン", "みずに はいる おとです。"], ["63", "おと", "がちゃんと かぎが おちました。", "ガチャン", "かぎが おちた おとです。"], ["64", "おと", "こんこんと とびらを たたきました。", "コンコン", "とびらを たたく おとです。"], ["65", "おと", "とんとんと こえを かけました。", "トントン", "やさしく たたく おとです。"], ["66", "おと", "どしんと おおきな つみきが おちました。", "ドシン", "おおきな ものが おちる おとです。"], ["67", "おと", "ぴしゃんと どあを しめました。", "ピシャン", "どあを しめる おとです。"], ["68", "おと", "ごとごとと でんしゃが はしりました。", "ゴトゴト", "でんしゃなどが ゆれる おとです。"], ["69", "おと", "かんかんと かなづちを うちました。", "カンカン", "かなづちの おとです。"], ["70", "おと", "ばしゃんと みずに とびこみました。", "バシャン", "みずに とびこむ おとです。"], ["71", "まとめ", "じょんと えまが ぱりで けーきを たべました。", "ジョン", "エマ、パリ、ケーキ", "4つの カタカナ語が あります。"], ["72", "まとめ", "まいくが ばすで にゅーよーくへ いきました。", "マイク、バス、ニューヨーク", "3つの カタカナ語が あります。"], ["73", "まとめ", "ありすが ぴあので どれみを ひきました。", "アリス、ピアノ、ドレミ", "人名、楽器、音の なまえです。"], ["74", "まとめ", "ろんどんで さっかーぼーるを かいました。", "ロンドン、サッカー、ボール", "3つの カタカナ語が あります。"], ["75", "まとめ", "えまが ぷーるで ばしゃばしゃ およぎました。", "エマ、プール、バシャバシャ", "人名、場所、みずの おとです。"], ["76", "まとめ", "おーすとらりあで こあらを みました。", "オーストラリア、コアラ", "2つの カタカナ語が あります。"], ["77", "まとめ", "どんどんと どらむを たたきました。", "ドンドン、ドラム", "おとと 楽器です。"], ["78", "まとめ", "とむが げーむを しながら じゅーすを のみました。", "トム、ゲーム、ジュース", "3つの カタカナ語が あります。"], ["79", "まとめ", "ぶーぶーと ばすが きました。", "ブーブー、バス", "おとと 乗り物です。"], ["80", "まとめ", "ありすと とむが にゅーよーくの れすとらんで はんばーがーを たべました。", "アリス、トム、ニューヨーク、レストラン、ハンバーガー", "5つの カタカナ語が あります。"], ["81", "まとめ", "にゃーにゃーと ねこが そふぁに のりました。", "ニャーニャー、ソファ", "なきごえと いすです。"], ["82", "まとめ", "まいくが ぴざと じゅーすを たのみました。", "マイク、ピザ、ジュース", "人名と 食べ物です。"], ["83", "まとめ", "ぱりで めだるを もらいました。", "パリ、メダル", "まちの なまえと ごほうびです。"], ["84", "まとめ", "こけこっこーと にわとりが ないて えまが わらいました。", "コケコッコー、エマ", "にわとりの なきごえと 人名です。"], ["85", "まとめ", "どいつの れすとらんで すーぷを のみました。", "ドイツ、レストラン、スープ", "くに、店、食べ物です。"], ["86", "まとめ", "ぴんぽーんと なって とむが きました。", "ピンポーン、トム", "おとと 人名です。"], ["87", "まとめ", "しどにーの ほてるで べっどに ねました。", "シドニー、ホテル、ベッド", "まちと 外国から来たことばです。"], ["88", "まとめ", "げーむの あとに みるくを のみました。", "ゲーム、ミルク", "あそびと 飲み物です。"], ["89", "まとめ", "えじぷとの ぴらみっどを かめらで とりました。", "エジプト、ピラミッド、カメラ", "くに、建物、道具です。"], ["90", "まとめ", "わんわんと いぬが ないて ばすが とまりました。", "ワンワン、バス", "なきごえと 乗り物です。"], ["91", "まとめ", "かなだで あいすを たべました。", "カナダ、アイス", "くにと おかしです。"], ["92", "まとめ", "ざーざーの あめの なか じょんが たくしーに のりました。", "ザーザー、ジョン、タクシー", "あめの おとと 人名、乗り物です。"], ["93", "まとめ", "にゅーよーくで ほっとけーきを たべました。", "ニューヨーク、ホットケーキ", "まちと おかしです。"], ["94", "まとめ", "ぶらじるで さっかーを みました。", "ブラジル、サッカー", "くにと スポーツです。"], ["95", "まとめ", "めーめーと ひつじが ないて えまが わらいました。", "メーメー、エマ", "ひつじの なきごえと 人名です。"], ["96", "まとめ", "ろーまの ほてるで かめらを かりました。", "ローマ、ホテル、カメラ", "まち、店、道具です。"], ["97", "まとめ", "ろんどんで くりすますつりーを みました。", "ロンドン、クリスマスツリー", "まちと 木の なまえです。"], ["98", "まとめ", "ありすと とむが ぱりの れすとらんで かれーを たべ、ぱちぱちと はくしゅしました。", "アリス、トム、パリ、レストラン、カレー、パチパチ", "6つの カタカナ語が あります。"], ["99", "まとめ", "べんが ばいくで ぷーるへ いきました。", "ベン、バイク、プール", "人名、乗り物、場所です。"], ["100", "まとめ", "じょんと えまと まいくが にゅーよーくの ばすていで はなしました。", "ジョン、エマ、マイク、ニューヨーク、バス", "5つの カタカナ語が あります。"]];
+
+let customQuizzes = [];
+let quizzes = [...defaultQuizzes];
+
+function katakanaToHiragana(src) {
+  return src.replace(/[\u30a1-\u30f6]/g, function(match) {
+    var chr = match.charCodeAt(0) - 0x60;
+    return String.fromCharCode(chr);
+  });
+}
+
+function playCorrectSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(660, now);
+    osc.frequency.setValueAtTime(880, now + 0.08);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch (e) { console.log(e); }
+}
+
+// ーーークラウド（GAS）からデータを読み込む処理ーーー
+async function loadCloudData() {
+  const statusEl = document.getElementById("loadStatus");
+  try {
+    const response = await fetch(GAS_URL);
+    if (response.ok) {
+      customQuizzes = await response.json();
+      quizzes = defaultQuizzes.concat(customQuizzes);
+      statusEl.textContent = "✅ スプレッドシートと同期完了！";
+      setTimeout(() => statusEl.style.display = "none", 3000);
+    } else {
+      statusEl.textContent = "❌ データの読み込みに失敗しました。";
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "❌ 通信エラー。固定データのみで起動します。";
+  }
+  renderQuizzes();
+}
+
+// クイズ描画処理
+function renderQuizzes() {
+  const area = document.getElementById("quizArea");
+  area.innerHTML = "";
+
+  quizzes.forEach((q) => {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    card.innerHTML = `
+      <div class="category">もんだい ${q[0]}　${q[1]}</div>
+      <div class="maru-mark">〇</div>
+      <div class="question"></div>
+      <button class="answerBtn">こたえをみる</button>
+      <div class="answer">
+        <div class="correct">こたえ：${q[3]}</div>
+        <div class="explain">${q[4]}</div>
+      </div>
+    `;
+
+    const questionContainer = card.querySelector(".question");
+    const keywords = q[3].split(/[、,]/).map(w => katakanaToHiragana(w.trim()));
+    keywords.sort((a, b) => b.length - a.length);
+
+    const keywordRegex = new RegExp(`(${keywords.join('|')})`, 'g');
+    const joshiRegex = /(から|まで|が|を|に|の|へ|と|で|は|より)$/;
+    const spaceRegex = /( +|　+)/g;
+    const blocks = q[2].split(spaceRegex);
+
+    blocks.forEach((block) => {
+      if (!block) return;
+      if (block.match(/^[ 　]+$/)) {
+        const spaceSpan = document.createElement("span");
+        spaceSpan.className = "space";
+        spaceSpan.textContent = block;
+        questionContainer.appendChild(spaceSpan);
+      } else {
+        const subParts = block.split(keywordRegex);
+        subParts.forEach((subPart) => {
+          if (subPart === "") return;
+          if (keywords.includes(subPart)) {
+            createWordSpan(subPart);
+          } else {
+            const partsWithJoshi = subPart.split(joshiRegex);
+            partsWithJoshi.forEach((p) => {
+              if (p === "") return;
+              createWordSpan(p);
+            });
+          }
+        });
+      }
+    });
+
+    function createWordSpan(text) {
+      const span = document.createElement("span");
+      span.className = "word";
+      span.textContent = text;
+      span.onclick = () => {
+        if (span.classList.contains("correct-pick") || span.classList.contains("wrong-pick")) return;
+        span.classList.toggle("selected");
+      };
+      questionContainer.appendChild(span);
+    }
+
+    const btn = card.querySelector(".answerBtn");
+    const ans = card.querySelector(".answer");
+    const maru = card.querySelector(".maru-mark");
+
+    btn.onclick = () => {
+      if (ans.style.display !== "block") {
+        ans.style.display = "block";
+        btn.textContent = "こたえをえらびなおす";
+        let allCorrectPicked = true;
+        let anyWrongPicked = false;
+
+        const words = questionContainer.querySelectorAll(".word");
+        words.forEach((span) => {
+          const isKeyword = keywords.includes(span.textContent);
+          const isSelected = span.classList.contains("selected");
+          if (isSelected) {
+            if (isKeyword) {
+              span.classList.add("correct-pick");
+            } else {
+              span.classList.add("wrong-pick");
+              anyWrongPicked = true;
+            }
+          } else {
+            if (isKeyword) allCorrectPicked = false;
+          }
+        });
+
+        if (allCorrectPicked && !anyWrongPicked) {
+          maru.style.display = "block";
+          playCorrectSound();
+        }
+      } else {
+        ans.style.display = "none";
+        btn.textContent = "こたえをみる";
+        maru.style.display = "none";
+        const words = questionContainer.querySelectorAll(".word");
+        words.forEach((span) => span.classList.remove("correct-pick", "wrong-pick"));
+      }
+    };
+
+    area.appendChild(card);
+  });
+}
+
+// ーーー編集・作成画面のロジックーーー
+const mainView = document.getElementById("mainView");
+const adminView = document.getElementById("adminView");
+const tbody = document.getElementById("adminTableBody");
+
+document.getElementById("toAdminBtn").onclick = () => {
+  mainView.style.display = "none";
+  adminView.style.display = "block";
+  window.scrollTo(0, 0);
+  buildAdminTable();
+};
+
+document.getElementById("cancelBtn").onclick = () => {
+  adminView.style.display = "none";
+  mainView.style.display = "block";
+};
+
+function buildAdminTable() {
+  tbody.innerHTML = "";
+  customQuizzes.forEach((q) => {
+    addRowToTable(q[0], q[1], q[2], q[3], q[4]);
+  });
+  if (customQuizzes.length === 0) {
+    addNewRow();
+  }
+}
+
+function addRowToTable(num, cat, qStr, aStr, exp) {
+  const tr = document.createElement("tr");
+  tr.className = "admin-row";
+  tr.innerHTML = `
+    <td class="row-num" style="text-align:center; font-weight:bold;">${num}</td>
+    <td><input type="text" class="row-cat" value="${cat}"></td>
+    <td><input type="text" class="row-qstr" value="${qStr}" placeholder="ばいくで ぷーるへ いきました。"></td>
+    <td><input type="text" class="row-astr" value="${aStr}" placeholder="バイク、プール"></td>
+    <td><input type="text" class="row-exp" value="${exp}" placeholder="解説文を入力"></td>
+    <td style="text-align:center;"><button class="delete-btn">削除</button></td>
+  `;
+  
+  tr.querySelector(".delete-btn").onclick = () => {
+    tr.remove();
+    renumberRows();
+  };
+  tbody.appendChild(tr);
+}
+
+function addNewRow() {
+  const nextNum = 101 + tbody.querySelectorAll(".admin-row").length;
+  addRowToTable(nextNum, "オリジナル", "", "", "");
+}
+document.getElementById("addRowBtn").onclick = addNewRow;
+
+function renumberRows() {
+  const rows = tbody.querySelectorAll(".admin-row");
+  rows.forEach((row, index) => {
+    row.querySelector(".row-num").textContent = 101 + index;
+  });
+}
+
+// スプレッドシートへ保存処理
+document.getElementById("saveBtn").onclick = async () => {
+  const rows = tbody.querySelectorAll(".admin-row");
+  const newCustomQuizzes = [];
+  let isValid = true;
+
+  rows.forEach((row) => {
+    const num = row.querySelector(".row-num").textContent;
+    const cat = row.querySelector(".row-cat").value.trim() || "オリジナル";
+    const qStr = row.querySelector(".row-qstr").value.trim();
+    const aStr = row.querySelector(".row-astr").value.trim();
+    const exp = row.querySelector(".row-exp").value.trim();
+
+    if (qStr && aStr) {
+      newCustomQuizzes.push([num, cat, qStr, aStr, exp || `${aStr}は 外国から来た言葉です。`]);
+    } else if (qStr || aStr) {
+      alert("問題文と答えは、両方入力してください。");
+      isValid = false;
+    }
+  });
+
+  if (!isValid) return;
+
+  const saveBtn = document.getElementById("saveBtn");
+  saveBtn.textContent = "⏳ スプレッドシートに送信中...";
+  saveBtn.disabled = true;
+
+  try {
+    // CORS制約を回避するため mode: 'no-cors' で送信
+    await fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newCustomQuizzes)
+    });
+
+    alert("🎉 スプレッドシートに保存リクエストを送りました！\nデータがクラウド側で更新されるまで数秒かかります。一度アプリが再読み込みされます。");
+    location.reload(); 
+
+  } catch (err) {
+    alert("❌ 通信エラーにより保存に失敗しました。");
+    console.error(err);
+    saveBtn.textContent = "💾 スプレッドシートに保存して戻る";
+    saveBtn.disabled = false;
+  }
+};
+
+// アプリ起動時にクラウドから読み込みを開始
+loadCloudData();
+</script>
+
+</body>
+</html>
