@@ -371,6 +371,42 @@
   }
   .result.show{ opacity:1; }
 
+  .final-answer{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) scale(.96);
+    z-index:12;
+    width:min(840px, calc(100% - 24px));
+    background:rgba(255,255,255,.97);
+    border:3px solid #2563eb;
+    border-radius:24px;
+    box-shadow:0 14px 30px rgba(37,99,235,.14);
+    padding:16px 20px;
+    text-align:center;
+    opacity:0;
+    transition:opacity .3s ease, transform .3s ease;
+    pointer-events:none;
+  }
+  .final-answer.show{
+    opacity:1;
+    transform:translate(-50%,-50%) scale(1);
+  }
+  .final-answer-main{
+    margin:0 0 6px;
+    font-size:30px;
+    font-weight:1000;
+    line-height:1.35;
+    color:#0f172a;
+  }
+  .final-answer-sub{
+    margin:0;
+    font-size:22px;
+    font-weight:900;
+    line-height:1.35;
+    color:#1d4ed8;
+  }
+
   .tag{
     position:absolute;
     z-index:11;
@@ -429,6 +465,12 @@
       right:12px;
       max-width:calc(100% - 24px);
     }
+    .final-answer{
+      width:calc(100% - 24px);
+      padding:14px 14px;
+    }
+    .final-answer-main{ font-size:22px; }
+    .final-answer-sub{ font-size:16px; }
     .stage{ min-height:620px; }
   }
 </style>
@@ -450,8 +492,8 @@
     <div class="scene-card">
       <div class="scene-head">
         <div>
-          <p class="scene-title">問題1：10円玉を10〜99枚まで変える</p>
-          <p class="scene-desc">第2段階から青枠をつけ、10枚ごとに100円玉1個へ変わります。枚数が多いときは自動で縮小します。</p>
+          <p class="scene-title" id="p1Question">問題1：１０を　〇こ　あつめた　かずは　いくつですか？</p>
+          <p class="scene-desc">10円玉をあつめて、かずを考えます。</p>
         </div>
         <div class="controls">
           <div class="digit-panel">
@@ -476,11 +518,15 @@
 
       <div id="stage1" class="stage">
         <div class="badge"><div class="badge-num">1</div><div class="badge-text">10円玉 → 100円玉</div></div>
-        <div id="hint1" class="hint">まずは10円玉のならびを見ます。</div>
+        <div id="hint1" class="hint">10円玉をあつめて見ます。</div>
         <div id="result1" class="result">10が10こ → 100円玉1個</div>
         <div id="eq1" class="eq">
           <p id="eq1main" class="eq-main">10が10こ → 100</p>
           <p id="eq1sub" class="eq-sub">残りがあれば、そのまま10円玉で見ます</p>
+        </div>
+        <div id="final1" class="final-answer">
+          <p id="final1Main" class="final-answer-main"></p>
+          <p id="final1Sub" class="final-answer-sub"></p>
         </div>
       </div>
     </div>
@@ -490,8 +536,8 @@
     <div class="scene-card">
       <div class="scene-head">
         <div>
-          <p class="scene-title">問題2：100〜990円まで変える</p>
-          <p class="scene-desc">100円玉は縦にそろい、その場で10円玉10枚に変わります。最後の文字は右にずらして表示します。</p>
+          <p class="scene-title" id="p2Question">問題2：〇は、　１０を　なんこ　あつめたかず　ですか？</p>
+          <p class="scene-desc">100円玉を10円玉にかえて、かずを考えます。</p>
         </div>
         <div class="controls">
           <div class="digit-panel">
@@ -516,12 +562,16 @@
 
       <div id="stage2" class="stage">
         <div class="badge"><div class="badge-num">2</div><div class="badge-text">100円玉 → 10円玉10枚</div></div>
-        <div id="hint2" class="hint">100円玉2枚と10円玉3枚を見ます。</div>
+        <div id="hint2" class="hint">100円玉をあつめて見ます。</div>
 
         <div id="result2" class="result">10が23こ</div>
         <div id="eq2" class="eq">
           <p id="eq2main" class="eq-main">100円玉2枚 → 10円玉20こ</p>
           <p id="eq2sub" class="eq-sub">10円玉3枚とあわせて 10が23こ</p>
+        </div>
+        <div id="final2" class="final-answer">
+          <p id="final2Main" class="final-answer-main"></p>
+          <p id="final2Sub" class="final-answer-sub"></p>
         </div>
 
         <div id="tag200" class="tag">200円</div>
@@ -813,10 +863,14 @@ const p1 = {
   tens: 1,
   ones: 0,
   stage: document.getElementById("stage1"),
+  question: document.getElementById("p1Question"),
   hint: document.getElementById("hint1"),
   eq: document.getElementById("eq1"),
   eqMain: document.getElementById("eq1main"),
   eqSub: document.getElementById("eq1sub"),
+  final: document.getElementById("final1"),
+  finalMain: document.getElementById("final1Main"),
+  finalSub: document.getElementById("final1Sub"),
   result: document.getElementById("result1"),
   readout: document.getElementById("p1Readout"),
   tensVal: document.getElementById("p1TensVal"),
@@ -830,10 +884,14 @@ const p2 = {
   hundreds: 2,
   tens: 3,
   stage: document.getElementById("stage2"),
+  question: document.getElementById("p2Question"),
   hint: document.getElementById("hint2"),
   eq: document.getElementById("eq2"),
   eqMain: document.getElementById("eq2main"),
   eqSub: document.getElementById("eq2sub"),
+  final: document.getElementById("final2"),
+  finalMain: document.getElementById("final2Main"),
+  finalSub: document.getElementById("final2Sub"),
   result: document.getElementById("result2"),
   readout: document.getElementById("p2Readout"),
   hundredsVal: document.getElementById("p2HundredsVal"),
@@ -905,9 +963,11 @@ function renderP1() {
   [...p1.stage.querySelectorAll(".frame")].forEach(f => f.remove());
   p1.result.classList.remove("show");
   p1.eq.classList.remove("show");
+  p1.final.classList.remove("show");
 
+  p1.question.innerHTML = `問題1：１０を　${count}こ　あつめた　かずは　いくつですか？`;
   p1.readout.textContent = `10円玉 ${count}枚`;
-  p1.hint.innerHTML = "まずは10円玉のならびを見ます。";
+  p1.hint.innerHTML = "10円玉をあつめて見ます。";
 
   p1.coins10.forEach((node, i) => {
     const pos = layout.positions[i];
@@ -937,7 +997,7 @@ function renderP1() {
       const boxH = block.blockH + 16;
       showFrame(frame, block.centerX - boxW/2, block.centerY - boxH/2, boxW, boxH);
     });
-    p1.hint.innerHTML = "10枚ごとのまとまりを、青枠で見ます。";
+    p1.hint.innerHTML = "10枚ごとのまとまりを見ます。";
   }
 
   if (p1.step >= 2) {
@@ -946,11 +1006,17 @@ function renderP1() {
       node.style.opacity = blockIndex < groups ? 0 : 1;
     });
     p1.hint.innerHTML = `10が${count}こです。10枚ごとに100円玉へ変わります。`;
+  }
+
+  if (p1.step >= 3) {
     p1.eq.classList.add("show");
     p1.eqMain.textContent = `10が${count}こ → ${groups}個の100円玉`;
     p1.eqSub.textContent = rem > 0 ? `残りは10円玉${rem}枚です` : "残りはありません";
     p1.result.classList.add("show");
     p1.result.textContent = `10が${count}こ → ${groups}個の100円玉と${rem}枚の10円玉`;
+    p1.final.classList.add("show");
+    p1.finalMain.textContent = `１０を ${count}こ あつめたかずは ${count * 10}！`;
+    p1.finalSub.textContent = `${count * 10}は、１０を ${count}こ あつめたかず！`;
   }
 }
 
@@ -966,11 +1032,13 @@ function renderP2() {
   [...p2.stage.querySelectorAll(".frame")].forEach(f => f.remove());
   p2.result.classList.remove("show");
   p2.eq.classList.remove("show");
+  p2.final.classList.remove("show");
   p2.tag200.classList.remove("show");
   p2.tag30.classList.remove("show");
   p2.note.classList.remove("show");
   p2.hint.textContent = "";
 
+  p2.question.innerHTML = `問題2：${yen}円は、　１０を　なんこ　あつめたかず　ですか？`;
   p2.readout.textContent = `${yen}円`;
 
   if (p2.step === 0) {
@@ -995,7 +1063,7 @@ function renderP2() {
 
   // step 1: 100円玉を青枠で見る。枠の大きさは、後で10円玉10枚が入る大きさにしておく
   if (p2.step >= 1) {
-    p2.hint.innerHTML = `100円玉${h}枚を、青枠の中で見ます。`;
+    p2.hint.innerHTML = `100円玉${h}枚を見ます。`;
     p2.hundredsCoins.forEach((node, i) => {
       const p = layout.hundredBlocks[i];
       setPos(node, p.centerX, p.centerY, 1, 0, 1, 5);
@@ -1025,7 +1093,7 @@ function renderP2() {
 
   // step 2: 青枠はそのまま、中身だけ100円玉→10円玉10枚に変わる
   if (p2.step >= 2) {
-    p2.hint.innerHTML = "青枠の中で、100円玉が10円玉10枚に変わります。";
+    p2.hint.innerHTML = "100円玉が10円玉10枚に変わります。";
     p2.eq.classList.add("show");
     p2.eqMain.textContent = `100円玉${h}枚 → 10円玉${h * 10}こ`;
     p2.eqSub.textContent = `10円玉${t}枚とあわせて 10が${h * 10 + t}こ`;
@@ -1073,14 +1141,17 @@ function renderP2() {
   }
 
   if (p2.step >= 3) {
-    p2.hint.innerHTML = `${yen}円 = 100円のまとまりと、10円のまとまりで見ます。`;
+    p2.hint.innerHTML = `${yen}円を、100円と10円で見ます。`;
     p2.result.classList.add("show");
     p2.result.style.right = "18px";
     p2.result.style.top = "96px";
     p2.result.textContent = `10が${h * 10 + t}こ`;
     p2.eq.classList.add("show");
-    p2.eqMain.textContent = `${h * 100}円 = ${h * 10}こ + ${t}こ`;
-    p2.eqSub.textContent = `あわせて 10が${h * 10 + t}こ`;
+    p2.eqMain.textContent = `${yen}円 = 10が${h * 10 + t}こ`;
+    p2.eqSub.textContent = `10を${h * 10 + t}こあつめたかずは、${yen}円`;
+    p2.final.classList.add("show");
+    p2.finalMain.textContent = `１０を ${h * 10 + t}こ あつめたかずは ${yen}！`;
+    p2.finalSub.textContent = `${yen}は、１０を ${h * 10 + t}こ あつめたかず！`;
   }
 }
 
