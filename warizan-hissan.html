@@ -132,7 +132,7 @@
             color: #334155;
             line-height: 46px;
         }
-        
+
         /* 上から下へ数字が滑り降りるおろすアニメーション */
         @keyframes digit-drop {
             0% {
@@ -162,8 +162,13 @@
         }
         .slash-line {
             position: absolute;
-            top: 5%; left: 5%; width: 90%; height: 90%;
-            background: linear-gradient(to top left, transparent 46%, #ef4444 49%, #ef4444 51%, transparent 54%);
+            top: 50%;
+            left: 50%;
+            width: 130%;
+            height: 3px;
+            background: #ef4444;
+            transform: translate(-50%, -50%) rotate(45deg);
+            transform-origin: center;
             display: none;
             z-index: 4;
             pointer-events: none;
@@ -234,7 +239,7 @@
             min-height: 60px;
             line-height: 1.5;
         }
-        
+
         .brain-card {
             background-color: #ffffff;
             border: 2px dashed #94a3b8;
@@ -322,7 +327,7 @@ function sanitizeInput(str) {
     let half = str.replace(/[０-９]/g, function(s) {
         return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
     });
-    half = half.replace(/．/g, '.');
+    half = half.replace(/[．。]/g, '.');
     return half.replace(/[^0-9.]/g, '');
 }
 
@@ -335,25 +340,112 @@ function parseNumberMeta(numStr) {
     }
 }
 
-function generateBrainWorkHtml(currentTargetValue, divisorInt) {
+function formatRoundedQuotient(rawDigits, integerDigits, gaisuTargetValue) {
+    const digits = rawDigits.map(q => {
+        if (q === "" || q === "✕" || q === null || q === undefined) return 0;
+        const n = parseInt(q, 10);
+        return Number.isNaN(n) ? 0 : n;
+    });
+
+    const keepDigits = integerDigits + gaisuTargetValue;
+    while (digits.length < keepDigits + 1) digits.push(0);
+
+    const roundingDigit = digits[keepDigits] || 0;
+    let kept = digits.slice(0, keepDigits);
+
+    if (roundingDigit >= 5) {
+        let idx = kept.length - 1;
+        let carry = 1;
+        while (idx >= 0 && carry > 0) {
+            const sum = kept[idx] + carry;
+            kept[idx] = sum % 10;
+            carry = Math.floor(sum / 10);
+            idx--;
+        }
+        if (carry > 0) kept.unshift(carry);
+    }
+
+    while (kept.length < integerDigits) kept.unshift(0);
+
+    let intPart = kept.slice(0, integerDigits).join('') || '0';
+    let decPart = kept.slice(integerDigits, integerDigits + gaisuTargetValue).join('');
+
+    intPart = intPart.replace(/^0+/, '') || '0';
+    return gaisuTargetValue > 0 ? `${intPart}.${decPart}` : intPart;
+}
+
+function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient) {
     if (currentTargetValue === 0 || currentTargetValue < divisorInt) return "";
+
+    const trueQuotient = Math.floor(currentTargetValue / divisorInt);
+
+    // ── 1桁のわる数: 九九リスト ──────────────────────────────
     if (divisorInt < 10) {
-        let correctK = Math.floor(currentTargetValue / divisorInt);
-        let html = `<div style="font-size:14px; color:#334155;"><b>🧠 あたまの中の九九 (${divisorInt}のだん)</b><br><div style="margin-top:6px; padding-left:10px; border-left:3px solid #0284c7; line-height:1.6;">`;
+        let html = `<div style="font-size:14px; color:#334155;">
+            <b>🧠 あたまの中の九九 (${divisorInt}のだん)</b>
+            <div style="margin-top:6px; padding-left:10px; border-left:3px solid #0284c7; line-height:1.8;">`;
         for (let k = 1; k <= 9; k++) {
             let p = divisorInt * k;
-            if (k === correctK) {
-                html += `<div style="background-color: #fef08a; border: 2px solid #eab308; display:inline-block; padding: 2px 8px; margin: 2px 0; border-radius: 4px; font-weight: bold; color:#854d0e;">★ ${divisorInt} × ${k} = ${p} </div><br>`;
+            let isAnswer = (k === trueQuotient);
+            let isTrial  = (trialQuotient !== undefined && k === trialQuotient && trialQuotient !== trueQuotient);
+            if (isTrial) {
+                html += `<div style="background:#fee2e2;border:2px solid #ef4444;display:inline-block;padding:2px 8px;margin:2px 0;border-radius:4px;font-weight:bold;color:#b91c1c;">
+                            ✕ ${divisorInt} × ${k} = ${p}（大きすぎ）</div><br>`;
+            } else if (isAnswer) {
+                html += `<div style="background:#fef08a;border:2px solid #eab308;display:inline-block;padding:2px 8px;margin:2px 0;border-radius:4px;font-weight:bold;color:#854d0e;">
+                            ★ ${divisorInt} × ${k} = ${p} ✓</div><br>`;
             } else if (p > currentTargetValue) {
-                html += `<div style="color: #cbd5e1; margin: 2px 0;">${divisorInt} × ${k} = ${p}</div>`;
+                html += `<div style="color:#cbd5e1;margin:2px 0;">${divisorInt} × ${k} = ${p}</div>`;
             } else {
-                html += `<div style="color: #64748b; margin: 2px 0;">${divisorInt} × ${k} = ${p}</div>`;
+                html += `<div style="color:#64748b;margin:2px 0;">${divisorInt} × ${k} = ${p}</div>`;
             }
         }
         html += `</div></div>`;
         return html;
     }
-    return "";
+
+    // ── 2桁以上のわる数: 仮商計算パネル ────────────────────────
+    const divisorStr = divisorInt.toString();
+    const d1 = parseInt(divisorStr[0], 10);
+    const topLen = divisorStr.length;
+    const topVal = Math.floor(currentTargetValue / Math.pow(10, topLen - 1));
+
+    const displayTrial = (trialQuotient !== undefined) ? trialQuotient : trueQuotient;
+    const trialStart   = Math.max(displayTrial, trueQuotient);
+    const trialEnd     = trueQuotient;
+
+    let html = `<div style="font-size:14px;color:#334155;">
+        <b>🔍 仮商を見つけよう！</b>
+        <div style="margin-top:8px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:8px 12px;line-height:1.9;">
+            <div style="color:#0369a1;">
+                わる数 <b>${divisorInt}</b> の上1けた ＝ <b>${d1}</b>
+            </div>
+            <div style="color:#0369a1;">
+                わられる数 <b>${currentTargetValue}</b> の上${topLen}けた ＝ <b>${topVal}</b>
+            </div>
+            <div style="margin-top:4px;color:#334155;">
+                <b>${topVal} ÷ ${d1}</b> で見当をつける ➜ 仮の商 <b style="color:#f97316;">${displayTrial}</b>
+            </div>
+        </div>
+        <div style="margin-top:8px;padding-left:10px;border-left:3px solid #f97316;line-height:1.8;">`;
+
+    for (let k = trialStart; k >= Math.max(1, trialEnd - 1); k--) {
+        let p = divisorInt * k;
+        let isTrial  = (k === trialStart && k !== trueQuotient);
+        let isAnswer = (k === trueQuotient);
+        if (isTrial) {
+            html += `<div style="background:#fee2e2;border:2px solid #ef4444;display:inline-block;padding:2px 10px;margin:2px 0;border-radius:4px;font-weight:bold;color:#b91c1c;">
+                        ✕ ${divisorInt} × ${k} = ${p}（${currentTargetValue}より大きい）</div><br>`;
+        } else if (isAnswer) {
+            html += `<div style="background:#fef08a;border:2px solid #eab308;display:inline-block;padding:2px 10px;margin:2px 0;border-radius:4px;font-weight:bold;color:#854d0e;">
+                        ★ ${divisorInt} × ${k} = ${p} ✓（ちょうどよい）</div><br>`;
+        } else {
+            html += `<div style="color:#cbd5e1;margin:2px 0;">${divisorInt} × ${k} = ${p}</div>`;
+        }
+    }
+
+    html += `</div></div>`;
+    return html;
 }
 
 class AdvancedDivisionEngine {
@@ -383,7 +475,7 @@ class AdvancedDivisionEngine {
         const divParse = parseNumberMeta(divisorStr);
         const dvdParse = parseNumberMeta(dividendStr);
         const D = divParse.decimalPlaces; 
-        
+
         let baseDvdDigits = dvdParse.digits;
         const finalDvdDotAfter = dvdParse.dotAfter + D;
         if (finalDvdDotAfter > baseDvdDigits.length) {
@@ -393,7 +485,9 @@ class AdvancedDivisionEngine {
         const divisorInt = parseInt(divParse.digits, 10);
         let extraZeros = 0;
 
-        if (route === "remainder") {
+        const isRemainderRoute = (route === "remainder");
+
+        if (isRemainderRoute) {
             extraZeros = 0;
         } else if (route === "advance" && gaisuTargetValue !== null) {
             let requiredDigitsLength = finalDvdDotAfter + gaisuTargetValue + 1;
@@ -415,7 +509,7 @@ class AdvancedDivisionEngine {
         let dvdDigits = baseDvdDigits + "0".repeat(extraZeros);
         const M = divParse.digits.length;
         const N = dvdDigits.length;
-        
+
         const steps = [];
         const initialCells = [];
 
@@ -429,7 +523,7 @@ class AdvancedDivisionEngine {
             divCurrent: (divParse.hasDot && showDotsInThisProblem) ? divParse.dotAfter : null,
             dvdOriginal: (showDotsInThisProblem) ? dvdParse.dotAfter + M : null,
             dvdCurrent: (showDotsInThisProblem) ? dvdParse.dotAfter + M + D : null,
-            quotient: null, remainder: null, isMoved: false,
+            quotient: null, remainder: null, remainderRow: null, isMoved: false,
             showDvdOrigInit: dvdParse.hasDot && showDotsInThisProblem
         };
 
@@ -464,21 +558,39 @@ class AdvancedDivisionEngine {
         let currentRemainder = 0;
         let currentDividendStr = "";
         let currentRow = 2;
-        let hasFirstQuotientStarted = false; 
+        let hasFirstQuotientStarted = false;
         let quotientPositions = Array(N).fill("");
+        // hasFirstQuotientStarted が false のうちに ✕ を書いた列番号を記録する
+        // 小数点を確定するタイミングで、必要な列だけ 0 に直すために保持する
+        let skippedCols = [];
+        let firstQuotientCol = null;
 
-        for (let i = 0; i < N; i++) {
+        // あまりを出す4年生ルートなら、一の位（finalDvdDotAfter）に達した時点で商をたてるループを抜ける
+        let stopI = isRemainderRoute ? finalDvdDotAfter : N;
+
+        for (let i = 0; i < stopI; i++) {
             const currentDigit = dvdDigits[i];
             currentDividendStr = (i === 0 && currentRemainder === 0) ? currentDigit : (currentRemainder.toString() + currentDigit);
             const currentTargetValue = parseInt(currentDividendStr, 10);
             const targetCol = M + i;
-            const brainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt);
+            // 仮商を先に計算してbrainHtmlに渡す
+            let preTrialQ = undefined;
+            if (divisorInt >= 10) {
+                const _d1 = parseInt(divParse.digits[0], 10);
+                const _topVal = Math.floor(currentTargetValue / Math.pow(10, divParse.digits.length - 1));
+                const _trial = Math.min(9, Math.floor(_topVal / _d1));
+                const _true  = Math.floor(currentTargetValue / divisorInt);
+                preTrialQ = (_trial > _true) ? _trial : _true;
+            }
+            const brainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt, preTrialQ);
 
             currentMaskFromCol = targetCol + 1;
 
-            let hideText = `【かくす】 ${currentTargetValue} の中に ${divisorInt} はいくつあるかな？`;
-            if (i > 0) {
-                hideText = `【かくす】位１つ分、かくしていた部分をずらすよ。 ${currentTargetValue} の中に ${divisorInt} はいくつあるかな？`;
+            let hideText = "";
+            if (divisorInt < 10) {
+                hideText = `【ひらめき九九チェック】 ${divisorInt} のだんの九九で、 ${currentTargetValue} をこえない一番近い数を頭の中で見つけよう！`;
+            } else {
+                hideText = `【かくして見当をつける】 ${currentTargetValue} の中に ${divisorInt} がいくつあるか、わる数の上1けたを見て見当をつけよう。`;
             }
 
             steps.push({
@@ -489,6 +601,8 @@ class AdvancedDivisionEngine {
 
             if (currentTargetValue < divisorInt) {
                 if (!hasFirstQuotientStarted) {
+                    // まだ商が立っていない段階での ✕ → 列番号を記録するだけで描画はここでは行う
+                    skippedCols.push(targetCol);
                     steps.push({
                         phase: "skip",
                         description: `商は立ちません。次の桁をいっしょに見ます。`,
@@ -501,10 +615,10 @@ class AdvancedDivisionEngine {
                     steps.push({
                         phase: "build-zero",
                         description: `【たてる】商に「0」を書きます。`,
-                        dots: { ...currentDots }, writeCells: [{ r: 0, c: targetCol, char: "0" }], 
+                        dots: { ...currentDots }, writeCells: [{ r: 0, c: targetCol, char: "0", isGuide: false }], 
                         pulseBoxes: [{ r: 0, c: targetCol }], maskFromCol: currentMaskFromCol
                     });
-                    if (i < N - 1) {
+                    if (i < stopI - 1) {
                         const nextDigit = dvdDigits[i + 1];
                         const isExtraZero = (i + 1 >= baseDvdDigits.length);
                         const dropCells = [{ r: currentRow, c: targetCol + 1, char: nextDigit }];
@@ -518,19 +632,124 @@ class AdvancedDivisionEngine {
                         currentRow++; 
                     }
                     currentRemainder = currentTargetValue;
+
+                    if (route === "advance" && i < stopI - 1) {
+                        const nextDigitForAdvance = dvdDigits[i + 1];
+                        const isExtraZeroForAdvance = (i + 1 >= baseDvdDigits.length);
+                        if (isExtraZeroForAdvance && nextDigitForAdvance === "0") {
+                            steps.push({
+                                phase: "decimal-zero",
+                                description: `【0をくわえる】わられる数の小数第1位に「0」を書き加えてから、次の計算に進みます。`,
+                                dots: { ...currentDots },
+                                writeCells: [{ r: 1, c: targetCol + 1, char: "0", isNewZero: true }],
+                                pulseBoxes: [{ r: 1, c: targetCol + 1 }],
+                                maskFromCol: currentMaskFromCol
+                            });
+                        }
+                    }
                 }
                 continue; 
             }
 
             hasFirstQuotientStarted = true;
-            const quotientDigit = Math.floor(currentTargetValue / divisorInt);
-            quotientPositions[i] = quotientDigit.toString();
 
+            let trueQuotient = Math.floor(currentTargetValue / divisorInt);
+            let trialQuotient = trueQuotient;
+
+            const divDigitsStr = divParse.digits;
+            if (divisorInt >= 10) {
+                let d1 = parseInt(divDigitsStr[0], 10);
+                let topVal = Math.floor(currentTargetValue / Math.pow(10, divDigitsStr.length - 1));
+                trialQuotient = Math.floor(topVal / d1);
+                trialQuotient = Math.min(9, trialQuotient);
+            }
+
+            if (trialQuotient > trueQuotient) {
+                steps.push({
+                    phase: "trial-build",
+                    description: `【仮の商をたてる】わる数の上1けたを見て、まずは仮の商「${trialQuotient}」をたててみます。`,
+                    dots: { ...currentDots },
+                    writeCells: [{ r: 0, c: targetCol, char: trialQuotient.toString() }],
+                    pulseBoxes: [{ r: 0, c: targetCol }],
+                    brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
+                    maskFromCol: currentMaskFromCol
+                });
+
+                let trialProduct = trialQuotient * divisorInt;
+                let tpStr = trialProduct.toString();
+                let trialMultiplyCells = [];
+                for (let j = 0; j < tpStr.length; j++) {
+                    trialMultiplyCells.push({ r: currentRow, c: targetCol - (tpStr.length - 1) + j, char: tpStr[j], borderBottom: true });
+                }
+
+                steps.push({
+                    phase: "trial-multiply",
+                    description: `【かけて確認】 ${trialQuotient} × ${divisorInt} ＝ ${trialProduct} 。あ！わられる数の ${currentTargetValue} より大きくてひき算ができません！`,
+                    dots: { ...currentDots },
+                    writeCells: trialMultiplyCells,
+                    pulseBoxes: trialMultiplyCells.map(mc => ({ r: mc.r, c: mc.c })),
+                    brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
+                    maskFromCol: currentMaskFromCol
+                });
+
+                while (trialQuotient > trueQuotient) {
+                    let oldQuotient = trialQuotient;
+                    trialQuotient--;
+
+                    steps.push({
+                        phase: "trial-fix",
+                        description: `【商の修正】 「${oldQuotient}」では大きすぎたので、商を1小さくして「${trialQuotient}」に直します。`,
+                        dots: { ...currentDots },
+                        writeCells: [
+                            { r: 0, c: targetCol, char: "" },
+                            ...trialMultiplyCells.map(mc => ({ r: mc.r, c: mc.c, char: "", borderBottom: false }))
+                        ],
+                        maskFromCol: currentMaskFromCol
+                    });
+
+                    if (trialQuotient > trueQuotient) {
+                        trialProduct = trialQuotient * divisorInt;
+                        let tpStr = trialProduct.toString();
+                        trialMultiplyCells = [];
+                        for (let j = 0; j < tpStr.length; j++) {
+                            trialMultiplyCells.push({ r: currentRow, c: targetCol - (tpStr.length - 1) + j, char: tpStr[j], borderBottom: true });
+                        }
+                        steps.push({
+                            phase: "trial-build",
+                            description: `【もう一度仮の商】 新しい仮の商「${trialQuotient}」をたててみます。`,
+                            dots: { ...currentDots },
+                            writeCells: [{ r: 0, c: targetCol, char: trialQuotient.toString() }],
+                            pulseBoxes: [{ r: 0, c: targetCol }],
+                            brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
+                            maskFromCol: currentMaskFromCol
+                        });
+                        steps.push({
+                            phase: "trial-multiply",
+                            description: `【かけて確認】 ${trialQuotient} × ${divisorInt} ＝ ${trialProduct} 。まだ大きくてひけません！`,
+                            dots: { ...currentDots },
+                            writeCells: trialMultiplyCells,
+                            pulseBoxes: trialMultiplyCells.map(mc => ({ r: mc.r, c: mc.c })),
+                            brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
+                            maskFromCol: currentMaskFromCol
+                        });
+                    }
+                }
+            }
+
+            const quotientDigit = trueQuotient;
+            quotientPositions[i] = quotientDigit.toString();
+            if (firstQuotientCol === null) {
+                firstQuotientCol = targetCol;
+            }
+
+            const buildBrainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt, quotientDigit);
             steps.push({
                 phase: "build",
-                description: `【たてる】商に 「${quotientDigit}」 が立ちます。`,
+                description: divisorInt >= 10 
+                    ? `【たてる】これでバッチリ！正しい商 「${quotientDigit}」 が立ちます。`
+                    : `【たてる】商に 「${quotientDigit}」 が立ちます。`,
                 dots: { ...currentDots }, writeCells: [{ r: 0, c: targetCol, char: quotientDigit.toString() }], 
-                pulseBoxes: [{ r: 0, c: targetCol }], brainHtml: brainHtml, maskFromCol: currentMaskFromCol
+                pulseBoxes: [{ r: 0, c: targetCol }], brainHtml: buildBrainHtml, maskFromCol: currentMaskFromCol
             });
 
             const product = quotientDigit * divisorInt;
@@ -548,7 +767,7 @@ class AdvancedDivisionEngine {
             currentRow++;
 
             currentRemainder = currentTargetValue - product;
-            const isLastDigit = (i === N - 1);
+            const isLastDigit = (i === stopI - 1);
             const subtractCells = [];
             const remStr = currentRemainder.toString();
             for (let j = 0; j < remStr.length; j++) {
@@ -576,13 +795,99 @@ class AdvancedDivisionEngine {
             }
         }
 
+        // 4年生あまりルートの時、残った小数位の数字をノートの下へ一気にまとめて下ろし、元の位置に点を入れる処理
+        let finalRemainderStr = currentRemainder.toString();
+        let remainderNeedsLeadingZero = false;
+        if (isRemainderRoute) {
+            let dvdNum = parseFloat(dividendStr);
+            let divNum = parseFloat(divisorStr);
+            let movedDvdInt = Math.floor(dvdNum * Math.pow(10, D));
+            let movedDivInt = Math.round(divNum * Math.pow(10, D));
+            let qInt = Math.floor(movedDvdInt / movedDivInt);
+            let remNum = dvdNum - divNum * qInt;
+            finalRemainderStr = remNum.toFixed(Math.max(dvdParse.decimalPlaces, divParse.decimalPlaces));
+            if (finalRemainderStr.indexOf('.') !== -1) {
+                finalRemainderStr = finalRemainderStr.replace(/0+$/, '').replace(/\.$/, '');
+            }
+
+            remainderNeedsLeadingZero = /^0\./.test(finalRemainderStr);
+
+            if (finalDvdDotAfter < N) {
+                const dropCells = [];
+                for (let k = finalDvdDotAfter; k < N; k++) {
+                    dropCells.push({ r: currentRow, c: M + k, char: dvdDigits[k] });
+                }
+                steps.push({
+                    phase: "remainder-drop",
+                    description: `【おろす】あまりを出すために、残りの小数位の数字をそのまま下におろします。`,
+                    dots: { ...currentDots }, writeCells: dropCells,
+                    pulseBoxes: dropCells.map(dc => ({ r: dc.r, c: dc.c })), maskFromCol: currentMaskFromCol
+                });
+            }
+
+            if (dvdParse.hasDot) {
+                currentDots.remainder = dvdParse.dotAfter + M;
+                currentDots.remainderRow = currentRow;
+
+                const remainderWriteCells = [];
+                if (remainderNeedsLeadingZero) {
+                    // 0.4 のように、0 を書く
+                    remainderWriteCells.push({ r: currentRow, c: currentDots.remainder - 1, char: "0" });
+                }
+
+                steps.push({
+                    phase: "remainder-dot",
+                    description: remainderNeedsLeadingZero
+                        ? `【あまりの小数点】あまりが 0.4 の形になるときは、0 を書いたあと、もとの小数点からまっすぐ下におろして打ちます。`
+                        : `【あまりの小数点】わられる数の「もとの小数点」からまっすぐ下におろして打ちます。`,
+                    dots: { ...currentDots }, maskFromCol: currentMaskFromCol, pulseBoxes: [],
+                    writeCells: remainderWriteCells,
+                    pulseBoxes: remainderWriteCells.map(cell => ({ r: cell.r, c: cell.c }))
+                });
+            }
+        }
+
         if (route === "advance" && showDotsInThisProblem) {
-            currentDots.showDvdOrigInit = true; 
+            currentDots.showDvdOrigInit = true;
             currentDots.quotient = finalDvdDotAfter + M;
+
+            let quotientDotWriteCells = [];
+            const onesPlaceCol = currentDots.quotient - 1;
+            const onesPlaceIdx = onesPlaceCol - M;
+            const shouldRestoreOnesZero = (
+                firstQuotientCol !== null &&
+                firstQuotientCol >= currentDots.quotient &&
+                onesPlaceIdx >= 0 && onesPlaceIdx < quotientPositions.length &&
+                quotientPositions[onesPlaceIdx] === "" &&
+                skippedCols.includes(onesPlaceCol)
+            );
+
+            if (shouldRestoreOnesZero) {
+                quotientDotWriteCells = [{ r: 0, c: onesPlaceCol, char: "0", isGuide: false }];
+                quotientPositions[onesPlaceIdx] = "0";
+            }
+
+            const divisorDotWasMoved = (
+                currentDots.divOriginal !== null &&
+                currentDots.divCurrent !== null &&
+                currentDots.divCurrent !== currentDots.divOriginal
+            );
+
+            let quotientDotDescription = divisorDotWasMoved
+                ? `【小数点】移動したあとの小数点から、商の小数点へまっすぐ上にのぼります。`
+                : `【小数点】商の小数点を、わられる数の小数点の真上に打ちます。`;
+
+            if (shouldRestoreOnesZero) {
+                quotientDotDescription += ` 必要な位の✕を0に直します。`;
+            }
+
             steps.push({
                 phase: "quotient-dot",
-                description: `【小数点】商の小数点を、わられる数の小数点の真上に打ちます。`,
-                dots: { ...currentDots }, maskFromCol: currentMaskFromCol, pulseBoxes: []
+                description: quotientDotDescription,
+                dots: { ...currentDots },
+                writeCells: quotientDotWriteCells,
+                maskFromCol: currentMaskFromCol,
+                pulseBoxes: quotientDotWriteCells.map(cell => ({ r: cell.r, c: cell.c }))
             });
         }
 
@@ -591,7 +896,7 @@ class AdvancedDivisionEngine {
             let checkIdx = finalDvdDotAfter + gaisuTargetValue; 
             let checkDigit = parseInt(quotientPositions[checkIdx], 10);
             let targetName = gaisuTargetValue === 0 ? "一の位" : gaisuTargetValue === 1 ? "小数第一位" : "小数第二位";
-            
+
             let isRoundUp = (checkDigit >= 5);
             let description = `【概数にする】${targetName}までの概数にするために、一つ下のマスの「${checkDigit}」を四捨五入します。`;
             description += isRoundUp ? ` 「5以上」なので【切り上げ】です！` : ` 「4以下」なので【切り捨て】です！`;
@@ -640,57 +945,105 @@ class AdvancedDivisionEngine {
             finalGaisuCells.forEach(cell => completeWriteCells.push({ ...cell }));
         }
 
+        // finalQuotientStr: quotientPositions（dvdDigits の各桁に対応）から
+        // 人間が読める商の文字列を組み立てる。
+        // 4年生ルートはそのままの商、概数ルートは四捨五入した表示にする。
+        let finalQuotientStr = (() => {
+            if (route === "advance" && gaisuTargetValue !== null) {
+                return formatRoundedQuotient(quotientPositions, finalDvdDotAfter, gaisuTargetValue);
+            }
+
+            const rawDigits = quotientPositions.map(q => (q === "" || q === "✕") ? "0" : q);
+            let intPart = rawDigits.slice(0, finalDvdDotAfter).join("") || "0";
+            let decPart = rawDigits.slice(finalDvdDotAfter).join("");
+            intPart = intPart.replace(/^0+/, "") || "0";
+            decPart = decPart.replace(/0+$/, "");
+            return decPart.length > 0 ? `${intPart}.${decPart}` : intPart;
+        })();
+
         steps.push({
             phase: "complete",
-            description: route === "remainder" 
-                ? `【完成！】これ以上おろす数がないので、ここで終わりです！ 商は ${quotientPositions.join("")}、あまりは ${currentRemainder} になります。`
-                : `【完成！】概数の商が求められました！素晴らしい！`,
+            description: route === "remainder"
+                ? `【完成！】これ以上おろす数がないので、ここで終わりです！ 商は ${finalQuotientStr}、あまりは ${finalRemainderStr} になります。`
+                : (gaisuTargetValue !== null
+                    ? `【完成！】指定した位まで四捨五入した商が求められました！商は約${finalQuotientStr}です。`
+                    : `【完成！】わり進めた商が求められました！商は ${finalQuotientStr} です。`),
             dots: { ...currentDots },
             writeCells: completeWriteCells,
             maskFromCol: currentMaskFromCol, pulseBoxes: []
         });
 
-        return { initialCells, steps, totalRows: currentRow + 1, totalCols: M + N, M, N };
+        return { initialCells, steps, totalRows: currentRow + 2, totalCols: M + N, M, N };
     }
 }
 
 let appState = null;
 let currentStepIdx = 0;
 let gridData = [];
+let quotientDotAnimFrame = null;
+
+function cancelQuotientDotAnimation() {
+    if (quotientDotAnimFrame !== null) {
+        cancelAnimationFrame(quotientDotAnimFrame);
+        quotientDotAnimFrame = null;
+    }
+}
 
 function initSimulation() {
     const dividendInput = document.getElementById('num-dividend');
     const divisorInput = document.getElementById('num-divisor');
-    
+
     dividendInput.value = sanitizeInput(dividendInput.value.trim());
     divisorInput.value = sanitizeInput(divisorInput.value.trim());
 
     const dividendStr = dividendInput.value;
     const divisorStr = divisorInput.value;
-    
     if (!dividendStr || !divisorStr) return;
 
-    const isDivideOut = AdvancedDivisionEngine.checkWillDivideOut(dividendStr, divisorStr);
     const questionZone = document.getElementById('question-zone');
     const gaisuSubRow = document.getElementById('gaisu-sub-row');
-    
-    let route = "advance"; 
-    let gaisuTargetValue = null;
+    const calcRoute = document.getElementById('calc-route');
 
-    if (!isDivideOut) {
-        questionZone.style.display = "flex";
-        route = document.getElementById('calc-route').value;
-        
-        if (route === "advance") {
-            gaisuSubRow.style.display = "flex";
-            gaisuTargetValue = parseInt(document.getElementById('gaisu-target').value, 10);
+    // 内部で先に整数商を最後まで計算し、余りの有無→割り切れるか、の順で分岐
+    const divParse = parseNumberMeta(divisorStr);
+    const dvdParse = parseNumberMeta(dividendStr);
+    const scale = Math.pow(10, divParse.decimalPlaces);
+    const scaledDividend = Math.round(parseFloat(dividendStr) * scale);
+    const scaledDivisor = parseInt(divParse.digits, 10);
+
+    const integerRemainder = scaledDividend % scaledDivisor;
+    const dividesOut = AdvancedDivisionEngine.checkWillDivideOut(dividendStr, divisorStr);
+
+    // 選択肢を作り直す前の値を保持して、再初期化で強制的に戻らないようにする
+    const previousRoute = calcRoute.value || 'remainder';
+
+    if (integerRemainder !== 0) {
+        questionZone.style.display = 'flex';
+        calcRoute.innerHTML = `
+            <option value="remainder">あまりを出す 【4年生向け】</option>
+            <option value="advance">わり進める 【5年生向け】</option>
+        `;
+        calcRoute.value = (previousRoute === 'advance') ? 'advance' : 'remainder';
+
+        if (calcRoute.value === 'advance' && !dividesOut) {
+            gaisuSubRow.style.display = 'flex';
         } else {
-            gaisuSubRow.style.display = "none";
+            gaisuSubRow.style.display = 'none';
         }
+    } else if (!dividesOut) {
+        questionZone.style.display = 'flex';
+        calcRoute.innerHTML = `
+            <option value="advance">小数でわり進める</option>
+        `;
+        calcRoute.value = 'advance';
+        gaisuSubRow.style.display = 'flex';
     } else {
-        questionZone.style.display = "none";
+        questionZone.style.display = 'none';
+        gaisuSubRow.style.display = 'none';
     }
 
+    const route = calcRoute.value;
+    const gaisuTargetValue = (route === 'advance' && !dividesOut) ? parseInt(document.getElementById('gaisu-target').value, 10) : null;
     appState = AdvancedDivisionEngine.generateSteps(dividendStr, divisorStr, route, gaisuTargetValue);
     currentStepIdx = 0;
 
@@ -716,16 +1069,17 @@ function renderGridStructure() {
     for (let r = 0; r < appState.totalRows; r++) {
         for (let c = 0; c < appState.totalCols; c++) {
             const cellMeta = gridData[r][c];
+            if (!cellMeta) continue;
             const cellDiv = document.createElement('div');
             cellDiv.classList.add('grid-cell'); cellDiv.id = `cell-${r}-${c}`;
             if (cellMeta.borderTop) cellDiv.classList.add('border-top-solid');
             if (cellMeta.borderBottom) cellDiv.classList.add('border-bottom-solid');
             if (cellMeta.isNewZero) cellDiv.classList.add('added-zero');
             if (cellMeta.isRedBorder) cellDiv.classList.add('red-border');
-            
+
             const container = document.createElement('div');
             container.classList.add('cell-container');
-            
+
             const topNum = document.createElement('div');
             topNum.classList.add('top-num');
             topNum.innerText = cellMeta.topChar || "";
@@ -734,10 +1088,10 @@ function renderGridStructure() {
             } else if (cellMeta.topChar) {
                 topNum.style.color = "#22c55e"; 
             }
-            
+
             const mainNum = document.createElement('div');
             mainNum.classList.add('main-num');
-            
+
             if (cellMeta.isDropping) {
                 mainNum.classList.add('digit-dropping');
                 mainNum.style.setProperty('--drop-start-y', `-${cellMeta.dropDistance}px`);
@@ -748,18 +1102,18 @@ function renderGridStructure() {
             } else {
                 mainNum.innerText = cellMeta.char;
             }
-            
+
             const slash = document.createElement('div');
             slash.classList.add('slash-line');
             if (cellMeta.hasSlash) {
                 slash.style.display = "block";
             }
-            
+
             container.appendChild(topNum);
             container.appendChild(mainNum);
             container.appendChild(slash);
             cellDiv.appendChild(container);
-            
+
             gridEl.appendChild(cellDiv);
         }
     }
@@ -772,6 +1126,9 @@ function clearSvg() {
             <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
                 <path d="M 0 1 L 10 5 L 0 9 z" fill="#2196f3"/>
             </marker>
+            <marker id="dot-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#f97316"/>
+            </marker>
         </defs>
     `;
 }
@@ -779,18 +1136,18 @@ function clearSvg() {
 function drawDropArrow(fromR, fromC, toR, toC) {
     const svg = document.getElementById('hint-svg');
     const containerRect = document.getElementById('notebook-container').getBoundingClientRect();
-    
+
     const fromCell = document.getElementById(`cell-${fromR}-${fromC}`);
     const toCell = document.getElementById(`cell-${toR}-${toC}`);
     if (!fromCell || !toCell) return;
-    
+
     const fromRect = fromCell.getBoundingClientRect();
     const toRect = toCell.getBoundingClientRect();
-    
+
     const x = (fromRect.left + fromRect.right) / 2 - containerRect.left;
     const yStart = fromRect.bottom - containerRect.top - 5; 
     const yEnd = toRect.top - containerRect.top + 2; 
-    
+
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("x1", x);
     line.setAttribute("y1", yStart);
@@ -805,13 +1162,16 @@ function drawDropArrow(fromR, fromC, toR, toC) {
 
 function applyStepUI() {
     document.querySelectorAll('.grid-cell').forEach(el => el.classList.remove('active-target'));
+    cancelQuotientDotAnimation();
     clearSvg(); 
     document.getElementById('fusen').style.display = "none";
     if (!appState || appState.steps.length === 0) return;
-    
+
     for (let r = 0; r < appState.totalRows; r++) {
         for (let c = 0; c < appState.totalCols; c++) {
-            gridData[r][c].isDropping = false;
+            if (gridData[r] && gridData[r][c]) {
+                gridData[r][c].isDropping = false;
+            }
         }
     }
     for (let c = 0; c < appState.totalCols; c++) {
@@ -819,6 +1179,9 @@ function applyStepUI() {
             gridData[0][c].hasSlash = false;
             gridData[0][c].topChar = "";
             gridData[0][c].isRedBorder = false;
+            // ★バグ修正: 「もどる」ボタン時にも isGuide をリセット対象に含める
+            // （row=0のisGuideは毎ステップ再適用されるため、ここで一旦クリアしても問題ない）
+            gridData[0][c].isGuide = false;
         }
     }
 
@@ -837,24 +1200,37 @@ function applyStepUI() {
 
     if (step.writeCells) {
         step.writeCells.forEach(wc => {
-            gridData[wc.r][wc.c].char = wc.char;
-            if (wc.isGuide) gridData[wc.r][wc.c].isGuide = true;
-            if (wc.borderBottom) gridData[wc.r][wc.c].borderBottom = true;
-            if (wc.isNewZero) gridData[wc.r][wc.c].isNewZero = true;
-            
-            if (wc.hasSlash) gridData[wc.r][wc.c].hasSlash = true;
-            if (wc.topChar) gridData[wc.r][wc.c].topChar = wc.topChar;
-            if (wc.isRedBorder) gridData[wc.r][wc.c].isRedBorder = true;
-            
-            if (step.phase === "drop" && wc.r > 1) {
-                gridData[wc.r][wc.c].isDropping = true;
-                gridData[wc.r][wc.c].dropDistance = (wc.r - 1) * 46; 
+            if (gridData[wc.r] && gridData[wc.r][wc.c]) {
+                gridData[wc.r][wc.c].char = wc.char;
+
+                // ★バグ修正: isGuideフラグを正しく上書きする。
+                // "✕"以外の文字（"0"など実際の商）が書き込まれるときは必ずisGuideをfalseにリセットする。
+                // これにより、先にskipで✕が書かれたマスに後からbuild-zeroで"0"が書かれても
+                // ✕として描画されてしまうバグが解消される。
+                if (wc.isGuide) {
+                    gridData[wc.r][wc.c].isGuide = true;
+                } else {
+                    // isGuideが明示されていない＝普通の数字なので、必ずfalseにリセット
+                    gridData[wc.r][wc.c].isGuide = false;
+                }
+
+                if (wc.borderBottom) gridData[wc.r][wc.c].borderBottom = true;
+                if (wc.isNewZero) gridData[wc.r][wc.c].isNewZero = true;
+
+                if (wc.hasSlash) gridData[wc.r][wc.c].hasSlash = true;
+                if (wc.topChar) gridData[wc.r][wc.c].topChar = wc.topChar;
+                if (wc.isRedBorder) gridData[wc.r][wc.c].isRedBorder = true;
+
+                if ((step.phase === "drop" || step.phase === "remainder-drop") && wc.r > 1) {
+                    gridData[wc.r][wc.c].isDropping = true;
+                    gridData[wc.r][wc.c].dropDistance = (wc.r - 1) * 46; 
+                }
             }
         });
         renderGridStructure();
     }
 
-    if (step.phase === "drop" && step.writeCells) {
+    if ((step.phase === "drop" || step.phase === "remainder-drop") && step.writeCells) {
         step.writeCells.forEach(wc => {
             if (wc.r > 1) {
                 drawDropArrow(1, wc.c, wc.r, wc.c); 
@@ -876,12 +1252,14 @@ function applyStepUI() {
         const containerRect = document.getElementById('notebook-container').getBoundingClientRect();
         const startCellRect = document.getElementById(`cell-0-${step.maskFromCol}`).getBoundingClientRect();
         const endCellRect = document.getElementById(`cell-${appState.totalRows-1}-${appState.totalCols-1}`).getBoundingClientRect();
-        
-        fusen.style.left = (startCellRect.left - containerRect.left) + "px";
-        fusen.style.top = (startCellRect.top - containerRect.top) + "px";
-        fusen.style.width = (endCellRect.right - startCellRect.left) + "px";
-        fusen.style.height = (endCellRect.bottom - startCellRect.top) + "px"; 
-        fusen.style.display = "block";
+
+        if (startCellRect && endCellRect) {
+            fusen.style.left = (startCellRect.left - containerRect.left) + "px";
+            fusen.style.top = (startCellRect.top - containerRect.top) + "px";
+            fusen.style.width = (endCellRect.right - startCellRect.left) + "px";
+            fusen.style.height = (endCellRect.bottom - startCellRect.top) + "px"; 
+            fusen.style.display = "block";
+        }
     }
 }
 
@@ -903,7 +1281,7 @@ function drawDivisionCurve() {
 function drawDecimalDots(step) {
     const svg = document.getElementById('hint-svg');
     const containerRect = document.getElementById('notebook-container').getBoundingClientRect();
-    
+
     function getBoundary(r, c) {
         let cell = c > 0 ? document.getElementById(`cell-${r}-${c-1}`) : document.getElementById(`cell-${r}-${c}`);
         if (!cell) return null; 
@@ -913,27 +1291,152 @@ function drawDecimalDots(step) {
             y: rect.bottom - containerRect.top - 7 
         };
     }
-    
+
+    function drawDot(pt, fill, opacity = 1) {
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", "4.5");
+        c.setAttribute("fill", fill); c.setAttribute("opacity", opacity);
+        svg.appendChild(c);
+    }
+
+    function drawMovedDot(ptFrom, ptTo, color) {
+        // 元の位置: 薄く打ち消し線
+        const cross = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        cross.setAttribute("x1", ptFrom.x - 6); cross.setAttribute("y1", ptFrom.y - 6);
+        cross.setAttribute("x2", ptFrom.x + 6); cross.setAttribute("y2", ptFrom.y + 6);
+        cross.setAttribute("stroke", "#94a3b8"); cross.setAttribute("stroke-width", "2"); svg.appendChild(cross);
+        const cross2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        cross2.setAttribute("x1", ptFrom.x + 6); cross2.setAttribute("y1", ptFrom.y - 6);
+        cross2.setAttribute("x2", ptFrom.x - 6); cross2.setAttribute("y2", ptFrom.y + 6);
+        cross2.setAttribute("stroke", "#94a3b8"); cross2.setAttribute("stroke-width", "2"); svg.appendChild(cross2);
+
+        // 移動先 → 現在の点
+        drawDot(ptTo, color);
+
+        // 矢印（元→先）
+        if (Math.abs(ptTo.x - ptFrom.x) > 4) {
+            const mx = (ptFrom.x + ptTo.x) / 2;
+            const my = ptFrom.y - 18;
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", `M ${ptFrom.x} ${ptFrom.y} Q ${mx} ${my} ${ptTo.x} ${ptTo.y}`);
+            path.setAttribute("stroke", color); path.setAttribute("stroke-width", "2");
+            path.setAttribute("fill", "none"); path.setAttribute("marker-end", "url(#dot-arrow)"); svg.appendChild(path);
+        }
+    }
+
+    function drawVerticalArrow(ptFrom, ptTo, color = "#0284c7") {
+        const arrow = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        arrow.setAttribute("x1", ptFrom.x);
+        arrow.setAttribute("y1", ptFrom.y);
+        arrow.setAttribute("x2", ptTo.x);
+        arrow.setAttribute("y2", ptTo.y);
+        arrow.setAttribute("stroke", color);
+        arrow.setAttribute("stroke-width", "2.5");
+        arrow.setAttribute("stroke-dasharray", "5,4");
+        arrow.setAttribute("marker-end", "url(#arrow)");
+        svg.appendChild(arrow);
+    }
+
+    function animateDotMovement(ptFrom, ptTo, arrowColor, dotColor, directionLabel) {
+        drawVerticalArrow(ptFrom, ptTo, arrowColor);
+
+        const finalDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        finalDot.setAttribute("cx", ptTo.x);
+        finalDot.setAttribute("cy", ptTo.y);
+        finalDot.setAttribute("r", "4.5");
+        finalDot.setAttribute("fill", dotColor);
+        finalDot.setAttribute("opacity", "0");
+        svg.appendChild(finalDot);
+
+        const motionDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        motionDot.setAttribute("cx", ptFrom.x);
+        motionDot.setAttribute("cy", ptFrom.y);
+        motionDot.setAttribute("r", "5");
+        motionDot.setAttribute("fill", arrowColor);
+        motionDot.setAttribute("opacity", "0.95");
+        svg.appendChild(motionDot);
+
+        const duration = 850;
+        const startTime = performance.now();
+
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            const x = ptFrom.x + (ptTo.x - ptFrom.x) * eased;
+            const y = ptFrom.y + (ptTo.y - ptFrom.y) * eased;
+            motionDot.setAttribute("cx", x);
+            motionDot.setAttribute("cy", y);
+
+            if (t < 1) {
+                quotientDotAnimFrame = requestAnimationFrame(step);
+            } else {
+                finalDot.setAttribute("opacity", "1");
+                if (motionDot.parentNode) motionDot.parentNode.removeChild(motionDot);
+                quotientDotAnimFrame = null;
+            }
+        }
+
+        cancelQuotientDotAnimation();
+        quotientDotAnimFrame = requestAnimationFrame(step);
+    }
+
     const dots = step.dots;
+    const isMoved = dots.isMoved;
+    const quotientDotAnim = (step.phase === "quotient-dot");
+    const remainderDotAnim = (step.phase === "remainder-dot");
+
+    // 商は「移動した後の小数点」から、あまりは「動かす前の小数点」から動かす
+    const quotientSourceCol = dots.dvdCurrent;
+    const remainderSourceCol = dots.dvdOriginal;
+
+    // わる数の小数点
     if (dots.divOriginal !== null) {
-        const pt = getBoundary(1, dots.divOriginal);
-        if (pt) {
-            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", "4.5"); c.setAttribute("fill", "#334155"); svg.appendChild(c);
+        if (isMoved && dots.divCurrent !== null && dots.divCurrent !== dots.divOriginal) {
+            const ptFrom = getBoundary(1, dots.divOriginal);
+            const ptTo   = getBoundary(1, dots.divCurrent);
+            if (ptFrom && ptTo) drawMovedDot(ptFrom, ptTo, "#f97316");
+        } else {
+            const pt = getBoundary(1, dots.divOriginal);
+            if (pt) drawDot(pt, "#334155");
         }
     }
+
+    // わられる数の小数点
     if (dots.dvdOriginal !== null) {
-        const pt = getBoundary(1, dots.dvdOriginal);
-        if (pt) {
-            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", "4.5"); c.setAttribute("fill", "#334155"); svg.appendChild(c);
+        const ptOrig = getBoundary(1, dots.dvdOriginal);
+        if (isMoved && dots.dvdCurrent !== null && dots.dvdCurrent !== dots.dvdOriginal) {
+            const ptTo = getBoundary(1, dots.dvdCurrent);
+            if (ptOrig && ptTo) {
+                drawMovedDot(ptOrig, ptTo, "#f97316");
+            }
+        } else {
+            if (ptOrig) drawDot(ptOrig, "#334155");
         }
     }
+
+    // 商の小数点
     if (dots.quotient !== null) {
         const ptQuot = getBoundary(0, dots.quotient);
         if (ptQuot) {
-            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", ptQuot.x); c.setAttribute("cy", ptQuot.y); c.setAttribute("r", "4.5"); c.setAttribute("fill", "#ef4444"); svg.appendChild(c);
+            const ptSource = quotientSourceCol !== null ? getBoundary(1, quotientSourceCol) : null;
+            if (quotientDotAnim && ptSource) {
+                animateDotMovement(ptSource, ptQuot, "#0284c7", "#ef4444", "up");
+            } else {
+                drawDot(ptQuot, "#ef4444");
+            }
+        }
+    }
+
+    // あまりの小数点
+    if (dots.remainder !== null && dots.remainderRow !== undefined) {
+        const ptRem = getBoundary(dots.remainderRow, dots.remainder);
+        if (ptRem) {
+            const ptSource = remainderSourceCol !== null ? getBoundary(1, remainderSourceCol) : null;
+            if (remainderDotAnim && ptSource) {
+                animateDotMovement(ptSource, ptRem, "#0284c7", "#ef4444", "down");
+            } else {
+                drawDot(ptRem, "#ef4444");
+            }
         }
     }
 }
