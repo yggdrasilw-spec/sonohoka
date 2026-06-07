@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xをつくろう</title>
+<style>
+  :root {
+    --bg: #F0F7FF;
+    --primary: #3B82F6;
+    --primary-light: #DBEAFE;
+    --accent: #F59E0B;
+    --accent-light: #FEF3C7;
+    --correct: #10B981;
+    --wrong: #EF4444;
+    --text-dark: #1E293B;
+    --text-mid: #64748B;
+    --card-bg: #FFFFFF;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
+    --radius: 20px;
+    --dot-color: #3B82F6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    color: var(--text-dark);
+  }
+
+  /* ===== 共通部品 ===== */
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 440px;
+  }
+  .screen.active { display: flex; }
+
+  .spin-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .spin-btn {
+    background: var(--primary-light);
+    border: none;
+    border-radius: 8px;
+    width: 40px;
+    height: 30px;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--primary);
+    font-weight: 900;
+    transition: background 0.15s;
+  }
+  .spin-btn:active { background: var(--primary); color: white; }
+  .spin-value {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--primary);
+    min-width: 64px;
+    text-align: center;
+  }
+
+  /* ===== タイトル画面 ===== */
+  #screen-title {
+    justify-content: center;
+    min-height: 100vh;
+    gap: 28px;
+  }
+
+  .title-logo {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: var(--primary);
+    text-align: center;
+    line-height: 1.2;
+  }
+  .title-x {
+    color: var(--accent);
+    font-size: 3.2rem;
+  }
+  .title-sub {
+    font-size: 0.95rem;
+    color: var(--text-mid);
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  .setting-box {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .setting-label { font-size: 1rem; font-weight: 700; }
+
+  .start-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 16px 0;
+    width: 100%;
+    font-size: 1.3rem;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(59,130,246,0.4);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .start-btn:active { transform: scale(0.97); box-shadow: none; }
+
+  /* ===== ゲーム画面 ===== */
+  #screen-game {
+    gap: 14px;
+    padding-top: 8px;
+  }
+
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+  .q-counter { font-size: 0.9rem; font-weight: 700; color: var(--text-mid); }
+  .timer-pill {
+    font-size: 1rem;
+    font-weight: 900;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 4px 14px;
+    border-radius: 50px;
+  }
+  .timer-pill.danger { color: var(--wrong); background: #FEE2E2; }
+  .score-disp { font-size: 0.9rem; font-weight: 700; color: var(--text-mid); }
+
+  .progress-wrap {
+    width: 100%;
+    height: 8px;
+    background: #E2E8F0;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+  }
+
+  /* X表示バナー */
+  .x-banner {
+    background: var(--accent);
+    color: white;
+    border-radius: 16px;
+    padding: 10px 0;
+    width: 100%;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    box-shadow: 0 3px 12px rgba(245,158,11,0.35);
+  }
+  .x-banner span { font-size: 2rem; }
+
+  /* ゲームエリア */
+  .game-area {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 左カード（問題） */
+  .left-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    position: relative;
+  }
+  .left-card-dots {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+  }
+  .left-card-num {
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--primary);
+    min-width: 56px;
+    text-align: center;
+  }
+  .left-card-label {
+    font-size: 0.75rem;
+    color: var(--text-mid);
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    font-weight: 700;
+  }
+
+  /* 右カード群 */
+  .right-cards {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .choice-card {
+    flex: 1;
+    background: var(--card-bg);
+    border: 3px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    min-height: 110px;
+    justify-content: center;
+    position: relative;
+  }
+  .choice-card:active { transform: scale(0.96); }
+  .choice-card.selected-correct {
+    border-color: var(--correct);
+    background: #F0FDF4;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
+  }
+  .choice-card.selected-wrong {
+    border-color: var(--wrong);
+    background: #FFF5F5;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.2);
+  }
+  .choice-card.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .choice-card.gone {
+    display: none;
+  }
+
+  .choice-dots {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+  }
+  .choice-num {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--text-dark);
+  }
+
+  /* ===== アニメーション結果エリア ===== */
+  .result-area {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+  .result-area.visible { display: flex; }
+
+  .equation-display {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* 合体ドットSVGコンテナ */
+  #merge-svg-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* 数式テキスト行 */
+  .eq-nums-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    justify-content: center;
+  }
+
+  .eq-num {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--primary);
+  }
+
+  .eq-operator {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--text-mid);
+  }
+
+  .eq-text {
+    font-size: 1.4rem;
+    font-weight: 900;
+    text-align: center;
+  }
+  .eq-text.correct-eq { color: var(--correct); font-size: 1.6rem; }
+  .eq-text.wrong-eq { color: var(--wrong); }
+
+  /* SVGドット */
+  .dots-svg {
+    display: block;
+  }
+
+  /* ===== 結果・ゲームオーバー画面 ===== */
+  #screen-result, #screen-gameover {
+    justify-content: center;
+    min-height: 100vh;
+    gap: 20px;
+  }
+
+  .result-emoji {
+    font-size: 5rem;
+    animation: pop 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+  .result-title {
+    font-size: 2rem;
+    font-weight: 900;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .stars-box {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 40px;
+    text-align: center;
+  }
+  .stars-label { font-size: 0.85rem; color: var(--text-mid); margin-bottom: 4px; }
+  .stars-count { font-size: 1.8rem; font-weight: 900; color: var(--accent); }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 48px;
+    font-size: 1.2rem;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(59,130,246,0.35);
+    transition: transform 0.1s;
+  }
+  .btn-primary:active { transform: scale(0.97); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-mid);
+    border: 2px solid #CBD5E1;
+    border-radius: 50px;
+    padding: 12px 40px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .result-score { font-size: 1rem; color: var(--text-mid); }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .shake { animation: shake 0.4s ease; }
+</style>
+</head>
+<body>
+
+<!-- ===== タイトル画面 ===== -->
+<div id="screen-title" class="screen active">
+  <div>
+    <div class="title-logo"><span class="title-x">X</span>を<br>つくろう</div>
+    <div class="title-sub">たして<span style="color:var(--accent);font-weight:900;">X</span>になるかずをえらぼう！</div>
+  </div>
+
+  <div class="setting-box">
+    <div class="setting-row">
+      <div class="setting-label"><span style="color:var(--accent);font-weight:900;">X</span>のかず</div>
+      <div class="spin-box">
+        <button class="spin-btn" id="x-up">▲</button>
+        <div class="spin-value" id="x-display">10</div>
+        <button class="spin-btn" id="x-down">▼</button>
+      </div>
+      <div class="setting-label">にする</div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">じかん</div>
+      <div class="spin-box">
+        <button class="spin-btn" id="time-up">▲</button>
+        <div class="spin-value" id="time-display">∞</div>
+        <button class="spin-btn" id="time-down">▼</button>
+      </div>
+      <div class="setting-label">びょう</div>
+    </div>
+  </div>
+
+  <button class="start-btn" id="start-btn">はじめる！</button>
+</div>
+
+<!-- ===== ゲーム画面 ===== -->
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <div class="q-counter" id="q-counter">1 / 10</div>
+    <div class="timer-pill" id="timer-pill">∞</div>
+    <div class="score-disp" id="score-disp">⭕ 0</div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+
+  <div class="x-banner">つくれ！ <span id="x-val-disp">10</span></div>
+
+  <div class="game-area" id="game-area">
+
+    <!-- 左カード（問題） -->
+    <div class="left-card" id="left-card">
+      <div class="left-card-dots" id="left-dots-wrap">
+        <svg class="dots-svg" id="left-svg" width="120" height="80" viewBox="0 0 120 80"></svg>
+      </div>
+      <div class="left-card-num" id="left-num">3</div>
+    </div>
+
+    <!-- 右3枚 -->
+    <div class="right-cards" id="right-cards">
+      <div class="choice-card" id="card-0">
+        <div class="choice-dots">
+          <svg class="dots-svg" id="svg-0" width="80" height="70" viewBox="0 0 80 70"></svg>
+        </div>
+        <div class="choice-num" id="num-0">7</div>
+      </div>
+      <div class="choice-card" id="card-1">
+        <div class="choice-dots">
+          <svg class="dots-svg" id="svg-1" width="80" height="70" viewBox="0 0 80 70"></svg>
+        </div>
+        <div class="choice-num" id="num-1">5</div>
+      </div>
+      <div class="choice-card" id="card-2">
+        <div class="choice-dots">
+          <svg class="dots-svg" id="svg-2" width="80" height="70" viewBox="0 0 80 70"></svg>
+        </div>
+        <div class="choice-num" id="num-2">4</div>
+      </div>
+    </div>
+
+    <!-- 結果アニメーションエリア -->
+    <div class="result-area" id="result-area">
+      <div class="equation-display" id="eq-display">
+        <!-- 合体ドットSVG（アニメーション用） -->
+        <div id="merge-svg-wrap">
+          <svg id="merge-svg" width="100%" height="230" viewBox="0 0 300 230"></svg>
+        </div>
+        <!-- 数式テキスト行 -->
+        <div class="eq-nums-row">
+          <div class="eq-num" id="eq-num-left">3</div>
+          <div class="eq-operator" id="eq-op-plus">＋</div>
+          <div class="eq-num" id="eq-num-right">7</div>
+          <div class="eq-operator">=</div>
+          <div class="eq-num" id="eq-num-total" style="font-size:2.4rem;">10</div>
+        </div>
+        <div class="eq-text" id="eq-text">3と7で10！</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== 結果画面 ===== -->
+<div id="screen-result" class="screen">
+  <div class="result-emoji" id="result-emoji">🎉</div>
+  <div class="result-title" id="result-title" style="color:var(--primary)">ぜんもんせいかい！</div>
+  <div class="result-score" id="result-score">10 / 10 もん せいかい</div>
+  <div class="stars-box">
+    <div class="stars-label">ためた ★</div>
+    <div class="stars-count" id="total-stars-disp">★（0）</div>
+  </div>
+  <button class="btn-primary" id="retry-btn">もういちど！</button>
+  <button class="btn-secondary" id="home-btn">もどる</button>
+</div>
+
+<!-- ===== ゲームオーバー画面 ===== -->
+<div id="screen-gameover" class="screen">
+  <div class="result-emoji">⏰</div>
+  <div class="result-title" style="color:var(--wrong)">じかんきれ！</div>
+  <div style="font-size:1.3rem;font-weight:900;color:#666;text-align:center;">ざんねん！<br>きたえよう！</div>
+  <div class="stars-box">
+    <div class="stars-label">ためた ★</div>
+    <div class="stars-count" id="go-stars-disp">★（0）</div>
+  </div>
+  <button class="btn-primary" id="go-retry-btn">もういちど！</button>
+  <button class="btn-secondary" id="go-home-btn">もどる</button>
+</div>
+
+<script>
+// ===== 音声 =====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function getAC() { if (!audioCtx) audioCtx = new AudioCtx(); return audioCtx; }
+
+function playCorrect() {
+  const ctx = getAC();
+  [523.25, 659.25, 783.99].forEach((f, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine'; o.frequency.value = f;
+    const t = ctx.currentTime + i * 0.12;
+    g.gain.setValueAtTime(0.28, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.start(t); o.stop(t + 0.35);
+  });
+}
+function playWrong() {
+  const ctx = getAC();
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(220, ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+  g.gain.setValueAtTime(0.2, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+  o.start(); o.stop(ctx.currentTime + 0.3);
+}
+function playTimeout() {
+  const ctx = getAC();
+  [300, 240, 180].forEach((f, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'square'; o.frequency.value = f;
+    const t = ctx.currentTime + i * 0.2;
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o.start(t); o.stop(t + 0.25);
+  });
+}
+function playStar() {
+  const ctx = getAC();
+  [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine'; o.frequency.value = f;
+    const t = ctx.currentTime + i * 0.1;
+    g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    o.start(t); o.stop(t + 0.4);
+  });
+}
+
+// ===== ドット描画ユーティリティ =====
+function drawDots(svgEl, count, W, H, color = '#3B82F6') {
+  svgEl.innerHTML = '';
+  if (count <= 0) return;
+
+  // 何列何行に並べるか決める
+  let cols, rows;
+  if (count <= 3) { cols = count; rows = 1; }
+  else if (count <= 6) { cols = Math.ceil(count / 2); rows = 2; }
+  else { cols = Math.ceil(count / 2); rows = 2; }
+
+  // stepをSVGサイズとcols/rowsから逆算して確実に収める
+  const maxStepX = (W - 8) / Math.max(cols, 1);
+  const maxStepY = (H - 8) / Math.max(rows, 1);
+  const step = Math.min(maxStepX, maxStepY);
+  const r = Math.max(4, Math.min(step * 0.42, 14));
+
+  let pts = [];
+  if (rows === 1) {
+    for (let i = 0; i < count; i++)
+      pts.push([(i - (count - 1) / 2) * step + W / 2, H / 2]);
+  } else {
+    const row1 = Math.ceil(count / 2);
+    const row2 = count - row1;
+    for (let i = 0; i < row1; i++)
+      pts.push([(i - (row1 - 1) / 2) * step + W / 2, H / 2 - step * 0.5]);
+    for (let i = 0; i < row2; i++)
+      pts.push([(i - (row2 - 1) / 2) * step + W / 2, H / 2 + step * 0.5]);
+  }
+
+  // 念のため個別クランプ
+  pts = pts.map(([x, y]) => [
+    Math.max(r + 2, Math.min(W - r - 2, x)),
+    Math.max(r + 2, Math.min(H - r - 2, y)),
+  ]);
+
+  pts.forEach(([x, y]) => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y);
+    c.setAttribute('r', r); c.setAttribute('fill', color);
+    svgEl.appendChild(c);
+  });
+}
+
+// ===== 設定 =====
+const X_OPTIONS  = [3,4,5,6,7,8,9,10];
+const TIME_OPTIONS = [0,1,2,3,4,5,6,7,8,9,10];
+let xIdx   = 7; // 初期値10
+let tIdx   = 0; // 初期値∞
+let totalStars = parseInt(localStorage.getItem('make-x-stars') || '0');
+
+const xDisp   = document.getElementById('x-display');
+const tDisp   = document.getElementById('time-display');
+
+document.getElementById('x-up').onclick   = () => { xIdx = (xIdx+1)%X_OPTIONS.length; xDisp.textContent = X_OPTIONS[xIdx]; };
+document.getElementById('x-down').onclick = () => { xIdx = (xIdx-1+X_OPTIONS.length)%X_OPTIONS.length; xDisp.textContent = X_OPTIONS[xIdx]; };
+document.getElementById('time-up').onclick   = () => { tIdx = (tIdx+1)%TIME_OPTIONS.length; tDisp.textContent = TIME_OPTIONS[tIdx]||'∞'; };
+document.getElementById('time-down').onclick = () => { tIdx = (tIdx-1+TIME_OPTIONS.length)%TIME_OPTIONS.length; tDisp.textContent = TIME_OPTIONS[tIdx]||'∞'; };
+
+// ===== ゲーム状態 =====
+const TOTAL_Q = 10;
+let currentQ = 0, correctCount = 0;
+let targetX, leftNum, correctRight;
+let choiceValues = []; // 3枚の選択肢の値（インデックス0,1,2）
+let correctIdx = 0;    // 正解は何番目か
+let locked = false;
+let timerInterval = null, timeLeft = 0;
+
+function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+// 不正解選択肢を生成（targetXより小さい数で、correctRightと被らない）
+function makeWrongOptions(correctVal, targetX) {
+  const pool = [];
+  for (let v = 1; v < targetX; v++) {
+    if (v !== correctVal) pool.push(v);
+  }
+  // correctValに近い順にソート
+  pool.sort((a, b) => Math.abs(a - correctVal) - Math.abs(b - correctVal));
+  // 近い数から最大4個取って2個ランダム選択
+  const candidates = pool.slice(0, Math.min(6, pool.length));
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 2);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+  currentQ = 0; correctCount = 0;
+  showScreen('screen-game');
+  showQuestion();
+}
+
+function showQuestion() {
+  locked = false;
+  document.getElementById('result-area').classList.remove('visible');
+  document.getElementById('game-area').style.opacity = '1';
+
+  // カードを元に戻す
+  for (let i = 0; i < 3; i++) {
+    const card = document.getElementById(`card-${i}`);
+    card.classList.remove('hidden','gone','selected-correct','selected-wrong','shake');
+    card.style.opacity = '';
+    card.style.background = '';
+    card.style.border = '';
+    card.style.boxShadow = '';
+    card.style.transition = '';
+    document.getElementById(`num-${i}`).style.opacity = '';
+  }
+
+  // 左カードを完全リセット
+  const lc = document.getElementById('left-card');
+  lc.style.opacity = '1';
+  lc.style.transition = '';
+  lc.style.background = '';
+  lc.style.boxShadow = '';
+  lc.style.display = '';
+  document.getElementById('left-num').style.opacity = '';
+
+  const rc = document.getElementById('right-cards');
+  rc.style.display = 'flex';
+  rc.style.opacity = '1';
+  rc.style.transition = '';
+
+  targetX  = X_OPTIONS[xIdx];
+  leftNum  = rand(1, targetX - 1);
+  correctRight = targetX - leftNum;
+
+  const wrongs = makeWrongOptions(correctRight, targetX);
+  // 3枚をシャッフル
+  const allChoices = [correctRight, ...wrongs];
+  allChoices.sort(() => Math.random() - 0.5);
+  choiceValues = allChoices;
+  correctIdx = allChoices.indexOf(correctRight);
+
+  // 描画
+  document.getElementById('x-val-disp').textContent = targetX;
+  document.getElementById('q-counter').textContent = `${currentQ + 1} / ${TOTAL_Q}`;
+  document.getElementById('score-disp').textContent = `⭕ ${correctCount}`;
+  document.getElementById('progress-fill').style.width = `${(currentQ / TOTAL_Q) * 100}%`;
+
+  document.getElementById('left-num').textContent = leftNum;
+  drawDots(document.getElementById('left-svg'), leftNum, 120, 80);
+
+  for (let i = 0; i < 3; i++) {
+    document.getElementById(`num-${i}`).textContent = choiceValues[i];
+    drawDots(document.getElementById(`svg-${i}`), choiceValues[i], 80, 70, '#EF4444');
+  }
+
+  // タイマー
+  clearInterval(timerInterval);
+  const tLimit = TIME_OPTIONS[tIdx];
+  const pill = document.getElementById('timer-pill');
+  pill.classList.remove('danger');
+  if (tLimit > 0) {
+    timeLeft = tLimit;
+    pill.textContent = timeLeft + 'びょう';
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      pill.textContent = timeLeft + 'びょう';
+      if (timeLeft <= 3) pill.classList.add('danger');
+      if (timeLeft <= 0) { clearInterval(timerInterval); onTimeout(); }
+    }, 1000);
+  } else {
+    pill.textContent = '∞';
+  }
+}
+
+function onCardClick(idx) {
+  if (locked) return;
+  locked = true;
+  clearInterval(timerInterval);
+
+  const isCorrect = (idx === correctIdx);
+  const selectedCard = document.getElementById(`card-${idx}`);
+
+  if (isCorrect) {
+    selectedCard.classList.add('selected-correct');
+    playCorrect();
+  } else {
+    selectedCard.classList.add('selected-wrong');
+    selectedCard.classList.add('shake');
+    playWrong();
+  }
+
+  // Step1: 選ばなかったカードを消す（0.3秒後）
+  setTimeout(() => {
+    for (let i = 0; i < 3; i++) {
+      if (i !== idx) {
+        document.getElementById(`card-${i}`).classList.add('hidden');
+      }
+    }
+  }, 300);
+
+  // Step2: カードの枠・背景だけ消す（ドットSVGは残す）、左カードも枠消し（0.7秒後）
+  setTimeout(() => {
+    // 選択カード：枠・背景を透明化、数字も隠す
+    const selCard = document.getElementById(`card-${idx}`);
+    selCard.style.transition = 'background 0.3s, border-color 0.3s, box-shadow 0.3s';
+    selCard.style.background = 'transparent';
+    selCard.style.border = 'none';
+    selCard.style.boxShadow = 'none';
+    document.getElementById(`num-${idx}`).style.opacity = '0';
+
+    // 左カード：枠・背景を透明化、数字も隠す
+    const lc = document.getElementById('left-card');
+    lc.style.transition = 'background 0.3s, box-shadow 0.3s';
+    lc.style.background = 'transparent';
+    lc.style.boxShadow = 'none';
+    document.getElementById('left-num').style.opacity = '0';
+  }, 700);
+
+  // Step3: ドット位置を取得してからshowEquation（1.1秒後）
+  setTimeout(() => {
+    const leftSvgEl  = document.getElementById('left-svg');
+    const leftSvgRect = leftSvgEl.getBoundingClientRect();
+
+    // 正解時→正解カードのSVG、不正解時→選んだカードのSVG
+    const rightSvgEl  = document.getElementById(`svg-${idx}`);
+    const rightSvgRect = rightSvgEl.getBoundingClientRect();
+
+    // right-cardsを非表示（ドット位置取得後）
+    document.getElementById('right-cards').style.display = 'none';
+    document.getElementById('left-card').style.display = 'none';
+
+    showEquation(isCorrect, idx, leftSvgEl, leftSvgRect, rightSvgEl, rightSvgRect);
+  }, 1100);
+
+  // Step4: 次へ（2.8秒後）
+  setTimeout(() => {
+    currentQ++;
+    if (isCorrect) correctCount++;
+    if (currentQ >= TOTAL_Q) {
+      showFinalResult();
+    } else {
+      showQuestion();
+    }
+  }, 2800);
+}
+
+function showEquation(isCorrect, idx, leftSvgEl, leftSvgRect, rightSvgEl, rightSvgRect) {
+  // 正解時→正解の値、不正解時→選んだ値
+  const chosen = choiceValues[idx];
+  const total = leftNum + chosen;
+
+  // 数字テキスト
+  document.getElementById('eq-num-left').textContent  = leftNum;
+  document.getElementById('eq-num-right').textContent = chosen;
+  document.getElementById('eq-num-total').textContent = total;
+
+  const eqText = document.getElementById('eq-text');
+  if (isCorrect) {
+    eqText.textContent = `${leftNum}と${chosen}で${total}！`;
+    eqText.className = 'eq-text correct-eq fade-in';
+    document.getElementById('eq-num-total').style.color = 'var(--correct)';
+  } else {
+    eqText.textContent = `${leftNum}＋${chosen}＝${total}`;
+    eqText.className = 'eq-text wrong-eq fade-in';
+    document.getElementById('eq-num-total').style.color = 'var(--wrong)';
+  }
+
+  // ===== ドットアニメーション =====
+  const totalDots = leftNum + chosen;
+  const COLS = 5;
+  const ROWS = Math.ceil(totalDots / COLS);
+  const DOT_R = 13;
+  const GRID_TOP = 110;
+  const CELL = 57;
+
+  const mergeSvgEl = document.getElementById('merge-svg');
+  mergeSvgEl.removeAttribute('preserveAspectRatio');
+  mergeSvgEl.innerHTML = '';
+
+  // ① まず result-area を表示（SVGが画面に現れる）
+  document.getElementById('result-area').classList.add('visible');
+
+  // ② 2フレーム後にSVG実幅を確定 → viewBox・gridPos・ドット配置をすべてここで行う
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const SVG_W = mergeSvgEl.getBoundingClientRect().width;
+      const SVG_H = GRID_TOP + ROWS * CELL + 10;
+      mergeSvgEl.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
+      mergeSvgEl.setAttribute('height', SVG_H);
+
+      const mergeSvgRect = mergeSvgEl.getBoundingClientRect();
+
+      function gridPos(i) {
+        const offsetX = (SVG_W - COLS * CELL) / 2;
+        return {
+          x: offsetX + (i % COLS) * CELL + CELL / 2,
+          y: GRID_TOP + Math.floor(i / COLS) * CELL + CELL / 2
+        };
+      }
+
+      function collectDots(svgEl, svgRect, color) {
+        const vbW = parseFloat(svgEl.getAttribute('width'));
+        const vbH = parseFloat(svgEl.getAttribute('height'));
+        const scaleX = svgRect.width  / vbW;
+        const scaleY = svgRect.height / vbH;
+        return Array.from(svgEl.querySelectorAll('circle')).map(c => ({
+          startX: svgRect.left + parseFloat(c.getAttribute('cx')) * scaleX - mergeSvgRect.left,
+          startY: svgRect.top  + parseFloat(c.getAttribute('cy')) * scaleY - mergeSvgRect.top,
+          startR: parseFloat(c.getAttribute('r')) * ((scaleX + scaleY) / 2),
+          color
+        }));
+      }
+
+      const allDots = [
+        ...collectDots(leftSvgEl,  leftSvgRect,  '#3B82F6'),
+        ...collectDots(rightSvgEl, rightSvgRect, '#EF4444'),
+      ];
+
+      // 初期位置・初期サイズで配置（transition なし）
+      allDots.forEach((dot, i) => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', dot.startX);
+        c.setAttribute('cy', dot.startY);
+        c.setAttribute('r',  dot.startR);
+        c.setAttribute('fill', dot.color);
+        mergeSvgEl.appendChild(c);
+      });
+
+      // ③ 次フレームで transition 付けて整列先へ移動
+      requestAnimationFrame(() => {
+        Array.from(mergeSvgEl.querySelectorAll('circle')).forEach((c, i) => {
+          const target = gridPos(i);
+          const delay = i * 70;
+          c.style.transition = [
+            `cx 0.45s cubic-bezier(.4,0,.2,1) ${delay}ms`,
+            `cy 0.45s cubic-bezier(.4,0,.2,1) ${delay}ms`,
+            `r  0.45s cubic-bezier(.4,0,.2,1) ${delay}ms`,
+          ].join(', ');
+          c.setAttribute('cx', target.x);
+          c.setAttribute('cy', target.y);
+          c.setAttribute('r',  DOT_R);
+        });
+      });
+    });
+  });
+}
+
+function onTimeout() {
+  locked = true;
+  playTimeout();
+  setTimeout(() => {
+    document.getElementById('go-stars-disp').textContent = `${'★'.repeat(totalStars)}（${totalStars}）`;
+    showScreen('screen-gameover');
+  }, 300);
+}
+
+function showFinalResult() {
+  clearInterval(timerInterval);
+  const perfect = correctCount === TOTAL_Q;
+  if (perfect) {
+    totalStars++;
+    localStorage.setItem('make-x-stars', totalStars);
+    playStar();
+  }
+
+  const emoji = document.getElementById('result-emoji');
+  const title = document.getElementById('result-title');
+  emoji.textContent = perfect ? '🎉' : '😊';
+  title.textContent = perfect ? 'ぜんもんせいかい！' : `${correctCount}もん せいかい！`;
+  title.style.color = perfect ? 'var(--primary)' : 'var(--text-dark)';
+  document.getElementById('result-score').textContent = `${correctCount} / ${TOTAL_Q} もん せいかい`;
+  document.getElementById('total-stars-disp').textContent = `${'★'.repeat(totalStars)}（${totalStars}）`;
+
+  showScreen('screen-result');
+}
+
+// ===== イベント =====
+document.getElementById('start-btn').onclick = startGame;
+document.getElementById('retry-btn').onclick = startGame;
+document.getElementById('home-btn').onclick = () => showScreen('screen-title');
+document.getElementById('go-retry-btn').onclick = startGame;
+document.getElementById('go-home-btn').onclick = () => showScreen('screen-title');
+
+for (let i = 0; i < 3; i++) {
+  document.getElementById(`card-${i}`).onclick = () => onCardClick(i);
+}
+</script>
+</body>
+</html>
