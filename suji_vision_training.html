@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>周辺視野トレーニング</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --accent: #e8ff47; --accent2: #ff6b35;
+    --text: #f0f0f0; --muted: #555570; --hit: #00ffaa;
+  }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    overflow: hidden; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
+  }
+  .screen.hidden { display: none; }
+
+  /* TITLE */
+  .game-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(48px,12vw,96px); color: var(--accent); letter-spacing: 0.08em; line-height: 1; text-align: center; }
+  .game-subtitle { font-size: 13px; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; }
+  .config-panel { display: flex; flex-direction: column; gap: 16px; width: min(320px,90vw); margin-top: 16px; }
+  .config-row { display: flex; flex-direction: column; gap: 6px; }
+  .config-label { font-size: 11px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; }
+  .range-row { display: flex; align-items: center; gap: 12px; }
+  input[type=range] { -webkit-appearance: none; flex: 1; height: 3px; background: var(--muted); border-radius: 2px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+  .range-val { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--accent); min-width: 36px; text-align: right; }
+  .toggle-group { display: flex; gap: 8px; }
+  .toggle-btn { flex: 1; padding: 10px 0; background: transparent; border: 1px solid var(--muted); color: var(--muted); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; border-radius: 4px; cursor: pointer; transition: all 0.18s; }
+  .toggle-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,0.07); }
+  .start-btn { margin-top: 8px; width: 100%; padding: 16px; background: var(--accent); color: #0a0a0f; border: none; border-radius: 4px; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.12em; cursor: pointer; transition: transform 0.12s, background 0.12s; }
+  .start-btn:active { transform: scale(0.97); background: #d4e83f; }
+
+  /* GAME */
+  
+  #hud {
+    position: fixed; top: 0; left: 0; right: 0; height: 64px;
+    display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    z-index: 100; pointer-events: none;
+  }
+  #next-box {
+    display: flex; align-items: center; gap: 8px;
+    border: 1.5px solid var(--accent); border-radius: 8px;
+    padding: 5px 16px 5px 12px; background: rgba(232,255,71,0.07);
+  }
+  #next-label { font-size: 10px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; opacity: 0.75; }
+  #next-num { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--accent); line-height: 1; min-width: 30px; text-align: center; }
+  #timer-display { margin-left: auto; font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--text); letter-spacing: 0.05em; }
+  #field { position: fixed; top: 64px; left: 0; right: 0; bottom: 0; z-index: 10; }
+
+  /* Number items */
+  .num-item {
+    position: absolute; transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .num-item span {
+    font-family: 'Bebas Neue', sans-serif; color: var(--text);
+    line-height: 1; white-space: nowrap; pointer-events: none; transition: color 0.12s;
+  }
+  body.hint-on .num-item.target span { color: var(--accent); }
+  .num-item.hit { pointer-events: none; }
+  .num-item.hit span { animation: hitAnim 0.35s forwards; }
+  @keyframes hitAnim {
+    0%   { color: var(--hit); transform: scale(1.4); opacity: 1; }
+    100% { color: var(--hit); transform: scale(0.2); opacity: 0; }
+  }
+  .num-item.wrong span { animation: wrongAnim 0.3s forwards; }
+  @keyframes wrongAnim {
+    0%,100% { transform: none; }
+    25% { transform: translateX(-7px); color: var(--accent2); }
+    75% { transform: translateX( 7px); color: var(--accent2); }
+  }
+
+  /* COMBO display */
+  #combo-display {
+    position: fixed; top: 0; left: 0;
+    font-family: 'Bebas Neue', sans-serif;
+    pointer-events: none; z-index: 140;
+    text-align: center; line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    white-space: nowrap;
+  }
+  #combo-display.show { animation: comboPop 1.1s forwards; }
+  @keyframes comboPop {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.3); }
+    15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+    35%  { opacity: 1; transform: translate(-50%, -50%) scale(0.95); }
+    60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    80%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -130%) scale(1.1); }
+  }
+
+  /* Particles canvas */
+  #particle-canvas {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 999; background: transparent;
+  }
+
+  /* RESULT */
+  .result-label { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+  .result-time { font-family: 'Bebas Neue', sans-serif; font-size: clamp(64px,18vw,120px); color: var(--accent); letter-spacing: 0.04em; line-height: 1; }
+  .result-unit { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--muted); letter-spacing: 0.1em; }
+  .result-meta { font-size: 13px; color: var(--muted); letter-spacing: 0.08em; margin-top: -8px; }
+  .result-best { font-size: 13px; color: var(--hit); letter-spacing: 0.1em; text-transform: uppercase; }
+  .retry-btn { margin-top: 12px; padding: 14px 48px; background: transparent; border: 1px solid var(--accent); color: var(--accent); font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.12em; border-radius: 4px; cursor: pointer; transition: background 0.18s; }
+  .retry-btn:hover { background: rgba(232,255,71,0.1); }
+  .back-btn { padding: 10px 32px; background: transparent; border: 1px solid var(--muted); color: var(--muted); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; border-radius: 4px; cursor: pointer; transition: border-color 0.18s, color 0.18s; }
+  .back-btn:hover { border-color: var(--text); color: var(--text); }
+  .decorline { width: 40px; height: 2px; background: var(--muted); margin: 4px 0; }
+  .result-maxcombo { font-size: 13px; color: #aaa; letter-spacing: 0.08em; }
+
+  /* STARS */
+  .stars-row { display: flex; gap: 8px; justify-content: center; margin: 4px 0; }
+  .star { font-size: 32px; filter: grayscale(1) brightness(0.4); transition: filter 0.4s, transform 0.4s; }
+  .star.earned { filter: none; transform: scale(1.15); animation: starPop 0.5s ease; }
+  @keyframes starPop {
+    0%   { transform: scale(0.3) rotate(-20deg); }
+    60%  { transform: scale(1.4) rotate(8deg); }
+    100% { transform: scale(1.15) rotate(0deg); }
+  }
+
+  /* RANKING SCREEN */
+  #ranking-screen { overflow-y: auto; padding: 24px 16px; gap: 0; justify-content: flex-start; }
+  .ranking-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 16px; text-align: center; width: 100%; }
+  .ranking-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; width: 100%; }
+  .rtab { padding: 6px 14px; background: transparent; border: 1px solid var(--muted); color: var(--muted); font-family: 'Noto Sans JP', sans-serif; font-size: 12px; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+  .rtab.active { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,0.07); }
+  .ranking-table { width: min(360px, 90vw); }
+  .ranking-section { margin-bottom: 20px; }
+  .ranking-section-title { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 4px; }
+  .ranking-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1a22; }
+  .rank-num { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--muted); min-width: 28px; text-align: right; }
+  .rank-num.gold   { color: #ffd700; }
+  .rank-num.silver { color: #c0c0c0; }
+  .rank-num.bronze { color: #cd7f32; }
+  .rank-time { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text); flex: 1; }
+  .rank-time.highlight { color: var(--accent); }
+  .rank-stars { font-size: 14px; letter-spacing: 1px; }
+  .rank-empty { font-size: 13px; color: var(--muted); padding: 12px 0; text-align: center; }
+  .ranking-back { margin-top: 16px; padding: 10px 32px; background: transparent; border: 1px solid var(--muted); color: var(--muted); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; border-radius: 4px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="screen" id="title-screen">
+  <div class="game-title">PERIPH<br>VISION</div>
+  <div class="game-subtitle">周辺視野トレーニング</div>
+  <div class="config-panel">
+    <div class="config-row">
+      <div class="config-label">数字の個数</div>
+      <div class="range-row">
+        <input type="range" id="count-range" min="5" max="20" value="10" step="1">
+        <div class="range-val" id="count-val">10</div>
+      </div>
+    </div>
+    <div class="config-row">
+      <div class="config-label">タップ順</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-order="asc">昇順 1→</button>
+        <button class="toggle-btn" data-order="desc">降順 →1</button>
+        <button class="toggle-btn" data-order="any">どちらも</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <div class="config-label">次の数字をハイライト</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-hint="on">ON</button>
+        <button class="toggle-btn" data-hint="off">OFF</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <div class="config-label">数字を読み上げ</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-voice="on">ON</button>
+        <button class="toggle-btn" data-voice="off">OFF</button>
+      </div>
+    </div>
+    <button class="start-btn" id="start-btn">START</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="game-screen">
+  <div id="hud">
+    <div id="next-box">
+      <div id="next-label">NEXT</div>
+      <div id="next-num">—</div>
+    </div>
+    <div id="timer-display">0.00</div>
+  </div>
+  <div id="field"></div>
+  <div id="combo-display"></div>
+</div>
+
+<div class="screen hidden" id="result-screen">
+  <div class="result-label">クリアタイム</div>
+  <div class="result-time" id="res-time">0.00</div>
+  <div class="result-unit">SECONDS</div>
+  <div class="stars-row" id="res-stars">
+    <span class="star" id="star1">⭐</span>
+    <span class="star" id="star2">⭐</span>
+    <span class="star" id="star3">⭐</span>
+  </div>
+  <div class="result-meta" id="res-meta"></div>
+  <div class="result-maxcombo" id="res-maxcombo"></div>
+  <div class="result-best hidden" id="res-best">🏆 ベスト更新！</div>
+  <div class="decorline"></div>
+  <button class="retry-btn" id="retry-btn">RETRY</button>
+  <button class="back-btn" id="back-btn">設定に戻る</button>
+  <button class="back-btn" id="ranking-btn" style="border-color:#555570">🏅 ランキング</button>
+</div>
+
+<div class="screen hidden" id="ranking-screen">
+  <div class="ranking-title">RANKING</div>
+  <div class="ranking-tabs" id="ranking-tabs"></div>
+  <div class="ranking-table" id="ranking-table"></div>
+  <button class="ranking-back" id="ranking-back-btn">← 戻る</button>
+</div>
+
+<script>
+(() => {
+  const HIT_MIN      = 60;
+  const MARGIN       = 8;
+  const COMBO_WINDOW = 1500; // ms以内なら連続コンボ
+
+  let cfg = { count: 10, order: 'asc', hint: true, voice: true };
+  let sequence = [], currentIdx = 0;
+  let startTime = null, timerRaf = null, bests = {};
+  let combo = 0, maxCombo = 0, lastHitTime = 0;
+  let particles = [], particleRaf = null;
+  let audioCtx = null;
+
+  const screens   = { title: $('title-screen'), game: $('game-screen'), result: $('result-screen'), ranking: $('ranking-screen') };
+  const field     = $('field');
+  const nextNum   = $('next-num');
+  const timerDisp = $('timer-display');
+  const comboDisp = $('combo-display');
+  let canvas, ctx;
+
+  function $(id) { return document.getElementById(id); }
+
+  // ── Audio Context (lazy init) ──
+  function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  // コンボレベルに応じた音階・和音を生成
+  // combo 1: 単音, 2: オクターブ, 3: 5度, 4+: 明るい和音＋倍音
+  function playHitSound(comboCount) {
+    const ac = getAudio();
+    const now = ac.currentTime;
+
+    // 基本音程: コンボごとに半音3つ上がる（最大で+2オクターブ）
+    const baseNote = 261.63; // C4
+    const semitone = Math.pow(2, 1/12);
+    const step = Math.min(comboCount - 1, 16);
+    const freq = baseNote * Math.pow(semitone, step * 3);
+
+    // コンボに応じた和音構成
+    const chords = [
+      [1],                              // combo 1: 単音
+      [1, 2],                           // combo 2: オクターブ
+      [1, 1.5, 2],                      // combo 3: 5度+オクターブ
+      [1, 1.25, 1.5, 2],               // combo 4: 長三和音
+      [1, 1.25, 1.5, 1.875, 2],        // combo 5: セブンス
+      [1, 1.25, 1.5, 1.875, 2, 2.5],  // combo 6+: 豪華
+    ];
+    const chordIdx = Math.min(comboCount - 1, chords.length - 1);
+    const ratios = chords[chordIdx];
+
+    // 波形もコンボで変化: sine → triangle → sawtooth
+    const waveTypes = ['sine', 'sine', 'triangle', 'triangle', 'sawtooth', 'sawtooth'];
+    const wave = waveTypes[Math.min(comboCount - 1, waveTypes.length - 1)];
+
+    ratios.forEach((ratio, i) => {
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      const vol = 0.18 / ratios.length;
+
+      osc.type = wave;
+      osc.frequency.setValueAtTime(freq * ratio, now);
+      // コンボが高いほどピッチが速く落ちる（明るいアタック感）
+      osc.frequency.exponentialRampToValueAtTime(freq * ratio * 0.5, now + 0.3);
+
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + (comboCount >= 4 ? 0.5 : 0.25));
+
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start(now);
+      osc.stop(now + 0.6);
+    });
+
+    // コンボ3以上：シンバル的なノイズ追加
+    if (comboCount >= 3) {
+      const bufSize = ac.sampleRate * 0.1;
+      const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+      const noise = ac.createBufferSource();
+      const noiseGain = ac.createGain();
+      const noiseFilter = ac.createBiquadFilter();
+      noiseFilter.type = 'highpass';
+      noiseFilter.frequency.value = 4000;
+      noise.buffer = buf;
+      noiseGain.gain.setValueAtTime(0.06, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(ac.destination);
+      noise.start(now);
+    }
+  }
+
+  // ── 読み上げ ──
+  function speakNumber(num) {
+    if (!cfg.voice) return;
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(String(num));
+    utter.lang = 'ja-JP';
+    utter.rate = 1.2;
+    utter.pitch = 1.0;
+    window.speechSynthesis.speak(utter);
+  }
+
+  function playMissSound() {
+    const ac = getAudio();
+    const now = ac.currentTime;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(60, now + 0.15);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.start(now); osc.stop(now + 0.2);
+  }
+
+  // ── Particles ──
+  function spawnParticles(cx, cy, comboCount) {
+    // コンボに応じて量・サイズ・色が豪華に
+    const count = 6 + Math.min(comboCount * 4, 30);
+    const comboColors = [
+      ['#00ffaa', '#e8ff47'],           // combo 1-2: 緑・黄
+      ['#00ffaa', '#e8ff47', '#ffffff'],// combo 3
+      ['#e8ff47', '#ff6b35', '#ff00aa'],// combo 4-5: 炎色
+      ['#ff6b35', '#ff00aa', '#aa00ff', '#e8ff47', '#00ffff'], // combo 6+: 虹
+    ];
+    const colorSet = comboColors[Math.min(Math.floor((comboCount - 1) / 2), comboColors.length - 1)];
+    const speedMult = 1 + comboCount * 0.2;
+    const sizeMult  = 1 + Math.min(comboCount * 0.15, 1.2);
+
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.5;
+      const speed = (5 + Math.random() * 5) * speedMult;
+      const size  = (3 + Math.random() * 4) * sizeMult;
+      const color = colorSet[Math.floor(Math.random() * colorSet.length)];
+      // 星型かどうか (コンボ4以上で混ぜる)
+      const isStar = comboCount >= 4 && Math.random() < 0.4;
+      particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size, color, life: 1,
+        decay: 0.015 + Math.random() * 0.006,
+        isStar,
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.2,
+      });
+    }
+    if (!particleRaf) animateParticles();
+  }
+
+  function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.vy += 0.15; // gravity
+      p.life -= p.decay;
+      p.rotation += p.rotSpeed;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+
+      if (p.isStar) {
+        drawStar(ctx, p.x, p.y, 5, p.size, p.size * 0.45, p.rotation);
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    if (particles.length > 0) {
+      particleRaf = requestAnimationFrame(animateParticles);
+    } else {
+      particleRaf = null;
+    }
+  }
+
+  function drawStar(ctx, x, y, points, outer, inner, rotation) {
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+      const r = i % 2 === 0 ? outer : inner;
+      const angle = (Math.PI * i / points) + rotation;
+      i === 0 ? ctx.moveTo(x + r * Math.cos(angle), y + r * Math.sin(angle))
+              : ctx.lineTo(x + r * Math.cos(angle), y + r * Math.sin(angle));
+    }
+    ctx.closePath(); ctx.fill();
+  }
+
+  // ── COMBO表示 ──
+  function showCombo(count, cx, cy) {
+    const labels = ['', '', '2 COMBO!', '3 COMBO!', '4 COMBO!!', '5 COMBO!!',
+                    'GREAT!!', 'AMAZING!!', 'FANTASTIC!!', 'SUPER!!', 'ULTRA!!'];
+    const label = count <= 10 ? (labels[count] || `${count} COMBO!!`) : `${count} COMBO!!`;
+    const colors = ['', '', '#e8ff47', '#00ffaa', '#ff9500', '#ff6b35',
+                    '#ff3366', '#ff00cc', '#cc00ff', '#00ccff', '#ffffff'];
+    const color = colors[Math.min(count, colors.length - 1)] || '#ffffff';
+    const size  = 36 + Math.min(count * 6, 52);
+
+    const fieldRect2 = field.getBoundingClientRect();
+    comboDisp.style.left = (fieldRect2.left + cx) + 'px';
+    comboDisp.style.top  = (fieldRect2.top  + cy) + 'px';
+
+    comboDisp.textContent = label;
+    comboDisp.style.fontSize = size + 'px';
+    comboDisp.style.color = color;
+    comboDisp.style.textShadow = count >= 4
+      ? `0 0 24px ${color}, 0 0 50px ${color}bb, 0 0 8px #fff`
+      : `0 0 14px ${color}cc, 0 0 4px #fff8`;
+
+    comboDisp.classList.remove('show');
+    void comboDisp.offsetWidth; // reflow
+    comboDisp.classList.add('show');
+  }
+
+  // ── Config UI ──
+  $('count-range').addEventListener('input', e => { cfg.count = +e.target.value; $('count-val').textContent = cfg.count; });
+  document.querySelectorAll('[data-order]').forEach(btn =>
+    btn.addEventListener('click', () => { document.querySelectorAll('[data-order]').forEach(b => b.classList.remove('active')); btn.classList.add('active'); cfg.order = btn.dataset.order; }));
+  document.querySelectorAll('[data-hint]').forEach(btn =>
+    btn.addEventListener('click', () => { document.querySelectorAll('[data-hint]').forEach(b => b.classList.remove('active')); btn.classList.add('active'); cfg.hint = btn.dataset.hint === 'on'; }));
+  document.querySelectorAll('[data-voice]').forEach(btn =>
+    btn.addEventListener('click', () => { document.querySelectorAll('[data-voice]').forEach(b => b.classList.remove('active')); btn.classList.add('active'); cfg.voice = btn.dataset.voice === 'on'; }));
+
+  function showScreen(name) { Object.entries(screens).forEach(([k,el]) => el.classList.toggle('hidden', k !== name)); }
+
+  $('start-btn').addEventListener('click', startGame);
+  $('retry-btn').addEventListener('click', startGame);
+  $('back-btn').addEventListener('click', () => showScreen('title'));
+  $('ranking-btn').addEventListener('click', () => showRankingScreen(cfg.count));
+  $('ranking-back-btn').addEventListener('click', () => showScreen('result'));
+
+  function startGame() {
+    if (!canvas) { canvas = $('particle-canvas'); ctx = canvas.getContext('2d'); }
+    document.body.classList.toggle('hint-on', cfg.hint);
+    field.innerHTML = '';
+    particles = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stopTimer(); startTime = null;
+    combo = 0; maxCombo = 0; lastHitTime = 0;
+    buildSequence();
+    currentIdx = 0;
+    timerDisp.textContent = '0.00';
+    updateHUD();
+    showScreen('game');
+    // canvasサイズ合わせ
+    requestAnimationFrame(() => {
+      canvas.width  = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      placeNumbers();
+      speakNumber(sequence[0]);
+    });
+  }
+
+  function buildSequence() {
+    const chosen = Array.from({length: cfg.count}, (_, i) => i + 1);
+    let order = cfg.order === 'any' ? (Math.random() < 0.5 ? 'asc' : 'desc') : cfg.order;
+    sequence = order === 'asc' ? chosen : [...chosen].reverse();
+  }
+
+  function placeNumbers() {
+    const fw = field.offsetWidth;
+    const fh = field.offsetHeight;
+
+    const items = sequence.map(num => {
+      const fontSize = randInt(22, 58);
+      const el = document.createElement('div');
+      el.className = 'num-item';
+      el.dataset.num = num;
+      el.style.visibility = 'hidden';
+      el.style.left = '0px'; el.style.top = '0px';
+      const span = document.createElement('span');
+      span.textContent = num;
+      span.style.fontSize = fontSize + 'px';
+      el.appendChild(span);
+      field.appendChild(el);
+      const r = el.getBoundingClientRect();
+      const hw = Math.max(r.width,  HIT_MIN);
+      const hh = Math.max(r.height, HIT_MIN);
+      el.style.width  = hw + 'px';
+      el.style.height = hh + 'px';
+      return { el, hw, hh };
+    });
+
+    // 格子シャッフル配置
+    const cols = Math.max(1, Math.floor(fw / (HIT_MIN + MARGIN)));
+    const rows = Math.max(1, Math.floor(fh / (HIT_MIN + MARGIN)));
+    const cellW = fw / cols;
+    const cellH = fh / rows;
+    const cells = [];
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        cells.push({ cx: (c + 0.5) * cellW, cy: (r + 0.5) * cellH });
+    shuffle(cells);
+
+    items.forEach((item, i) => {
+      const cell = cells[i % cells.length];
+      const jx = (Math.random() - 0.5) * (cellW - item.hw) * 0.5;
+      const jy = (Math.random() - 0.5) * (cellH - item.hh) * 0.5;
+      const cx = clamp(cell.cx + jx, item.hw/2 + MARGIN, fw - item.hw/2 - MARGIN);
+      const cy = clamp(cell.cy + jy, item.hh/2 + MARGIN, fh - item.hh/2 - MARGIN);
+      item.el.style.left = cx + 'px';
+      item.el.style.top  = cy + 'px';
+      item.el.style.visibility = 'visible';
+      item.el.addEventListener('pointerdown', onTap);
+    });
+
+    highlightTarget();
+  }
+
+  function highlightTarget() {
+    document.querySelectorAll('.num-item').forEach(el =>
+      el.classList.toggle('target', +el.dataset.num === sequence[currentIdx]));
+  }
+
+  function updateHUD() {
+    nextNum.textContent = currentIdx < sequence.length ? sequence[currentIdx] : '✓';
+  }
+
+  function onTap(e) {
+    const el = e.currentTarget;
+    const tapped = +el.dataset.num;
+    if (tapped !== sequence[currentIdx]) {
+      playMissSound();
+      combo = 0; // コンボリセット
+      el.classList.add('wrong');
+      el.addEventListener('animationend', () => el.classList.remove('wrong'), { once: true });
+      return;
+    }
+
+    const now = performance.now();
+    if (currentIdx === 0) { startTime = now; startTimer(); }
+
+    // コンボ判定
+    if (currentIdx > 0 && (now - lastHitTime) <= COMBO_WINDOW) {
+      combo++;
+    } else {
+      combo = 1;
+    }
+    lastHitTime = now;
+    maxCombo = Math.max(maxCombo, combo);
+
+    // field基準の座標（canvasがfieldの子要素のため）
+    const rect = el.getBoundingClientRect();
+    const fieldRect = field.getBoundingClientRect();
+    const pcx = rect.left + rect.width  / 2 - fieldRect.left;
+    const pcy = rect.top  + rect.height / 2 - fieldRect.top;
+
+    // 効果音
+    playHitSound(combo);
+
+    // パーティクル
+    spawnParticles(pcx, pcy, combo);
+
+    // コンボ2以上で表示
+    if (combo >= 2) showCombo(combo, pcx, pcy);
+
+    el.classList.remove('target');
+    el.classList.add('hit');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+    currentIdx++;
+    updateHUD();
+    if (currentIdx >= sequence.length) { finishGame(); return; }
+    highlightTarget();
+    speakNumber(sequence[currentIdx]);
+  }
+
+  function startTimer() {
+    function tick() {
+      if (!startTime) return;
+      timerDisp.textContent = ((performance.now() - startTime) / 1000).toFixed(2);
+      timerRaf = requestAnimationFrame(tick);
+    }
+    timerRaf = requestAnimationFrame(tick);
+  }
+  function stopTimer() { if (timerRaf) { cancelAnimationFrame(timerRaf); timerRaf = null; } }
+
+  function finishGame() {
+    const elapsed = performance.now() - startTime;
+    stopTimer();
+    const orderLabel = {asc:'昇順',desc:'降順',any:'ランダム'}[cfg.order];
+    // anyの場合は実際の順序をsequenceから判定
+    const actualOrder = cfg.order === 'any'
+      ? (sequence[0] < sequence[sequence.length-1] ? 'asc' : 'desc')
+      : cfg.order;
+    const rankKey = `${cfg.count}-${actualOrder}`;
+    const records = addRecord(rankKey, elapsed);
+    const rank = records.indexOf(elapsed) + 1;
+    const prev = bests[rankKey];
+    const isNewBest = !prev || elapsed < prev;
+    if (isNewBest) bests[rankKey] = elapsed;
+
+    const elapsedSec = elapsed / 1000;
+    const stars = getStarCount(elapsedSec, cfg.count);
+
+    $('res-time').textContent = elapsedSec.toFixed(2);
+    $('res-meta').textContent = `${cfg.count}個 / ${orderLabel} / ヒント${cfg.hint?'ON':'OFF'}`;
+    $('res-maxcombo').textContent = maxCombo >= 2 ? `最大コンボ: ${maxCombo}` : '';
+    $('res-best').classList.toggle('hidden', !isNewBest);
+
+    // 星アニメーション
+    [1,2,3].forEach(i => $('star'+i).classList.remove('earned'));
+    [1,2,3].forEach(i => {
+      if (i <= stars) setTimeout(() => $('star'+i).classList.add('earned'), i * 300);
+    });
+
+    showScreen('result');
+  }
+
+
+  // ── 目標タイム（秒）：個数×1.2秒 / ×0.8秒 / ×0.5秒 で★1〜3 ──
+  function getTargets(count) {
+    return [ count * 1.2, count * 0.8, count * 0.5 ];
+  }
+
+  function getStarCount(elapsedSec, count) {
+    const targets = getTargets(count);
+    if (elapsedSec <= targets[2]) return 3;
+    if (elapsedSec <= targets[1]) return 2;
+    if (elapsedSec <= targets[0]) return 1;
+    return 0;
+  }
+
+  // ── LocalStorage ランキング ──
+  const LS_KEY = 'periph_rankings_v1';
+
+  function loadRankings() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; }
+  }
+
+  function saveRankings(data) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
+  }
+
+  // rankingKey: "count-order"  例: "10-asc"
+  function addRecord(rankingKey, elapsedMs) {
+    const data = loadRankings();
+    if (!data[rankingKey]) data[rankingKey] = [];
+    data[rankingKey].push(elapsedMs);
+    data[rankingKey].sort((a, b) => a - b);
+    data[rankingKey] = data[rankingKey].slice(0, 10);
+    saveRankings(data);
+    return data[rankingKey];
+  }
+
+  // ── ランキング画面描画 ──
+  const COUNT_OPTIONS = [5,6,7,8,9,10,12,15,20];
+  let rankingViewCount = cfg.count;
+
+  function showRankingScreen(fromCount) {
+    rankingViewCount = fromCount || cfg.count;
+    renderRankingTabs();
+    renderRankingTable();
+    showScreen('ranking');
+  }
+
+  function renderRankingTabs() {
+    const tabs = $('ranking-tabs');
+    const data = loadRankings();
+    tabs.innerHTML = '';
+    COUNT_OPTIONS.forEach(n => {
+      const hasData = data[n+'-asc'] || data[n+'-desc'];
+      if (!hasData && n !== rankingViewCount) return;
+      const btn = document.createElement('button');
+      btn.className = 'rtab' + (n === rankingViewCount ? ' active' : '');
+      btn.textContent = n + '個';
+      btn.addEventListener('click', () => { rankingViewCount = n; renderRankingTabs(); renderRankingTable(); });
+      tabs.appendChild(btn);
+    });
+  }
+
+  function renderRankingTable() {
+    const data = loadRankings();
+    const table = $('ranking-table');
+    table.innerHTML = '';
+    const targets = getTargets(rankingViewCount);
+
+    ['asc', 'desc'].forEach(order => {
+      const key = rankingViewCount + '-' + order;
+      const records = data[key] || [];
+      const sec = document.createElement('div');
+      sec.className = 'ranking-section';
+      const title = document.createElement('div');
+      title.className = 'ranking-section-title';
+      title.textContent = order === 'asc' ? '昇順 1→' : '降順 →1';
+      sec.appendChild(title);
+
+      if (records.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'rank-empty';
+        empty.textContent = '記録なし';
+        sec.appendChild(empty);
+      } else {
+        records.forEach((ms, i) => {
+          const row = document.createElement('div');
+          row.className = 'ranking-row';
+          const rn = document.createElement('div');
+          rn.className = 'rank-num' + (i===0?' gold':i===1?' silver':i===2?' bronze':'');
+          rn.textContent = i + 1;
+          const rt = document.createElement('div');
+          const sec_val = ms / 1000;
+          rt.className = 'rank-time';
+          rt.textContent = sec_val.toFixed(2) + 's';
+          const stars = getStarCount(sec_val, rankingViewCount);
+          const rs = document.createElement('div');
+          rs.className = 'rank-stars';
+          rs.textContent = '⭐'.repeat(stars) + (stars < 3 ? '☆'.repeat(3 - stars) : '');
+          row.appendChild(rn); row.appendChild(rt); row.appendChild(rs);
+          sec.appendChild(row);
+        });
+      }
+      table.appendChild(sec);
+    });
+  }
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  function shuffle(arr) { for (let i = arr.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+  // ── Speech synthesis ウォームアップ ──
+  // 初回読み上げの遅延を防ぐため、ページロード時に無音で起動しておく
+  if (window.speechSynthesis) {
+    const warmup = new SpeechSynthesisUtterance('');
+    warmup.volume = 0;
+    warmup.lang = 'ja-JP';
+    window.speechSynthesis.speak(warmup);
+  }
+
+})();
+</script>
+<canvas id="particle-canvas"></canvas>
+</body>
+</html>
