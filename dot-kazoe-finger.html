@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ドットをかぞえる</title>
+<style>
+  :root {
+    --bg: #FFF8F0;
+    --primary: #FF6B35;
+    --primary-light: #FFE0D0;
+    --secondary: #4ECDC4;
+    --dot-color: #FF6B35;
+    --text-dark: #2C2C2C;
+    --text-mid: #666;
+    --card-bg: #FFFFFF;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --radius: 20px;
+    --correct: #44CF6C;
+    --wrong: #FF4757;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    color: var(--text-dark);
+  }
+
+  /* ===== タイトル画面 ===== */
+  #screen-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 24px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .title-logo {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--primary);
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .title-sub {
+    font-size: 1rem;
+    color: var(--text-mid);
+  }
+
+  /* 設定ボックス */
+  .setting-box {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 24px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 220px;
+  }
+
+  .mode-btn {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: none;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform 0.08s, background 0.15s, color 0.15s;
+  }
+  .mode-btn.active {
+    background: var(--primary);
+    color: white;
+  }
+  .mode-btn:active {
+    transform: scale(0.97);
+  }
+
+  .question-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dot-stage {
+    width: 100%;
+    height: 100%;
+  }
+
+  .finger-stage {
+    width: 100%;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .finger-img {
+    width: calc(50% - 5px);
+    max-width: 170px;
+    max-height: 100%;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .finger-left {
+    transform: scaleX(-1);
+  }
+
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .setting-label {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .spin-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .spin-btn {
+    background: var(--primary-light);
+    border: none;
+    border-radius: 8px;
+    width: 36px;
+    height: 28px;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--primary);
+    font-weight: 900;
+    transition: background 0.15s;
+    line-height: 1;
+  }
+  .spin-btn:active { background: var(--primary); color: white; }
+
+  .spin-value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--primary);
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .start-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 16px 0;
+    width: 100%;
+    font-size: 1.3rem;
+    font-weight: 900;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.35);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .start-btn:active { transform: scale(0.97); box-shadow: none; }
+
+  /* ===== ゲーム画面 ===== */
+  #screen-game {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;
+    gap: 12px;
+  }
+
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 4px;
+  }
+
+  .question-counter {
+    font-size: 0.9rem;
+    color: var(--text-mid);
+    font-weight: 700;
+  }
+
+  .timer-display {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 4px 14px;
+    border-radius: 50px;
+  }
+  .timer-display.danger { color: var(--wrong); background: #FFE0E0; }
+
+  .score-display {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-mid);
+  }
+
+  /* ドットエリア */
+  .dot-area {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 0.85;
+  }
+
+  .dot-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  circle.dot {
+    fill: var(--dot-color);
+    transition: cx 0.4s cubic-bezier(.34,1.56,.64,1), cy 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  /* 正解ラベル */
+  .correct-label {
+    display: none;
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: white;
+    background: var(--wrong);
+    padding: 6px 28px;
+    border-radius: 50px;
+  }
+
+  /* フィードバックオーバーレイ */
+  .feedback-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 900;
+    border-radius: var(--radius);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .feedback-overlay.correct-flash { background: rgba(68,207,108,0.25); color: var(--correct); }
+  .feedback-overlay.wrong-flash { background: rgba(255,71,87,0.12); }
+
+  /* キーパッド */
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  .key-btn {
+    background: var(--card-bg);
+    border: 2px solid #EEE;
+    border-radius: 14px;
+    padding: 0;
+    height: 60px;
+    font-size: 1.6rem;
+    font-weight: 900;
+    cursor: pointer;
+    color: var(--text-dark);
+    box-shadow: 0 3px 0 #DDD;
+    transition: transform 0.08s, box-shadow 0.08s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .key-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #DDD;
+  }
+
+  .key-btn.del { font-size: 1.2rem; color: var(--text-mid); }
+  .key-btn.zero-wide {
+    grid-column: span 2;
+  }
+
+  .answer-display {
+    background: var(--card-bg);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    width: 100%;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--text-dark);
+    border: 2px solid #EEE;
+    letter-spacing: 0.1em;
+    position: relative;
+  }
+  .answer-display .placeholder { color: #CCC; font-size: 1.2rem; }
+
+  /* ===== 結果画面 ===== */
+  #screen-result {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 20px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .result-emoji {
+    font-size: 5rem;
+    animation: pop 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+  .result-title {
+    font-size: 2rem;
+    font-weight: 900;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .result-title.perfect { color: var(--primary); }
+  .result-title.gameover { color: var(--wrong); }
+
+  .result-stars {
+    display: flex;
+    gap: 8px;
+    font-size: 2.5rem;
+  }
+
+  .result-score {
+    font-size: 1.1rem;
+    color: var(--text-mid);
+  }
+
+  .total-stars {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 32px;
+    text-align: center;
+  }
+  .total-stars-label { font-size: 0.85rem; color: var(--text-mid); margin-bottom: 4px; }
+  .total-stars-count { font-size: 2rem; font-weight: 900; color: var(--primary); }
+
+  .retry-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 48px;
+    font-size: 1.2rem;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.35);
+    transition: transform 0.1s;
+  }
+  .retry-btn:active { transform: scale(0.97); }
+
+  .home-btn {
+    background: transparent;
+    color: var(--text-mid);
+    border: 2px solid #DDD;
+    border-radius: 50px;
+    padding: 12px 40px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* ===== ゲームオーバー ===== */
+  #screen-gameover {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 20px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  /* 進捗バー */
+  .progress-bar-wrap {
+    width: 100%;
+    height: 8px;
+    background: #EEE;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== タイトル画面 ===== -->
+<div id="screen-title">
+  <div>
+    <div class="title-logo" id="title-logo">🔴 ドットを<br>かぞえる</div>
+    <div class="title-sub" id="title-sub" style="text-align:center;margin-top:8px;">かずのかんかくをきたえよう！</div>
+  </div>
+
+  <div class="setting-box">
+    <div class="setting-row">
+      <div class="setting-label">もーど</div>
+      <div class="mode-selector" id="mode-selector">
+        <button class="mode-btn active" data-mode="dot" type="button">ドット</button>
+        <button class="mode-btn" data-mode="finger" type="button">ゆび</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">かずは</div>
+      <div class="spin-box">
+        <button class="spin-btn" id="max-up">▲</button>
+        <div class="spin-value" id="max-display">5</div>
+        <button class="spin-btn" id="max-down">▼</button>
+      </div>
+      <div class="setting-label">まで</div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">じかん</div>
+      <div class="spin-box">
+        <button class="spin-btn" id="time-up">▲</button>
+        <div class="spin-value" id="time-display">∞</div>
+        <button class="spin-btn" id="time-down">▼</button>
+      </div>
+      <div class="setting-label">びょう</div>
+    </div>
+  </div>
+
+  <button class="start-btn" id="start-btn">はじめる！</button>
+</div>
+
+<!-- ===== ゲーム画面 ===== -->
+<div id="screen-game">
+  <div class="game-header">
+    <div class="question-counter" id="q-counter">1 / 10</div>
+    <div class="timer-display" id="timer-disp">∞</div>
+    <div class="score-display" id="score-disp">⭕ 0</div>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+
+  <div class="dot-area question-area" id="question-area">
+    <div class="dot-stage" id="dot-stage">
+      <svg class="dot-svg" id="dot-svg" viewBox="0 0 400 340"></svg>
+    </div>
+    <div class="finger-stage" id="finger-stage">
+      <img class="finger-img finger-left" id="finger-left" alt="ひだりのゆび">
+      <img class="finger-img finger-right" id="finger-right" alt="みぎのゆび">
+    </div>
+    <div class="correct-label" id="correct-label"></div>
+    <div class="feedback-overlay" id="feedback-overlay"></div>
+  </div>
+
+  <div class="answer-display" id="answer-display">
+    <span class="placeholder" id="answer-placeholder">こたえは？</span>
+    <span id="answer-text"></span>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <button class="key-btn" data-val="1">1</button>
+    <button class="key-btn" data-val="2">2</button>
+    <button class="key-btn" data-val="3">3</button>
+    <button class="key-btn" data-val="4">4</button>
+    <button class="key-btn" data-val="5">5</button>
+    <button class="key-btn" data-val="6">6</button>
+    <button class="key-btn" data-val="7">7</button>
+    <button class="key-btn" data-val="8">8</button>
+    <button class="key-btn" data-val="9">9</button>
+    <button class="key-btn zero-wide" data-val="0">0</button>
+    <button class="key-btn del" data-val="del">⌫</button>
+  </div>
+</div>
+
+<!-- ===== 結果画面 ===== -->
+<div id="screen-result">
+  <div class="result-emoji" id="result-emoji">🎉</div>
+  <div class="result-title perfect" id="result-title">ぜんもんせいかい！</div>
+  <div class="result-stars" id="result-stars"></div>
+  <div class="result-score" id="result-score"></div>
+  <div class="total-stars">
+    <div class="total-stars-label">ためた ★</div>
+    <div class="total-stars-count" id="total-stars-count">0</div>
+  </div>
+  <button class="retry-btn" id="retry-btn">もういちど！</button>
+  <button class="home-btn" id="home-btn">もどる</button>
+</div>
+
+<!-- ===== ゲームオーバー ===== -->
+<div id="screen-gameover">
+  <div class="result-emoji">⏰</div>
+  <div class="result-title gameover">じかんきれ！</div>
+  <div style="font-size:1.3rem;font-weight:900;color:#666;text-align:center;">ざんねん！<br>きたえよう！</div>
+  <div class="total-stars">
+    <div class="total-stars-label">ためた ★</div>
+    <div class="total-stars-count" id="go-stars-count">0</div>
+  </div>
+  <button class="retry-btn" id="go-retry-btn">もういちど！</button>
+  <button class="home-btn" id="go-home-btn">もどる</button>
+</div>
+
+<script>
+// ===== 音声生成 =====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playCorrect() {
+  const ctx = getAudioCtx();
+  const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const t = ctx.currentTime + i * 0.12;
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.start(t); osc.stop(t + 0.3);
+  });
+}
+
+function playWrong() {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.2, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+  osc.start(); osc.stop(ctx.currentTime + 0.3);
+}
+
+function playTimeout() {
+  const ctx = getAudioCtx();
+  [300, 250, 200].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    const t = ctx.currentTime + i * 0.18;
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    osc.start(t); osc.stop(t + 0.25);
+  });
+}
+
+function playStar() {
+  const ctx = getAudioCtx();
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const t = ctx.currentTime + i * 0.1;
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    osc.start(t); osc.stop(t + 0.35);
+  });
+}
+
+// ===== ゲーム状態 =====
+let maxNum = 5;
+let timeLimit = 0; // 0 = ∞
+let selectedMode = 'dot';
+let totalStars = 0;
+
+const TIME_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // 0=∞
+const MAX_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10];
+let maxIdx = 2; // 5
+let timeIdx = 0; // ∞
+
+const STAR_KEYS = {
+  dot: 'dot-stars',
+  finger: 'finger-stars',
+};
+
+// 設定スピナー
+const maxDisplay = document.getElementById('max-display');
+const timeDisplay = document.getElementById('time-display');
+
+document.getElementById('max-up').addEventListener('click', () => {
+  maxIdx = (maxIdx + 1) % MAX_OPTIONS.length;
+  maxDisplay.textContent = MAX_OPTIONS[maxIdx];
+});
+document.getElementById('max-down').addEventListener('click', () => {
+  maxIdx = (maxIdx - 1 + MAX_OPTIONS.length) % MAX_OPTIONS.length;
+  maxDisplay.textContent = MAX_OPTIONS[maxIdx];
+});
+document.getElementById('time-up').addEventListener('click', () => {
+  timeIdx = (timeIdx + 1) % TIME_OPTIONS.length;
+  timeDisplay.textContent = TIME_OPTIONS[timeIdx] === 0 ? '∞' : TIME_OPTIONS[timeIdx];
+});
+document.getElementById('time-down').addEventListener('click', () => {
+  timeIdx = (timeIdx - 1 + TIME_OPTIONS.length) % TIME_OPTIONS.length;
+  timeDisplay.textContent = TIME_OPTIONS[timeIdx] === 0 ? '∞' : TIME_OPTIONS[timeIdx];
+});
+
+const modeButtons = Array.from(document.querySelectorAll('.mode-btn'));
+const titleLogo = document.getElementById('title-logo');
+const titleSub = document.getElementById('title-sub');
+
+function getStarKey() {
+  return STAR_KEYS[selectedMode] || STAR_KEYS.dot;
+}
+
+function loadStars() {
+  totalStars = parseInt(localStorage.getItem(getStarKey()) || '0');
+}
+
+function saveStars() {
+  localStorage.setItem(getStarKey(), String(totalStars));
+}
+
+function updateModeUI() {
+  modeButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === selectedMode);
+  });
+  if (selectedMode === 'dot') {
+    titleLogo.innerHTML = '🔴 ドットを<br>かぞえる';
+    titleSub.textContent = 'かずのかんかくをきたえよう！';
+  } else {
+    titleLogo.innerHTML = '✋ ゆびを<br>かぞえる';
+    titleSub.textContent = 'ゆびのかずをよもう！';
+  }
+}
+
+modeButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedMode = btn.dataset.mode;
+    loadStars();
+    updateModeUI();
+  });
+});
+updateModeUI();
+
+// ===== ゲームロジック =====
+const TOTAL_Q = 10;
+let currentQ = 0;
+let correctCount = 0;
+let currentAnswer = 0;
+let inputStr = '';
+let timerInterval = null;
+let timeLeft = 0;
+let locked = false;
+
+// ドット配置パターン（重み付き）
+// 整列系を多く、ランダムは少なめ
+const PATTERN_POOL = [
+  'horizontal','horizontal','horizontal',
+  'vertical','vertical','vertical',
+  'square','square','square',
+  'trapezoid','trapezoid',
+  'diagonal','diagonal',
+  'dice',        // ダイス目固定配置
+  'random',      // 完全ランダムは1枠のみ
+];
+
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function pickPattern() {
+  return PATTERN_POOL[rand(0, PATTERN_POOL.length - 1)];
+}
+
+function generateGroups(maxN) {
+  const max5 = Math.min(maxN - 1, 5);
+  const a = rand(1, Math.min(5, max5));
+  const bMax = Math.min(5, maxN - a);
+  if (bMax < 1) return generateGroups(maxN);
+  const b = rand(1, bMax);
+  return [a, b];
+}
+
+function generateFingerGroups(maxN) {
+  const limit = Math.min(5, maxN);
+  const a = rand(0, limit);
+  const bMax = Math.min(5, maxN - a);
+  if (bMax < 0) return generateFingerGroups(maxN);
+  const b = rand(0, bMax);
+  if (a + b === 0) return generateFingerGroups(maxN);
+  return [a, b];
+}
+
+// ===== ドット座標生成（中心相対座標、回転なし） =====
+function getLocalDots(count, pattern, r) {
+  const pts = [];
+  const step = r * 2.5; // ドット間隔
+
+  if (pattern === 'horizontal') {
+    for (let i = 0; i < count; i++)
+      pts.push([(i - (count - 1) / 2) * step, 0]);
+
+  } else if (pattern === 'vertical') {
+    for (let i = 0; i < count; i++)
+      pts.push([0, (i - (count - 1) / 2) * step]);
+
+  } else if (pattern === 'diagonal') {
+    // 右肩上がり斜め列
+    for (let i = 0; i < count; i++)
+      pts.push([(i - (count - 1) / 2) * step * 0.85, (i - (count - 1) / 2) * step * -0.85]);
+
+  } else if (pattern === 'square') {
+    // ダイス目 / 正方形配置（固定レイアウト）
+    const layouts = {
+      1: [[0, 0]],
+      2: [[-1, 0], [1, 0]],
+      3: [[-1, 0], [0, 0], [1, 0]],
+      4: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
+      5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
+    };
+    const layout = layouts[Math.min(count, 5)];
+    layout.forEach(([dx, dy]) => pts.push([dx * step * 0.85, dy * step * 0.85]));
+
+  } else if (pattern === 'dice') {
+    // 本物のサイコロ目（1〜5）
+    const diceLayouts = {
+      1: [[0, 0]],
+      2: [[-1, -1], [1, 1]],
+      3: [[-1, -1], [0, 0], [1, 1]],
+      4: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
+      5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
+    };
+    const layout = diceLayouts[Math.min(count, 5)];
+    layout.forEach(([dx, dy]) => pts.push([dx * step * 0.8, dy * step * 0.8]));
+
+  } else if (pattern === 'trapezoid') {
+    if (count <= 2) {
+      for (let i = 0; i < count; i++)
+        pts.push([(i - (count - 1) / 2) * step, 0]);
+    } else {
+      const bottom = Math.ceil(count / 2);
+      const top = count - bottom;
+      for (let i = 0; i < bottom; i++)
+        pts.push([(i - (bottom - 1) / 2) * step, step * 0.5]);
+      for (let i = 0; i < top; i++)
+        pts.push([(i - (top - 1) / 2) * step * 0.85, -step * 0.5]);
+    }
+
+  } else { // random
+    const placed = [];
+    let attempts = 0;
+    while (placed.length < count && attempts < 300) {
+      attempts++;
+      const x = (Math.random() - 0.5) * step * (count + 1);
+      const y = (Math.random() - 0.5) * step * (count + 1);
+      if (placed.every(([px, py]) => Math.hypot(px - x, py - y) > r * 2.2))
+        placed.push([x, y]);
+    }
+    placed.forEach(p => pts.push(p));
+  }
+  return pts;
+}
+
+// バウンディングボックスを計算
+function getBBox(pts, r) {
+  const xs = pts.map(p => p[0]);
+  const ys = pts.map(p => p[1]);
+  return {
+    minX: Math.min(...xs) - r, maxX: Math.max(...xs) + r,
+    minY: Math.min(...ys) - r, maxY: Math.max(...ys) + r,
+    w: Math.max(...xs) - Math.min(...xs) + r * 2,
+    h: Math.max(...ys) - Math.min(...ys) + r * 2,
+  };
+}
+
+// 座標群を指定中心に平行移動
+function translate(pts, cx, cy) {
+  return pts.map(([x, y]) => [x + cx, y + cy]);
+}
+
+// ドット1個を境界内にクランプ
+function clampPt(x, y, r, W, H, margin) {
+  const lo = margin + r;
+  const hiX = W - margin - r;
+  const hiY = H - margin - r;
+  return [Math.max(lo, Math.min(hiX, x)), Math.max(lo, Math.min(hiY, y))];
+}
+
+// グループ全体をシフトして境界内に収める（形を保持しつつ、個別クランプで確実に収める）
+function clampGroup(pts, r, W, H, margin) {
+  const lo = margin + r;
+  const hiX = W - margin - r;
+  const hiY = H - margin - r;
+  const xs = pts.map(p => p[0]);
+  const ys = pts.map(p => p[1]);
+  let dx = 0, dy = 0;
+  const overL = lo - Math.min(...xs);
+  const overR = Math.max(...xs) - hiX;
+  const overT = lo - Math.min(...ys);
+  const overB = Math.max(...ys) - hiY;
+  if (overL > 0) dx += overL;
+  else if (overR > 0) dx -= overR;
+  if (overT > 0) dy += overT;
+  else if (overB > 0) dy -= overB;
+  // シフト後も収まらない個別ドットは強制クランプ
+  return pts.map(([x, y]) => clampPt(x + dx, y + dy, r, W, H, margin));
+}
+
+function renderDots(groupA, groupB, animate = false) {
+  const svg = document.getElementById('dot-svg');
+  const W = 400, H = 340;
+  const MARGIN = 8; // SVG端からの最小余白
+  const totalDots = groupA + groupB;
+  const r = Math.max(13, Math.min(26, 85 / Math.sqrt(totalDots)));
+
+  const patA = pickPattern();
+  const patB = pickPattern();
+
+  // ローカル座標（中心(0,0)基準）
+  const localA = getLocalDots(groupA, patA, r);
+  const localB = getLocalDots(groupB, patB, r);
+
+  const bboxA = getBBox(localA, r);
+  const bboxB = getBBox(localB, r);
+
+  // 左右 or 上下にグループ分け
+  const split = Math.random() < 0.6 ? 'lr' : 'tb'; // 左右の方が多め
+
+  let cxA, cyA, cxB, cyB;
+  const GAP = r * 2.5; // グループ間の最小すきま
+
+  if (split === 'lr') {
+    // 左グループ：右端が W/2 - GAP/2 以内
+    cxA = W * 0.25;
+    cyA = H * 0.5;
+    // 右グループ：左端が W/2 + GAP/2 以上
+    cxB = W * 0.75;
+    cyB = H * 0.5;
+    // 重なり調整
+    const rightEdgeA = cxA + bboxA.maxX;
+    const leftEdgeB  = cxB + bboxB.minX;
+    if (rightEdgeA + GAP > leftEdgeB) {
+      const shift = (rightEdgeA + GAP - leftEdgeB) / 2;
+      cxA -= shift; cxB += shift;
+    }
+  } else {
+    cxA = W * 0.5; cyA = H * 0.28;
+    cxB = W * 0.5; cyB = H * 0.73;
+    const bottomA = cyA + bboxA.maxY;
+    const topB    = cyB + bboxB.minY;
+    if (bottomA + GAP > topB) {
+      const shift = (bottomA + GAP - topB) / 2;
+      cyA -= shift; cyB += shift;
+    }
+  }
+
+  let dotsA = clampGroup(translate(localA, cxA, cyA), r, W, H, MARGIN);
+  let dotsB = clampGroup(translate(localB, cxB, cyB), r, W, H, MARGIN);
+
+  // ===== 全ドット間の重なりチェック → グループBをずらして解消 =====
+  const MIN_DIST = r * 2.2;
+  for (let iter = 0; iter < 40; iter++) {
+    let overlapFound = false;
+    for (const pA of dotsA) {
+      for (const pB of dotsB) {
+        const dx = pB[0] - pA[0];
+        const dy = pB[1] - pA[1];
+        const dist = Math.hypot(dx, dy);
+        if (dist < MIN_DIST) {
+          overlapFound = true;
+          const push = (MIN_DIST - dist) / 2 + 1;
+          const nx = dist < 0.001 ? 1 : dx / dist;
+          const ny = dist < 0.001 ? 0 : dy / dist;
+          dotsB = dotsB.map(([x, y]) => [x + nx * push, y + ny * push]);
+        }
+      }
+    }
+    if (!overlapFound) break;
+    dotsB = clampGroup(dotsB, r, W, H, MARGIN);
+  }
+
+  // 最終確認：全ドットを個別クランプで確実に境界内に収める
+  dotsA = dotsA.map(([x, y]) => clampPt(x, y, r, W, H, MARGIN));
+  dotsB = dotsB.map(([x, y]) => clampPt(x, y, r, W, H, MARGIN));
+
+  const allPts = [...dotsA, ...dotsB];
+
+  // 既存の円を再利用
+  const existing = Array.from(svg.querySelectorAll('circle'));
+  while (existing.length < allPts.length) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('r', r);
+    c.classList.add('dot');
+    svg.appendChild(c);
+    existing.push(c);
+  }
+
+  existing.forEach((c, i) => {
+    c.setAttribute('r', r);
+    if (i < allPts.length) {
+      c.style.display = '';
+      if (animate) {
+        c.setAttribute('cx', W / 2);
+        c.setAttribute('cy', H / 2);
+        setTimeout(() => {
+          c.setAttribute('cx', allPts[i][0]);
+          c.setAttribute('cy', allPts[i][1]);
+        }, 20 + i * 25);
+      } else {
+        c.setAttribute('cx', allPts[i][0]);
+        c.setAttribute('cy', allPts[i][1]);
+      }
+    } else {
+      c.style.display = 'none';
+    }
+  });
+}
+
+function renderDotsAligned(total) {
+  // 正解表示用：きれいに横並び or ダイス風
+  const svg = document.getElementById('dot-svg');
+  const W = 400, H = 340;
+  const r = Math.max(14, Math.min(28, 90 / Math.sqrt(total)));
+  const circles = Array.from(svg.querySelectorAll('circle'));
+
+  const cols = total <= 5 ? total : Math.ceil(total / 2);
+  const rows = total <= 5 ? 1 : 2;
+  const stepX = r * 2.6;
+  const stepY = r * 2.6;
+  const startX = W / 2 - ((cols - 1) * stepX) / 2;
+  const startY = H / 2 - ((rows - 1) * stepY) / 2;
+
+  for (let i = 0; i < total; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = startX + col * stepX;
+    const y = startY + row * stepY;
+    if (circles[i]) {
+      circles[i].style.display = '';
+      circles[i].setAttribute('r', r);
+      circles[i].setAttribute('cx', x);
+      circles[i].setAttribute('cy', y);
+    }
+  }
+  // 余分を消す
+  circles.forEach((c, i) => { if (i >= total) c.style.display = 'none'; });
+}
+
+function renderFingerQuestion(leftCount, rightCount) {
+  const dotStage = document.getElementById('dot-stage');
+  const fingerStage = document.getElementById('finger-stage');
+  const leftImg = document.getElementById('finger-left');
+  const rightImg = document.getElementById('finger-right');
+  dotStage.style.display = 'none';
+  fingerStage.style.display = 'flex';
+  const leftSrc = `img/finger_count${String(leftCount).padStart(2, '0')}.png`;
+  const rightSrc = `img/finger_count${String(rightCount).padStart(2, '0')}.png`;
+  leftImg.src = leftSrc;
+  rightImg.src = rightSrc;
+  leftImg.alt = `${leftCount}のゆび`;
+  rightImg.alt = `${rightCount}のゆび`;
+}
+
+function renderDotQuestion(groupA, groupB, animate = false) {
+  document.getElementById('dot-stage').style.display = 'block';
+  document.getElementById('finger-stage').style.display = 'none';
+  renderDots(groupA, groupB, animate);
+}
+
+// ===== 問題生成・表示 =====
+let groups = [0, 0];
+
+function showQuestion() {
+  locked = false;
+  inputStr = '';
+  updateAnswerDisplay();
+  document.getElementById('correct-label').style.display = 'none';
+
+  maxNum = MAX_OPTIONS[maxIdx];
+  groups = selectedMode === 'dot' ? generateGroups(maxNum) : generateFingerGroups(maxNum);
+  currentAnswer = groups[0] + groups[1];
+
+  if (selectedMode === 'dot') {
+    renderDotQuestion(groups[0], groups[1], true);
+  } else {
+    renderFingerQuestion(groups[0], groups[1]);
+  }
+
+  document.getElementById('q-counter').textContent = `${currentQ + 1} / ${TOTAL_Q}`;
+  document.getElementById('score-disp').textContent = `⭕ ${correctCount}`;
+  document.getElementById('progress-fill').style.width = `${(currentQ / TOTAL_Q) * 100}%`;
+
+  // タイマー
+  clearInterval(timerInterval);
+  timeLimit = TIME_OPTIONS[timeIdx];
+  if (timeLimit > 0) {
+    timeLeft = timeLimit;
+    document.getElementById('timer-disp').textContent = timeLeft + 'びょう';
+    document.getElementById('timer-disp').classList.remove('danger');
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timer-disp').textContent = timeLeft + 'びょう';
+      if (timeLeft <= 3) document.getElementById('timer-disp').classList.add('danger');
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        onTimeout();
+      }
+    }, 1000);
+  } else {
+    document.getElementById('timer-disp').textContent = '∞';
+    document.getElementById('timer-disp').classList.remove('danger');
+  }
+}
+
+function updateAnswerDisplay() {
+  const placeholder = document.getElementById('answer-placeholder');
+  const ansText = document.getElementById('answer-text');
+  if (inputStr === '') {
+    placeholder.style.display = '';
+    ansText.textContent = '';
+  } else {
+    placeholder.style.display = 'none';
+    ansText.textContent = inputStr;
+  }
+}
+
+function onKeyPress(val) {
+  if (locked) return;
+
+  if (val === 'del') {
+    inputStr = inputStr.slice(0, -1);
+    updateAnswerDisplay();
+    return;
+  }
+
+  // 2桁目以降は受け付けない（10の場合のみ2桁）
+  if (inputStr.length >= 2) return;
+
+  // 先頭が0の場合は受け付けない（0→? は不要）
+  if (inputStr === '0' && val !== 'del') return;
+
+  inputStr += val;
+  updateAnswerDisplay();
+
+  // 即時判定
+  // - 1桁入力（0〜9）：答えが10でない限り即判定
+  //   ただし答えが10のとき、「1」を押した時点では待機（次に0が来る可能性）
+  // - 2桁入力：即判定
+  const num = parseInt(inputStr);
+
+  if (inputStr.length === 2) {
+    // 2桁確定
+    submitAnswer();
+  } else {
+    // 1桁
+    // 答えが10で、かつ「1」を入力した場合は次の入力を待つ
+    if (currentAnswer === 10 && inputStr === '1') return;
+    // それ以外は即判定
+    submitAnswer();
+  }
+}
+
+function flashFeedback(isCorrect) {
+  const overlay = document.getElementById('feedback-overlay');
+  overlay.className = 'feedback-overlay ' + (isCorrect ? 'correct-flash' : 'wrong-flash');
+  overlay.style.display = 'flex';
+  overlay.style.opacity = '1';
+  setTimeout(() => {
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.display = 'none'; }, 200);
+  }, isCorrect ? 300 : 600);
+}
+
+function submitAnswer() {
+  clearInterval(timerInterval);
+  locked = true;
+  const userAns = parseInt(inputStr);
+
+  if (userAns === currentAnswer) {
+    // 正解
+    correctCount++;
+    playCorrect();
+    flashFeedback(true);
+    currentQ++;
+    if (currentQ >= TOTAL_Q) {
+      setTimeout(showResult, 700);
+    } else {
+      setTimeout(showQuestion, 600);
+    }
+  } else {
+    // 不正解
+    playWrong();
+    flashFeedback(false);
+    // ドットを整列させる
+    setTimeout(() => {
+      if (selectedMode === 'dot') {
+        renderDotsAligned(currentAnswer);
+      }
+      const label = document.getElementById('correct-label');
+      label.textContent = `こたえ：${currentAnswer}`;
+      label.style.display = 'block';
+    }, 400);
+    currentQ++;
+    setTimeout(() => {
+      document.getElementById('correct-label').style.display = 'none';
+      if (currentQ >= TOTAL_Q) {
+        showResult();
+      } else {
+        showQuestion();
+      }
+    }, 2200);
+  }
+}
+
+function onTimeout() {
+  locked = true;
+  playTimeout();
+  showGameOver();
+}
+
+// ===== 画面遷移 =====
+function showScreen(id) {
+  ['screen-title','screen-game','screen-result','screen-gameover'].forEach(s => {
+    const el = document.getElementById(s);
+    el.style.display = 'none';
+  });
+  const target = document.getElementById(id);
+  target.style.display = 'flex';
+}
+
+function startGame() {
+  currentQ = 0;
+  correctCount = 0;
+  loadStars();
+  // SVGをクリア
+  const svg = document.getElementById('dot-svg');
+  svg.innerHTML = '';
+  document.getElementById('finger-left').removeAttribute('src');
+  document.getElementById('finger-right').removeAttribute('src');
+  showScreen('screen-game');
+  showQuestion();
+}
+
+function showResult() {
+  clearInterval(timerInterval);
+  const perfect = correctCount === TOTAL_Q;
+  if (perfect) {
+    totalStars++;
+    saveStars();
+    playStar();
+  }
+
+  document.getElementById('result-emoji').textContent = perfect ? '🎉' : '😊';
+  const titleEl = document.getElementById('result-title');
+  titleEl.textContent = perfect ? 'ぜんもんせいかい！' : `${correctCount}もん せいかい！`;
+  titleEl.className = 'result-title ' + (perfect ? 'perfect' : '');
+  titleEl.style.color = perfect ? 'var(--primary)' : 'var(--text-dark)';
+
+  document.getElementById('result-stars').textContent = perfect ? '★' : '';
+  document.getElementById('result-score').textContent = `${correctCount} / ${TOTAL_Q} もん せいかい`;
+  document.getElementById('total-stars-count').textContent = '★'.repeat(totalStars) + `（${totalStars}）`;
+
+  showScreen('screen-result');
+}
+
+function showGameOver() {
+  document.getElementById('go-stars-count').textContent = '★'.repeat(totalStars) + `（${totalStars}）`;
+  showScreen('screen-gameover');
+}
+
+// ===== イベントリスナー =====
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+document.getElementById('keypad').addEventListener('click', e => {
+  const btn = e.target.closest('.key-btn');
+  if (btn) onKeyPress(btn.dataset.val);
+});
+
+document.getElementById('retry-btn').addEventListener('click', startGame);
+document.getElementById('home-btn').addEventListener('click', () => showScreen('screen-title'));
+document.getElementById('go-retry-btn').addEventListener('click', startGame);
+document.getElementById('go-home-btn').addEventListener('click', () => showScreen('screen-title'));
+
+// キーボード対応
+document.addEventListener('keydown', e => {
+  if (document.getElementById('screen-game').style.display === 'none') return;
+  if (e.key >= '0' && e.key <= '9') onKeyPress(e.key);
+  else if (e.key === 'Backspace') onKeyPress('del');
+});
+</script>
+</body>
+</html>
