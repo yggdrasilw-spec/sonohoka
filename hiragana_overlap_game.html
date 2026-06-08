@@ -9,7 +9,6 @@
       --bg0: #0f172a;
       --bg1: #1e1b4b;
       --bg2: #312e81;
-      --card: rgba(255,255,255,0.90);
       --stroke: rgba(255,255,255,0.24);
       --text: #0f172a;
       --muted: rgba(15,23,42,0.68);
@@ -142,9 +141,9 @@
     }
 
     .tabs { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
-    button, input { font: inherit; }
+    button, input, select { font: inherit; }
 
-    .btn {
+    .btn, .select {
       border: 1px solid rgba(15,23,42,0.22);
       border-radius: 999px;
       padding: 11px 16px;
@@ -154,8 +153,8 @@
       color: #0f172a;
       background: rgba(255,255,255,0.96);
     }
-    .btn:hover { transform: translateY(-1px); filter: brightness(1.02); }
-    .btn:active { transform: translateY(1px) scale(0.99); }
+    .btn:hover, .select:hover { transform: translateY(-1px); filter: brightness(1.02); }
+    .btn:active, .select:active { transform: translateY(1px) scale(0.99); }
     .btn.ghost {
       color: #0f172a;
       background: rgba(255,255,255,0.92);
@@ -186,6 +185,17 @@
     .play .btn.primary {
       color: white;
       border-color: rgba(255,255,255,0.40);
+    }
+
+    .select {
+      min-width: 160px;
+      color: #0f172a;
+      background: rgba(255,255,255,0.98);
+    }
+    .creator .select,
+    .play .select {
+      border-color: rgba(15,23,42,0.18);
+      background: rgba(255,255,255,0.98);
     }
 
     .panel {
@@ -267,6 +277,7 @@
     }
 
     .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
     .status {
       font-size: 13px;
@@ -393,6 +404,7 @@
       .row { grid-template-columns: 44px 1fr 44px; }
       .row .no { padding: 9px 0; font-size: 13px; }
       .stage { min-height: 380px; }
+      .select { min-width: 140px; }
     }
   </style>
 </head>
@@ -418,7 +430,9 @@
           <h2>問題作成</h2>
           <p class="note">1行に1問ずつ入れます。例：かばん、めろん、あさがお</p>
         </div>
-        <div class="actions">
+        <div class="controls">
+          <span style="color:#0f172a;font-weight:700;">フォント：</span>
+          <select class="select" id="fontSelect" aria-label="フォントを選ぶ"></select>
           <button type="button" class="btn ghost" id="addRow">＋ 1問追加</button>
         </div>
       </div>
@@ -441,6 +455,8 @@
       <div class="play-controls">
         <button type="button" class="btn ghost" id="prevProblem">← まえ</button>
         <button type="button" class="btn ghost" id="nextProblem">つぎ →</button>
+        <span style="color:#0f172a;font-weight:700;">フォント：</span>
+        <select class="select" id="fontSelectPlay" aria-label="フォントを選ぶ"></select>
       </div>
 
       <div class="stage" id="stage">
@@ -474,12 +490,40 @@
     const problemCountLabel = document.getElementById('problemCountLabel');
     const tapCountLabel = document.getElementById('tapCountLabel');
     const charCountLabel = document.getElementById('charCountLabel');
+    const fontSelect = document.getElementById('fontSelect');
+    const fontSelectPlay = document.getElementById('fontSelectPlay');
 
     const TOTAL_STEPS = 10;
+    const FONT_OPTIONS = [
+      { label: 'システム標準', value: "-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif" },
+      { label: 'ヒラギノ角ゴ', value: "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif" },
+      { label: 'ヒラギノ丸ゴ', value: "'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif" },
+      { label: '游ゴシック', value: "'Yu Gothic', 'YuGothic', Meiryo, sans-serif" },
+      { label: '游明朝', value: "'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', serif" },
+      { label: 'メイリオ', value: "Meiryo, 'Yu Gothic', sans-serif" },
+      { label: 'MS ゴシック', value: "'MS Gothic', monospace" },
+      { label: 'MS Pゴシック', value: "'MS PGothic', sans-serif" },
+      { label: 'MS 明朝', value: "'MS Mincho', serif" },
+      { label: 'Noto Sans JP', value: "'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif" },
+      { label: 'Noto Serif JP', value: "'Noto Serif JP', 'Yu Mincho', serif" },
+      { label: 'BIZ UDPゴシック', value: "'BIZ UDPGothic', 'Yu Gothic', Meiryo, sans-serif" },
+      { label: 'BIZ UDP明朝', value: "'BIZ UDPMincho', 'Yu Mincho', serif" },
+      { label: 'Rounded M+ 1c', value: "'Rounded Mplus 1c', 'M PLUS Rounded 1c', sans-serif" },
+      { label: 'M PLUS 1p', value: "'M PLUS 1p', 'M PLUS 1', sans-serif" },
+      { label: 'M PLUS Rounded 1c', value: "'M PLUS Rounded 1c', 'M PLUS 1p', sans-serif" },
+      { label: 'Kosugi Maru', value: "'Kosugi Maru', 'Yu Gothic', sans-serif" },
+      { label: 'Source Han Sans JP', value: "'Source Han Sans JP', 'Noto Sans JP', sans-serif" },
+      { label: 'Source Han Serif JP', value: "'Source Han Serif JP', 'Noto Serif JP', serif" },
+      { label: '等幅', value: "'Consolas', 'Monaco', 'Courier New', monospace" },
+      { label: '手書き風A', value: "'Hannotate SC', 'Hiragino Maru Gothic ProN', sans-serif" },
+      { label: '手書き風B', value: "'Klee One', 'Yu Mincho', serif" }
+    ];
+
     let problems = ['かばん', 'めろん', 'あさがお'];
     let currentProblemIndex = 0;
     let tapCount = 0;
     let renderedWord = '';
+    let currentFont = FONT_OPTIONS[0].value;
 
     function normalizeWord(word) {
       return (word || '').trim().replace(/\s+/g, '');
@@ -544,6 +588,32 @@
       syncProblemsFromInputs();
     }
 
+    function initFontSelects() {
+      const fill = (select) => {
+        select.innerHTML = '';
+        FONT_OPTIONS.forEach((opt, idx) => {
+          const option = document.createElement('option');
+          option.value = opt.value;
+          option.textContent = opt.label;
+          if (idx === 0) option.selected = true;
+          select.appendChild(option);
+        });
+      };
+      fill(fontSelect);
+      fill(fontSelectPlay);
+      fontSelect.addEventListener('change', () => {
+        currentFont = fontSelect.value;
+        fontSelectPlay.value = currentFont;
+        renderWord(problems[currentProblemIndex] || 'かばん', tapCount);
+      });
+      fontSelectPlay.addEventListener('change', () => {
+        currentFont = fontSelectPlay.value;
+        fontSelect.value = currentFont;
+        renderWord(problems[currentProblemIndex] || 'かばん', tapCount);
+      });
+      currentFont = fontSelect.value;
+    }
+
     function computeFontSize(n) {
       if (n <= 2) return 'clamp(88px, 20vw, 180px)';
       if (n === 3) return 'clamp(80px, 18vw, 160px)';
@@ -557,11 +627,8 @@
     function getStageOffsets(n, stage) {
       if (stage <= 0) return Array(n).fill(0);
       const center = (n - 1) / 2;
-
-      // 文字数が増えても最後にしっかり離れるよう、最終幅は全文字数共通にする
       const finalGap = 115;
       const perStep = finalGap / TOTAL_STEPS;
-
       return Array.from({ length: n }, (_, i) => Math.round((i - center) * perStep * stage));
     }
 
@@ -583,10 +650,12 @@
       const scale = 1 - (Math.min(stage, TOTAL_STEPS) * 0.005);
       const fontSize = computeFontSize(n);
       wordWrap.style.fontSize = fontSize;
+      wordWrap.style.fontFamily = currentFont;
 
       const spans = [...wordWrap.querySelectorAll('.letter')];
       spans.forEach((span, i) => {
         const x = offsets[i] ?? 0;
+        span.style.fontFamily = currentFont;
         span.style.fontSize = `calc(${fontSize} * ${scale})`;
         span.style.transform = `translate(calc(-50% + ${x}px), -50%) scale(${scale})`;
         span.style.zIndex = String(10 + i);
@@ -631,7 +700,6 @@
       if (tapCount < TOTAL_STEPS) tapCount += 1;
       tapCountLabel.textContent = String(tapCount);
       renderWord(word, tapCount);
-
       if (tapCount === 1) clueText.textContent = 'ちょっと見えてきたよ';
       else if (tapCount === 5) clueText.textContent = 'かなり見えてきたよ';
       else if (tapCount === 9) clueText.textContent = 'あとすこし！';
@@ -675,6 +743,7 @@
     });
 
     ['かばん', 'めろん', 'あさがお', 'きつね', 'しんかんせん'].forEach(v => addRow(v));
+    initFontSelects();
     syncProblemsFromInputs();
     showCurrentProblem();
     setView('create');
