@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ひらがな重ね文字ゲーム</title>
+  <style>
+    :root {
+      --bg0: #0f172a;
+      --bg1: #1e1b4b;
+      --bg2: #312e81;
+      --card: rgba(255,255,255,0.90);
+      --stroke: rgba(255,255,255,0.24);
+      --text: #0f172a;
+      --muted: rgba(15,23,42,0.68);
+      --shadow: 0 18px 50px rgba(2, 6, 23, 0.26);
+      --shadow-soft: 0 10px 24px rgba(2, 6, 23, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 14%, rgba(236,72,153,0.30), transparent 18%),
+        radial-gradient(circle at 88% 16%, rgba(34,197,94,0.22), transparent 17%),
+        radial-gradient(circle at 22% 88%, rgba(59,130,246,0.22), transparent 18%),
+        radial-gradient(circle at 84% 84%, rgba(245,158,11,0.22), transparent 16%),
+        linear-gradient(135deg, var(--bg0), var(--bg1) 52%, var(--bg2));
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.18;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,0.9), rgba(0,0,0,0.1) 70%, transparent 100%);
+    }
+
+    body::after {
+      background-image: radial-gradient(circle, rgba(255,255,255,0.18) 2px, transparent 2px);
+      background-size: 40px 40px;
+      opacity: 0.14;
+    }
+
+    .app {
+      width: min(1240px, calc(100% - 24px));
+      margin: 12px auto 24px;
+      min-height: calc(100vh - 36px);
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 14px;
+    }
+
+    .topbar {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--stroke);
+      border-radius: 28px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08)),
+        radial-gradient(circle at 0% 0%, rgba(255,255,255,0.20), transparent 40%),
+        radial-gradient(circle at 100% 0%, rgba(255,255,255,0.12), transparent 34%),
+        rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .topbar::before,
+    .topbar::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(8px);
+      pointer-events: none;
+    }
+    .topbar::before {
+      inset: auto -12% -40% auto;
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, rgba(236,72,153,0.38), transparent 62%);
+    }
+    .topbar::after {
+      inset: -30% auto auto -8%;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(99,102,241,0.30), transparent 62%);
+    }
+
+    .brand {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: min(520px, 100%);
+    }
+
+    .brand-mark {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 28px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+      box-shadow: 0 14px 28px rgba(99,102,241,0.38);
+      border: 1px solid rgba(255,255,255,0.40);
+    }
+
+    .title { display: flex; flex-direction: column; gap: 4px; }
+    .title h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.05;
+      color: white;
+      text-shadow: 0 3px 16px rgba(0,0,0,0.24);
+    }
+    .title p {
+      margin: 0;
+      font-size: 13px;
+      color: rgba(255,255,255,0.88);
+    }
+
+    .tabs { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
+    button, input { font: inherit; }
+
+    .btn {
+      border: 1px solid rgba(15,23,42,0.22);
+      border-radius: 999px;
+      padding: 11px 16px;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease, background 160ms ease;
+      box-shadow: 0 10px 20px rgba(2, 6, 23, 0.10);
+      color: #0f172a;
+      background: rgba(255,255,255,0.96);
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.02); }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+    .btn.ghost {
+      color: #0f172a;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
+    }
+    .btn.primary {
+      background: linear-gradient(135deg, #f97316, #ec4899 45%, #8b5cf6);
+      border-color: rgba(255,255,255,0.42);
+      color: white;
+      font-weight: 700;
+    }
+    .topbar .btn {
+      color: white;
+      background: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.36);
+    }
+    .topbar .btn.primary {
+      background: linear-gradient(135deg, #f97316, #ec4899 45%, #8b5cf6);
+      color: white;
+    }
+    .creator .btn,
+    .play .btn {
+      color: #0f172a;
+      background: rgba(255,255,255,0.98);
+      border-color: rgba(15,23,42,0.18);
+    }
+    .creator .btn.primary,
+    .play .btn.primary {
+      color: white;
+      border-color: rgba(255,255,255,0.40);
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.88));
+      border: 1px solid rgba(255,255,255,0.55);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
+
+    .creator, .play {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(99,102,241,0.09), transparent 28%),
+        radial-gradient(circle at 100% 0%, rgba(236,72,153,0.10), transparent 26%),
+        linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.90));
+    }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: end;
+      flex-wrap: wrap;
+      padding: 2px 2px 0;
+    }
+
+    .head h2 {
+      margin: 0;
+      font-size: 19px;
+      color: var(--text);
+    }
+    .head .note { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .input-list { display: grid; gap: 10px; }
+    .row {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .row .no {
+      font-weight: 900;
+      color: white;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.95), rgba(236,72,153,0.88));
+      border-radius: 16px;
+      padding: 11px 0;
+      border: 1px solid rgba(255,255,255,0.45);
+      box-shadow: var(--shadow-soft);
+    }
+    .row input {
+      width: 100%;
+      border: 1px solid rgba(15,23,42,0.18);
+      border-radius: 16px;
+      padding: 13px 14px;
+      background: rgba(255,255,255,0.98);
+      outline: none;
+      font-size: 16px;
+      color: #0f172a;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75), 0 8px 18px rgba(2,6,23,0.06);
+    }
+    .row input:focus {
+      border-color: rgba(99,102,241,0.58);
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+    .icon-btn {
+      border: 1px solid rgba(15,23,42,0.22);
+      border-radius: 16px;
+      padding: 12px 14px;
+      cursor: pointer;
+      background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(243,244,246,0.98));
+      color: #0f172a;
+      min-width: 52px;
+      box-shadow: 0 10px 20px rgba(2,6,23,0.10);
+    }
+
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    .status {
+      font-size: 13px;
+      color: var(--text);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid rgba(15,23,42,0.10);
+      color: var(--text);
+      box-shadow: 0 6px 14px rgba(2,6,23,0.06);
+    }
+
+    .play-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-top: 2px;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 420px;
+      padding: 18px;
+      display: grid;
+      place-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      overflow: hidden;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 50% 30%, rgba(99,102,241,0.10), transparent 40%),
+        radial-gradient(circle at 40% 80%, rgba(236,72,153,0.10), transparent 36%),
+        linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.76));
+      border: 1px dashed rgba(15,23,42,0.14);
+    }
+
+    .tap-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      cursor: pointer;
+      touch-action: manipulation;
+      background: transparent;
+    }
+
+    .clue {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      color: #0f172a;
+      z-index: 3;
+      background: rgba(255,255,255,0.92);
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,0.10);
+      box-shadow: 0 8px 18px rgba(2,6,23,0.08);
+    }
+
+    .word-wrap {
+      position: relative;
+      width: min(92vw, 900px);
+      height: min(52vh, 360px);
+      display: grid;
+      place-items: center;
+      z-index: 2;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    .letter {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: 900;
+      line-height: 1;
+      color: #000;
+      text-shadow: none;
+      transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 260ms ease;
+      will-change: transform, opacity;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    .answer-box {
+      min-height: 90px;
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      padding: 14px 16px 18px 16px;
+      border-top: 1px solid rgba(15,23,42,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,252,0.96));
+    }
+    .answer-box .label {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .answer-box .answer {
+      font-size: clamp(28px, 5vw, 54px);
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      color: #000;
+    }
+    .hidden { display: none !important; }
+
+    @media (max-width: 640px) {
+      .app { width: calc(100% - 12px); margin: 6px auto 14px; }
+      .brand { min-width: 0; }
+      .row { grid-template-columns: 44px 1fr 44px; }
+      .row .no { padding: 9px 0; font-size: 13px; }
+      .stage { min-height: 380px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">ひ</div>
+        <div class="title">
+          <h1>ひらがな重ね文字ゲーム</h1>
+          <p>背景は華やかに、文字は黒だけ。読みにくさと見やすさの対比で遊ぶ学習ゲームです。</p>
+        </div>
+      </div>
+      <div class="tabs">
+        <button type="button" class="btn primary" id="tabCreate">問題をつくる</button>
+        <button type="button" class="btn ghost" id="tabPlay">あそぶ</button>
+      </div>
+    </header>
+
+    <section id="screenCreate" class="panel creator">
+      <div class="head">
+        <div>
+          <h2>問題作成</h2>
+          <p class="note">1行に1問ずつ入れます。例：かばん、めろん、あさがお</p>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn ghost" id="addRow">＋ 1問追加</button>
+        </div>
+      </div>
+      <div class="input-list" id="inputList"></div>
+    </section>
+
+    <section id="screenPlay" class="panel play hidden">
+      <div class="head">
+        <div>
+          <h2>実施画面</h2>
+          <p class="note">画面をタップするとヒントが進みます。</p>
+        </div>
+        <div class="status">
+          <span class="pill">問題 <span id="problemIndexLabel">1</span>/<span id="problemCountLabel">1</span></span>
+          <span class="pill">タップ回数 <span id="tapCountLabel">0</span></span>
+          <span class="pill">文字数 <span id="charCountLabel">0</span></span>
+        </div>
+      </div>
+
+      <div class="play-controls">
+        <button type="button" class="btn ghost" id="prevProblem">← まえ</button>
+        <button type="button" class="btn ghost" id="nextProblem">つぎ →</button>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="tap-layer" id="tapLayer" aria-label="タップしてヒントを進める"></div>
+        <div class="clue" id="clueText">よめるかな？</div>
+        <div class="word-wrap" id="wordWrap"></div>
+      </div>
+
+      <div class="answer-box hidden" id="answerBox">
+        <div class="label">せいかいは</div>
+        <div class="answer" id="answerText"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const inputList = document.getElementById('inputList');
+    const screenCreate = document.getElementById('screenCreate');
+    const screenPlay = document.getElementById('screenPlay');
+    const tabCreate = document.getElementById('tabCreate');
+    const tabPlay = document.getElementById('tabPlay');
+    const addRowBtn = document.getElementById('addRow');
+    const prevProblemBtn = document.getElementById('prevProblem');
+    const nextProblemBtn = document.getElementById('nextProblem');
+    const tapLayer = document.getElementById('tapLayer');
+    const wordWrap = document.getElementById('wordWrap');
+    const clueText = document.getElementById('clueText');
+    const answerBox = document.getElementById('answerBox');
+    const answerText = document.getElementById('answerText');
+    const problemIndexLabel = document.getElementById('problemIndexLabel');
+    const problemCountLabel = document.getElementById('problemCountLabel');
+    const tapCountLabel = document.getElementById('tapCountLabel');
+    const charCountLabel = document.getElementById('charCountLabel');
+
+    const TOTAL_STEPS = 10;
+    let problems = ['かばん', 'めろん', 'あさがお'];
+    let currentProblemIndex = 0;
+    let tapCount = 0;
+    let renderedWord = '';
+
+    function normalizeWord(word) {
+      return (word || '').trim().replace(/\s+/g, '');
+    }
+
+    function setView(view) {
+      const isCreate = view === 'create';
+      screenCreate.classList.toggle('hidden', !isCreate);
+      screenPlay.classList.toggle('hidden', isCreate);
+      tabCreate.classList.toggle('primary', isCreate);
+      tabCreate.classList.toggle('ghost', !isCreate);
+      tabPlay.classList.toggle('primary', !isCreate);
+      tabPlay.classList.toggle('ghost', isCreate);
+      if (!isCreate) showCurrentProblem();
+    }
+
+    function renumberRows() {
+      [...inputList.children].forEach((row, i) => {
+        row.querySelector('.no').textContent = String(i + 1);
+      });
+    }
+
+    function syncProblemsFromInputs() {
+      const values = [...inputList.querySelectorAll('input')]
+        .map(i => normalizeWord(i.value))
+        .filter(Boolean);
+      if (values.length) problems = values;
+      problemCountLabel.textContent = String(problems.length);
+      if (currentProblemIndex >= problems.length) currentProblemIndex = 0;
+    }
+
+    function addRow(value = '') {
+      const row = document.createElement('div');
+      row.className = 'row';
+
+      const no = document.createElement('div');
+      no.className = 'no';
+      no.textContent = '1';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = '例：かばん';
+      input.value = value;
+      input.maxLength = 20;
+      input.addEventListener('input', syncProblemsFromInputs);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'icon-btn';
+      del.title = '削除';
+      del.textContent = '×';
+      del.addEventListener('click', () => {
+        if (inputList.children.length <= 1) return;
+        row.remove();
+        renumberRows();
+        syncProblemsFromInputs();
+      });
+
+      row.append(no, input, del);
+      inputList.appendChild(row);
+      renumberRows();
+      syncProblemsFromInputs();
+    }
+
+    function computeFontSize(n) {
+      if (n <= 2) return 'clamp(88px, 20vw, 180px)';
+      if (n === 3) return 'clamp(80px, 18vw, 160px)';
+      if (n === 4) return 'clamp(70px, 15vw, 135px)';
+      if (n === 5) return 'clamp(60px, 12vw, 120px)';
+      if (n === 6) return 'clamp(54px, 10vw, 108px)';
+      if (n === 7) return 'clamp(48px, 9vw, 96px)';
+      return 'clamp(42px, 8vw, 88px)';
+    }
+
+    function getStageOffsets(n, stage) {
+      if (stage <= 0) return Array(n).fill(0);
+      const center = (n - 1) / 2;
+
+      // 文字数が増えても最後にしっかり離れるよう、最終幅は全文字数共通にする
+      const finalGap = 115;
+      const perStep = finalGap / TOTAL_STEPS;
+
+      return Array.from({ length: n }, (_, i) => Math.round((i - center) * perStep * stage));
+    }
+
+    function buildWordNodes(word) {
+      wordWrap.innerHTML = '';
+      [...word].forEach((ch, i) => {
+        const span = document.createElement('span');
+        span.className = 'letter';
+        span.textContent = ch;
+        span.dataset.index = String(i);
+        wordWrap.appendChild(span);
+      });
+    }
+
+    function updateWordPositions(word, stage = 0) {
+      const chars = [...word];
+      const n = chars.length;
+      const offsets = getStageOffsets(n, Math.min(stage, TOTAL_STEPS));
+      const scale = 1 - (Math.min(stage, TOTAL_STEPS) * 0.005);
+      const fontSize = computeFontSize(n);
+      wordWrap.style.fontSize = fontSize;
+
+      const spans = [...wordWrap.querySelectorAll('.letter')];
+      spans.forEach((span, i) => {
+        const x = offsets[i] ?? 0;
+        span.style.fontSize = `calc(${fontSize} * ${scale})`;
+        span.style.transform = `translate(calc(-50% + ${x}px), -50%) scale(${scale})`;
+        span.style.zIndex = String(10 + i);
+        span.style.opacity = '1';
+      });
+    }
+
+    function renderWord(word, stage = 0) {
+      if (word !== renderedWord) {
+        renderedWord = word;
+        buildWordNodes(word);
+      }
+      updateWordPositions(word, stage);
+    }
+
+    function resetRound() {
+      tapCount = 0;
+      tapCountLabel.textContent = '0';
+      clueText.textContent = 'よめるかな？';
+      answerBox.classList.add('hidden');
+      answerText.textContent = '';
+    }
+
+    function showCurrentProblem() {
+      syncProblemsFromInputs();
+      if (!problems.length) problems = ['かばん'];
+      currentProblemIndex = Math.max(0, Math.min(currentProblemIndex, problems.length - 1));
+      const word = problems[currentProblemIndex] || 'かばん';
+      problemIndexLabel.textContent = String(currentProblemIndex + 1);
+      problemCountLabel.textContent = String(problems.length);
+      charCountLabel.textContent = String([...word].length);
+      resetRound();
+      renderWord(word, 0);
+    }
+
+    function startCurrentProblem() {
+      setView('play');
+    }
+
+    function advanceHint() {
+      const word = problems[currentProblemIndex] || 'かばん';
+      if (tapCount < TOTAL_STEPS) tapCount += 1;
+      tapCountLabel.textContent = String(tapCount);
+      renderWord(word, tapCount);
+
+      if (tapCount === 1) clueText.textContent = 'ちょっと見えてきたよ';
+      else if (tapCount === 5) clueText.textContent = 'かなり見えてきたよ';
+      else if (tapCount === 9) clueText.textContent = 'あとすこし！';
+      else if (tapCount >= TOTAL_STEPS) {
+        clueText.textContent = 'せいかい！';
+        answerText.textContent = word;
+        answerBox.classList.remove('hidden');
+      }
+    }
+
+    function nextProblem() {
+      if (!problems.length) return;
+      currentProblemIndex = (currentProblemIndex + 1) % problems.length;
+      showCurrentProblem();
+      setView('play');
+    }
+
+    function prevProblem() {
+      if (!problems.length) return;
+      currentProblemIndex = (currentProblemIndex - 1 + problems.length) % problems.length;
+      showCurrentProblem();
+      setView('play');
+    }
+
+    tabCreate.addEventListener('click', () => setView('create'));
+    tabPlay.addEventListener('click', () => startCurrentProblem());
+    addRowBtn.addEventListener('click', () => addRow(''));
+    tapLayer.addEventListener('click', advanceHint);
+    nextProblemBtn.addEventListener('click', nextProblem);
+    prevProblemBtn.addEventListener('click', prevProblem);
+
+    document.addEventListener('keydown', (e) => {
+      if (!screenPlay.classList.contains('hidden')) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          advanceHint();
+        }
+        if (e.key === 'ArrowRight') nextProblem();
+        if (e.key === 'ArrowLeft') prevProblem();
+      }
+    });
+
+    ['かばん', 'めろん', 'あさがお', 'きつね', 'しんかんせん'].forEach(v => addRow(v));
+    syncProblemsFromInputs();
+    showCurrentProblem();
+    setView('create');
+  </script>
+</body>
+</html>
