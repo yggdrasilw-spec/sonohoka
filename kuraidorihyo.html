@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>位取り学習アプリ - 計算バグ修正版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;}
+body{background:#fafafa;color:#333;font-family:'Noto Sans JP',sans-serif;overflow-x:hidden;}
+.app{padding:15px;max-width:850px;margin:0 auto;}
+
+/* コントロールエリア（トグル式） */
+.control-panel {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.btn-toggle {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  transition: all 0.2s;
+  min-width: 240px;
+  text-align: center;
+}
+.btn-toggle.rule-normal { background: #2ecc71; color: white; border-color: #27ae60; }
+.btn-toggle.rule-free { background: #e67e22; color: white; border-color: #d35400; }
+.btn-toggle.mode-a { background: #3498db; color: white; border-color: #2980b9; }
+.btn-toggle.mode-b { background: #9b59b6; color: white; border-color: #8e44ad; }
+
+/* 音声ON/OFFボタン */
+.btn-sound {
+  font-size: 24px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  transition: transform 0.1s;
+}
+.btn-sound:active { transform: scale(0.9); }
+.btn-sound.muted { filter: grayscale(1) opacity(0.4); }
+
+/* 警告アラート */
+.alert-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: #e74c3c;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 10000;
+  font-size: 16px;
+  pointer-events: none;
+}
+.alert-banner.show { transform: translateX(-50%) translateY(0); }
+
+/* 「くりあがり/くりさがり」ポップアップ */
+.carry-popup {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  background: rgba(255, 243, 205, 0.95);
+  border: 2px solid #f39c12;
+  color: #e67e22;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 500;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  animation: popupAnim 1.2s ease-out forwards;
+}
+@keyframes popupAnim {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  40% { transform: translate(-50%, -50%) scale(1.0); }
+  80% { opacity: 1; transform: translate(-50%, -70%) scale(1.0); }
+  100% { opacity: 0; transform: translate(-50%, -90%) scale(0.9); }
+}
+
+/* 位取り表レイアウト */
+.chart{
+  display: flex;
+  border:2px solid #aaa;
+  border-radius:10px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,0.05);
+  width: 780px;
+  margin: 0 auto;
+}
+.col{display:flex;flex-direction:column;border-right:2px solid #aaa;position:relative;}
+.col:last-child{border-right:none;}
+
+.col-sen{background:#f0f0f0; width: 240px;}
+.col-hyaku{background:#cce8f4; width: 200px;}
+.col-juu{background:#fff9cc; width: 180px;}
+.col-ichi{background:#fce4ec; width: 160px;}
+
+.col-header{padding:10px 4px;text-align:center;font-size:14px;font-weight:bold;border-bottom:1px solid #aaa;color:#444;line-height:1.3;}
+.col-header span{font-size:11px;display:block;color:#777;font-weight:normal;}
+.btn-container { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.btn-calc {
+  width: 38px;
+  height: 28px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.btn-calc:active { background: #eee; }
+
+.col-svg-area{flex:1;min-height:340px;display:flex;align-items:center;justify-content:center;padding:4px;position:relative;}
+.col-svg-area svg { overflow: visible; }
+.col-footer{padding:10px 4px;text-align:center;font-size:32px;font-weight:bold;border-top:2px solid #aaa;background:rgba(255,255,255,0.7);color:#222;}
+
+/* 欄外パレット */
+.palette{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-end;}
+.palette-item{padding:10px 12px;border:1px solid #ccc;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,0.02);cursor:grab;width:120px;height:125px;}
+.palette-item span{font-size:11px;color:#666;font-weight:bold;text-align:center;display:block;margin-bottom:2px;}
+.palette-svg-container { flex:1; display:flex; align-items:center; justify-content:center; width:100%; height:85px; }
+
+/* ドラッグオーバーレイ＆アニメーション */
+.drag-overlay { position: fixed; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
+.clickable-pack { cursor: grab; }
+.clickable-pack:hover { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); }
+.clickable-tile { cursor: grab; }
+.clickable-tile:hover { filter: brightness(1.05); }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="alert-box" class="alert-banner">１つの位に２つの数字は入らないよ！どうする？</div>
+
+<div class="app">
+  <div class="control-panel">
+    <button id="rule-toggle-btn" class="btn-toggle rule-normal" onclick="toggleRuleMode()">0〜9制限モード（自動くりあがり）</button>
+    <button id="mode-toggle-btn" class="btn-toggle mode-a" onclick="toggleDisplayMode()">モードA（実物タイル）</button>
+    <button id="sound-btn" class="btn-sound" onclick="toggleSound()">🔊</button>
+  </div>
+
+  <div class="chart" id="main-chart">
+    <div class="col col-sen" data-place="sen">
+      <div class="col-header"><span>せん</span>千のくらい
+        <div class="btn-container">
+          <button class="btn-calc" onclick="stepValue('sen', 1)">▲</button>
+          <button class="btn-calc" onclick="stepValue('sen', -1)">▼</button>
+        </div>
+      </div>
+      <div class="col-svg-area" id="area-sen"><svg id="inner-sen" width="240" height="340" viewBox="0 0 240 340"></svg></div>
+      <div class="col-footer">0</div>
+    </div>
+    <div class="col col-hyaku" data-place="hyaku">
+      <div class="col-header"><span>ひゃく</span>百のくらい
+        <div class="btn-container">
+          <button class="btn-calc" onclick="stepValue('hyaku', 1)">▲</button>
+          <button class="btn-calc" onclick="stepValue('hyaku', -1)">▼</button>
+        </div>
+      </div>
+      <div class="col-svg-area" id="area-hyaku"><svg id="inner-hyaku" width="200" height="340" viewBox="0 0 200 340"></svg></div>
+      <div class="col-footer">0</div>
+    </div>
+    <div class="col col-juu" data-place="juu">
+      <div class="col-header"><span>じゅう</span>十のくらい
+        <div class="btn-container">
+          <button class="btn-calc" onclick="stepValue('juu', 1)">▲</button>
+          <button class="btn-calc" onclick="stepValue('juu', -1)">▼</button>
+        </div>
+      </div>
+      <div class="col-svg-area" id="area-juu"><svg id="inner-juu" width="180" height="340" viewBox="0 0 180 340"></svg></div>
+      <div class="col-footer">0</div>
+    </div>
+    <div class="col col-ichi" data-place="ichi">
+      <div class="col-header"><span>いち</span>一のくらい
+        <div class="btn-container">
+          <button class="btn-calc" onclick="stepValue('ichi', 1)">▲</button>
+          <button class="btn-calc" onclick="stepValue('ichi', -1)">▼</button>
+        </div>
+      </div>
+      <div class="col-svg-area" id="area-ichi"><svg id="inner-ichi" width="160" height="340" viewBox="0 0 160 340"></svg></div>
+      <div class="col-footer">0</div>
+    </div>
+  </div>
+
+  <div class="palette">
+    <div class="palette-item" style="background:#f0f0f0;" onpointerdown="startDrag(event, 'palette', 'sen')">
+      <span>千のくらい</span><div class="palette-svg-container"><svg id="pal-sen" width="100" height="85" viewBox="0 0 100 85"></svg></div>
+    </div>
+    <div class="palette-item" style="background:#cce8f4;" onpointerdown="startDrag(event, 'palette', 'hyaku')">
+      <span>百のくらい</span><div class="palette-svg-container"><svg id="pal-hyaku" width="90" height="85" viewBox="0 0 90 85"></svg></div>
+    </div>
+    <div class="palette-item" style="background:#fff9cc;" onpointerdown="startDrag(event, 'palette', 'juu')">
+      <span>十のくらい</span><div class="palette-svg-container"><svg id="pal-juu" width="40" height="85" viewBox="0 0 40 85"></svg></div>
+    </div>
+    <div class="palette-item" style="background:#fce4ec;" onpointerdown="startDrag(event, 'palette', 'ichi')">
+      <span>一のくらい</span><div class="palette-svg-container"><svg id="pal-ichi" width="30" height="85" viewBox="0 0 30 85"></svg></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// タイル共通デザイン定義
+const U_IN = 5.5;  
+const U_PAL = 5.0; 
+const FC = '#f5c542';
+const SC = '#c8960a';
+const SC5 = '#7a5500';
+
+let values = { sen: 0, hyaku: 0, juu: 0, ichi: 5 }; 
+let displayMode = 'A';  
+let ruleMode = 'normal'; 
+let isSoundOn = true; 
+
+const cardConfigs = {
+  sen:   { text: '1000', bg: '#f0f0f0', stroke: '#7f8c8d', textColor: '#555555', w:38, h:24, fontSize: 10, offset: 6 },
+  hyaku: { text: '100',  bg: '#cce8f4', stroke: '#2980b9', textColor: '#2980b9', w:34, h:22, fontSize: 10, offset: 5 },
+  juu:   { text: '10',   bg: '#fff9cc', stroke: '#d4ac0d', textColor: '#b7950b', w:30, h:20, fontSize: 10, offset: 5 },
+  ichi:  { text: '1',    bg: '#fce4ec', stroke: '#e91e63', textColor: '#c2185b', w:26, h:18, fontSize: 10, offset: 5 }
+};
+
+const order = ['ichi', 'juu', 'hyaku', 'sen'];
+
+// --- 音声合成＆効果音エンジン ---
+let audioCtx = null;
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+function playSound(type) {
+  if (!isSoundOn) return;
+  try {
+    initAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    
+    if (type === 'click') {
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.08);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+    } else if (type === 'drag') {
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'trash') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    }
+  } catch(e){}
+}
+
+function speakText(text) {
+  if (!isSoundOn) return;
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); 
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP'; u.rate = 1.2; u.pitch = 1.1;
+    window.speechSynthesis.speak(u);
+  }
+}
+
+function toggleSound() {
+  isSoundOn = !isSoundOn;
+  const btn = document.getElementById('sound-btn');
+  if (isSoundOn) {
+    btn.classList.remove('muted'); btn.innerText = '🔊'; playSound('click');
+  } else {
+    btn.classList.add('muted'); btn.innerText = '🔇';
+  }
+}
+
+// --- 視覚演出（ポップアップ・警告） ---
+function showOverlayText(place, text) {
+  const container = document.getElementById('area-' + place);
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'carry-popup';
+  div.innerText = text;
+  container.appendChild(div);
+  setTimeout(() => div.remove(), 1200);
+}
+
+function triggerWarning() {
+  const alertBox = document.getElementById('alert-box');
+  alertBox.classList.add('show');
+  speakText("１つの位に２つの数字は入らないよ！どうする？");
+  setTimeout(() => { alertBox.classList.remove('show'); }, 3500);
+}
+
+function checkAutoCarry() {
+  if (ruleMode !== 'normal') return;
+  let changed = false;
+  for (let i = 0; i < order.length - 1; i++) {
+    const current = order[i];
+    const next = order[i+1];
+    if (values[current] >= 10) {
+      if (next === 'sen' && values.sen >= 9) continue;
+      values[current] -= 10;
+      values[next]++;
+      changed = true;
+      showOverlayText(next, "くりあがり！");
+      speakText("くりあがり！");
+    }
+  }
+  if (changed) {
+    updateChart();
+    checkAutoCarry(); 
+  }
+}
+
+// --- 基本図形描画用ヘルパー ---
+function sq(svg, x, y, u, strokeW) {
+  strokeW = strokeW || 0.8;
+  const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  r.setAttribute('x',x); r.setAttribute('y',y); r.setAttribute('width',u); r.setAttribute('height',u);
+  r.setAttribute('fill',FC); r.setAttribute('stroke',SC); r.setAttribute('stroke-width',strokeW); r.setAttribute('rx','0.6');
+  svg.appendChild(r);
+  return r;
+}
+
+function drawIchiSingle(svg, cx, cy, u) {
+  sq(svg, cx - u/2, cy - u/2, u, 1.0);
+}
+
+function drawJuuSingle(svg, cx, cy, u) {
+  const G = u * 0.15; const S = u + G; const totalH = 10*u + 9*G;
+  const ox = cx - u/2; const oy = cy - totalH/2;
+  for(let i=0;i<10;i++) sq(svg, ox, oy+i*S, u, 0.6);
+  const line5 = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line5.setAttribute('x1', ox-1); line5.setAttribute('x2', ox+u+1);
+  line5.setAttribute('y1', oy+5*S-G/2); line5.setAttribute('y2', oy+5*S-G/2);
+  line5.setAttribute('stroke', SC5); line5.setAttribute('stroke-width','1.2');
+  svg.appendChild(line5);
+  const out = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  out.setAttribute('x',ox-1); out.setAttribute('y',oy-1); out.setAttribute('width',u+2); out.setAttribute('height',totalH+2);
+  out.setAttribute('fill','none'); out.setAttribute('stroke',SC); out.setAttribute('stroke-width','0.8'); out.setAttribute('rx','1');
+  svg.appendChild(out);
+}
+
+function drawHyakuSingle(svg, cx, cy, u) {
+  const G = u * 0.15; const S = u + G; const totalW = 10*u + 9*G; const totalH = 10*u + 9*G;
+  const ox = cx - totalW/2; const oy = cy - totalH/2;
+  for(let row=0;row<10;row++) for(let col=0;col<10;col++) sq(svg, ox+col*S, oy+row*S, u, 0.4);
+  const lv = document.createElementNS('http://www.w3.org/2000/svg','line');
+  lv.setAttribute('x1', ox+5*S-G/2); lv.setAttribute('x2', ox+5*S-G/2); lv.setAttribute('y1', oy-1); lv.setAttribute('y2', oy+totalH+1);
+  lv.setAttribute('stroke', SC5); lv.setAttribute('stroke-width','1'); svg.appendChild(lv);
+  const lh = document.createElementNS('http://www.w3.org/2000/svg','line');
+  lh.setAttribute('x1', ox-1); lh.setAttribute('x2', ox+totalW+1); lh.setAttribute('y1', oy+5*S-G/2); lh.setAttribute('y2', oy+5*S-G/2);
+  lh.setAttribute('stroke', SC5); lh.setAttribute('stroke-width','1'); svg.appendChild(lh);
+  const out = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  out.setAttribute('x',ox-1); out.setAttribute('y',oy-1); out.setAttribute('width',totalW+2); out.setAttribute('height',totalH+2);
+  out.setAttribute('fill','none'); out.setAttribute('stroke',SC); out.setAttribute('stroke-width','1'); out.setAttribute('rx','1.5');
+  svg.appendChild(out);
+}
+
+function drawSenSingle(svg, cx, cy, u, sheets) {
+  sheets = sheets || 10;
+  const G = u * 0.15; const S = u + G; const W = 10*u + 9*G; const H = 10*u + 9*G;
+  const OX = u * 0.4; const OY = u * 0.4;
+  for(let k=sheets-1;k>=0;k--) {
+    const ox = cx - W/2 + k*OX; const oy = cy - H/2 - k*OY;
+    if(k > 0) {
+      const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x',ox); bg.setAttribute('y',oy); bg.setAttribute('width',W); bg.setAttribute('height',H);
+      bg.setAttribute('fill', k%2===0?'#f7d060':'#eabc30'); bg.setAttribute('stroke',SC); bg.setAttribute('stroke-width','0.5'); bg.setAttribute('rx','0.8');
+      svg.appendChild(bg);
+    } else {
+      for(let row=0;row<10;row++) for(let col=0;col<10;col++) sq(svg, ox+col*S, oy+row*S, u, 0.4);
+      const lv = document.createElementNS('http://www.w3.org/2000/svg','line');
+      lv.setAttribute('x1',ox+5*S-G/2); lv.setAttribute('x2',ox+5*S-G/2); lv.setAttribute('y1',oy-1); lv.setAttribute('y2',oy+H+1);
+      lv.setAttribute('stroke',SC5); lv.setAttribute('stroke-width','1'); svg.appendChild(lv);
+      const lh = document.createElementNS('http://www.w3.org/2000/svg','line');
+      lh.setAttribute('x1',ox-1); lh.setAttribute('x2',ox+W+1); lh.setAttribute('y1',oy+5*S-G/2); lh.setAttribute('y2',oy+5*S-G/2);
+      lh.setAttribute('stroke',SC5); lh.setAttribute('stroke-width','1'); svg.appendChild(lh);
+    }
+  }
+  const TW = 4; const tapeColor = '#c05010'; const tapeOpacity = '0.6';
+  const frontOx = cx - W/2; const frontOy = cy - H/2;
+  const backOx = frontOx + (sheets-1)*OX; const backOy = frontOy - (sheets-1)*OY;
+  const midY = frontOy + H/2; const midX = frontOx + W/2;
+  function drawTapePolygon(pnts) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    p.setAttribute('points', pnts.map(([x,y]) => x+','+y).join(' '));
+    p.setAttribute('fill', tapeColor); p.setAttribute('opacity', tapeOpacity); svg.appendChild(p);
+  }
+  drawTapePolygon([[frontOx, midY-TW/2], [frontOx+W, midY-TW/2], [frontOx+W, midY+TW/2], [frontOx, midY+TW/2]]);
+  drawTapePolygon([[frontOx+W, midY-TW/2], [backOx+W, backOy+H/2-TW/2], [backOx+W, backOy+H/2+TW/2], [frontOx+W, midY+TW/2]]);
+  drawTapePolygon([[midX-TW/2, frontOy], [backOx+W/2-TW/2, backOy], [backOx+W/2+TW/2, backOy], [midX+TW/2, frontOy]]);
+  drawTapePolygon([[midX-TW/2, frontOy], [midX+TW/2, frontOy], [midX+TW/2, frontOy+H], [midX-TW/2, frontOy+H]]);
+}
+
+function drawCardSingle(svg, x, y, place, customScale) {
+  const config = cardConfigs[place];
+  const scale = customScale || 1.0;
+  const w = config.w * scale; const h = config.h * scale;
+  
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y); rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('fill', config.bg); rect.setAttribute('stroke', config.stroke); rect.setAttribute('stroke-width', 1.5 * scale); rect.setAttribute('rx', 2 * scale);
+  svg.appendChild(rect);
+  
+  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  text.setAttribute('x', x + w / 2); text.setAttribute('y', y + h / 2 + config.offset * scale);
+  text.setAttribute('text-anchor', 'middle'); text.setAttribute('font-size', config.fontSize * scale); text.setAttribute('font-weight', 'bold'); text.setAttribute('fill', config.textColor);
+  text.textContent = config.text;
+  svg.appendChild(text);
+}
+
+function createDynamicRedPack(svg, place, coordinates, padding) {
+  if (!coordinates || coordinates.length === 0) return svg;
+  padding = padding || 4;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  coordinates.forEach(pt => {
+    if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y;
+    if (pt.x > maxX) maxX = pt.x; if (pt.y > maxY) maxY = pt.y;
+  });
+  const x = minX - padding; const y = minY - padding;
+  const w = (maxX - minX) + padding * 2; const h = (maxY - minY) + padding * 2;
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'clickable-pack');
+  g.addEventListener('pointerdown', (e) => startDrag(e, 'pack', place));
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y); rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('fill', 'rgba(255, 0, 0, 0.03)'); rect.setAttribute('stroke', '#ff3333'); rect.setAttribute('stroke-width', '2'); rect.setAttribute('stroke-dasharray', '4,3'); rect.setAttribute('rx', '4');
+  g.appendChild(rect);
+  svg.appendChild(g);
+  return g;
+}
+
+// --- 配置ロジック ---
+function renderIchiA(svg, count) {
+  svg.innerHTML = ''; if (count === 0) return;
+  const u = U_IN; const S = u * 1.35;
+  const hasPack = (count >= 10);
+  
+  let packCoords = [];
+  if (hasPack) {
+    for (let i = 0; i < 10; i++) {
+      const cx = 35; const cy = 300 - i * S;
+      packCoords.push({x: cx - u/2, y: cy - u/2}, {x: cx + u/2, y: cy + u/2});
+    }
+  }
+  let packG = hasPack ? createDynamicRedPack(svg, 'ichi', packCoords, 5) : svg;
+
+  for (let i = 0; i < count; i++) {
+    const isPack = (i < 10 && hasPack);
+    const targetSvg = isPack ? packG : svg;
+    const cx = isPack ? 35 : 105;
+    const idx = isPack ? i : i - (hasPack ? 10 : 0);
+    const cy = 300 - idx * S;
+    const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gTile.setAttribute('class', isPack ? '' : 'clickable-tile');
+    if(!isPack) gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'ichi'));
+    drawIchiSingle(gTile, cx, cy, u);
+    targetSvg.appendChild(gTile);
+  }
+}
+
+function renderJuuA(svg, count) {
+  svg.innerHTML = ''; if (count === 0) return;
+  const u = U_IN; const stickW = u + 2; const spacing = 4;
+  const totalW10 = 10 * stickW + 9 * spacing;
+  const hasPack = (count >= 10);
+  
+  let packCoords = [];
+  if (hasPack) {
+    const ox = 90 - totalW10/2; const oy = 110 - 34;
+    packCoords.push({x: ox - 1, y: oy - 1}, {x: ox + totalW10 + 1, y: oy + 68 + 1});
+  }
+  let packG = hasPack ? createDynamicRedPack(svg, 'juu', packCoords, 4) : svg;
+
+  for (let i = 0; i < count; i++) {
+    const isPack = (i < 10 && hasPack);
+    const targetSvg = isPack ? packG : svg;
+    const idx = isPack ? i : i - (hasPack ? 10 : 0);
+    const cy = isPack ? 110 : 255;
+    const currentW = isPack ? totalW10 : (count - (hasPack?10:0)) * stickW + (count - (hasPack?10:0) - 1) * spacing;
+    const startX = 90 - currentW / 2;
+    const cx = startX + idx * (stickW + spacing) + stickW/2;
+    const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gTile.setAttribute('class', 'clickable-tile');
+    if(!isPack) gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'juu'));
+    drawJuuSingle(gTile, cx, cy, u);
+    targetSvg.appendChild(gTile);
+  }
+}
+
+function renderHyakuA(svg, count) {
+  svg.innerHTML = ''; if (count === 0) return;
+  const u = U_IN;
+  const step = 3.5;
+  const hasPack = (count >= 10);
+  
+  const G = u * 0.15; const S = u + G; const totalW = 10*u + 9*G; const totalH = 10*u + 9*G;
+  
+  const packBaseCx = 100;
+  const packBaseCy = 120;
+  
+  let packCoords = [];
+  if (hasPack) {
+    const minX = packBaseCx - totalW / 2;
+    const maxY = packBaseCy + totalH / 2;
+    const maxX = packBaseCx + 9 * step + totalW / 2;
+    const minY = packBaseCy - 9 * step - totalH / 2;
+    packCoords.push({x: minX, y: minY}, {x: maxX, y: maxY});
+  }
+  let packG = hasPack ? createDynamicRedPack(svg, 'hyaku', packCoords, 4) : svg;
+
+  for (let i = 0; i < count; i++) {
+    const isPack = (i < 10 && hasPack);
+    const targetSvg = isPack ? packG : svg;
+    const idx = isPack ? i : i - (hasPack ? 10 : 0);
+    
+    if (isPack) {
+      const cx = packBaseCx + idx * step;
+      const cy = packBaseCy - idx * step;
+      const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      drawHyakuSingle(gTile, cx, cy, u); 
+      targetSvg.appendChild(gTile);
+    } else {
+      const baseCx = 100;
+      const baseCy = 270;
+      const cx = baseCx + idx * step; 
+      const cy = baseCy - idx * step;
+      const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gTile.setAttribute('class', 'clickable-tile');
+      gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'hyaku'));
+      drawHyakuSingle(gTile, cx, cy, u);
+      targetSvg.appendChild(gTile);
+    }
+  }
+}
+
+function renderSenA(svg, count) {
+  svg.innerHTML = ''; if (count === 0) return;
+  const u = U_IN; const stepX = 40; const stepY = 44; 
+  for (let i = 0; i < count; i++) {
+    const row = Math.floor(i / 3); const col = i % 3;
+    const cx = 65 + col * stepX + row * 12; 
+    const cy = 90 + row * stepY - col * 6;
+    const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gTile.setAttribute('class', 'clickable-tile');
+    gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'sen'));
+    drawSenSingle(gTile, cx, cy, u);
+    svg.appendChild(gTile);
+  }
+}
+
+function renderModeB(svg, count, place) {
+  svg.innerHTML = ''; if (count === 0) return;
+  const config = cardConfigs[place];
+  const gapX = 5; const gapY = 5;
+  const areaW = (place==='sen')?240:((place==='hyaku')?200:((place==='juu')?180:160));
+  const hasPack = (count >= 10 && place !== 'sen');
+  
+  let packCoords = [];
+  if (hasPack) {
+    for (let i = 0; i < 10; i++) {
+      const col = Math.floor(i / 5); const row = i % 5;
+      const startX = 15;
+      const x = startX + col * (config.w + gapX); const y = 290 - row * (config.h + gapY);
+      packCoords.push({x: x, y: y}, {x: x + config.w, y: y + config.h});
+    }
+  }
+  let packG = hasPack ? createDynamicRedPack(svg, place, packCoords, 5) : svg;
+
+  for (let i = 0; i < count; i++) {
+    const isPack = (i < 10 && hasPack);
+    const targetSvg = isPack ? packG : svg;
+    const idx = isPack ? i : i - (hasPack ? 10 : 0);
+    const col = Math.floor(idx / 5); const row = idx % 5;
+    let startX = isPack ? 15 : (areaW / 2 + 10);
+    if (place === 'sen') {
+      const totalCols = Math.ceil(count / 5);
+      const totalW = totalCols * config.w + (totalCols - 1) * gapX;
+      startX = (areaW - totalW) / 2;
+    }
+    const x = startX + col * (config.w + gapX);
+    const y = 290 - row * (config.h + gapY);
+    const gCard = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gCard.setAttribute('class', isPack ? '' : 'clickable-tile');
+    if(!isPack) gCard.addEventListener('pointerdown', (e) => startDrag(e, 'single', place));
+    drawCardSingle(gCard, x, y, place);
+    targetSvg.appendChild(gCard);
+  }
+}
+
+function updatePalette() {
+  const pSen = document.getElementById('pal-sen');
+  const pHyaku = document.getElementById('pal-hyaku');
+  const pJuu = document.getElementById('pal-juu');
+  const pIchi = document.getElementById('pal-ichi');
+  pSen.innerHTML = ''; pHyaku.innerHTML = ''; pJuu.innerHTML = ''; pIchi.innerHTML = '';
+  
+  if (displayMode === 'A') {
+    drawSenSingle(pSen, 40, 50, U_PAL);
+    drawHyakuSingle(pHyaku, 45, 42, U_PAL);
+    drawJuuSingle(pJuu, 20, 42, U_PAL);
+    drawIchiSingle(pIchi, 15, 42, 14);
+  } else {
+    const s = 1.2;
+    drawCardSingle(pSen, (100 - cardConfigs.sen.w*s)/2, (85 - cardConfigs.sen.h*s)/2, 'sen', s);
+    drawCardSingle(pHyaku, (90 - cardConfigs.hyaku.w*s)/2, (85 - cardConfigs.hyaku.h*s)/2, 'hyaku', s);
+    drawCardSingle(pJuu, (40 - cardConfigs.juu.w*s)/2, (85 - cardConfigs.juu.h*s)/2, 'juu', s);
+    drawCardSingle(pIchi, (30 - cardConfigs.ichi.w*s)/2, (85 - cardConfigs.ichi.h*s)/2, 'ichi', s);
+  }
+}
+
+function updateChart() {
+  if (displayMode === 'A') {
+    renderSenA(document.getElementById('inner-sen'), values.sen);
+    renderHyakuA(document.getElementById('inner-hyaku'), values.hyaku);
+    renderJuuA(document.getElementById('inner-juu'), values.juu);
+    renderIchiA(document.getElementById('inner-ichi'), values.ichi);
+  } else {
+    renderModeB(document.getElementById('inner-sen'), values.sen, 'sen');
+    renderModeB(document.getElementById('inner-hyaku'), values.hyaku, 'hyaku');
+    renderModeB(document.getElementById('inner-juu'), values.juu, 'juu');
+    renderModeB(document.getElementById('inner-ichi'), values.ichi, 'ichi');
+  }
+  document.querySelector('.col-sen .col-footer').innerText = values.sen;
+  document.querySelector('.col-hyaku .col-footer').innerText = values.hyaku;
+  document.querySelector('.col-juu .col-footer').innerText = values.juu;
+  document.querySelector('.col-ichi .col-footer').innerText = values.ichi;
+  
+  updatePalette();
+}
+
+function stepValue(place, dir) {
+  playSound('click');
+  if (dir === 1) {
+    if (place === 'sen' && values.sen >= 9) return;
+    if (values[place] < 19) { 
+      values[place]++; 
+      if (ruleMode === 'normal' && values[place] >= 10 && place !== 'sen') {
+        checkAutoCarry();
+      } else if (ruleMode === 'free' && values[place] == 10 && place !== 'sen') {
+        triggerWarning();
+      }
+      updateChart(); 
+    }
+  } else {
+    if (values[place] > 0) {
+      values[place]--; updateChart();
+    } else {
+      if (ruleMode === 'normal') return; 
+      
+      // アニメーションなしで即座にくりさがりを反映
+      if (place === 'ichi' && values.juu > 0) { 
+        values.juu--; values.ichi += 10; updateChart(); 
+        showOverlayText('ichi', "くりさがり！"); speakText("くりさがり！"); 
+      } else if (place === 'juu' && values.hyaku > 0) { 
+        values.hyaku--; values.juu += 10; updateChart(); 
+        showOverlayText('juu', "くりさがり！"); speakText("くりさがり！"); 
+      } else if (place === 'hyaku' && values.sen > 0) { 
+        values.sen--; values.hyaku += 10; updateChart(); 
+        showOverlayText('hyaku', "くりさがり！"); speakText("くりさがり！"); 
+      }
+    }
+  }
+}
+
+// --- ドラッグ＆ドロップ ---
+let dragData = null;
+let overlayEl = null;
+
+function startDrag(e, type, place) {
+  e.preventDefault();
+  if (type === 'single' && values[place] <= 0) return;
+  if (type === 'palette' && place === 'sen' && values.sen >= 9) return;
+
+  playSound('drag');
+  if (type === 'single') { values[place]--; } 
+  else if (type === 'pack') { values[place] -= 10; }
+  updateChart();
+  
+  dragData = { type, place, startX: e.clientX, startY: e.clientY };
+  
+  overlayEl = document.createElement('div');
+  overlayEl.className = 'drag-overlay';
+  overlayEl.style.left = e.clientX + 'px'; overlayEl.style.top = e.clientY + 'px';
+  
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  if (type === 'pack') {
+    svg.setAttribute('width', '110'); svg.setAttribute('height', '140');
+    const dummyCoords = [{x:10, y:10}, {x:90, y:120}];
+    createDynamicRedPack(svg, place, dummyCoords, 2);
+    if(displayMode==='A') {
+      if(place==='ichi') for(let i=0;i<10;i++) drawIchiSingle(svg, 50, 115-i*8, U_IN);
+      if(place==='juu') for(let i=0;i<10;i++) drawJuuSingle(svg, 20+i*6, 65, U_IN);
+      if(place==='hyaku') {
+        for(let i=0;i<10;i++) drawHyakuSingle(svg, 20+i*4, 100-i*4, U_IN);
+      }
+    } else {
+      const cfg = cardConfigs[place];
+      for(let i=0;i<10;i++) drawCardSingle(svg, 15+Math.floor(i/5)*(cfg.w+4), 110-(i%5)*(cfg.h+3), place);
+    }
+  } else {
+    svg.setAttribute('width', '80'); svg.setAttribute('height', '80');
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    if (displayMode === 'A') {
+      if(place==='ichi') drawIchiSingle(g, 40, 40, U_IN*1.2);
+      if(place==='juu') drawJuuSingle(g, 40, 40, U_IN);
+      if(place==='hyaku') drawHyakuSingle(g, 40, 40, U_IN);
+      if(place==='sen') drawSenSingle(g, 35, 45, U_IN);
+    } else {
+      const cfg = cardConfigs[place];
+      drawCardSingle(g, 40 - cfg.w/2, 40 - cfg.h/2, place);
+    }
+    svg.appendChild(g);
+  }
+  overlayEl.appendChild(svg);
+  document.body.appendChild(overlayEl);
+  
+  document.addEventListener('pointermove', onDragMove);
+  document.addEventListener('pointerup', onDragUp);
+}
+
+function onDragMove(e) {
+  if (!overlayEl) return;
+  overlayEl.style.left = e.clientX + 'px'; overlayEl.style.top = e.clientY + 'px';
+}
+
+function onDragUp(e) {
+  document.removeEventListener('pointermove', onDragMove);
+  document.removeEventListener('pointerup', onDragUp);
+  if (overlayEl) { overlayEl.remove(); overlayEl = null; }
+  
+  const hitEl = document.elementFromPoint(e.clientX, e.clientY);
+  const col = hitEl ? hitEl.closest('.col') : null;
+  const targetPlace = col ? col.getAttribute('data-place') : null;
+  
+  let success = false;
+  
+  if (dragData.type === 'pack') {
+    const currentIdx = order.indexOf(dragData.place);
+    const leftPlace = order[currentIdx + 1];
+    
+    if (targetPlace === leftPlace) {
+      if (leftPlace === 'sen' && values.sen >= 9) {
+        // ロック
+      } else if (values[leftPlace] < 19) {
+        success = true;
+        showOverlayText(leftPlace, "くりあがり！"); speakText("くりあがり！");
+        
+        // 即座にくりあがりを反映
+        values[leftPlace]++;
+        if (values[leftPlace] === 10 && leftPlace !== 'sen' && ruleMode === 'free') triggerWarning();
+      }
+    } else if (targetPlace === dragData.place) {
+      values[dragData.place] += 10; success = true;
+    }
+    if (!success) { values[dragData.place] += 10; playSound('trash'); }
+    else { playSound('click'); }
+
+  } else if (dragData.type === 'single') {
+    const currentIdx = order.indexOf(dragData.place);
+    const rightPlace = order[currentIdx - 1];
+    
+    if (targetPlace === rightPlace) {
+      if (ruleMode === 'normal') {
+        // 通常モードは下ろせない
+      } else if (values[rightPlace] <= 9) {
+        success = true;
+        showOverlayText(rightPlace, "くりさがり！"); speakText("くりさがり！");
+        
+        // 即座にくりさがりを反映
+        values[rightPlace] += 10;
+      }
+    } else if (targetPlace === dragData.place) {
+      if (dragData.place === 'sen' && values.sen >= 9) {
+        // ロック
+      } else {
+        values[dragData.place]++; success = true;
+      }
+    } else if (!col) {
+      success = true; 
+    }
+    
+    if (!success) { values[dragData.place]++; playSound('trash'); }
+    else if (targetPlace === dragData.place) { playSound('click'); }
+
+  } else if (dragData.type === 'palette') {
+    if (targetPlace === dragData.place) {
+      if (targetPlace === 'sen' && values.sen >= 9) {
+        playSound('trash');
+      } else if (values[targetPlace] < 19) {
+        values[targetPlace]++; success = true; playSound('click');
+      }
+    } else {
+      playSound('trash');
+    }
+  }
+  
+  if (ruleMode === 'normal') {
+    checkAutoCarry();
+  } else {
+    for(let k in values) {
+      if(k !== 'sen' && values[k] == 10) triggerWarning();
+    }
+  }
+  
+  updateChart();
+  dragData = null;
+}
+
+function toggleRuleMode() {
+  playSound('click');
+  const btn = document.getElementById('rule-toggle-btn');
+  if (ruleMode === 'normal') {
+    ruleMode = 'free';
+    btn.className = 'btn-toggle rule-free';
+    btn.innerText = 'くり上がり・下がりモード（警告あり）';
+  } else {
+    ruleMode = 'normal';
+    btn.className = 'btn-toggle rule-normal';
+    btn.innerText = '0〜9制限モード（自動くりあがり）';
+    checkAutoCarry();
+  }
+  updateChart();
+}
+
+function toggleDisplayMode() {
+  playSound('click');
+  const btn = document.getElementById('mode-toggle-btn');
+  if (displayMode === 'A') {
+    displayMode = 'B';
+    btn.className = 'btn-toggle mode-b';
+    btn.innerText = 'モードB（数字カード）';
+  } else {
+    displayMode = 'A';
+    btn.className = 'btn-toggle mode-a';
+    btn.innerText = 'モードA（実物タイル）';
+  }
+  updateChart();
+}
+
+// 初回起動
+updateChart();
+</script>
+</body>
+</html>
