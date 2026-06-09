@@ -146,6 +146,12 @@ body{background:#fafafa;color:#333;font-family:'Noto Sans JP',sans-serif;overflo
 .clickable-pack:hover { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); }
 .clickable-tile { cursor: grab; }
 .clickable-tile:hover { filter: brightness(1.05); }
+
+/* スマートフォンでの誤スクロール・誤ズーム・長押しポップアップ防止用の追加設定 */
+.col-svg-area, .palette-item, .drag-overlay {
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -279,10 +285,15 @@ function playSound(type) {
 function speakText(text) {
   if (!isSoundOn) return;
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); 
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ja-JP'; u.rate = 1.2; u.pitch = 1.1;
-    window.speechSynthesis.speak(u);
+    try {
+      window.speechSynthesis.cancel(); 
+      // スマホ（iOS等）での音声キューの衝突・フリーズを防ぐため、わずかなディレイを挟む
+      setTimeout(() => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP'; u.rate = 1.3; u.pitch = 1.1;
+        window.speechSynthesis.speak(u);
+      }, 50);
+    } catch(e) {}
   }
 }
 
@@ -373,7 +384,7 @@ function drawHyakuSingle(svg, cx, cy, u) {
   lv.setAttribute('stroke', SC5); lv.setAttribute('stroke-width','1'); svg.appendChild(lv);
   const lh = document.createElementNS('http://www.w3.org/2000/svg','line');
   lh.setAttribute('x1', ox-1); lh.setAttribute('x2', ox+totalW+1); lh.setAttribute('y1', oy+5*S-G/2); lh.setAttribute('y2', oy+5*S-G/2);
-  lh.setAttribute('stroke', SC5); lh.setAttribute('stroke-width','1'); svg.appendChild(lh);
+  lh.setAttribute('stroke', SC5); strokeW = 1; svg.appendChild(lh);
   const out = document.createElementNS('http://www.w3.org/2000/svg','rect');
   out.setAttribute('x',ox-1); out.setAttribute('y',oy-1); out.setAttribute('width',totalW+2); out.setAttribute('height',totalH+2);
   out.setAttribute('fill','none'); out.setAttribute('stroke',SC); out.setAttribute('stroke-width','1'); out.setAttribute('rx','1.5');
@@ -751,11 +762,19 @@ function onDragMove(e) {
 function onDragUp(e) {
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragUp);
-  if (overlayEl) { overlayEl.remove(); overlayEl = null; }
+  
+  // スマホブラウザでの「指の真下の要素」誤認バグを完全に回避するため、
+  // 判定を行う一瞬だけドラッグ中表示（overlayEl）を非表示にして下の要素を透過検知させます。
+  if (overlayEl) {
+    overlayEl.style.display = 'none';
+  }
   
   const hitEl = document.elementFromPoint(e.clientX, e.clientY);
   const col = hitEl ? hitEl.closest('.col') : null;
   const targetPlace = col ? col.getAttribute('data-place') : null;
+  
+  // 判定完了後にドラッグ表示要素を完全に消去
+  if (overlayEl) { overlayEl.remove(); overlayEl = null; }
   
   let success = false;
   
