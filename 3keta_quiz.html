@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3けたの かず 学習アプリ</title>
+    <style>
+        :root {
+            --color-hundreds: #00b0f0; /* 百：水色 */
+            --color-tens: #f39c12;    /* 十：オレンジ */
+            --color-ones: #e74c3c;    /* 一：赤 */
+            --bg-light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: #eef2f7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            user-select: none;
+        }
+
+        /* ★ スター表示ヘッダー */
+        .score-header {
+            max-width: 1000px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #ffeaa7, #ffb8b8);
+            padding: 12px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .star-count {
+            font-size: 22px;
+            font-weight: bold;
+            color: #d35400;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-reset {
+            background: rgba(255,255,255,0.7);
+            border: 1px solid #cca;
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #666;
+            font-weight: bold;
+        }
+        .btn-reset:hover { background: #fff; color: #c0392b; }
+
+        /* 音のON/OFF絵文字ボタン */
+        .btn-sound-toggle {
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            padding: 5px;
+        }
+        .btn-sound-toggle:active {
+            transform: scale(0.9);
+        }
+        .sound-off {
+            opacity: 0.3;
+            filter: grayscale(100%);
+        }
+
+        /* メインコンテナ */
+        .app-container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 26px;
+            margin-bottom: 15px;
+            margin-top: 0;
+        }
+
+        /* モード切り替えスイッチ */
+        .mode-toggle-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 25px;
+            background: #f1f2f6;
+            padding: 8px 20px;
+            border-radius: 30px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .mode-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #57606f;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .mode-label.active {
+            color: #2f3542;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3498db;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider {
+            background-color: #2ed573;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* タブ切り替え */
+        .tab-menu {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .tab-menu button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: #dfe6e9;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            transition: 0.3s;
+        }
+        .tab-menu button.active {
+            background: #2c3e50;
+            color: white;
+        }
+
+        /* 問題表示エリア */
+        .problem-box {
+            background: var(--bg-light);
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+            box-sizing: border-box;
+            border: 2px solid #e0e0e0;
+        }
+        .instruction {
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 15px;
+            align-self: flex-start;
+            color: #333;
+        }
+        
+        /* SVG表示エリア */
+        #visual-area {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #visual-area svg {
+            width: 100%;
+            height: auto;
+            max-height: 280px;
+        }
+
+        /* ヒント用スタイル */
+        .hint-text {
+            font-size: 42px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            display: flex;
+            gap: 20px;
+            line-height: 1.6;
+        }
+        .hint-box { border-width: 5px; border-style: solid; padding: 4px 15px; border-radius: 10px; }
+        .hint-h { border-color: var(--color-hundreds); }
+        .hint-t { border-color: var(--color-tens); }
+        .hint-o { border-color: var(--color-ones); }
+        
+        ruby rt {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: normal;
+            padding-bottom: 4px;
+            color: #555;
+        }
+
+        /* 位取り表入力UI */
+        .place-value-ui {
+            display: flex;
+            justify-content: center;
+            border: 3px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+        .pv-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+        }
+        .pv-label {
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+            font-weight: bold;
+            font-size: 16px;
+            border-bottom: 2px solid #333;
+        }
+        .col-h { background-color: #e1f5fe; border-right: 2px dashed #333; }
+        .col-t { background-color: #fffde7; border-right: 2px dashed #333; }
+        .col-o { background-color: #ffebee; }
+
+        .btn-arrow {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 12px;
+            color: #555;
+        }
+        .btn-arrow:active { color: #000; }
+        
+        .digit-display {
+            font-size: 54px;
+            font-weight: bold;
+            margin: 5px 0;
+            height: 64px;
+            line-height: 64px;
+        }
+        .hidden-digit { visibility: hidden; }
+
+        /* ボタンエリア */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .btn-main {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            color: white;
+            transition: 0.2s;
+        }
+        .btn-check { background-color: #27ae60; }
+        .btn-hint { background-color: #f1c40f; color: #333; }
+        .btn-next { background-color: #3498db; }
+        .btn-main:hover { opacity: 0.9; transform: scale(1.03); }
+
+        /* 解説エリア */
+        .explanation {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            display: none;
+            line-height: 1.9;
+            font-size: 18px;
+        }
+        .correct { background: #d4edda; border: 2px solid #c3e6cb; color: #155724; }
+        .incorrect { background: #f8d7da; border: 2px solid #f5c2c7; color: #721c24; }
+        .normal-exp { background: #e2e3e5; border: 2px solid #d6d8db; color: #383d41; }
+        
+        .exp-part { margin-bottom: 12px; display: block; }
+        .val-h { color: #008cc2; font-weight: bold; }
+        .val-t { color: #d35400; font-weight: bold; }
+        .val-o { color: #c0392b; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="score-header">
+    <div class="header-left">
+        <div class="star-count" id="star-display">🌟 あつめた★: 0こ</div>
+        <button class="btn-reset" onclick="resetStars()">★をリセット</button>
+    </div>
+    <button id="sound-toggle-btn" class="btn-sound-toggle" onclick="toggleSound()">🔊</button>
+</div>
+
+<div class="app-container">
+    <h1>🔢 3けたの かず 学習アプリ</h1>
+
+    <div class="mode-toggle-container">
+        <span id="label-zero" class="mode-label active" onclick="setMode(false)">🎯 空位のれんしゅう</span>
+        <label class="switch">
+            <input type="checkbox" id="mode-checkbox" onchange="toggleMode()">
+            <span class="slider"></span>
+        </label>
+        <span id="label-random" class="mode-label" onclick="setMode(true)">🎲 かんぜんランダム</span>
+    </div>
+
+    <div class="tab-menu">
+        <button id="tab1" class="active" onclick="changeTab(1)">📷 えを みて こたえよう</button>
+        <button id="tab2" onclick="changeTab(2)">🔢 すうじを よもう</button>
+        <button id="tab3" onclick="changeTab(3)">✏️ かんじから すうじへ</button>
+    </div>
+
+    <div class="problem-box">
+        <div id="instruction" class="instruction"></div>
+        <div id="visual-area"></div>
+    </div>
+
+    <div id="input-section">
+        <div class="place-value-ui">
+            <div class="pv-col col-h">
+                <div class="pv-label">百のくらい</div>
+                <button class="btn-arrow" onclick="adjustDigit('h', 1)">▲</button>
+                <div id="disp-h" class="digit-display">0</div>
+                <button class="btn-arrow" onclick="adjustDigit('h', -1)">▼</button>
+            </div>
+            <div class="pv-col col-t">
+                <div class="pv-label">十のくらい</div>
+                <button class="btn-arrow" onclick="adjustDigit('t', 1)">▲</button>
+                <div id="disp-t" class="digit-display">0</div>
+                <button class="btn-arrow" onclick="adjustDigit('t', -1)">▼</button>
+            </div>
+            <div class="pv-col col-o">
+                <div class="pv-label">一のくらい</div>
+                <button class="btn-arrow" onclick="adjustDigit('o', 1)">▲</button>
+                <div id="disp-o" class="digit-display">0</div>
+                <button class="btn-arrow" onclick="adjustDigit('o', -1)">▼</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="hint-btn" class="btn-main btn-hint" onclick="toggleHint()" style="display:none;">ヒント</button>
+        <button id="action-btn" class="btn-main btn-check" onclick="processAction()">こたえあわせ</button>
+        <button id="next-btn" class="btn-main btn-next" onclick="initProblem()">つぎへ</button>
+    </div>
+
+    <div id="explanation-area" class="explanation"></div>
+</div>
+
+<script>
+    let currentTab = 1;
+    let prob = { h: 0, t: 0, o: 0, val: 0 };
+    let user = { h: 0, t: 0, o: 0 };
+    let isHintVisible = false;
+    let stars = 0;
+    let isRandomMode = false; 
+    let isSoundOn = true; 
+
+    let audioCtx = null;
+
+    const readH = {1:"ひゃく", 2:"にひゃく", 3:"さんびゃく", 4:"よんひゃく", 5:"ごひゃく", 6:"ろっぴゃく", 7:"ななひゃく", 8:"はっぴゃく", 9:"きゅうひゃく"};
+    const readT = {1:"じゅう", 2:"にじゅう", 3:"さんじゅう", 4:"よんじゅう", 5:"ごじゅう", 6:"ろくじゅう", 7:"ななじゅう", 8:"はちじゅう", 9:"きゅうじゅう"};
+    const readO = {1:"いち", 2:"に", 3:"さん", 4:"よん", 5:"ご", 6:"ろく", 7:"なな", 8:"はち", 9:"きゅう"};
+    const kanjiH = {1:"百", 2:"二百", 3:"三百", 4:"四百", 5:"五百", 6:"六百", 7:"七百", 8:"八百", 9:"九百"};
+    const kanjiT = {1:"十", 2:"二十", 3:"三十", 4:"四十", 5:"五十", 6:"六十", 7:"七十", 8:"八十", 9:"九十"};
+    const kanjiO = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五", 6:"六", 7:"七", 8:"八", 9:"九"};
+
+    if (localStorage.getItem('math_app_stars')) {
+        stars = parseInt(localStorage.getItem('math_app_stars'), 10);
+    }
+    updateStarDisplay();
+
+    function updateStarDisplay() {
+        document.getElementById('star-display').innerText = `🌟 あつめた★: ${stars}こ`;
+    }
+
+    function resetStars() {
+        playSound('click');
+        if(confirm("あつめた★を 0こに リセットしますか？")) {
+            stars = 0;
+            localStorage.setItem('math_app_stars', 0);
+            updateStarDisplay();
+        }
+    }
+
+    function toggleSound() {
+        isSoundOn = !isSoundOn;
+        const btn = document.getElementById('sound-toggle-btn');
+        if (isSoundOn) {
+            btn.innerText = "🔊";
+            btn.classList.remove('sound-off');
+            playSound('click');
+        } else {
+            btn.innerText = "🔇";
+            btn.classList.add('sound-off');
+        }
+    }
+
+    function playSound(type) {
+        if (!isSoundOn) return;
+        try {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); 
+                osc.frequency.setValueAtTime(659.25, now + 0.1); 
+                osc.frequency.setValueAtTime(783.99, now + 0.2); 
+                osc.frequency.setValueAtTime(1046.50, now + 0.3); 
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.15, now + 0.3);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } else if (type === 'incorrect') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(130, now + 0.4);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            }
+        } catch (e) {
+            console.log("Audio error:", e);
+        }
+    }
+
+    // 音声読み上げロジック (Web Speech API)
+    function speakText(text, isWarmup = false) {
+        if (!isWarmup && !isSoundOn) return;
+        if (window.speechSynthesis) {
+            if (!isWarmup) window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP';
+            // 🆕 ウォームアップ時は完全に無音（ボリューム0、速度最速）で処理を回す
+            if (isWarmup) {
+                utterance.volume = 0;
+                utterance.rate = 10.0; 
+            } else {
+                utterance.rate = 1.0; 
+            }
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    // 🆕 起動時の音声ウォームアップ処理
+    // ブラウザに「発声準備」をさせて、初回タップ時の遅延をなくします
+    function warmupSpeech() {
+        speakText(" ", true);
+    }
+
+    function toggleMode() {
+        playSound('click');
+        isRandomMode = document.getElementById('mode-checkbox').checked;
+        updateToggleLabels();
+        initProblem();
+    }
+
+    function setMode(mode) {
+        playSound('click');
+        document.getElementById('mode-checkbox').checked = mode;
+        isRandomMode = mode;
+        updateToggleLabels();
+        initProblem();
+    }
+
+    function updateToggleLabels() {
+        document.getElementById('label-zero').classList.toggle('active', !isRandomMode);
+        document.getElementById('label-random').classList.toggle('active', isRandomMode);
+    }
+
+    function changeTab(n) {
+        playSound('click');
+        currentTab = n;
+        document.querySelectorAll('.tab-menu button').forEach((b, i) => {
+            b.classList.toggle('active', i + 1 === n);
+        });
+        initProblem();
+    }
+
+    function initProblem() {
+        user = { h: 0, t: 0, o: 0 };
+        isHintVisible = false;
+        document.getElementById('explanation-area').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('action-btn').style.display = 'inline-block';
+        document.getElementById('hint-btn').style.display = (currentTab === 3) ? 'inline-block' : 'none';
+
+        prob.h = Math.floor(Math.random() * 9) + 1; 
+
+        if (!isRandomMode && Math.random() < 0.5) {
+            let zeroPattern = Math.random();
+            if (zeroPattern < 0.4) {
+                prob.t = 0;                          
+                prob.o = Math.floor(Math.random() * 9) + 1;
+            } else if (zeroPattern < 0.8) {
+                prob.t = Math.floor(Math.random() * 9) + 1;
+                prob.o = 0;                          
+            } else {
+                prob.t = 0;                          
+                prob.o = 0;
+            }
+        } else {
+            prob.t = Math.floor(Math.random() * 10);
+            prob.o = Math.floor(Math.random() * 10);
+        }
+        
+        prob.val = prob.h * 100 + prob.t * 10 + prob.o;
+
+        const ins = document.getElementById('instruction');
+        const visual = document.getElementById('visual-area');
+        const inputSec = document.getElementById('input-section');
+
+        if (currentTab === 1) {
+            let mode = Math.random() > 0.5 ? 'ぼう' : '折り紙';
+            ins.innerText = `${mode}の 数を 数字で 書きましょう。`;
+            visual.innerHTML = renderPerfectResponsiveSVG(mode);
+            inputSec.style.display = 'block';
+            document.getElementById('action-btn').innerText = "こたえあわせ";
+        } else if (currentTab === 2) {
+            ins.innerText = "下の 数を 読みましょう。";
+            visual.innerHTML = `<div style="font-size:65px; font-weight:bold; letter-spacing: 2px;">${prob.val}</div>`;
+            inputSec.style.display = 'none';
+            document.getElementById('action-btn').innerText = "こたえをみる";
+        } else {
+            ins.innerText = "数字で 書きましょう。";
+            visual.innerHTML = renderKanji(false);
+            inputSec.style.display = 'block';
+            document.getElementById('action-btn').innerText = "こたえあわせ";
+        }
+        updateInputDisplay();
+    }
+
+    function renderPerfectResponsiveSVG(mode) {
+        let svg = `<svg width="100%" height="100%" viewBox="0 0 1000 280" style="background:#f8f9fa;">
+            <defs>
+                <linearGradient id="stickGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#d7a15c"/>
+                    <stop offset="30%" stop-color="#f5cd98"/>
+                    <stop offset="70%" stop-color="#e4b273"/>
+                    <stop offset="100%" stop-color="#b57e38"/>
+                </linearGradient>
+                <linearGradient id="origamiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#ff7675"/>
+                    <stop offset="100%" stop-color="#ff7675"/>
+                </linearGradient>
+            </defs>
+            <line x1="430" y1="10" x2="430" y2="270" stroke="#e0e0e0" stroke-width="2" stroke-dasharray="5 5"/>
+            <line x1="740" y1="10" x2="740" y2="270" stroke="#e0e0e0" stroke-width="2" stroke-dasharray="5 5"/>
+            `;
+
+        for (let i = 0; i < prob.h; i++) {
+            let row = Math.floor(i / 5);
+            let col = i % 5;
+            let x = 15 + (col * 80);
+            let y = 15 + (row * 130);
+
+            if (mode === 'ぼう') {
+                svg += `
+                <g transform="translate(${x}, ${y})">
+                    <path d="M 5,0 L 45,0 L 40,80 L 0,80 Z" fill="#9e6d30" />
+                    <path d="M 45,0 L 53,8 L 48,88 L 40,80 Z" fill="#7a501c" />
+                    <rect x="2" y="5" width="40" height="75" fill="url(#stickGrad)" rx="2" stroke="#8a5a22" stroke-width="1"/>
+                    <line x1="6" y1="5" x2="6" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="10" y1="5" x2="10" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="14" y1="5" x2="14" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="18" y1="5" x2="18" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="22" y1="5" x2="22" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="26" y1="5" x2="26" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="30" y1="5" x2="30" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="34" y1="5" x2="34" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="38" y1="5" x2="38" y2="80" stroke="#8a5a22" stroke-width="1"/>
+                    <path d="M 1,35 Q 21,38 42,35 L 42,47 Q 21,50 1,47 Z" fill="#ff2e2e" stroke="#b30000" stroke-width="1"/>
+                    <rect x="7" y="37" width="28" height="11" fill="white" rx="2" stroke="#333" stroke-width="0.5"/>
+                    <text x="21" y="46" font-size="9" font-weight="bold" text-anchor="middle" fill="#000">100</text>
+                </g>`;
+            } else {
+                svg += `
+                <g transform="translate(${x + 5}, ${y + 20})">
+                    <path d="M 0,35 L 12,23 L 47,23 L 35,35 Z" fill="#b2bec3"/>
+                    <path d="M 35,0 L 47,-12 L 47,23 L 35,35 Z" fill="#748d92"/>
+                    <line x1="37" y1="31" x2="49" y2="19" stroke="#95afc0" stroke-width="1"/><line x1="39" y1="27" x2="51" y2="15" stroke="#95afc0" stroke-width="1"/><line x1="41" y1="23" x2="53" y2="11" stroke="#95afc0" stroke-width="1"/><line x1="43" y1="19" x2="55" y2="7" stroke="#95afc0" stroke-width="1"/><line x1="45" y1="15" x2="57" y2="3" stroke="#95afc0" stroke-width="1"/>
+                    <rect x="8" y="-8" width="35" height="35" fill="#fab1a0" rx="1"/>
+                    <rect x="6" y="-6" width="35" height="35" fill="#ff7675" rx="1"/>
+                    <rect x="4" y="-4" width="35" height="35" fill="#e17055" rx="1"/>
+                    <rect x="2" y="-2" width="35" height="35" fill="#ff7675" rx="1"/>
+                    <rect x="0" y="0" width="35" height="35" fill="url(#origamiGrad)" rx="1" stroke="#d63031" stroke-width="1"/>
+                    <rect x="0" y="11" width="35" height="12" fill="white" opacity="0.9"/>
+                    <text x="17.5" y="21" font-size="10" font-weight="bold" text-anchor="middle" fill="#c0392b">100</text>
+                </g>`;
+            }
+        }
+
+        for (let i = 0; i < prob.t; i++) {
+            let row = Math.floor(i / 5);
+            let col = i % 5;
+            let x = 450 + (col * 56);
+            let y = 15 + (row * 130);
+
+            if (mode === 'ぼう') {
+                svg += `
+                <g transform="translate(${x + 15}, ${y})">
+                    <rect x="0" y="4" width="22" height="72" fill="url(#stickGrad)" rx="3" stroke="#8a5a22" stroke-width="1"/>
+                    <line x1="4" y1="4" x2="4" y2="76" stroke="#a06d30" stroke-width="1"/><line x1="9" y1="4" x2="9" y2="76" stroke="#a06d30" stroke-width="1"/><line x1="14" y1="4" x2="14" y2="76" stroke="#a06d30" stroke-width="1"/><line x1="18" y1="4" x2="18" y2="76" stroke="#a06d30" stroke-width="1"/>
+                    <ellipse cx="11" cy="4" rx="11" ry="3" fill="#f5cd98" stroke="#8a5a22" stroke-width="1"/>
+                    <path d="M -1,36 Q 11,39 23,36 L 22,44 Q 11,47 0,44 Z" fill="#ff4757" stroke="#ff2e2e"/>
+                    <text x="11" y="43" font-size="8" font-weight="bold" text-anchor="middle" fill="white">10</text>
+                </g>`;
+            } else {
+                svg += `
+                <g transform="translate(${x + 8}, ${y + 20})">
+                    <rect x="3" y="-3" width="35" height="35" fill="#ffeaa7" rx="1"/>
+                    <rect x="1.5" y="-1.5" width="35" height="35" fill="#ffeaa7" rx="1"/>
+                    <rect x="0" y="0" width="35" height="35" fill="#fdcb6e" rx="1" stroke="#e67e22" stroke-width="1"/>
+                    <rect x="0" y="11" width="35" height="12" fill="white" opacity="0.9"/>
+                    <text x="17.5" y="21" font-size="10" font-weight="bold" text-anchor="middle" fill="#d35400">10</text>
+                </g>`;
+            }
+        }
+
+        for (let i = 0; i < prob.o; i++) {
+            let row = Math.floor(i / 5);
+            let col = i % 5;
+            let x = 760 + (col * 44);
+            let y = 15 + (row * 130);
+
+            if (mode === 'ぼう') {
+                svg += `
+                <g transform="translate(${x + 12}, ${y})">
+                    <rect x="2" y="6" width="8" height="68" fill="url(#stickGrad)" rx="2" stroke="#8a5a22" stroke-width="1"/>
+                    <ellipse cx="6" cy="6" rx="4" ry="2" fill="#f5cd98" stroke="#8a5a22" stroke-width="1"/>
+                </g>`;
+            } else {
+                svg += `
+                <g transform="translate(${x + 4}, ${y + 20}) rotate(4)">
+                    <rect x="0" y="0" width="35" height="35" fill="#81ecec" rx="1" stroke="#00cec9" stroke-width="1"/>
+                    <rect x="0" y="11" width="35" height="12" fill="white" opacity="0.8"/>
+                    <text x="17.5" y="20" font-size="9" font-weight="bold" text-anchor="middle" fill="#0097e6">1</text>
+                </g>`;
+            }
+        }
+
+        svg += `</svg>`;
+        return svg;
+    }
+
+    function renderKanji(withHint) {
+        let hKanji = kanjiH[prob.h];
+        let hRead  = readH[prob.h];
+        
+        let tKanji = prob.t === 0 ? "" : (prob.t === 1 ? "十" : kanjiT[prob.t]);
+        let tRead  = prob.t === 0 ? "" : readT[prob.t];
+        
+        let oKanji = prob.o === 0 ? "" : kanjiO[prob.o];
+        let oRead  = prob.o === 0 ? "" : readO[prob.o];
+        
+        if(!withHint) {
+            return `<div style="font-size:45px; font-weight:bold; letter-spacing:4px; line-height: 1.7; text-align:center;">
+                <ruby>${hKanji}<rt>${hRead}</rt></ruby>
+                ${tKanji ? `<ruby>${tKanji}<rt>${tRead}</rt></ruby>` : ''}
+                ${oKanji ? `<ruby>${oKanji}<rt>${oRead}</rt></ruby>` : ''}
+            </div>`;
+        } else {
+            return `<div class="hint-text">
+                <span class="hint-box hint-h"><ruby>${hKanji}<rt>${hRead}</rt></ruby></span>
+                ${tKanji ? `<span class="hint-box hint-t"><ruby>${tKanji}<rt>${tRead}</rt></ruby></span>` : ''}
+                ${oKanji ? `<span class="hint-box hint-o"><ruby>${oKanji}<rt>${oRead}</rt></ruby></span>` : ''}
+            </div>`;
+        }
+    }
+
+    function adjustDigit(place, val) {
+        playSound('click');
+        user[place] += val;
+        if(user[place] > 9) user[place] = 0;
+        if(user[place] < 0) user[place] = 9;
+        updateInputDisplay();
+    }
+
+    function updateInputDisplay() {
+        const dh = document.getElementById('disp-h');
+        const dt = document.getElementById('disp-t');
+        const do1 = document.getElementById('disp-o');
+
+        dh.innerText = user.h;
+        dt.innerText = user.t;
+        do1.innerText = user.o;
+
+        dh.classList.remove('hidden-digit');
+        dt.classList.add('hidden-digit'); // 元のバグ修正：初期化で隠れるのを防ぐため、下部で判定
+
+        if(user.h === 0) {
+            dh.classList.add('hidden-digit');
+            if(user.t === 0) {
+                dt.classList.add('hidden-digit');
+            } else {
+                dt.classList.remove('hidden-digit');
+            }
+        } else {
+            dt.classList.remove('hidden-digit');
+        }
+    }
+
+    function toggleHint() {
+        playSound('click');
+        isHintVisible = !isHintVisible;
+        document.getElementById('visual-area').innerHTML = renderKanji(isHintVisible);
+    }
+
+    function processAction() {
+        const area = document.getElementById('explanation-area');
+        area.style.display = 'block';
+        document.getElementById('next-btn').style.display = 'inline-block';
+        document.getElementById('action-btn').style.display = 'none';
+        document.getElementById('hint-btn').style.display = 'none';
+
+        if (currentTab === 2) {
+            showReadingExp(area);
+        } else {
+            checkAnswer(area);
+        }
+    }
+
+    function checkAnswer(area) {
+        let userVal = user.h * 100 + user.t * 10 + user.o;
+        let isCorrect = (userVal === prob.val);
+        
+        if (isCorrect) {
+            playSound('correct');
+        } else {
+            playSound('incorrect');
+        }
+
+        area.className = `explanation ${isCorrect ? 'correct' : 'incorrect'}`;
+        
+        let title = "";
+        if(isCorrect) {
+            title = "⭕ せいかい！ ★を 1つ ゲットしたよ！";
+            if(currentTab === 1 || currentTab === 3) {
+                stars++;
+                localStorage.setItem('math_app_stars', stars);
+                updateStarDisplay();
+            }
+        } else {
+            title = "❌ まちがい... 次はがんばろう！";
+        }
+        
+        let expHtml = `<strong style="font-size:20px;">${title}</strong><br><hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">`;
+
+        if (currentTab === 3) {
+            expHtml += `<span class="exp-part">・<span class="val-h">${kanjiH[prob.h]}（${readH[prob.h]}）</span>は100が <span class="val-h">${prob.h}つ</span> ということだから、百のくらいは <span class="val-h">${prob.h}</span> だね。</span>`;
+            if(prob.t > 0) {
+                let tName = prob.t === 1 ? "十" : kanjiT[prob.t];
+                expHtml += `<span class="exp-part">・<span class="val-t">${tName}（${readT[prob.t]}）</span>は10が <span class="val-t">${prob.t}つ</span> あるということだから、十のくらいは <span class="val-t">${prob.t}</span> だね。</span>`;
+            } else {
+                expHtml += `<span class="exp-part">・十の位をあらわす 言葉は<span class="val-t">「ない」</span>から、十のくらいは <span class="val-t">0</span> だね。</span>`;
+            }
+            if(prob.o > 0) {
+                expHtml += `<span class="exp-part">・<span class="val-o">${kanjiO[prob.o]}（${readO[prob.o]}）</span>は1が <span class="val-o">${prob.o}つ</span> あるということだから、一のくらいは <span class="val-o">${prob.o}</span> だね。</span>`;
+            } else {
+                expHtml += `<span class="exp-part">・一の位をあらわす 言葉は<span class="val-o">「ない」</span>から、一のくらいは <span class="val-o">0</span> だね。</span>`;
+            }
+        } else {
+            expHtml += `<span class="exp-part">・100のたば（束）が <span class="val-h">${prob.h}つ</span> あるから、百のくらいは <span class="val-h">${prob.h}</span> だね。</span>`;
+            
+            if(prob.t > 0) {
+                expHtml += `<span class="exp-part">・10のたば（束）が <span class="val-t">${prob.t}つ</span> あるから、十のくらいは <span class="val-t">${prob.t}</span> だね。</span>`;
+            } else {
+                expHtml += `<span class="exp-part">・10のたば（束）は<span class="val-t">「ない」</span>から、十のくらいは <span class="val-t">0</span> だね。</span>`;
+            }
+            
+            if(prob.o > 0) {
+                expHtml += `<span class="exp-part">・1のばらが <span class="val-o">${prob.o}つ</span> あるから、一のくらいは <span class="val-o">${prob.o}</span> だね。</span>`;
+            } else {
+                expHtml += `<span class="exp-part">・1のばらは<span class="val-o">「ない」</span>から、一のくらいは <span class="val-o">0</span> だね。</span>`;
+            }
+        }
+        expHtml += `<br><strong style="font-size:20px;">だから、こたえは 「<span style="color:#d35400;">${prob.val}</span>」 だね！</strong>`;
+        area.innerHTML = expHtml;
+    }
+
+    function showReadingExp(area) {
+        playSound('correct'); 
+        area.className = "explanation normal-exp";
+        let hText = `<span class="val-h">百のくらいが ${prob.h} なので、「${readH[prob.h]}」</span>`;
+        let tText = prob.t === 0 ? `<span class="val-t">十のくらいが 0 なので、読みません。</span>` : `<span class="val-t">十のくらいが ${prob.t} なので、「${readT[prob.t]}」</span>`;
+        let oText = prob.o === 0 ? `<span class="val-o">一のくらいが 0 なので、読みません。</span>` : `<span class="val-o">一のくらいが ${prob.o} なので、「${readO[prob.o]}」</span>`;
+        
+        let fullRead = (readH[prob.h] || "") + (readT[prob.t] || "") + (readO[prob.o] || "");
+        
+        area.innerHTML = `
+            <strong style="font-size:20px;">読み方のこたえ</strong><br><hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
+            ・${hText}<br>
+            ・${tText}<br>
+            ・${oText}<br><br>
+            <strong>だから、『 <span style="color:#2c3e50; font-size:22px;">${fullRead}</span> 』と読みます。</strong>
+        `;
+
+        speakText(fullRead);
+    }
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+        playSound('click');
+    });
+
+    // 🆕 起動時にウォームアップ（無音読み上げ）を実行
+    warmupSpeech();
+    initProblem();
+</script>
+
+</body>
+</html>
