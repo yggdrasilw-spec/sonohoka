@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>単位換算マスター（★カウント＆音読版）</title>
+    <style>
+        :root {
+            --primary-color: #005088;
+            --secondary-color: #11CAA0;
+            --bg-color: #f0f4f8;
+            --panel-bg: #F3F0DF;
+            --star-color: #eab308;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 950px;
+            width: 100%;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* ヘッダーエリア */
+        .header-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 26px;
+        }
+
+        /* ★ステータスエリア */
+        .star-status-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background-color: #f8fafc;
+            padding: 5px 15px;
+            border-radius: 50px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .star-count-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e293b;
+        }
+        .star-count-text span {
+            color: var(--star-color);
+            font-size: 20px;
+        }
+
+        .btn-reset-star {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-reset-star:hover { background-color: #dc2626; }
+
+        /* 音声コントロールボタン */
+        .sound-toggle-btn {
+            font-size: 26px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 5px 10px;
+            border-radius: 50px;
+        }
+        .sound-toggle-btn:hover { background-color: #e2e8f0; }
+        .sound-toggle-btn.muted { filter: grayscale(100%); opacity: 0.3; }
+
+        /* テーマ選択エリア */
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .theme-btn {
+            background-color: #ffffff;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 12px 5px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .theme-btn:hover { background-color: #e6f0fa; }
+        .theme-btn.active { background-color: var(--primary-color); color: #ffffff; }
+
+        .info-bar { text-align: right; margin-bottom: 15px; }
+        .btn-popup-trigger {
+            background-color: #e2e8f0; border: 1px solid #cbd5e1; color: #334155;
+            padding: 6px 15px; font-size: 14px; font-weight: bold; border-radius: 20px; cursor: pointer;
+        }
+        .btn-popup-trigger:hover { background-color: #cbd5e1; }
+
+        /* メインコンテンツ */
+        .workspace { display: none; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 12px; padding: 25px; }
+        .problem-box {
+            font-size: 26px; font-weight: bold; text-align: center; background: #ffffff;
+            padding: 18px; border-radius: 30px; border: 3px solid var(--secondary-color); margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        /* ヒントエリア */
+        .hint-section { background-color: var(--panel-bg); border-radius: 8px; padding: 15px; margin-bottom: 25px; border-left: 5px solid var(--primary-color); }
+        .hint-title { font-weight: bold; color: var(--primary-color); margin-top: 0; margin-bottom: 8px; font-size: 16px; }
+        .formula-text { font-size: 16px; font-weight: bold; color: #444; margin-bottom: 15px; line-height: 1.5; }
+
+        /* 位取り表 */
+        .place-value-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #ffffff; }
+        .place-value-table th, .place-value-table td { border: 2px solid #b0c4de; text-align: center; padding: 6px 4px; font-size: 16px; font-weight: bold; }
+        .place-value-table th { background-color: var(--primary-color); color: white; height: 30px; }
+        .place-value-table td { color: #7f8c8d; font-weight: normal; font-size: 12px; background: #fbfcfc; }
+
+        .spin-container { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0; }
+        .spin-btn { background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; font-size: 11px; padding: 1px 10px; color: #475569; }
+        .spin-btn:hover { background: #cbd5e1; }
+        .cell-value {
+            font-size: 26px; font-weight: bold; color: #1e293b; min-width: 24px; text-align: center;
+            display: inline-block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px;
+        }
+
+        /* 回答エリア */
+        .answer-container-wrapper {
+            display: flex; justify-content: center; align-items: center; gap: 25px; margin: 35px 0;
+            background: #f1f5f9; padding: 20px; border-radius: 12px; flex-wrap: wrap;
+        }
+        .unit-group { display: flex; align-items: center; gap: 8px; }
+        .answer-input {
+            font-size: 32px; font-weight: bold; width: 150px; text-align: center; border: 2px solid #cbd5e1;
+            border-radius: 8px; padding: 6px; color: #1e293b;
+        }
+        .answer-input:focus { outline: none; border-color: var(--secondary-color); background-color: #f8fafc; }
+        .answer-input::-webkit-outer-spin-button, .answer-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .answer-input { -moz-appearance: textfield; }
+        .unit-label { font-size: 24px; font-weight: bold; color: #005088; margin-left: 5px; }
+
+        /* 下部ボタン */
+        .control-btns { display: flex; justify-content: center; gap: 15px; }
+        .action-btn { padding: 14px 40px; font-size: 18px; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: background 0.2s; }
+        .btn-check { background-color: var(--secondary-color); color: white; }
+        .btn-check:hover { background-color: #0fb38d; }
+        .btn-next { background-color: var(--primary-color); color: white; }
+        .btn-next:hover { background-color: #003d66; }
+
+        /* 解説パネル */
+        .result-panel { margin-top: 25px; padding: 20px; border-radius: 8px; display: none; font-size: 18px; line-height: 1.6; }
+        .result-success { background-color: #e6f9f3; border-left: 6px solid var(--secondary-color); color: #0a7c61; }
+        .result-wrong { background-color: #fdf2f2; border-left: 6px solid #ef4444; color: #991b1b; }
+
+        /* --- ポップアップ（モーダル）のスタイル --- */
+        .modal-overlay {
+            display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: #ffffff; padding: 25px; border-radius: 12px; max-width: 750px; width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative; box-sizing: border-box;
+        }
+        .modal-close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #94a3b8; }
+        .modal-close-btn:hover { color: #334155; }
+        
+        .modal-title { color: var(--primary-color); margin-top: 0; font-size: 20px; display: flex; align-items: center; gap: 8px; }
+        
+        .prefix-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
+        .prefix-table th, .prefix-table td { border: 1px solid #cbd5e1; padding: 10px; text-align: center; }
+        .prefix-table th { background-color: #f1f5f9; color: #334155; font-weight: bold; }
+        .prefix-table .base-cell { background-color: #e2e8f0; font-weight: bold; color: #0f172a; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-area">
+        <h1>単位換算マスター 👑</h1>
+        
+        <div class="star-status-container">
+            <div class="star-count-text">たまった★の数：<span id="star-display">★×0</span></div>
+            <button class="btn-reset-star" onclick="resetStars()">🔄 リセット</button>
+        </div>
+
+        <button id="sound-toggle" class="sound-toggle-btn" onclick="toggleSound()" title="音声をきりかえ">🔊</button>
+    </div>
+    
+    <div class="theme-selector">
+        <button class="theme-btn" onclick="selectTheme('length2_short', this)">2年 長さ (cm, mm)</button>
+        <button class="theme-btn" onclick="selectTheme('length2_long', this)">2年 長い長さ (m, cm)</button>
+        <button class="theme-btn" onclick="selectTheme('length3', this)">3年 長い長さ (km, m)</button>
+        <button class="theme-btn" onclick="selectTheme('volume', this)">2年 かさ (L, dL, mL)</button>
+        <button class="theme-btn" onclick="selectTheme('weight', this)">3年 重さ (kg, g)</button>
+        <button class="theme-btn" onclick="selectTheme('area', this)">4年 面積 (㎡, a, ha, ㎢, ㎠)</button>
+    </div>
+
+    <div class="info-bar">
+        <button class="btn-popup-trigger" onclick="openPrefixModal()">📏 たんいのひみつ（接頭辞の表）をみる</button>
+    </div>
+
+    <div id="workspace" class="workspace">
+        <div id="problem-text" class="problem-box">問題がここにでます</div>
+
+        <div class="hint-section">
+            <div class="hint-title">💡 もとになるヒントの式</div>
+            <div id="formula-display" class="formula-text">--</div>
+            
+            <div class="hint-title">🗺️ たんいの位取り表（▲▼ボタンを押して数字をうごかしてみよう！）</div>
+            <table class="place-value-table" id="table-display"></table>
+        </div>
+
+        <div class="answer-container-wrapper" id="dynamic-answer-area"></div>
+
+        <div class="control-btns">
+            <button class="action-btn btn-check" onclick="checkAnswer()">こたえ合わせ</button>
+            <button class="action-btn btn-next" onclick="nextProblem()">つぎの問題</button>
+        </div>
+
+        <div id="result-panel" class="result-panel"></div>
+    </div>
+</div>
+
+<div id="prefix-modal" class="modal-overlay" onclick="closePrefixModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="modal-close-btn" onclick="closePrefixModal()">&times;</span>
+        <h3 class="modal-title">📏 たんいにつく言葉（接頭辞）のひみつ</h3>
+        <p style="font-size:14px; color:#475569; margin: 5px 0 15px 0; line-height: 1.4;">
+            単位の頭につくアルファベット（kやmなど）には、すべて決まった「数字の大きさ（倍数）」の意味があります！<br>
+            これらはぜんぶ、いつもの数と同じように<b>10倍ずつ</b>おとなりへつながっているよ。
+        </p>
+
+        <button type="button" class="btn-popup-trigger" onclick="toggleAdvancedPrefix()" style="margin: 0 0 10px 0;">🚀 中学生以上レベル！</button>
+
+        <div id="advanced-prefix" style="display:none; margin-bottom: 15px;">
+            <table class="prefix-table">
+                <thead>
+                    <tr>
+                        <th>接頭辞（せっとうじ）</th>
+                        <th>T</th>
+                        <th>G</th>
+                        <th>M</th>
+                        <th>k</th>
+                        <th class="base-cell">基準</th>
+                        <th>m</th>
+                        <th>μ</th>
+                        <th>n</th>
+                        <th>p</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>読み方</b></td>
+                        <td>テラ</td>
+                        <td>ギガ</td>
+                        <td>メガ</td>
+                        <td>キロ</td>
+                        <td class="base-cell"><b>m / L / g</b></td>
+                        <td>ミリ</td>
+                        <td>マイクロ</td>
+                        <td>ナノ</td>
+                        <td>ピコ</td>
+                    </tr>
+                    <tr>
+                        <td><b>基準からの大きさ</b></td>
+                        <td><b>10<sup>12</sup> 倍</b></td>
+                        <td><b>10<sup>9</sup> 倍</b></td>
+                        <td><b>10<sup>6</sup> 倍</b></td>
+                        <td><b>10<sup>3</sup> 倍</b></td>
+                        <td class="base-cell"><b>1</b></td>
+                        <td><b>10<sup>-3</sup> 倍</b></td>
+                        <td><b>10<sup>-6</sup> 倍</b></td>
+                        <td><b>10<sup>-9</sup> 倍</b></td>
+                        <td><b>10<sup>-12</sup> 倍</b></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <table class="prefix-table">
+            <thead>
+                <tr>
+                    <th>接頭辞（せっとうじ）</th>
+                    <th>k</th>
+                    <th>h</th>
+                    <th>da</th>
+                    <th class="base-cell">基準（きじゅん）</th>
+                    <th>d</th>
+                    <th>c</th>
+                    <th>m</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b>読み方</b></td>
+                    <td>キロ</td>
+                    <td>ヘクト</td>
+                    <td>デカ</td>
+                    <td class="base-cell"><b>m / L / g</b></td>
+                    <td>デシ</td>
+                    <td>センチ</td>
+                    <td>ミリ</td>
+                </tr>
+                <tr>
+                    <td><b>基準からの大きさ</b></td>
+                    <td><b>1000 倍</b></td>
+                    <td>100 倍</td>
+                    <td>10 倍</td>
+                    <td class="base-cell"><b>1</b></td>
+                    <td><span>1/10</span> 倍</td>
+                    <td><span>1/100</span> 倍</td>
+                    <td><span>1/1000</span> 倍</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="font-size:12px; color:#64748b; line-height: 1.4; margin-bottom: 0;">
+            💡 <b>ヒント：</b> 「km」と「m」の間に2つ空の部屋があるのは、「h（ヘクト）」と「da（デカ）」の部屋が隠れているからだよ！<br>
+            同じように、「m」と「cm」の間に1つ空の部屋があるのは、「d（デシ）」の部屋が隠れているからなんだね！
+        </p>
+    </div>
+</div>
+
+<div id="star-modal" class="modal-overlay" onclick="closeStarModal()">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 380px; text-align: center; padding: 30px;">
+        <h2 style="color: var(--star-color); margin: 0 0 10px 0; font-size: 28px;">🌟 ★ゲット！ 🌟</h2>
+        <p style="font-size: 18px; font-weight: bold; color: #1e293b; margin: 15px 0; line-height: 1.5;">
+            見事大正解！<br>
+            ごほうびの ★ を<br><span style="font-size: 24px; color: var(--star-color);">1つゲット</span>したよ！
+        </p>
+        <button class="action-btn btn-next" onclick="closeStarModal()" style="padding: 10px 35px; font-size: 16px;">やったね！</button>
+    </div>
+</div>
+
+<script>
+    let activeTheme = '';
+    let currentProblem = null;
+    let userTableVals = []; 
+    let isSoundOn = true;
+    let audioCtx = null;
+    let starCount = 0;
+    let currentProblemSolved = false;
+
+    // 起動時にLocalStorageから★の数を読み込む
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedStars = localStorage.getItem('tan_i_master_stars');
+        if (savedStars !== null) {
+            starCount = parseInt(savedStars, 10);
+        }
+        updateStarDisplay();
+        warmUpAudio();
+    });
+
+    window.addEventListener('click', warmUpAudio, { once: true });
+
+    // ★の画面表示を更新
+    function updateStarDisplay() {
+        document.getElementById('star-display').innerText = `★×${starCount}`;
+    }
+
+    // ★のリセット
+    function resetStars() {
+        if (confirm('たまった★をぜんぶリセットして 0個 にもどしてもいいですか？')) {
+            starCount = 0;
+            localStorage.setItem('tan_i_master_stars', starCount);
+            updateStarDisplay();
+        }
+    }
+
+    // 音声およびWeb Speech APIの起動時ウォームアップ
+    function warmUpAudio() {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(' ');
+            utterance.volume = 0;
+            window.speechSynthesis.speak(utterance);
+        }
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    function toggleSound() {
+        isSoundOn = !isSoundOn;
+        const btn = document.getElementById('sound-toggle');
+        if (isSoundOn) {
+            btn.innerText = '🔊';
+            btn.classList.remove('muted');
+        } else {
+            btn.innerText = '🔇';
+            btn.classList.add('muted');
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        }
+    }
+
+    function playEffect(type) {
+        if (!isSoundOn || !audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'correct') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.08);
+            osc.frequency.setValueAtTime(783.99, now + 0.16); // 3連音にしてさらに豪華に
+            gainNode.gain.setValueAtTime(0.2, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+            osc.start(now);
+            osc.stop(now + 0.45);
+        } else {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(140, now);
+            gainNode.gain.setValueAtTime(0.2, now);
+            gainNode.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+    }
+
+
+    function numberToHiragana(num) {
+        const text = String(num).replace(/,/g, '');
+        if (!/^\d+$/.test(text)) return text;
+
+        const digits = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+        const special = new Map([
+            [300, 'さんびゃく'],
+            [600, 'ろっぴゃく'],
+            [800, 'はっぴゃく'],
+            [3000, 'さんぜん'],
+            [8000, 'はっせん']
+        ]);
+
+        const chunkUnits = ['', 'まん', 'おく', 'ちょう', 'けい'];
+
+        function readUnder10000(n) {
+            if (n === 0) return '';
+            if (special.has(n)) return special.get(n);
+
+            let result = '';
+            const thousands = Math.floor(n / 1000);
+            const hundreds = Math.floor((n % 1000) / 100);
+            const tens = Math.floor((n % 100) / 10);
+            const ones = n % 10;
+
+            if (thousands > 0) {
+                result += (thousands === 1 ? '' : digits[thousands]) + 'せん';
+            }
+            if (hundreds > 0) {
+                result += (hundreds === 1 ? '' : digits[hundreds]) + 'ひゃく';
+            }
+            if (tens > 0) {
+                result += (tens === 1 ? '' : digits[tens]) + 'じゅう';
+            }
+            if (ones > 0) {
+                result += digits[ones];
+            }
+            return result;
+        }
+
+        if (text === '0') return 'ぜろ';
+
+        let groups = [];
+        for (let i = text.length; i > 0; i -= 4) {
+            groups.push(parseInt(text.slice(Math.max(0, i - 4), i), 10));
+        }
+
+        let result = '';
+        for (let i = 0; i < groups.length; i++) {
+            const n = groups[i];
+            if (n === 0) continue;
+            const chunk = readUnder10000(n);
+            result = chunk + chunkUnits[i] + result;
+        }
+        return result || 'ぜろ';
+    }
+
+    function convertSpeechText(text) {
+        let cleanedText = String(text);
+
+        cleanedText = cleanedText
+            .replace(/㎡/g, '平方メートル')
+            .replace(/㎠/g, '平方センチメートル')
+            .replace(/㎢/g, '平方キロメートル')
+            .replace(/dL/g, 'デシリットル')
+            .replace(/mL/g, 'ミリリットル')
+            .replace(/kg/g, 'キログラム')
+            .replace(/km/g, 'キロメートル')
+            .replace(/cm/g, 'センチメートル')
+            .replace(/mm/g, 'ミリメートル')
+            .replace(/ha/g, 'ヘクタール')
+            .replace(/μ/g, 'マイクロ')
+            .replace(/L/g, 'リットル')
+            .replace(/a/g, 'アール')
+            .replace(/m/g, 'メートル')
+            .replace(/g/g, 'グラム')
+            .replace(/★/g, 'ほし');
+
+        cleanedText = cleanedText.replace(/\d+/g, (m) => numberToHiragana(m));
+        return cleanedText;
+    }
+
+    function speakText(text) {
+        if (!isSoundOn || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        
+        const cleanedText = text.replace(/㎡/g, '平方メートル')
+                                .replace(/㎠/g, '平方センチメートル')
+                                .replace(/㎢/g, '平方キロメートル')
+                                .replace(/a/g, 'アール')
+                                .replace(/ha/g, 'ヘクタール');
+
+        const utterance = new SpeechSynthesisUtterance(cleanedText);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function openPrefixModal() { document.getElementById('prefix-modal').style.display = 'flex'; }
+    function closePrefixModal() { document.getElementById('prefix-modal').style.display = 'none'; }
+    function toggleAdvancedPrefix() {
+        const el = document.getElementById('advanced-prefix');
+        if (!el) return;
+        el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
+    }
+    
+    // ★ポップアップの制御
+    function openStarModal() { document.getElementById('star-modal').style.display = 'flex'; }
+    function closeStarModal() { document.getElementById('star-modal').style.display = 'none'; }
+
+    const standardTables = {
+        length2_short: { headers: ["cm", "mm"], placeholders: ["1cmの部屋", "1mmの部屋"], widths: ["50%", "50%"] },
+        length2_long: { headers: ["m", "", "cm"], placeholders: ["1mの部屋", "10cmの部屋", "1cmの部屋"], widths: ["34%", "33%", "33%"] },
+        length3: { headers: ["km", "", "", "m"], placeholders: ["1kmの部屋", "100mの部屋", "10mの部屋", "1mの部屋"], widths: ["25%", "25%", "25%", "25%"] },
+        volume: { headers: ["L", "dL", "", "mL"], placeholders: ["1Lの部屋", "1dLの部屋", "10mLの部屋", "1mLの部屋"], widths: ["25%", "25%", "25%", "25%"] },
+        weight: { headers: ["kg", "", "", "g"], placeholders: ["1kgの部屋", "100gの部屋", "10gの部屋", "1gの部屋"], widths: ["25%", "25%", "25%", "25%"] }
+    };
+
+    const areaTables = {
+        large: {
+            headers: ["", "㎢", "", "ha", "", "a", "", "㎡"],
+            placeholders: ["10㎢", "1㎢", "10ha", "1ha", "10a", "1a", "10㎡", "1㎡"],
+            widths: ["12.5%", "12.5%", "12.5%", "12.5%", "12.5%", "12.5%", "12.5%", "12.5%"]
+        },
+        small: {
+            headers: ["", "㎡", "", "", "", "㎠"],
+            placeholders: ["10㎡", "1㎡", "1000㎠", "100㎠", "10㎠", "1㎠"],
+            widths: ["16.6%", "16.6%", "16.6%", "16.6%", "16.6%", "16.6%"]
+        }
+    };
+
+    const themeData = {
+        length2_short: {
+            formulas: ["1cm = 10mm"],
+            problems: [
+                { gen: () => {
+                    let cm = Math.floor(Math.random() * 8) + 2; let mm = Math.floor(Math.random() * 9) + 1;
+                    return { q: `${cm}cm ${mm}mm は 何mmですか？`, targets: ['mm'], check: (ans) => ans['mm'] === (cm * 10 + mm), correctStr: `${cm * 10 + mm} mm`, tableVals: [cm, mm], hint: `cmの部屋に「${cm}」、mmの部屋に「${mm}」を入れて並べて読おう。` };
+                }},
+                { gen: () => {
+                    let cm = Math.floor(Math.random() * 8) + 2;
+                    return { q: `${cm}cm は 何mmですか？`, targets: ['mm'], check: (ans) => ans['mm'] === (cm * 10), correctStr: `${cm * 10} mm`, tableVals: [cm, 0], hint: `cmの部屋に「${cm}」を書き、空いたmmの部屋に「0」を補うよ。` };
+                }},
+                { gen: () => {
+                    let cm = Math.floor(Math.random() * 8) + 2; let mm = Math.floor(Math.random() * 9) + 1;
+                    return { q: `${cm * 10 + mm}mm は 何cm 何mmですか？`, targets: ['cm', 'mm'], check: (ans) => ans['cm'] === cm && ans['mm'] === mm, correctStr: `${cm} cm ${mm} mm`, tableVals: [cm, mm], hint: `右端のmmから数字をあてはめて、それぞれの部屋の数字を読おう。` };
+                }}
+            ]
+        },
+        length2_long: {
+            formulas: ["1m = 100cm"],
+            problems: [
+                { gen: () => {
+                    let m = Math.floor(Math.random() * 8) + 1; let cm = Math.floor(Math.random() * 9) + 1;
+                    return { q: `${m}m ${cm}cm は 何cmですか？`, targets: ['cm'], check: (ans) => ans['cm'] === (m * 100 + cm), correctStr: `${m * 100 + cm} cm`, tableVals: [m, 0, cm], hint: `mに「${m}」、cmの一の位に「${cm}」を書くと、10cmの部屋が空くので「0」を入れよう。` };
+                }},
+                { gen: () => {
+                    let m = Math.floor(Math.random() * 8) + 1; let cm = Math.floor(Math.random() * 98) + 1;
+                    return { q: `${m * 100 + cm}cm は 何m 何cmですか？`, targets: ['m', 'cm'], check: (ans) => ans['m'] === m && ans['cm'] === cm, correctStr: `${m} m ${cm} cm`, tableVals: [m, (cm < 10 ? "書かない！" : Math.floor(cm/10)), cm%10], hint: `右端から数字をあてはめます。mの部屋に入った数字がmの答え、残りがcmの答えになるよ。` };
+                }}
+            ]
+        },
+        length3: {
+            formulas: ["1km = 1000m"],
+            problems: [
+                { gen: () => {
+                    let km = Math.floor(Math.random() * 8) + 1; let m = Math.floor(Math.random() * 89) + 10;
+                    return { q: `${km}km ${m}m は 何mですか？`, targets: ['m'], check: (ans) => ans['m'] === (km * 1000 + m), correctStr: `${km * 1000 + m} m`, tableVals: [km, 0, Math.floor(m/10), m%10], hint: `kmに「${km}」を書き、mの部屋の右端に合わせて「${m}」を書きます。空いた100mの部屋には「0」を入れよう。` };
+                }},
+                { gen: () => {
+                    let km = Math.floor(Math.random() * 8) + 1; let m = Math.floor(Math.random() * 98) + 1; 
+                    let total = km * 1000 + m;
+                    return { q: `${total}m は 何km 何mですか？`, targets: ['km', 'm'], check: (ans) => ans['km'] === km && ans['m'] === m, correctStr: `${km} km ${m} m`, tableVals: [km, (m < 100 ? "書かない！" : Math.floor(m/100)), (m < 10 ? "書かない！" : Math.floor((m%100)/10)), m%10], hint: `右端から順番にあてはめると、使わない上の部屋が「書かない！」になっているのがよくわかるよ。` };
+                }}
+            ]
+        },
+        volume: {
+            formulas: ["1L = 10dL", "1dL = 100mL", "1L = 1000mL"],
+            problems: [
+                { gen: () => {
+                    let l = Math.floor(Math.random() * 8) + 2;
+                    return { q: `${l}L は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === (l * 1000), correctStr: `${l * 1000} mL`, tableVals: [l, 0, 0, 0], hint: `1Lは1000mLです。Lの部屋に数字を書き、mLの部屋まで「0」を3つ補いましょう。` };
+                }},
+                { gen: () => {
+                    let l = Math.floor(Math.random() * 8) + 2;
+                    return { q: `${l * 1000}mL は 何Lですか？`, targets: ['L'], check: (ans) => ans['L'] === l, correctStr: `${l} L`, tableVals: [l, "書かない！", "書かない！", "書かない！"], hint: `1000mLで1Lになります。千の位（Lの部屋）にある数字を見よう。` };
+                }},
+                { gen: () => {
+                    let l = Math.floor(Math.random() * 7) + 2; let dl = Math.floor(Math.random() * 8) + 1;
+                    return { q: `${l}L ${dl}dL は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === (l * 1000 + dl * 100), correctStr: `${l * 1000 + dl * 100} mL`, tableVals: [l, dl, 0, 0], hint: `Lの部屋に「${l}」、dLの部屋に「${dl}」を書きます。残りのmLの部屋まで「0」を2つ補います。` };
+                }},
+                { gen: () => {
+                    let l = Math.floor(Math.random() * 7) + 2; let dl = Math.floor(Math.random() * 8) + 1;
+                    let total = l * 1000 + dl * 100;
+                    return { q: `${total}mL は 何L 何dLですか？`, targets: ['L', 'dL'], check: (ans) => ans['L'] === l && ans['dL'] === dl, correctStr: `${l} L ${dl} dL`, tableVals: [l, dl, "書かない！", "書かない！"], hint: `右端から数字を表にあてはめます。Lの部屋とdLの部屋の数字をそれぞれ読みましょう。` };
+                }}
+            ]
+        },
+        weight: {
+            formulas: ["1kg = 1000g"],
+            problems: [
+                { gen: () => {
+                    let kg = Math.floor(Math.random() * 8) + 1; let g = Math.floor(Math.random() * 89) + 10;
+                    return { q: `${kg}kg ${g}g は 何gですか？`, targets: ['g'], check: (ans) => ans['g'] === (kg * 1000 + g), correctStr: `${kg * 1000 + g} g`, tableVals: [kg, 0, Math.floor(g/10), g%10], hint: `kgに「${kg}」、gを右詰めで書くと、100gの部屋が空くので「0」を補います。` };
+                }},
+                { gen: () => {
+                    let kg = Math.floor(Math.random() * 8) + 1; let g = Math.floor(Math.random() * 98) + 1;
+                    let total = kg * 1000 + g;
+                    return { q: `${total}g は 何kg 何gですか？`, targets: ['kg', 'g'], check: (ans) => ans['kg'] === kg && ans['g'] === g, correctStr: `${kg} kg ${g} g`, tableVals: [kg, (g < 100 ? "書かない！" : Math.floor(g/100)), (g < 10 ? "書かない！" : Math.floor((g%100)/10)), g%10], hint: `右端のgの部屋からあてはめます。使わない余分な部屋の0は「書かない！」になります。` };
+                }}
+            ]
+        },
+        area: {
+            formulas: [
+                "1㎡ = 10000㎠ (100cm×100cm)",
+                "1a = 100㎡ (10m×10m)",
+                "1ha = 100a = 10000㎡ (100m×100m)",
+                "1㎢ = 100ha = 1000000㎡ (1000m×1000m)"
+            ],
+            problems: [
+                { gen: () => {
+                    let m2 = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'small', q: `${m2}㎡ は 何㎠ですか？`, targets: ['㎠'], check: (ans) => ans['㎠'] === (m2 * 10000), correctStr: `${m2 * 10000} ㎠`, tableVals: [Math.floor(m2/10) || "書かない！", m2%10, 0, 0, 0, 0], hint: `1㎡は100cm×100cm＝10000㎠！部屋が4つ分（4桁）ずれるので0を4つ補おう！` };
+                }},
+                { gen: () => {
+                    let m2 = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'small', q: `${m2 * 10000}㎠ は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === m2, correctStr: `${m2} ㎡`, tableVals: [Math.floor(m2/10) || "書かない！", m2%10, "書かない！", "書かない！", "書かない！", "書かない！"], hint: `㎠の一の位から数えて、4桁上がったところが「㎡」の部屋になります。` };
+                }},
+                { gen: () => {
+                    let a = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'large', q: `${a * 100}㎡ は 何aですか？`, targets: ['a'], check: (ans) => ans['a'] === a, correctStr: `${a} a`, tableVals: ["書かない！", "書かない！", "書かない！", "書かない！", Math.floor(a/10) || "書かない！", a%10, "書かない！", "書かない！"], hint: `1aは10m×10m＝100㎡。㎡から2桁上がると「a」の部屋になるよ。` };
+                }},
+                { gen: () => {
+                    let a = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'large', q: `${a}a は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (a * 100), correctStr: `${a * 100} ㎡`, tableVals: ["書かない！", "書かない！", "書かない！", "書かない！", Math.floor(a/10) || "書かない！", a%10, 0, 0], hint: `aの部屋に書いた数字から、㎡の部屋の右端まで「0」を2つ補います。` };
+                }},
+                { gen: () => {
+                    let ha = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'large', q: `${ha}ha は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (ha * 10000), correctStr: `${ha * 10000} ㎡`, tableVals: ["書かない！", "書かない！", Math.floor(ha/10) || "書かない！", ha%10, 0, 0, 0, 0], hint: `1haは100m×100m＝10000㎡！haから㎡の右端までは4つのマス離れています。` };
+                }},
+                { gen: () => {
+                    let km2 = Math.floor(Math.random() * 5) + 1;
+                    return { tableType: 'large', q: `${km2}㎢ は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (km2 * 1000000), correctStr: `${km2 * 1000000} ㎡`, tableVals: [Math.floor(km2/10) || "書かない！", km2%10, 0, 0, 0, 0, 0, 0], hint: `1㎢は1000m×1000m＝1000000㎡！マスが6つ離れているので「0」を6つ補いましょう。` };
+                }}
+            ]
+        }
+    };
+
+    function selectTheme(themeKey, element) {
+        activeTheme = themeKey;
+        currentProblemSolved = false;
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        if(element) element.classList.add('active');
+
+        document.getElementById('workspace').style.display = 'block';
+        document.getElementById('result-panel').style.display = 'none';
+
+        nextProblem();
+    }
+
+    function renderTable(themeKey, tableType) {
+        const table = document.getElementById('table-display');
+        let config = (themeKey === 'area') ? areaTables[tableType || 'large'] : standardTables[themeKey];
+
+        userTableVals = Array(config.headers.length).fill(0);
+        
+        let html = "<tr>";
+        config.headers.forEach((h, idx) => { html += `<th style="width: ${config.widths[idx]}">${h || "&nbsp;"}</th>`; });
+        html += "</tr><tr>";
+        config.headers.forEach((_, idx) => {
+            html += `
+                <td>
+                    <div class="spin-container">
+                        <button type="button" class="spin-btn" onclick="adjustTableVal(${idx}, 1)">▲</button>
+                        <span id="cell-val-${idx}" class="cell-value">0</span>
+                        <button type="button" class="spin-btn" onclick="adjustTableVal(${idx}, -1)">▼</button>
+                    </div>
+                </td>`;
+        });
+        html += "</tr><tr>";
+        config.placeholders.forEach(p => { html += `<td>${p}</td>`; });
+        html += "</tr>";
+        
+        table.innerHTML = html;
+
+        const formulaDiv = document.getElementById('formula-display');
+        formulaDiv.innerHTML = themeData[themeKey].formulas.map(f => `<div>【 ${f} 】</div>`).join('');
+    }
+
+    function adjustTableVal(idx, amount) {
+        userTableVals[idx] = (userTableVals[idx] + amount + 10) % 10; 
+        const cell = document.getElementById(`cell-val-${idx}`);
+        if (cell) {
+            cell.innerText = userTableVals[idx];
+            cell.style.color = '#1e293b'; cell.style.backgroundColor = '#ffffff'; cell.style.fontSize = '26px';
+        }
+    }
+
+    function nextProblem() {
+        currentProblemSolved = false;
+        document.getElementById('result-panel').style.display = 'none';
+        
+        const data = themeData[activeTheme];
+        const probTemplates = data.problems;
+        const probTemplate = probTemplates[Math.floor(Math.random() * probTemplates.length)];
+        currentProblem = probTemplate.gen();
+
+        const problemText = "もんだい： " + currentProblem.q;
+        document.getElementById('problem-text').innerText = problemText;
+
+        renderTable(activeTheme, currentProblem.tableType);
+        buildAnswerUI(currentProblem.targets);
+
+        speakText(currentProblem.q);
+    }
+
+    function buildAnswerUI(targets) {
+        const area = document.getElementById('dynamic-answer-area');
+        area.innerHTML = ''; 
+
+        targets.forEach(unit => {
+            const group = document.createElement('div');
+            group.className = 'unit-group';
+
+            const input = document.createElement('input');
+            input.type = 'number'; input.className = 'answer-input'; input.id = `input-${unit}`; input.placeholder = '？';
+            group.appendChild(input);
+
+            const label = document.createElement('span');
+            label.className = 'unit-label'; label.innerText = unit;
+            group.appendChild(label);
+
+            area.appendChild(group);
+        });
+    }
+
+    function checkAnswer() {
+        if (!currentProblem) return;
+
+        let finalAnswers = {};
+        let allFilled = true;
+        let hasLeadingZero = false; 
+
+        currentProblem.targets.forEach(unit => {
+            const inputEl = document.getElementById(`input-${unit}`);
+            if (!inputEl || inputEl.value === '') { allFilled = false; return; }
+            const rawValueStr = inputEl.value.trim();
+            
+            if (/^0\d+/.test(rawValueStr)) { hasLeadingZero = true; }
+            finalAnswers[unit] = parseInt(rawValueStr, 10);
+        });
+
+        if (!allFilled) { alert('すべての空欄に数字を入力してね！'); return; }
+
+        currentProblem.tableVals.forEach((correctDigit, idx) => {
+            const cell = document.getElementById(`cell-val-${idx}`);
+            if (cell) {
+                cell.innerText = correctDigit;
+                if (correctDigit === "書かない！") {
+                    cell.style.color = '#b91c1c'; cell.style.backgroundColor = '#fee2e2'; cell.style.fontSize = '11px'; cell.style.padding = '6px 2px';
+                } else {
+                    cell.style.color = '#005088'; cell.style.backgroundColor = '#fef08a'; cell.style.fontSize = '26px';
+                }
+                userTableVals[idx] = correctDigit; 
+            }
+        });
+
+        const resultPanel = document.getElementById('result-panel');
+        resultPanel.style.display = 'block';
+
+        const isCorrect = currentProblem.check(finalAnswers);
+
+        if (hasLeadingZero) {
+            playEffect('almost');
+            const alertMsg = "おしい！数の左端の位が0になる時は、「0」は普通は書かないよ！";
+            resultPanel.className = "result-panel result-wrong";
+            resultPanel.innerHTML = `
+                <strong style="font-size:22px; color:#d97706;">⚠️ おしい！もういちど考えてみよう</strong><br>
+                <span style="font-size:20px; color:#b91c1c; font-weight:bold; display:block; margin: 10px 0;">${alertMsg}</span>
+                【ただしいこたえ】 <strong style="font-size:24px;">${currentProblem.correctStr}</strong><br>
+                <p style="margin: 8px 0 0 0; font-size:15px; color:#444;">上の表で<span style="color:#b91c1c; font-weight:bold;">「書かない！」</span>になっている部屋には、0を書かずにそのまま空欄にするのがルールだよ！</p>
+            `;
+            speakText(alertMsg + "正しい答えは、" + currentProblem.correctStr + "です。");
+
+        } else if (isCorrect) {
+            const firstSolve = !currentProblemSolved;
+            currentProblemSolved = true;
+
+            if (firstSolve) {
+                // ★カウントアップと保存
+                starCount++;
+                localStorage.setItem('tan_i_master_stars', starCount);
+                updateStarDisplay();
+            }
+
+            playEffect('correct');
+            resultPanel.className = "result-panel result-success";
+            resultPanel.innerHTML = firstSolve ? `
+                <strong>🎉 大せいかい！素晴らしい！</strong><br>
+                【こたえ】 ${currentProblem.correctStr}<br>
+                <span style="font-size:15px;">バッチリです！「書かない！」のマスと数字の位置の関係をよく覚えておこう！</span>
+            ` : `
+                <strong>🎉 大せいかい！</strong><br>
+                【こたえ】 ${currentProblem.correctStr}<br>
+                <span style="font-size:15px;">この問題はすでに★をゲット済みだよ。次の問題に進んでね！</span>
+            `;
+            speakText(firstSolve
+                ? `だいせいかい、すばらしい、答えは${currentProblem.correctStr}です。ほしをひとつゲットしたよ！`
+                : `だいせいかい、すばらしい、答えは${currentProblem.correctStr}です。`
+            );
+
+            if (firstSolve) {
+                // ★ゲットポップアップを時間差で表示
+                setTimeout(openStarModal, 200);
+            }
+
+        } else {
+            playEffect('wrong');
+            resultPanel.className = "result-panel result-wrong";
+            resultPanel.innerHTML = `
+                <strong>😢 ざんねん！ちがう数字が入ったよ</strong><br>
+                【ただしいこたえ】 <strong style="font-size:22px;">${currentProblem.correctStr}</strong><br>
+                <p style="margin: 8px 0 0 0; font-size:15px; color:#444;"><strong>解き方のヒント：</strong>${currentProblem.hint}</p>
+            `;
+            speakText("残念。正しい答えは、" + currentProblem.correctStr + "です。");
+        }
+    }
+</script>
+</body>
+</html>
