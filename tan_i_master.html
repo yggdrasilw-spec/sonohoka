@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>単位換算マスター（★カウント＆音読版）</title>
+    <title>単位換算マスター（モード選択・機能強化版）</title>
     <style>
         :root {
             --primary-color: #005088;
@@ -11,6 +11,7 @@
             --bg-color: #f0f4f8;
             --panel-bg: #F3F0DF;
             --star-color: #eab308;
+            --accent-orange: #f97316;
         }
 
         body {
@@ -100,7 +101,7 @@
         .sound-toggle-btn:hover { background-color: #e2e8f0; }
         .sound-toggle-btn.muted { filter: grayscale(100%); opacity: 0.3; }
 
-        /* テーマ選択エリア */
+        /* 大テーマ選択エリア */
         .theme-selector {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -121,6 +122,47 @@
         }
         .theme-btn:hover { background-color: #e6f0fa; }
         .theme-btn.active { background-color: var(--primary-color); color: #ffffff; }
+
+        /* 📊 細かい出題パターン（練習モード）選択コンテナ */
+        .submode-container {
+            display: none;
+            background-color: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .submode-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #475569;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .submode-flex {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .submode-btn {
+            background-color: #ffffff;
+            border: 1px solid #94a3b8;
+            color: #475569;
+            padding: 6px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .submode-btn:hover { background-color: #f1f5f9; border-color: #64748b; }
+        .submode-btn.active {
+            background-color: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: #ffffff;
+        }
 
         .info-bar { text-align: right; margin-bottom: 15px; }
         .btn-popup-trigger {
@@ -183,7 +225,7 @@
         .result-success { background-color: #e6f9f3; border-left: 6px solid var(--secondary-color); color: #0a7c61; }
         .result-wrong { background-color: #fdf2f2; border-left: 6px solid #ef4444; color: #991b1b; }
 
-        /* --- ポップアップ（モーダル）のスタイル --- */
+        /* ポップアップ（モーダル） */
         .modal-overlay {
             display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.5); align-items: center; justify-content: center;
@@ -223,7 +265,16 @@
         <button class="theme-btn" onclick="selectTheme('length3', this)">3年 長い長さ (km, m)</button>
         <button class="theme-btn" onclick="selectTheme('volume', this)">2年 かさ (L, dL, mL)</button>
         <button class="theme-btn" onclick="selectTheme('weight', this)">3年 重さ (kg, g)</button>
+        <button class="theme-btn" onclick="selectTheme('weight2', this)">3年 重い重さ (kg, t)</button>
+        <button class="theme-btn" onclick="selectTheme('volume2', this)">5年 体積 (cm³, m³, mL, L)</button>
+        <button class="theme-btn" onclick="selectTheme('time2', this)">2年 時間 (日, 時間, 分)</button>
+        <button class="theme-btn" onclick="selectTheme('time3', this)">3年 時間 (分, 秒)</button>
         <button class="theme-btn" onclick="selectTheme('area', this)">4年 面積 (㎡, a, ha, ㎢, ㎠)</button>
+    </div>
+
+    <div id="submode-container" class="submode-container">
+        <div id="submode-title" class="submode-title">📊 れんしゅうモード（えらぶと、そのもんだいだけが出るよ！）</div>
+        <div id="submode-flex" class="submode-flex"></div>
     </div>
 
     <div class="info-bar">
@@ -237,7 +288,7 @@
             <div class="hint-title">💡 もとになるヒントの式</div>
             <div id="formula-display" class="formula-text">--</div>
             
-            <div class="hint-title">🗺️ たんいの位取り表（▲▼ボタンを押して数字をうごかしてみよう！）</div>
+            <div id="table-title" class="hint-title">🗺️ たんいの位取り表（▲▼ボタンを押して数字をうごかしてみよう！）</div>
             <table class="place-value-table" id="table-display"></table>
         </div>
 
@@ -260,53 +311,7 @@
             単位の頭につくアルファベット（kやmなど）には、すべて決まった「数字の大きさ（倍数）」の意味があります！<br>
             これらはぜんぶ、いつもの数と同じように<b>10倍ずつ</b>おとなりへつながっているよ。
         </p>
-
-        <button type="button" class="btn-popup-trigger" onclick="toggleAdvancedPrefix()" style="margin: 0 0 10px 0;">🚀 中学生以上レベル！</button>
-
-        <div id="advanced-prefix" style="display:none; margin-bottom: 15px;">
-            <table class="prefix-table">
-                <thead>
-                    <tr>
-                        <th>接頭辞（せっとうじ）</th>
-                        <th>T</th>
-                        <th>G</th>
-                        <th>M</th>
-                        <th>k</th>
-                        <th class="base-cell">基準</th>
-                        <th>m</th>
-                        <th>μ</th>
-                        <th>n</th>
-                        <th>p</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><b>読み方</b></td>
-                        <td>テラ</td>
-                        <td>ギガ</td>
-                        <td>メガ</td>
-                        <td>キロ</td>
-                        <td class="base-cell"><b>m / L / g</b></td>
-                        <td>ミリ</td>
-                        <td>マイクロ</td>
-                        <td>ナノ</td>
-                        <td>ピコ</td>
-                    </tr>
-                    <tr>
-                        <td><b>基準からの大きさ</b></td>
-                        <td><b>10<sup>12</sup> 倍</b></td>
-                        <td><b>10<sup>9</sup> 倍</b></td>
-                        <td><b>10<sup>6</sup> 倍</b></td>
-                        <td><b>10<sup>3</sup> 倍</b></td>
-                        <td class="base-cell"><b>1</b></td>
-                        <td><b>10<sup>-3</sup> 倍</b></td>
-                        <td><b>10<sup>-6</sup> 倍</b></td>
-                        <td><b>10<sup>-9</sup> 倍</b></td>
-                        <td><b>10<sup>-12</sup> 倍</b></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        
         <table class="prefix-table">
             <thead>
                 <tr>
@@ -345,7 +350,7 @@
         </table>
         <p style="font-size:12px; color:#64748b; line-height: 1.4; margin-bottom: 0;">
             💡 <b>ヒント：</b> 「km」と「m」の間に2つ空の部屋があるのは、「h（ヘクト）」と「da（デカ）」の部屋が隠れているからだよ！<br>
-            同じように、「m」と「cm」の間に1つ空の部屋があるのは、「d（デシ）」の部屋が隠れているからなんだね！
+            同じように、「m`」と「cm」の間に1つ空の部屋があるのは、「d（デシ）」の部屋が隠れているからなんだね！
         </p>
     </div>
 </div>
@@ -363,31 +368,27 @@
 
 <script>
     let activeTheme = '';
+    let activeSubMode = 'all'; // 練習用サブモード管理用変数
     let currentProblem = null;
     let userTableVals = []; 
     let isSoundOn = true;
     let audioCtx = null;
     let starCount = 0;
-    let currentProblemSolved = false;
+    let alreadyCorrectThisProblem = false;
 
-    // 起動時にLocalStorageから★の数を読み込む
     window.addEventListener('DOMContentLoaded', () => {
         const savedStars = localStorage.getItem('tan_i_master_stars');
-        if (savedStars !== null) {
-            starCount = parseInt(savedStars, 10);
-        }
+        if (savedStars !== null) starCount = parseInt(savedStars, 10);
         updateStarDisplay();
         warmUpAudio();
     });
 
     window.addEventListener('click', warmUpAudio, { once: true });
 
-    // ★の画面表示を更新
     function updateStarDisplay() {
         document.getElementById('star-display').innerText = `★×${starCount}`;
     }
 
-    // ★のリセット
     function resetStars() {
         if (confirm('たまった★をぜんぶリセットして 0個 にもどしてもいいですか？')) {
             starCount = 0;
@@ -396,7 +397,6 @@
         }
     }
 
-    // 音声およびWeb Speech APIの起動時ウォームアップ
     function warmUpAudio() {
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(' ');
@@ -417,9 +417,7 @@
         } else {
             btn.innerText = '🔇';
             btn.classList.add('muted');
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
         }
     }
 
@@ -437,113 +435,89 @@
             osc.type = 'sine';
             osc.frequency.setValueAtTime(523.25, now);
             osc.frequency.setValueAtTime(659.25, now + 0.08);
-            osc.frequency.setValueAtTime(783.99, now + 0.16); // 3連音にしてさらに豪華に
+            osc.frequency.setValueAtTime(783.99, now + 0.16);
             gainNode.gain.setValueAtTime(0.2, now);
             gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-            osc.start(now);
-            osc.stop(now + 0.45);
+            osc.start(now); osc.stop(now + 0.45);
         } else {
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(140, now);
             gainNode.gain.setValueAtTime(0.2, now);
             gainNode.gain.linearRampToValueAtTime(0.01, now + 0.3);
-            osc.start(now);
-            osc.stop(now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
         }
     }
 
+    // 数字を日本の正しいひらがな読みに完全変換するロジック (最大7桁まで対応)
+    function convertNumberToKana(numStr) {
+        const num = parseInt(numStr, 10);
+        if (isNaN(num) || num === 0) return "ぜろ";
 
-    function numberToHiragana(num) {
-        const text = String(num).replace(/,/g, '');
-        if (!/^\d+$/.test(text)) return text;
+        const units = ["", "じゅう", "ひゃく", "せん"];
+        const digits = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+        
+        const specialTen = { "いちじゅう": "じゅう" };
+        const specialHundred = { "いちひゃく": "ひゃく", "さんひゃく": "さんびゃく", "ろくひゃく": "ろっぴゃく", "はちひゃく": "はっぴゃく" };
+        const specialThousand = { "いちせん": "せん", "さんせん": "さんぜん", "はちせん": "はっせん" };
 
-        const digits = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
-        const special = new Map([
-            [300, 'さんびゃく'],
-            [600, 'ろっぴゃく'],
-            [800, 'はっぴゃく'],
-            [3000, 'さんぜん'],
-            [8000, 'はっせん']
-        ]);
-
-        const chunkUnits = ['', 'まん', 'おく', 'ちょう', 'けい'];
-
-        function readUnder10000(n) {
-            if (n === 0) return '';
-            if (special.has(n)) return special.get(n);
-
-            let result = '';
-            const thousands = Math.floor(n / 1000);
-            const hundreds = Math.floor((n % 1000) / 100);
-            const tens = Math.floor((n % 100) / 10);
-            const ones = n % 10;
-
-            if (thousands > 0) {
-                result += (thousands === 1 ? '' : digits[thousands]) + 'せん';
+        function parse4Digits(n) {
+            if (n === 0) return "";
+            let str = "";
+            let temp = n;
+            for (let i = 0; i < 4; i++) {
+                let d = temp % 10;
+                if (d !== 0) {
+                    let word = digits[d] + units[i];
+                    if (i === 1 && specialTen[word]) word = specialTen[word];
+                    if (i === 2 && specialHundred[word]) word = specialHundred[word];
+                    if (i === 3 && specialThousand[word]) word = specialThousand[word];
+                    str = word + str;
+                }
+                temp = Math.floor(temp / 10);
             }
-            if (hundreds > 0) {
-                result += (hundreds === 1 ? '' : digits[hundreds]) + 'ひゃく';
-            }
-            if (tens > 0) {
-                result += (tens === 1 ? '' : digits[tens]) + 'じゅう';
-            }
-            if (ones > 0) {
-                result += digits[ones];
-            }
-            return result;
+            return str;
         }
 
-        if (text === '0') return 'ぜろ';
+        let manPart = Math.floor(num / 10000);
+        let basePart = num % 10000;
 
-        let groups = [];
-        for (let i = text.length; i > 0; i -= 4) {
-            groups.push(parseInt(text.slice(Math.max(0, i - 4), i), 10));
+        let result = "";
+        if (manPart > 0) {
+            result += parse4Digits(manPart) + "まん";
         }
-
-        let result = '';
-        for (let i = 0; i < groups.length; i++) {
-            const n = groups[i];
-            if (n === 0) continue;
-            const chunk = readUnder10000(n);
-            result = chunk + chunkUnits[i] + result;
-        }
-        return result || 'ぜろ';
-    }
-
-    function convertSpeechText(text) {
-        let cleanedText = String(text);
-
-        cleanedText = cleanedText
-            .replace(/㎡/g, '平方メートル')
-            .replace(/㎠/g, '平方センチメートル')
-            .replace(/㎢/g, '平方キロメートル')
-            .replace(/dL/g, 'デシリットル')
-            .replace(/mL/g, 'ミリリットル')
-            .replace(/kg/g, 'キログラム')
-            .replace(/km/g, 'キロメートル')
-            .replace(/cm/g, 'センチメートル')
-            .replace(/mm/g, 'ミリメートル')
-            .replace(/ha/g, 'ヘクタール')
-            .replace(/μ/g, 'マイクロ')
-            .replace(/L/g, 'リットル')
-            .replace(/a/g, 'アール')
-            .replace(/m/g, 'メートル')
-            .replace(/g/g, 'グラム')
-            .replace(/★/g, 'ほし');
-
-        cleanedText = cleanedText.replace(/\d+/g, (m) => numberToHiragana(m));
-        return cleanedText;
+        result += parse4Digits(basePart);
+        return result;
     }
 
     function speakText(text) {
         if (!isSoundOn || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
         
-        const cleanedText = text.replace(/㎡/g, '平方メートル')
-                                .replace(/㎠/g, '平方センチメートル')
-                                .replace(/㎢/g, '平方キロメートル')
-                                .replace(/a/g, 'アール')
-                                .replace(/ha/g, 'ヘクタール');
+        let textWithKanaNumbers = text.replace(/\d+/g, (match) => {
+            return convertNumberToKana(match);
+        });
+
+        let cleanedText = textWithKanaNumbers
+            .replace(/cm³/g, 'りっぽうせんちめーとる')
+            .replace(/m³/g, 'りっぽうめーとる')
+            .replace(/★/g, 'ほし') 
+            .replace(/㎢/g, 'へいほうきろめーとる')
+            .replace(/㎠/g, 'へいほうせんちめーとる')
+            .replace(/㎡/g, 'へいほうめーとる')
+            .replace(/ha/g, 'へくたーる')
+            .replace(/km/g, 'きろめーとる')
+            .replace(/cm/g, 'せんちめーとる')
+            .replace(/mm/g, 'みりめーとる')
+            .replace(/mL/g, 'みりりっとる')
+            .replace(/dL/g, 'でしりっとる')
+            .replace(/kg/g, 'きろぐらむ')
+            .replace(/t/g, 'とん')
+            .replace(/m/g, 'めーとる') 
+            .replace(/L/g, 'りっとる')  
+            .replace(/g/g, 'ぐらむ')    
+            .replace(/a/g, 'あーる')
+            .replace(/は 何/g, 'は なん')
+            .replace(/何/g, 'なん');   
 
         const utterance = new SpeechSynthesisUtterance(cleanedText);
         utterance.lang = 'ja-JP';
@@ -553,22 +527,85 @@
 
     function openPrefixModal() { document.getElementById('prefix-modal').style.display = 'flex'; }
     function closePrefixModal() { document.getElementById('prefix-modal').style.display = 'none'; }
-    function toggleAdvancedPrefix() {
-        const el = document.getElementById('advanced-prefix');
-        if (!el) return;
-        el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
-    }
-    
-    // ★ポップアップの制御
     function openStarModal() { document.getElementById('star-modal').style.display = 'flex'; }
     function closeStarModal() { document.getElementById('star-modal').style.display = 'none'; }
+
+    // 🌟 エンターキーの処理
+    // ・ポップアップ（★ゲットモーダル／たんいのひみつモーダル）が表示中なら、それを閉じるだけ（次の問題には進まない）
+    // ・それ以外で、こたえの入力欄にフォーカスがある場合は「こたえ合わせ」を実行する
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+
+        const starModal = document.getElementById('star-modal');
+        if (starModal && starModal.style.display === 'flex') {
+            e.preventDefault();
+            closeStarModal();
+            return;
+        }
+
+        const prefixModal = document.getElementById('prefix-modal');
+        if (prefixModal && prefixModal.style.display === 'flex') {
+            e.preventDefault();
+            closePrefixModal();
+            return;
+        }
+
+        if (e.target && e.target.classList && e.target.classList.contains('answer-input')) {
+            e.preventDefault();
+            checkAnswer();
+        }
+    });
+
+    // 空位パターン均等抽選ロジック（3桁）
+    function generateThreeDigitsWithZeroPatterns() {
+        const pattern = Math.floor(Math.random() * 8); 
+        let d100 = Math.floor(Math.random() * 9) + 1;
+        let d10  = Math.floor(Math.random() * 9) + 1;
+        let d1   = Math.floor(Math.random() * 9) + 1;
+
+        switch (pattern) {
+            case 0: break; 
+            case 1: d100 = 0; break; 
+            case 2: d10  = 0; break; 
+            case 3: d1   = 0; break; 
+            case 4: d100 = 0; d10 = 0; break; 
+            case 5: d100 = 0; d1  = 0; break; 
+            case 6: d10  = 0; d1  = 0; break; 
+            case 7: d100 = 0; d10 = 0; d1 = 0; break; 
+        }
+        return { d100, d10, d1, total: d100 * 100 + d10 * 10 + d1 };
+    }
+
+    // サブグループ（3桁）の左はじから連続する0を「書かない！」に変換する
+    // 例: 0,0,1 → 書かない,書かない,1 / 0,8,0 → 書かない,8,0 / 1,2,3 → 1,2,3
+    // 一番右の1の位は、値が0でもそのまま「0」と表示する
+    function markLeadingZeroCells(d100, d10, d1) {
+        const cell100 = (d100 === 0) ? "書かない！" : d100;
+        const cell10 = (d100 === 0 && d10 === 0) ? "書かない！" : d10;
+        return [cell100, cell10, d1];
+    }
+
+    // 空位パターン均等抽選ロジック（2桁）
+    function generateTwoDigitsWithZeroPatterns() {
+        const pattern = Math.floor(Math.random() * 3); 
+        let d10 = Math.floor(Math.random() * 9) + 1;
+        let d1  = Math.floor(Math.random() * 9) + 1;
+
+        switch (pattern) {
+            case 0: break; 
+            case 1: d10 = 0; break; 
+            case 2: d1  = 0; break; 
+        }
+        return { d10, d1, total: d10 * 10 + d1 };
+    }
 
     const standardTables = {
         length2_short: { headers: ["cm", "mm"], placeholders: ["1cmの部屋", "1mmの部屋"], widths: ["50%", "50%"] },
         length2_long: { headers: ["m", "", "cm"], placeholders: ["1mの部屋", "10cmの部屋", "1cmの部屋"], widths: ["34%", "33%", "33%"] },
         length3: { headers: ["km", "", "", "m"], placeholders: ["1kmの部屋", "100mの部屋", "10mの部屋", "1mの部屋"], widths: ["25%", "25%", "25%", "25%"] },
         volume: { headers: ["L", "dL", "", "mL"], placeholders: ["1Lの部屋", "1dLの部屋", "10mLの部屋", "1mLの部屋"], widths: ["25%", "25%", "25%", "25%"] },
-        weight: { headers: ["kg", "", "", "g"], placeholders: ["1kgの部屋", "100gの部屋", "10gの部屋", "1gの部屋"], widths: ["25%", "25%", "25%", "25%"] }
+        weight: { headers: ["kg", "", "", "g"], placeholders: ["1kgの部屋", "100gの部屋", "10gの部屋", "1gの部屋"], widths: ["25%", "25%", "25%", "25%"] },
+        weight2: { headers: ["t", "", "", "kg"], placeholders: ["1tの部屋", "100kgの部屋", "10kgの部屋", "1kgの部屋"], widths: ["25%", "25%", "25%", "25%"] }
     };
 
     const areaTables = {
@@ -584,19 +621,43 @@
         }
     };
 
+    const volumeTables = {
+        cm3_mL: {
+            headers: ["cm³", "mL"],
+            placeholders: ["この数字 (cm³)", "おなじ数字 (mL)"],
+            widths: ["50%", "50%"]
+        },
+        L_cm3: {
+            headers: ["L", "", "", "cm³"],
+            placeholders: ["1Lの部屋", "100cm³の部屋", "10cm³の部屋", "1cm³の部屋"],
+            widths: ["25%", "25%", "25%", "25%"]
+        },
+        m3_L: {
+            headers: ["m³", "", "", "L"],
+            placeholders: ["1m³の部屋", "100Lの部屋", "10Lの部屋", "1Lの部屋"],
+            widths: ["25%", "25%", "25%", "25%"]
+        },
+        m3_cm3: {
+            headers: ["m³", "", "", "", "", "", "cm³"],
+            placeholders: ["1m³の部屋", "100000cm³の部屋", "10000cm³の部屋", "1000cm³の部屋", "100cm³の部屋", "10cm³の部屋", "1cm³の部屋"],
+            widths: ["14.28%", "14.28%", "14.28%", "14.28%", "14.28%", "14.28%", "14.32%"]
+        }
+    };
+
+    // サブモード管理用に、problems配列内の各オブジェクトにsubmode属性を持たせる構造に変更
     const themeData = {
         length2_short: {
             formulas: ["1cm = 10mm"],
             problems: [
-                { gen: () => {
+                { submode: "all", gen: () => {
                     let cm = Math.floor(Math.random() * 8) + 2; let mm = Math.floor(Math.random() * 9) + 1;
                     return { q: `${cm}cm ${mm}mm は 何mmですか？`, targets: ['mm'], check: (ans) => ans['mm'] === (cm * 10 + mm), correctStr: `${cm * 10 + mm} mm`, tableVals: [cm, mm], hint: `cmの部屋に「${cm}」、mmの部屋に「${mm}」を入れて並べて読おう。` };
                 }},
-                { gen: () => {
+                { submode: "all", gen: () => {
                     let cm = Math.floor(Math.random() * 8) + 2;
                     return { q: `${cm}cm は 何mmですか？`, targets: ['mm'], check: (ans) => ans['mm'] === (cm * 10), correctStr: `${cm * 10} mm`, tableVals: [cm, 0], hint: `cmの部屋に「${cm}」を書き、空いたmmの部屋に「0」を補うよ。` };
                 }},
-                { gen: () => {
+                { submode: "all", gen: () => {
                     let cm = Math.floor(Math.random() * 8) + 2; let mm = Math.floor(Math.random() * 9) + 1;
                     return { q: `${cm * 10 + mm}mm は 何cm 何mmですか？`, targets: ['cm', 'mm'], check: (ans) => ans['cm'] === cm && ans['mm'] === mm, correctStr: `${cm} cm ${mm} mm`, tableVals: [cm, mm], hint: `右端のmmから数字をあてはめて、それぞれの部屋の数字を読おう。` };
                 }}
@@ -605,63 +666,169 @@
         length2_long: {
             formulas: ["1m = 100cm"],
             problems: [
-                { gen: () => {
-                    let m = Math.floor(Math.random() * 8) + 1; let cm = Math.floor(Math.random() * 9) + 1;
-                    return { q: `${m}m ${cm}cm は 何cmですか？`, targets: ['cm'], check: (ans) => ans['cm'] === (m * 100 + cm), correctStr: `${m * 100 + cm} cm`, tableVals: [m, 0, cm], hint: `mに「${m}」、cmの一の位に「${cm}」を書くと、10cmの部屋が空くので「0」を入れよう。` };
+                { submode: "all", gen: () => {
+                    let m = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateTwoDigitsWithZeroPatterns();
+                    let c10 = digits.d10; let c1 = digits.d1; let cm = digits.total;
+                    if(cm === 0) { c10 = 5; cm = 50; } 
+                    return { q: `${m}m ${cm}cm は 何cmですか？`, targets: ['cm'], check: (ans) => ans['cm'] === (m * 100 + cm), correctStr: `${m * 100 + cm} cm`, tableVals: [m, c10, c1], hint: `mに「${m}」、10cmに「${c10}」、1cmに「${c1}」を順番に書くよ。` };
                 }},
-                { gen: () => {
-                    let m = Math.floor(Math.random() * 8) + 1; let cm = Math.floor(Math.random() * 98) + 1;
-                    return { q: `${m * 100 + cm}cm は 何m 何cmですか？`, targets: ['m', 'cm'], check: (ans) => ans['m'] === m && ans['cm'] === cm, correctStr: `${m} m ${cm} cm`, tableVals: [m, (cm < 10 ? "書かない！" : Math.floor(cm/10)), cm%10], hint: `右端から数字をあてはめます。mの部屋に入った数字がmの答え、残りがcmの答えになるよ。` };
+                { submode: "all", gen: () => {
+                    let m = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateTwoDigitsWithZeroPatterns();
+                    let c10 = digits.d10; let c1 = digits.d1; let cm = digits.total;
+                    if(cm === 0) { c1 = 4; cm = 4; }
+                    let total = m * 100 + cm;
+                    const tensCell = c10 === 0 ? "書かない！" : c10;
+                    return { q: `${total}cm は 何m 何cmですか？`, targets: ['m', 'cm'], check: (ans) => ans['m'] === m && ans['cm'] === cm, correctStr: `${m} m ${cm} cm`, tableVals: [m, tensCell, c1], hint: `右端から数字を表にあてはめます。mの部屋に入った数字がmの答え、残りがcmの答えになるよ。10cmの部屋が0のときは「書かない！」になることに注意しよう。` };
                 }}
             ]
         },
         length3: {
             formulas: ["1km = 1000m"],
             problems: [
-                { gen: () => {
-                    let km = Math.floor(Math.random() * 8) + 1; let m = Math.floor(Math.random() * 89) + 10;
-                    return { q: `${km}km ${m}m は 何mですか？`, targets: ['m'], check: (ans) => ans['m'] === (km * 1000 + m), correctStr: `${km * 1000 + m} m`, tableVals: [km, 0, Math.floor(m/10), m%10], hint: `kmに「${km}」を書き、mの部屋の右端に合わせて「${m}」を書きます。空いた100mの部屋には「0」を入れよう。` };
+                { submode: "all", gen: () => {
+                    let km = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateThreeDigitsWithZeroPatterns();
+                    let m = digits.total;
+                    return { q: `${km}km ${m}m は 何mですか？`, targets: ['m'], check: (ans) => ans['m'] === (km * 1000 + m), correctStr: `${km * 1000 + m} m`, tableVals: [km, digits.d100, digits.d10, digits.d1], hint: `kmに「${km}」を書き、mの部屋の各桁（${digits.d100}、${digits.d10}、${digits.d1}）をあてはめます。0の部屋もそのまま数字の0を書こう。` };
                 }},
-                { gen: () => {
-                    let km = Math.floor(Math.random() * 8) + 1; let m = Math.floor(Math.random() * 98) + 1; 
+                { submode: "all", gen: () => {
+                    let km = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateThreeDigitsWithZeroPatterns();
+                    let m = digits.total;
                     let total = km * 1000 + m;
-                    return { q: `${total}m は 何km 何mですか？`, targets: ['km', 'm'], check: (ans) => ans['km'] === km && ans['m'] === m, correctStr: `${km} km ${m} m`, tableVals: [km, (m < 100 ? "書かない！" : Math.floor(m/100)), (m < 10 ? "書かない！" : Math.floor((m%100)/10)), m%10], hint: `右端から順番にあてはめると、使わない上の部屋が「書かない！」になっているのがよくわかるよ。` };
+
+                    if (m === 0) {
+                        return { q: `${total}m は 何kmですか？`, targets: ['km'], check: (ans) => ans['km'] === km, correctStr: `${km} km`, tableVals: [km, "書かない！", "書かない！", "書かない！"], hint: `1000mで1kmになります。mの部屋が全部0のときは、mの部屋はぜんぶ「書かない！」になって、kmの部屋の数字だけが答えになるよ。` };
+                    }
+
+                    const [hundredsCell, tensCell, onesCell] = markLeadingZeroCells(digits.d100, digits.d10, digits.d1);
+                    return { q: `${total}m は 何km 何mですか？`, targets: ['km', 'm'], check: (ans) => ans['km'] === km && ans['m'] === m, correctStr: `${km} km ${m} m`, tableVals: [km, hundredsCell, tensCell, onesCell], hint: `右端の1mの部屋から順番に数字をあてはめていくと、それぞれの部屋の数字がそのまま答えになるよ。100mや10mの部屋が左はじから0で続いている場合は「書かない！」になることに注意しよう。` };
                 }}
             ]
         },
         volume: {
             formulas: ["1L = 10dL", "1dL = 100mL", "1L = 1000mL"],
             problems: [
-                { gen: () => {
+                // 1. L ⇔ mL 換算 (L -> mL)
+                { submode: "L_mL", gen: () => {
                     let l = Math.floor(Math.random() * 8) + 2;
-                    return { q: `${l}L は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === (l * 1000), correctStr: `${l * 1000} mL`, tableVals: [l, 0, 0, 0], hint: `1Lは1000mLです。Lの部屋に数字を書き、mLの部屋まで「0」を3つ補いましょう。` };
+                    return { q: `${l}L は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === (l * 1000), correctStr: `${l} mL`, tableVals: [l, 0, 0, 0], hint: `1Lは1000mLです。Lの部屋に「${l}」を書き、mLの部屋まで「0」を3つ入れよう。` };
                 }},
-                { gen: () => {
+                // 2. L ⇔ mL 換算 (mL -> L)
+                { submode: "L_mL", gen: () => {
                     let l = Math.floor(Math.random() * 8) + 2;
-                    return { q: `${l * 1000}mL は 何Lですか？`, targets: ['L'], check: (ans) => ans['L'] === l, correctStr: `${l} L`, tableVals: [l, "書かない！", "書かない！", "書かない！"], hint: `1000mLで1Lになります。千の位（Lの部屋）にある数字を見よう。` };
+                    return { q: `${l * 1000}mL は 何Lですか？`, targets: ['L'], check: (ans) => ans['L'] === l, correctStr: `${l} L`, tableVals: [l, 0, 0, 0], hint: `1000mLで1Lになります。千の位（Lの部屋）にある数字を見よう。` };
                 }},
-                { gen: () => {
-                    let l = Math.floor(Math.random() * 7) + 2; let dl = Math.floor(Math.random() * 8) + 1;
-                    return { q: `${l}L ${dl}dL は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === (l * 1000 + dl * 100), correctStr: `${l * 1000 + dl * 100} mL`, tableVals: [l, dl, 0, 0], hint: `Lの部屋に「${l}」、dLの部屋に「${dl}」を書きます。残りのmLの部屋まで「0」を2つ補います。` };
+                // 3. L,dL ⇔ mL 換算 (L,dL -> mL)
+                { submode: "L_dL_mL", gen: () => {
+                    let l = Math.floor(Math.random() * 7) + 2;
+                    let dl = Math.floor(Math.random() * 9) + 1;
+                    let total_ml = (l * 1000) + (dl * 100);
+                    return { q: `${l}L ${dl}dL は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === total_ml, correctStr: `${total_ml} mL`, tableVals: [l, dl, 0, 0], hint: `Lの部屋に「${l}」、dLの部屋に「${dl}」を書きます。10mLと1mLの部屋は空いているので「0」を2つ補おう。` };
                 }},
-                { gen: () => {
-                    let l = Math.floor(Math.random() * 7) + 2; let dl = Math.floor(Math.random() * 8) + 1;
-                    let total = l * 1000 + dl * 100;
-                    return { q: `${total}mL は 何L 何dLですか？`, targets: ['L', 'dL'], check: (ans) => ans['L'] === l && ans['dL'] === dl, correctStr: `${l} L ${dl} dL`, tableVals: [l, dl, "書かない！", "書かない！"], hint: `右端から数字を表にあてはめます。Lの部屋とdLの部屋の数字をそれぞれ読みましょう。` };
+                // 4. L,dL ⇔ mL 換算 (mL -> L,dL)
+                { submode: "L_dL_mL", gen: () => {
+                    let l = Math.floor(Math.random() * 7) + 2;
+                    let dl = Math.floor(Math.random() * 9) + 1;
+                    let total_ml = (l * 1000) + (dl * 100);
+                    return { q: `${total_ml}mL は 何L 何dLですか？`, targets: ['L', 'dL'], check: (ans) => ans['L'] === l && ans['dL'] === dl, correctStr: `${l} L ${dl} dL`, tableVals: [l, dl, 0, 0], hint: `右端から数字をあてはめると、Lの部屋に「${l}」、dLの部屋に「${dl}」が入るよ。` };
+                }},
+                // 5. L ⇔ dL 換算 (L -> dL)
+                { submode: "L_dL", gen: () => {
+                    let l = Math.floor(Math.random() * 8) + 2;
+                    return { q: `${l}L は 何dLですか？`, targets: ['dL'], check: (ans) => ans['dL'] === (l * 10), correctStr: `${l * 10} dL`, tableVals: [l, 0, "書かない！", "書かない！"], hint: `1Lは10dLです。Lの部屋に「${l}」を書き、dLの部屋に「0」を1つ補おう。` };
+                }},
+                // 6. L ⇔ dL 換算 (dL -> L)
+                { submode: "L_dL", gen: () => {
+                    let l = Math.floor(Math.random() * 8) + 2;
+                    return { q: `${l * 10}dL は 何Lですか？`, targets: ['L'], check: (ans) => ans['L'] === l, correctStr: `${l} L`, tableVals: [l, 0, "書かない！", "書かない！"], hint: `10dLで1Lになります。dLの部屋から1つ上がったLの部屋の数字を見よう。` };
+                }},
+                // 7. L,dL ⇔ dL 換算 (L,dL -> dL)
+                { submode: "L_dL_dL", gen: () => {
+                    let l = Math.floor(Math.random() * 7) + 2;
+                    let dl = Math.floor(Math.random() * 9) + 1;
+                    return { q: `${l}L ${dl}dL は 何dLですか？`, targets: ['dL'], check: (ans) => ans['dL'] === (l * 10 + dl), correctStr: `${l * 10 + dl} dL`, tableVals: [l, dl, "書かない！", "書かない！"], hint: `Lの部屋に「${l}」、dLの部屋に「${dl}」を書いて並べて読おう。` };
+                }},
+                // 8. L,dL ⇔ dL 換算 (dL -> L,dL)
+                { submode: "L_dL_dL", gen: () => {
+                    let l = Math.floor(Math.random() * 7) + 2;
+                    let dl = Math.floor(Math.random() * 9) + 1;
+                    let total_dl = l * 10 + dl;
+                    return { q: `${total_dl}dL は 何L 何dLですか？`, targets: ['L', 'dL'], check: (ans) => ans['L'] === l && ans['dL'] === dl, correctStr: `${l} L ${dl} dL`, tableVals: [l, dl, "書かない！", "書かない！"], hint: `一の位の「${dl}」がdLの部屋、十の位の「${l}」がLの部屋に入るよ。` };
+                }},
+                // 🌟 新規追加: mL ⇔ dL 換算 (dL -> mL) 空位パターン均等化
+                { submode: "mL_dL", gen: () => {
+                    const pat = Math.floor(Math.random() * 3);
+                    let dl = 0;
+                    if (pat === 0) { dl = Math.floor(Math.random() * 7) + 3; } // 3〜9 dL (1桁)
+                    else if (pat === 1) { dl = (Math.floor(Math.random() * 3) + 1) * 10; } // 10, 20, 30 dL (10の倍数)
+                    else { dl = Math.floor(Math.random() * 29) + 11; if(dl % 10 === 0) dl++; } // 11〜39 dL (その他)
+                    let ml = dl * 100;
+                    let l_val = Math.floor(dl / 10);
+                    let dl_val = dl % 10;
+                    return { q: `${dl}dL は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === ml, correctStr: `${ml} mL`, tableVals: [l_val, dl_val, 0, 0], hint: `1dLは100mLです。dLの部屋に数字を書いたら、mLの右端の部屋まで「0」を2つ補おう。` };
+                }},
+                // 🌟 新規追加: mL ⇔ dL 換算 (mL -> dL) 空位パターン均等化
+                { submode: "mL_dL", gen: () => {
+                    const pat = Math.floor(Math.random() * 3);
+                    let dl = 0;
+                    if (pat === 0) { dl = Math.floor(Math.random() * 7) + 3; }
+                    else if (pat === 1) { dl = (Math.floor(Math.random() * 3) + 1) * 10; }
+                    else { dl = Math.floor(Math.random() * 29) + 11; if(dl % 10 === 0) dl++; }
+                    let ml = dl * 100;
+                    let l_val = Math.floor(dl / 10);
+                    let dl_val = dl % 10;
+                    return { q: `${ml}mL は 何dLですか？`, targets: ['dL'], check: (ans) => ans['dL'] === dl, correctStr: `${dl} dL`, tableVals: [l_val, dl_val, 0, 0], hint: `100mLで1dLになります。mLの部屋から2つ上がった「dL」の部屋までの数字をまとめて読もう。` };
                 }}
             ]
         },
         weight: {
             formulas: ["1kg = 1000g"],
             problems: [
-                { gen: () => {
-                    let kg = Math.floor(Math.random() * 8) + 1; let g = Math.floor(Math.random() * 89) + 10;
-                    return { q: `${kg}kg ${g}g は 何gですか？`, targets: ['g'], check: (ans) => ans['g'] === (kg * 1000 + g), correctStr: `${kg * 1000 + g} g`, tableVals: [kg, 0, Math.floor(g/10), g%10], hint: `kgに「${kg}」、gを右詰めで書くと、100gの部屋が空くので「0」を補います。` };
+                { submode: "all", gen: () => {
+                    let kg = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateThreeDigitsWithZeroPatterns();
+                    let g = digits.total;
+                    return { q: `${kg}kg ${g}g は 何gですか？`, targets: ['g'], check: (ans) => ans['g'] === (kg * 1000 + g), correctStr: `${kg * 1000 + g} g`, tableVals: [kg, digits.d100, digits.d10, digits.d1], hint: `kgに「${kg}」を書き、gの部屋の各桁（${digits.d100}、${digits.d10}、${digits.d1}）をあてはめます。0の部屋もそのまま数字の0を書こう。` };
                 }},
-                { gen: () => {
-                    let kg = Math.floor(Math.random() * 8) + 1; let g = Math.floor(Math.random() * 98) + 1;
+                { submode: "all", gen: () => {
+                    let kg = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateThreeDigitsWithZeroPatterns();
+                    let g = digits.total;
                     let total = kg * 1000 + g;
-                    return { q: `${total}g は 何kg 何gですか？`, targets: ['kg', 'g'], check: (ans) => ans['kg'] === kg && ans['g'] === g, correctStr: `${kg} kg ${g} g`, tableVals: [kg, (g < 100 ? "書かない！" : Math.floor(g/100)), (g < 10 ? "書かない！" : Math.floor((g%100)/10)), g%10], hint: `右端のgの部屋からあてはめます。使わない余分な部屋の0は「書かない！」になります。` };
+
+                    if (g === 0) {
+                        return { q: `${total}g は 何kgですか？`, targets: ['kg'], check: (ans) => ans['kg'] === kg, correctStr: `${kg} kg`, tableVals: [kg, "書かない！", "書かない！", "書かない！"], hint: `1000gで1kgになります。gの部屋が全部0のときは、gの部屋はぜんぶ「書かない！」になって、kgの部屋の数字だけが答えになるよ。` };
+                    }
+
+                    const [hundredsCell, tensCell, onesCell] = markLeadingZeroCells(digits.d100, digits.d10, digits.d1);
+                    return { q: `${total}g は 何kg 何gですか？`, targets: ['kg', 'g'], check: (ans) => ans['kg'] === kg && ans['g'] === g, correctStr: `${kg} kg ${g} g`, tableVals: [kg, hundredsCell, tensCell, onesCell], hint: `右端の1gの部屋から順番に数字をあてはめていくと、それぞれの部屋の数字がそのまま答えになるよ。100gや10gの部屋が左はじから0で続いている場合は「書かない！」になることに注意しよう。` };
+                }}
+            ]
+        },
+        weight2: {
+            formulas: ["1t = 1000kg"],
+            problems: [
+                { submode: "all", gen: () => {
+                    let t = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateThreeDigitsWithZeroPatterns();
+                    let kg = digits.total;
+                    return { q: `${t}t ${kg}kg は 何kgですか？`, targets: ['kg'], check: (ans) => ans['kg'] === (t * 1000 + kg), correctStr: `${t * 1000 + kg} kg`, tableVals: [t, digits.d100, digits.d10, digits.d1], hint: `tに「${t}」を書き、kgの部屋の各桁（${digits.d100}、${digits.d10}、${digits.d1}）をあてはめます。0の部屋もそのまま数字の0を書こう。` };
+                }},
+                { submode: "all", gen: () => {
+                    let t = Math.floor(Math.random() * 8) + 1;
+                    const digits = generateThreeDigitsWithZeroPatterns();
+                    let kg = digits.total;
+                    let total = t * 1000 + kg;
+
+                    if (kg === 0) {
+                        return { q: `${total}kg は 何tですか？`, targets: ['t'], check: (ans) => ans['t'] === t, correctStr: `${t} t`, tableVals: [t, "書かない！", "書かない！", "書かない！"], hint: `1000kgで1tになります。kgの部屋が全部0のときは、kgの部屋はぜんぶ「書かない！」になって、tの部屋の数字だけが答えになるよ。` };
+                    }
+
+                    const [hundredsCell, tensCell, onesCell] = markLeadingZeroCells(digits.d100, digits.d10, digits.d1);
+                    return { q: `${total}kg は 何t 何kgですか？`, targets: ['t', 'kg'], check: (ans) => ans['t'] === t && ans['kg'] === kg, correctStr: `${t} t ${kg} kg`, tableVals: [t, hundredsCell, tensCell, onesCell], hint: `右端の1kgの部屋から順番に数字をあてはめていくと、それぞれの部屋の数字がそのまま答えになるよ。100kgや10kgの部屋が左はじから0で続いている場合は「書かない！」になることに注意しよう。` };
                 }}
             ]
         },
@@ -673,29 +840,171 @@
                 "1㎢ = 100ha = 1000000㎡ (1000m×1000m)"
             ],
             problems: [
-                { gen: () => {
+                // cm2 ⇔ m2
+                { submode: "cm2_m2", gen: () => {
                     let m2 = Math.floor(Math.random() * 8) + 1;
-                    return { tableType: 'small', q: `${m2}㎡ は 何㎠ですか？`, targets: ['㎠'], check: (ans) => ans['㎠'] === (m2 * 10000), correctStr: `${m2 * 10000} ㎠`, tableVals: [Math.floor(m2/10) || "書かない！", m2%10, 0, 0, 0, 0], hint: `1㎡は100cm×100cm＝10000㎠！部屋が4つ分（4桁）ずれるので0を4つ補おう！` };
+                    return { tableType: 'small', q: `${m2}㎡ は 何㎠ですか？`, targets: ['㎠'], check: (ans) => ans['㎠'] === (m2 * 10000), correctStr: `${m2 * 10000} ㎠`, tableVals: ["書かない！", m2, 0, 0, 0, 0], hint: `1㎡は10000㎠！部屋が4つ分（4桁）ずれるので0を4つ補おう！` };
                 }},
-                { gen: () => {
+                { submode: "cm2_m2", gen: () => {
                     let m2 = Math.floor(Math.random() * 8) + 1;
-                    return { tableType: 'small', q: `${m2 * 10000}㎠ は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === m2, correctStr: `${m2} ㎡`, tableVals: [Math.floor(m2/10) || "書かない！", m2%10, "書かない！", "書かない！", "書かない！", "書かない！"], hint: `㎠の一の位から数えて、4桁上がったところが「㎡」の部屋になります。` };
+                    return { tableType: 'small', q: `${m2 * 10000}㎠ は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === m2, correctStr: `${m2} ㎡`, tableVals: ["書かない！", m2, 0, 0, 0, 0], hint: `㎠の一の位から数えて、4桁上がったところが「㎡」の部屋になります。` };
                 }},
-                { gen: () => {
+                // m2 ⇔ a
+                { submode: "m2_a", gen: () => {
                     let a = Math.floor(Math.random() * 8) + 1;
-                    return { tableType: 'large', q: `${a * 100}㎡ は 何aですか？`, targets: ['a'], check: (ans) => ans['a'] === a, correctStr: `${a} a`, tableVals: ["書かない！", "書かない！", "書かない！", "書かない！", Math.floor(a/10) || "書かない！", a%10, "書かない！", "書かない！"], hint: `1aは10m×10m＝100㎡。㎡から2桁上がると「a」の部屋になるよ。` };
+                    return { tableType: 'large', q: `${a * 100}㎡ は 何aですか？`, targets: ['a'], check: (ans) => ans['a'] === a, correctStr: `${a} a`, tableVals: ["書かない！", "書かない！", "書かない！", "書かない！", "書かない！", a, 0, 0], hint: `1aは100㎡。㎡から2桁上がると「a」の部屋になるよ。` };
                 }},
-                { gen: () => {
+                { submode: "m2_a", gen: () => {
                     let a = Math.floor(Math.random() * 8) + 1;
-                    return { tableType: 'large', q: `${a}a は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (a * 100), correctStr: `${a * 100} ㎡`, tableVals: ["書かない！", "書かない！", "書かない！", "書かない！", Math.floor(a/10) || "書かない！", a%10, 0, 0], hint: `aの部屋に書いた数字から、㎡の部屋の右端まで「0」を2つ補います。` };
+                    return { tableType: 'large', q: `${a}a は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (a * 100), correctStr: `${a * 100} ㎡`, tableVals: ["書かない！", "書かない！", "書かない！", "書かない！", "書かない！", a, 0, 0], hint: `aの部屋に書いた数字から、㎡の部屋の右端まで「0」を2つ補います。` };
                 }},
-                { gen: () => {
+                // 🌟 新規追加: a ⇔ ha
+                { submode: "a_ha", gen: () => {
                     let ha = Math.floor(Math.random() * 8) + 1;
-                    return { tableType: 'large', q: `${ha}ha は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (ha * 10000), correctStr: `${ha * 10000} ㎡`, tableVals: ["書かない！", "書かない！", Math.floor(ha/10) || "書かない！", ha%10, 0, 0, 0, 0], hint: `1haは100m×100m＝10000㎡！haから㎡の右端までは4つのマス離れています。` };
+                    return { tableType: 'large', q: `${ha}ha は 何aですか？`, targets: ['a'], check: (ans) => ans['a'] === (ha * 100), correctStr: `${ha * 100} a`, tableVals: ["書かない！", "書かない！", "書かない！", ha, 0, 0, "書かない！", "書かない！"], hint: `1haは100aです。haの部屋からaの部屋の右端まで「0」を2つ補いましょう。` };
                 }},
-                { gen: () => {
+                { submode: "a_ha", gen: () => {
+                    let ha = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'large', q: `${ha * 100}a は 何haですか？`, targets: ['ha'], check: (ans) => ans['ha'] === ha, correctStr: `${ha} ha`, tableVals: ["書かない！", "書かない！", "書かない！", ha, 0, 0, "書かない！", "書かない！"], hint: `100aで1haになります。aの部屋から2桁上がった「ha」の部屋を見よう。` };
+                }},
+                // ha ⇔ m2
+                { submode: "ha_m2", gen: () => {
+                    let ha = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'large', q: `${ha}ha は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (ha * 10000), correctStr: `${ha * 10000} ㎡`, tableVals: ["書かない！", "書かない！", "書かない！", ha, 0, 0, 0, 0], hint: `1haは10000㎡！haから㎡の右端までは4つのマス離れています。` };
+                }},
+                // 🌟 新規追加: ha ⇔ km2
+                { submode: "ha_km2", gen: () => {
                     let km2 = Math.floor(Math.random() * 5) + 1;
-                    return { tableType: 'large', q: `${km2}㎢ は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (km2 * 1000000), correctStr: `${km2 * 1000000} ㎡`, tableVals: [Math.floor(km2/10) || "書かない！", km2%10, 0, 0, 0, 0, 0, 0], hint: `1㎢は1000m×1000m＝1000000㎡！マスが6つ離れているので「0」を6つ補いましょう。` };
+                    return { tableType: 'large', q: `${km2}㎢ は 何haですか？`, targets: ['ha'], check: (ans) => ans['ha'] === (km2 * 100), correctStr: `${km2 * 100} ha`, tableVals: ["書かない！", km2, 0, 0, "書かない！", "書かない！", "書かない！", "書かない！"], hint: `1㎢は100haです。㎢の部屋からhaの部屋の右端まで「0」を2つ補いましょう。` };
+                }},
+                { submode: "ha_km2", gen: () => {
+                    let km2 = Math.floor(Math.random() * 5) + 1;
+                    return { tableType: 'large', q: `${km2 * 100}ha は 何㎢ですか？`, targets: ['㎢'], check: (ans) => ans['㎢'] === km2, correctStr: `${km2} ㎢`, tableVals: ["書かない！", km2, 0, 0, "書かない！", "書かない！", "書かない！", "書かない！"], hint: `100haで1㎢になります。haの部屋から2桁上がった「㎢」の部屋を見よう。` };
+                }},
+                // km2 ⇔ m2
+                { submode: "km2_m2", gen: () => {
+                    let km2 = Math.floor(Math.random() * 5) + 1;
+                    return { tableType: 'large', q: `${km2}㎢ は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (km2 * 1000000), correctStr: `${km2 * 1000000} ㎡`, tableVals: ["書かない！", km2, 0, 0, 0, 0, 0, 0], hint: `1㎢は1000000㎡！マスが6つ離れているので「0」を6つ補いましょう。` };
+                }}
+            ]
+        },
+        volume2: {
+            formulas: [
+                "1cm³ = 1mL",
+                "1L = 1000cm³ = 1000mL",
+                "1m³ = 1000L",
+                "1m³ = 1000000cm³ （100×100×100 → 3じょうで6けたシフト！）"
+            ],
+            problems: [
+                // cm3 ⇔ mL (おなじ大きさ。数字はそのまま)
+                { submode: "cm3_mL", gen: () => {
+                    let n = Math.floor(Math.random() * 9000) + 10;
+                    return { tableType: 'cm3_mL', q: `${n}mL は 何cm³ですか？`, targets: ['cm³'], check: (ans) => ans['cm³'] === n, correctStr: `${n} cm³`, tableVals: [n, n], hint: `1mLは1cm³と同じ大きさです。数字はそのまま変わりません。` };
+                }},
+                { submode: "cm3_mL", gen: () => {
+                    let n = Math.floor(Math.random() * 9000) + 10;
+                    return { tableType: 'cm3_mL', q: `${n}cm³ は 何mLですか？`, targets: ['mL'], check: (ans) => ans['mL'] === n, correctStr: `${n} mL`, tableVals: [n, n], hint: `1cm³は1mLと同じ大きさです。数字はそのまま変わりません。` };
+                }},
+                // L ⇔ cm3 (1000倍)
+                { submode: "L_cm3", gen: () => {
+                    let L = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'L_cm3', q: `${L}L は 何cm³ですか？`, targets: ['cm³'], check: (ans) => ans['cm³'] === (L * 1000), correctStr: `${L * 1000} cm³`, tableVals: [L, 0, 0, 0], hint: `1Lは1000cm³！Lの部屋の数字のあとに「0」を3つ書こう。` };
+                }},
+                { submode: "L_cm3", gen: () => {
+                    let L = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'L_cm3', q: `${L * 1000}cm³ は 何Lですか？`, targets: ['L'], check: (ans) => ans['L'] === L, correctStr: `${L} L`, tableVals: [L, "書かない！", "書かない！", "書かない！"], hint: `1000cm³で1Lになります。cm³の部屋の数字はぜんぶ「書かない！」になって、Lの部屋の数字だけが答えになるよ。` };
+                }},
+                // m3 ⇔ L (1000倍)
+                { submode: "m3_L", gen: () => {
+                    let m3 = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'm3_L', q: `${m3}m³ は 何Lですか？`, targets: ['L'], check: (ans) => ans['L'] === (m3 * 1000), correctStr: `${m3 * 1000} L`, tableVals: [m3, 0, 0, 0], hint: `1m³は1000L！m³の部屋の数字のあとに「0」を3つ書こう。` };
+                }},
+                { submode: "m3_L", gen: () => {
+                    let m3 = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'm3_L', q: `${m3 * 1000}L は 何m³ですか？`, targets: ['m³'], check: (ans) => ans['m³'] === m3, correctStr: `${m3} m³`, tableVals: [m3, "書かない！", "書かない！", "書かない！"], hint: `1000Lで1m³になります。Lの部屋の数字はぜんぶ「書かない！」になって、m³の部屋の数字だけが答えになるよ。` };
+                }},
+                // m3 ⇔ cm3 (1000000倍 = 3じょう, 6けたシフト)
+                { submode: "m3_cm3", gen: () => {
+                    let m3 = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'm3_cm3', q: `${m3}m³ は 何cm³ですか？`, targets: ['cm³'], check: (ans) => ans['cm³'] === (m3 * 1000000), correctStr: `${m3 * 1000000} cm³`, tableVals: [m3, 0, 0, 0, 0, 0, 0], hint: `1m³は、たて・よこ・たかさがそれぞれ100cmなので、100×100×100＝1000000cm³！3じょうの関係で6けたシフトするから、m³の部屋の数字のあとに「0」を6つ書こう。` };
+                }},
+                { submode: "m3_cm3", gen: () => {
+                    let m3 = Math.floor(Math.random() * 8) + 1;
+                    return { tableType: 'm3_cm3', q: `${m3 * 1000000}cm³ は 何m³ですか？`, targets: ['m³'], check: (ans) => ans['m³'] === m3, correctStr: `${m3} m³`, tableVals: [m3, "書かない！", "書かない！", "書かない！", "書かない！", "書かない！", "書かない！"], hint: `1000000cm³で1m³になります（100×100×100＝1000000で3じょうの関係）。cm³の部屋の数字はぜんぶ「書かない！」になって、m³の部屋の数字だけが答えになるよ。` };
+                }}
+            ]
+        },
+        time2: {
+            formulas: [
+                "1日 = 24時間",
+                "1時間 = 60分"
+            ],
+            problems: [
+                // 時間 ⇔ 分 (60進法)
+                { submode: "h_min", gen: () => {
+                    let h = Math.floor(Math.random() * 3) + 1;
+                    let m = Math.floor(Math.random() * 59) + 1;
+                    return { q: `${h}時間${m}分は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === (h * 60 + m), correctStr: `${h * 60 + m} 分`, hint: `1時間は60分なので、${h}時間は${h * 60}分です。そこに${m}分をたすと、${h * 60 + m}分になります。` };
+                }},
+                { submode: "h_min", gen: () => {
+                    let h = Math.floor(Math.random() * 3) + 1;
+                    let m = Math.floor(Math.random() * 59) + 1;
+                    let total = h * 60 + m;
+                    return { q: `${total}分は 何時間何分ですか？`, targets: ['時間', '分'], check: (ans) => ans['時間'] === h && ans['分'] === m, correctStr: `${h} 時間 ${m} 分`, hint: `${total}分を60分のまとまりで考えます。${total}÷60＝${h}あまり${m}なので、${h}時間${m}分になります。` };
+                }},
+                { submode: "h_min", gen: () => {
+                    let h = Math.floor(Math.random() * 5) + 1;
+                    return { q: `${h}時間は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === (h * 60), correctStr: `${h * 60} 分`, hint: `1時間は60分です。${h}時間は60分が${h}つ分なので、60×${h}＝${h * 60}分になります。` };
+                }},
+                { submode: "h_min", gen: () => {
+                    let h = Math.floor(Math.random() * 5) + 1;
+                    return { q: `${h * 60}分は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === h, correctStr: `${h} 時間`, hint: `60分で1時間になります。${h * 60}分は60分が${h}つ分なので、${h}時間になります。` };
+                }},
+                // 日 ⇔ 時間 (24進法)
+                { submode: "d_h", gen: () => {
+                    let d = Math.floor(Math.random() * 3) + 1;
+                    return { q: `${d}日は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === (d * 24), correctStr: `${d * 24} 時間`, hint: `1日は24時間です。${d}日は24時間が${d}つ分なので、24×${d}＝${d * 24}時間になります。` };
+                }},
+                { submode: "d_h", gen: () => {
+                    let d = Math.floor(Math.random() * 3) + 1;
+                    return { q: `${d * 24}時間は 何日ですか？`, targets: ['日'], check: (ans) => ans['日'] === d, correctStr: `${d} 日`, hint: `24時間で1日になります。${d * 24}時間は24時間が${d}つ分なので、${d}日になります。` };
+                }},
+                { submode: "d_h", gen: () => {
+                    let d = Math.floor(Math.random() * 2) + 1;
+                    let h = Math.floor(Math.random() * 23) + 1;
+                    return { q: `${d}日${h}時間は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === (d * 24 + h), correctStr: `${d * 24 + h} 時間`, hint: `1日は24時間なので、${d}日は${d * 24}時間です。そこに${h}時間をたすと、${d * 24 + h}時間になります。` };
+                }},
+                { submode: "d_h", gen: () => {
+                    let d = Math.floor(Math.random() * 2) + 1;
+                    let h = Math.floor(Math.random() * 23) + 1;
+                    let total = d * 24 + h;
+                    return { q: `${total}時間は 何日何時間ですか？`, targets: ['日', '時間'], check: (ans) => ans['日'] === d && ans['時間'] === h, correctStr: `${d} 日 ${h} 時間`, hint: `${total}時間を24時間のまとまりで考えます。${total}÷24＝${d}あまり${h}なので、${d}日${h}時間になります。` };
+                }}
+            ]
+        },
+        time3: {
+            formulas: [
+                "1分 = 60秒"
+            ],
+            problems: [
+                { submode: "min_sec", gen: () => {
+                    let m = Math.floor(Math.random() * 3) + 1;
+                    let s = Math.floor(Math.random() * 59) + 1;
+                    return { q: `${m}分${s}秒は 何秒ですか？`, targets: ['秒'], check: (ans) => ans['秒'] === (m * 60 + s), correctStr: `${m * 60 + s} 秒`, hint: `1分は60秒なので、${m}分は${m * 60}秒です。そこに${s}秒をたすと、${m * 60 + s}秒になります。` };
+                }},
+                { submode: "min_sec", gen: () => {
+                    let m = Math.floor(Math.random() * 3) + 1;
+                    let s = Math.floor(Math.random() * 59) + 1;
+                    let total = m * 60 + s;
+                    return { q: `${total}秒は 何分何秒ですか？`, targets: ['分', '秒'], check: (ans) => ans['分'] === m && ans['秒'] === s, correctStr: `${m} 分 ${s} 秒`, hint: `${total}秒を60秒のまとまりで考えます。${total}÷60＝${m}あまり${s}なので、${m}分${s}秒になります。` };
+                }},
+                { submode: "min_sec", gen: () => {
+                    let m = Math.floor(Math.random() * 5) + 1;
+                    return { q: `${m}分は 何秒ですか？`, targets: ['秒'], check: (ans) => ans['秒'] === (m * 60), correctStr: `${m * 60} 秒`, hint: `1分は60秒です。${m}分は60秒が${m}つ分なので、60×${m}＝${m * 60}秒になります。` };
+                }},
+                { submode: "min_sec", gen: () => {
+                    let m = Math.floor(Math.random() * 5) + 1;
+                    return { q: `${m * 60}秒は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === m, correctStr: `${m} 分`, hint: `60秒で1分になります。${m * 60}秒は60秒が${m}つ分なので、${m}分になります。` };
                 }}
             ]
         }
@@ -703,19 +1012,91 @@
 
     function selectTheme(themeKey, element) {
         activeTheme = themeKey;
-        currentProblemSolved = false;
+        activeSubMode = 'all'; // テーマ変更時はサブモードをランダムにリセット
+        
         document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
         if(element) element.classList.add('active');
 
         document.getElementById('workspace').style.display = 'block';
         document.getElementById('result-panel').style.display = 'none';
 
+        updateSubModeUI();
         nextProblem();
+    }
+
+    // 🌟 細かい練習モード（サブモード）のUIボタンを生成・制御する関数
+    function updateSubModeUI() {
+        const container = document.getElementById('submode-container');
+        const flex = document.getElementById('submode-flex');
+        
+        // かさと面積と体積と時間(2年)以外は、サブモードボタンを隠す
+        if (activeTheme !== 'volume' && activeTheme !== 'area' && activeTheme !== 'volume2' && activeTheme !== 'time2') {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'block';
+        flex.innerHTML = '';
+        
+        let modes = [];
+        if (activeTheme === 'volume') {
+            modes = [
+                { id: 'all', label: '🌈 ランダム' },
+                { id: 'L_dL', label: 'L ⇔ dL' },
+                { id: 'L_mL', label: 'L ⇔ mL' },
+                { id: 'L_dL_dL', label: 'L, dL ⇔ dL' },
+                { id: 'L_dL_mL', label: 'L, dL ⇔ mL' },
+                { id: 'mL_dL', label: 'mL ⇔ dL' }
+            ];
+        } else if (activeTheme === 'area') {
+            modes = [
+                { id: 'all', label: '🌈 ランダム' },
+                { id: 'cm2_m2', label: '㎠ ⇔ ㎡' },
+                { id: 'm2_a', label: '㎡ ⇔ a' },
+                { id: 'a_ha', label: 'a ⇔ ha' },
+                { id: 'ha_m2', label: 'ha ⇔ ㎡' },
+                { id: 'ha_km2', label: 'ha ⇔ ㎢' },
+                { id: 'km2_m2', label: '㎢ ⇔ ㎡' }
+            ];
+        } else if (activeTheme === 'volume2') {
+            modes = [
+                { id: 'all', label: '🌈 ランダム' },
+                { id: 'cm3_mL', label: 'cm³ ⇔ mL' },
+                { id: 'L_cm3', label: 'L ⇔ cm³' },
+                { id: 'm3_L', label: 'm³ ⇔ L' },
+                { id: 'm3_cm3', label: 'm³ ⇔ cm³（3じょう）' }
+            ];
+        } else if (activeTheme === 'time2') {
+            modes = [
+                { id: 'all', label: '🌈 ランダム' },
+                { id: 'h_min', label: '時間 ⇔ 分' },
+                { id: 'd_h', label: '日 ⇔ 時間' }
+            ];
+        }
+        
+        modes.forEach(m => {
+            const btn = document.createElement('button');
+            btn.className = `submode-btn${activeSubMode === m.id ? ' active' : ''}`;
+            btn.innerText = m.label;
+            btn.onclick = () => {
+                activeSubMode = m.id;
+                updateSubModeUI();
+                nextProblem();
+            };
+            flex.appendChild(btn);
+        });
     }
 
     function renderTable(themeKey, tableType) {
         const table = document.getElementById('table-display');
-        let config = (themeKey === 'area') ? areaTables[tableType || 'large'] : standardTables[themeKey];
+        let config;
+        if (themeKey === 'area') {
+            config = areaTables[tableType || 'large'];
+        } else if (themeKey === 'volume2') {
+            config = volumeTables[tableType || 'L_cm3'];
+        } else {
+            config = standardTables[themeKey];
+        }
 
         userTableVals = Array(config.headers.length).fill(0);
         
@@ -752,18 +1133,39 @@
     }
 
     function nextProblem() {
-        currentProblemSolved = false;
         document.getElementById('result-panel').style.display = 'none';
+        alreadyCorrectThisProblem = false;
         
         const data = themeData[activeTheme];
-        const probTemplates = data.problems;
+        let probTemplates = data.problems;
+        
+        // 🌟 選択されたサブモードに応じて、出題テンプレートをフィルタリング
+        if (activeSubMode !== 'all') {
+            probTemplates = probTemplates.filter(p => p.submode === activeSubMode);
+        }
+        
+        // 万が一フィルター結果が空の場合はセーフティとして全件から抽出
+        if (probTemplates.length === 0) {
+            probTemplates = data.problems;
+        }
+
         const probTemplate = probTemplates[Math.floor(Math.random() * probTemplates.length)];
         currentProblem = probTemplate.gen();
 
         const problemText = "もんだい： " + currentProblem.q;
         document.getElementById('problem-text').innerText = problemText;
 
-        renderTable(activeTheme, currentProblem.tableType);
+        // 🌟 時間のテーマ（日・時間・分・秒）は10進法の位取り表が使えないので、表を非表示にする
+        const isTimeTheme = (activeTheme === 'time2' || activeTheme === 'time3');
+        document.getElementById('table-title').style.display = isTimeTheme ? 'none' : '';
+        document.getElementById('table-display').style.display = isTimeTheme ? 'none' : '';
+
+        if (!isTimeTheme) {
+            renderTable(activeTheme, currentProblem.tableType);
+        } else {
+            const formulaDiv = document.getElementById('formula-display');
+            formulaDiv.innerHTML = themeData[activeTheme].formulas.map(f => `<div>【 ${f} 】</div>`).join('');
+        }
         buildAnswerUI(currentProblem.targets);
 
         speakText(currentProblem.q);
@@ -796,25 +1198,27 @@
         let allFilled = true;
         let hasLeadingZero = false; 
 
+        const isTimeTheme = (activeTheme === 'time2' || activeTheme === 'time3');
+
         currentProblem.targets.forEach(unit => {
             const inputEl = document.getElementById(`input-${unit}`);
             if (!inputEl || inputEl.value === '') { allFilled = false; return; }
             const rawValueStr = inputEl.value.trim();
             
-            if (/^0\d+/.test(rawValueStr)) { hasLeadingZero = true; }
+            if (!isTimeTheme && /^0\d+/.test(rawValueStr)) { hasLeadingZero = true; }
             finalAnswers[unit] = parseInt(rawValueStr, 10);
         });
 
         if (!allFilled) { alert('すべての空欄に数字を入力してね！'); return; }
 
-        currentProblem.tableVals.forEach((correctDigit, idx) => {
+        (currentProblem.tableVals || []).forEach((correctDigit, idx) => {
             const cell = document.getElementById(`cell-val-${idx}`);
             if (cell) {
                 cell.innerText = correctDigit;
                 if (correctDigit === "書かない！") {
                     cell.style.color = '#b91c1c'; cell.style.backgroundColor = '#fee2e2'; cell.style.fontSize = '11px'; cell.style.padding = '6px 2px';
                 } else {
-                    cell.style.color = '#005088'; cell.style.backgroundColor = '#fef08a'; cell.style.fontSize = '26px';
+                    cell.style.color = '#005088'; cell.style.backgroundColor = '#fef08a'; cell.style.fontSize = '26px'; cell.style.padding = '2px 6px';
                 }
                 userTableVals[idx] = correctDigit; 
             }
@@ -838,34 +1242,37 @@
             speakText(alertMsg + "正しい答えは、" + currentProblem.correctStr + "です。");
 
         } else if (isCorrect) {
-            const firstSolve = !currentProblemSolved;
-            currentProblemSolved = true;
+            if (alreadyCorrectThisProblem) {
+                playEffect('correct');
+                resultPanel.className = "result-panel result-success";
+                resultPanel.innerHTML = `
+                    <strong>🎉 せいかい！</strong><br>
+                    【こたえ】 ${currentProblem.correctStr}<br>
+                    <span style="font-size:15px; color:#b91c1c; font-weight:bold;">もう正解しているので、つぎの問題に進みます！</span>
+                `;
+                speakText("もう正解しています。次の問題に進みます。");
 
-            if (firstSolve) {
-                // ★カウントアップと保存
+                setTimeout(nextProblem, 1200);
+
+            } else {
+                alreadyCorrectThisProblem = true;
                 starCount++;
                 localStorage.setItem('tan_i_master_stars', starCount);
                 updateStarDisplay();
-            }
 
-            playEffect('correct');
-            resultPanel.className = "result-panel result-success";
-            resultPanel.innerHTML = firstSolve ? `
-                <strong>🎉 大せいかい！素晴らしい！</strong><br>
-                【こたえ】 ${currentProblem.correctStr}<br>
-                <span style="font-size:15px;">バッチリです！「書かない！」のマスと数字の位置の関係をよく覚えておこう！</span>
-            ` : `
-                <strong>🎉 大せいかい！</strong><br>
-                【こたえ】 ${currentProblem.correctStr}<br>
-                <span style="font-size:15px;">この問題はすでに★をゲット済みだよ。次の問題に進んでね！</span>
-            `;
-            speakText(firstSolve
-                ? `だいせいかい、すばらしい、答えは${currentProblem.correctStr}です。ほしをひとつゲットしたよ！`
-                : `だいせいかい、すばらしい、答えは${currentProblem.correctStr}です。`
-            );
+                playEffect('correct');
+                resultPanel.className = "result-panel result-success";
+                const successTip = isTimeTheme
+                    ? `よくできました！${currentProblem.hint}`
+                    : `バッチリです！「書かない！」のマスと数字の位置の関係をよく覚えておこう！`;
+                resultPanel.innerHTML = `
+                    <strong>🎉 大せいかい！素晴らしい！</strong><br>
+                    【こたえ】 ${currentProblem.correctStr}<br>
+                    <span style="font-size:15px;">${successTip}</span>
+                `;
 
-            if (firstSolve) {
-                // ★ゲットポップアップを時間差で表示
+                speakText("大正解！素晴らしい！答えは、" + currentProblem.correctStr + " です。たまった星が1つふえたよ！");
+
                 setTimeout(openStarModal, 200);
             }
 
