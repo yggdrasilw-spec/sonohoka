@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数の大きさ比べアプリ</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --panel:#ffffff;
+      --text:#243041;
+      --muted:#6b7280;
+      --border:#d9e2ec;
+      --shadow:0 10px 30px rgba(19, 34, 58, .08);
+      --pink:#ffd7e8;
+      --pink-line:#e28ab3;
+      --yellow:#fff0bf;
+      --yellow-line:#e1bc47;
+      --blue:#d8ebff;
+      --blue-line:#6ca8e6;
+      --white:#f7f9fc;
+      --white-line:#c7d1df;
+      --dec:#e5f5ea;
+      --dec-line:#7fb98f;
+      --accent:#22a06b;
+      --accent-2:#2563eb;
+      --danger:#d64545;
+      --ok:#1f9d55;
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: radial-gradient(circle at top, #ffffff 0%, var(--bg) 55%, #edf3f9 100%);
+      color:var(--text);
+    }
+
+    .app{
+      max-width: 1420px;
+      margin: 0 auto;
+      padding: 18px;
+      min-height: 100vh;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .titlebox{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:12px 16px;
+      box-shadow:var(--shadow);
+      flex:1 1 420px;
+    }
+
+    .titlebox h1{
+      margin:0;
+      font-size:clamp(20px, 2.6vw, 30px);
+      line-height:1.25;
+    }
+    .titlebox p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    button{
+      border:none;
+      cursor:pointer;
+      border-radius:16px;
+      padding:14px 18px;
+      font-size:16px;
+      font-weight:700;
+      box-shadow:var(--shadow);
+      transition:transform .08s ease, box-shadow .15s ease, filter .15s ease;
+      touch-action:manipulation;
+    }
+    button:active{transform:translateY(1px) scale(.99)}
+    button:hover{filter:brightness(1.02)}
+
+    .btn-primary{background:linear-gradient(180deg, #2eb06f, #21995d); color:#fff;}
+    .btn-secondary{background:linear-gradient(180deg, #4f8fe8, #2c6cd8); color:#fff;}
+    .btn-ghost{background:#fff; color:var(--text); border:1px solid var(--border)}
+    .btn-warn{background:linear-gradient(180deg, #ffb84d, #ef9f1f); color:#fff;}
+
+    .sound-btn{
+      width:52px;
+      height:52px;
+      padding:0;
+      border-radius:16px;
+      font-size:28px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid transparent;
+      box-shadow:var(--shadow);
+    }
+    .sound-btn.sound-on{
+      background:linear-gradient(180deg, #2eb06f, #21995d);
+      color:#fff;
+    }
+    .sound-btn.sound-off{
+      background:#eef2f7;
+      color:#a0a8b3;
+      border-color:#d7deea;
+      box-shadow:none;
+      filter:grayscale(1);
+    }
+
+    .star-box{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      font-weight:900;
+      color:#334155;
+    }
+    .star-box strong{
+      font-size:18px;
+    }
+    .star-reset{
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:800;
+      background:#fff;
+      border:1px solid #d8e2ee;
+      box-shadow:none;
+      color:#334155;
+    }
+
+    .main-grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+      align-items:start;
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+
+    .problem-area{
+      display:grid;
+      gap:14px;
+      justify-items:center;
+    }
+
+    .numbers-row{
+      display:grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap:14px;
+      align-items:center;
+      width:100%;
+      max-width: 1320px;
+      margin:0 auto;
+    }
+
+    @media (max-width: 860px){
+      .numbers-row{
+        grid-template-columns: 1fr;
+      }
+      .sign-box{
+        order: 2;
+      }
+      #leftCard{order:1;}
+      #rightCard{order:3;}
+    }
+
+    .num-card{
+      position:relative;
+      background:#fff;
+      border:2px solid #dce5ef;
+      border-radius:20px;
+      padding:16px 10px 10px;
+      min-height: clamp(168px, 24vw, 240px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      width:100%;
+      --places: 3;
+      --digit-size: 60px;
+      --label-size: 14px;
+    }
+
+    .place-labels{
+      display:grid;
+      grid-template-columns: repeat(var(--places), minmax(0, 1fr));
+      gap:0;
+      margin: 0 8px;
+      text-align:center;
+      font-size:var(--label-size);
+      font-weight:900;
+      color:#526170;
+      letter-spacing:.02em;
+      width:100%;
+    }
+    .place-labels span{
+      padding:4px 0;
+      border-radius:10px;
+      line-height:1.15;
+    }
+    .place-labels .decimal-sep{
+      background:transparent;
+      border:none;
+      padding:0;
+      visibility:hidden;
+    }
+    .digit-row .decimal-sep{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:transparent;
+      border:none;
+      padding:0;
+      color:#334155;
+      visibility:visible;
+    }
+    .decimal-point-svg{
+      width:24px;
+      height:24px;
+      display:block;
+      flex:0 0 auto;
+    }
+    .place-labels .pink{background:var(--pink)}
+    .place-labels .yellow{background:var(--yellow)}
+    .place-labels .blue{background:var(--blue)}
+    .place-labels .white{background:var(--white)}
+    .place-labels .dec{background:var(--dec)}
+
+    .digit-row{
+      display:grid;
+      grid-template-columns: repeat(var(--places), minmax(0, 1fr));
+      gap:0;
+      align-items:center;
+      justify-items:center;
+      margin-top: 2px;
+      width:100%;
+    }
+
+    .digit{
+      width:100%;
+      text-align:center;
+      font-size: var(--digit-size);
+      font-weight:900;
+      line-height:1;
+      padding:10px 0 14px;
+      border-radius:16px;
+      transition:background-color .15s ease, transform .15s ease, opacity .15s ease, box-shadow .15s ease;
+    }
+    .digit.pink{background:var(--pink); border:1px solid var(--pink-line)}
+    .digit.yellow{background:var(--yellow); border:1px solid var(--yellow-line)}
+    .digit.blue{background:var(--blue); border:1px solid var(--blue-line)}
+    .digit.white{background:var(--white); border:1px solid var(--white-line)}
+    .digit.dec{background:var(--dec); border:1px solid var(--dec-line)}
+    .digit.active{
+      box-shadow: 0 0 0 4px rgba(63, 118, 255, .18), 0 0 0 8px rgba(63, 118, 255, .06);
+      transform: translateY(-1px) scale(1.02);
+      animation: blink 0.7s steps(2, end) infinite;
+    }
+    @keyframes blink{
+      50%{opacity:.28}
+    }
+
+    .sign-box{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-width: 130px;
+      min-height: 130px;
+    }
+    .sign-btn{
+      width: 124px;
+      height: 124px;
+      border-radius: 30px;
+      font-size: 66px;
+      font-weight: 900;
+      background: linear-gradient(180deg, #fff, #f5f8fc);
+      border: 3px solid #dbe4ef;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .08), inset 0 1px 0 rgba(255,255,255,.9);
+      color:#334155;
+    }
+    .sign-btn small{
+      display:block;
+      font-size:14px;
+      margin-top:-6px;
+      font-weight:700;
+      color:#64748b;
+    }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .status{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      padding:12px 14px;
+      background:#f8fbff;
+      border:1px solid #dce7f4;
+      border-radius:16px;
+      font-size:15px;
+      width:100%;
+    }
+    .status strong{font-size:18px}
+
+    .speech{
+      display:none;
+    }
+
+    .setting-box{
+      margin-top:12px;
+      border-top:1px dashed #dae4ef;
+      padding-top:12px;
+      display:none;
+      width:100%;
+    }
+    .setting-box.open{display:block}
+    .setting-grid{
+      display:grid;
+      grid-template-columns:1fr auto auto auto;
+      gap:8px;
+      align-items:center;
+      margin-top:10px;
+    }
+    .setting-name{font-weight:800}
+    .value-pill{
+      min-width:56px;
+      text-align:center;
+      padding:10px 12px;
+      border-radius:14px;
+      background:#f3f7fb;
+      border:1px solid #d8e2ee;
+      font-weight:900;
+    }
+    .smallbtn{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      padding:0;
+      font-size:22px;
+      box-shadow:none;
+      background:#fff;
+      border:1px solid #d8e2ee;
+    }
+
+    .popup-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(15, 23, 42, .28);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:50;
+      padding:18px;
+    }
+    .popup-backdrop.show{display:flex}
+    .popup{
+      width:min(620px, 100%);
+      background:#fff;
+      border-radius:24px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.22);
+      border:1px solid #dde6f1;
+      overflow:hidden;
+      animation: pop .18s ease-out;
+    }
+    @keyframes pop{
+      from{transform:scale(.96); opacity:.5}
+      to{transform:scale(1); opacity:1}
+    }
+    .popup-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:14px 16px;
+      background:linear-gradient(180deg, #f9fbff, #eef5ff);
+      border-bottom:1px solid #dde6f1;
+      font-weight:900;
+    }
+    .popup-body{
+      padding:16px;
+      display:grid;
+      gap:14px;
+    }
+    .popup-close{
+      width:42px;
+      height:42px;
+      padding:0;
+      border-radius:14px;
+      background:#fff;
+      border:1px solid #d8e2ee;
+      box-shadow:none;
+      font-size:24px;
+      line-height:1;
+    }
+
+    .result-text{
+      text-align:center;
+      font-size:18px;
+      font-weight:900;
+      line-height:1.5;
+    }
+    .result-text.ok{color:var(--ok)}
+    .result-text.ng{color:var(--danger)}
+
+    .footer-tip{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:-4px;
+    }
+
+    .hidden{display:none !important;}
+    .nowrap{white-space:nowrap}
+
+    svg{max-width:100%; height:auto; display:block}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="titlebox">
+        <h1>数の大きさくらべ（＞＜＝）</h1>
+        <p>大きい位から順に比べて、中央の記号を選ぼう。発展では 1兆の位まで広げられます。</p>
+      </div>
+      <div class="toolbar">
+        <button class="sound-btn sound-on" id="soundBtn" aria-label="音声をオフにする" title="音声">🔊</button>
+        <button class="btn-warn" id="toggleSettingsBtn">発展</button>
+        <button class="btn-primary" id="checkBtn">答え合わせ</button>
+        <button class="btn-secondary" id="hintBtn">ヒント</button>
+        <button class="btn-ghost" id="nextBtn">次の問題</button>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="card problem-area">
+        <div class="status">
+          <div>出題レベル：<strong id="levelLabel">3桁整数</strong></div>
+          <div class="star-box">たまった★：★×<strong id="starCount">0</strong><button class="star-reset" id="resetStarBtn">リセット</button></div>
+          <div>記号：<strong id="currentSignLabel">□</strong></div>
+        </div>
+
+        <div class="numbers-row">
+          <div class="num-card" id="leftCard">
+            <div class="place-labels" id="leftLabels"></div>
+            <div class="digit-row" id="leftDigits"></div>
+          </div>
+
+          <div class="sign-box">
+            <button class="sign-btn" id="signBtn" aria-label="記号を切り替える">
+              <span id="signText">□</span>
+              <small>タップ</small>
+            </button>
+          </div>
+
+          <div class="num-card" id="rightCard">
+            <div class="place-labels" id="rightLabels"></div>
+            <div class="digit-row" id="rightDigits"></div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn-primary" id="checkBtn2">答え合わせ</button>
+          <button class="btn-secondary" id="hintBtn2">ヒント</button>
+          <button class="btn-ghost" id="nextBtn2">次の問題</button>
+        </div>
+
+        <div class="speech" id="speechBox">
+          <div class="lead">ヒント</div>
+          <div id="speechText">「ヒント」を押すと、どの位から比べるかを順番に見せます。</div>
+          <div class="mini-note">位ごとの色分け、点滅、SVGポップアップで確認できます。</div>
+        </div>
+
+        <div class="setting-box" id="settingsBox">
+          <div class="setting-grid">
+            <div class="setting-name">整数の桁数</div>
+            <button class="smallbtn" id="intMinus">－</button>
+            <div class="value-pill" id="intDigitsValue">3</div>
+            <button class="smallbtn" id="intPlus">＋</button>
+          </div>
+          <div class="setting-grid">
+            <div class="setting-name">小数の桁数</div>
+            <button class="smallbtn" id="decMinus">－</button>
+            <div class="value-pill" id="decDigitsValue">0</div>
+            <button class="smallbtn" id="decPlus">＋</button>
+          </div>
+          <div class="footer-tip">整数は1～13桁、小数は0～3桁まで設定できます。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="popup-backdrop" id="popupBackdrop" aria-hidden="true">
+    <div class="popup" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
+      <div class="popup-head">
+        <div id="popupTitle">結果</div>
+        <button class="popup-close" id="popupCloseBtn" aria-label="閉じる">×</button>
+      </div>
+      <div class="popup-body">
+        <div id="popupSvgHost"></div>
+        <div class="result-text" id="popupMessage"></div>
+      </div>
+    </div>
+  </div>
+
+  
+  <script>
+    const MAX_INT_DIGITS = 13;
+    const PLACE_GROUP_NAMES = ["", "万", "億", "兆"];
+    const DEC_LABELS = ["十分の一", "百分の一", "千分の一"];
+    const COLOR_CLASSES = ["pink", "yellow", "blue", "white"];
+    const STORAGE_KEYS = {
+      starCount: 'compare_numbers_star_count',
+      soundEnabled: 'compare_numbers_sound_enabled',
+    };
+
+    const state = {
+      intDigits: 3,
+      decDigits: 0,
+      leftNumber: null,
+      rightNumber: null,
+      problem: null,
+      signIndex: 0,
+      signs: ["", ">", "<", "="],
+      hintBusy: false,
+      hintTimer: null,
+      currentHintStep: 0,
+      hintSteps: [],
+      soundEnabled: true,
+      starCount: 0,
+      audioContext: null,
+      audioReady: false,
+      speechVoice: null,
+      speechWarmupDone: false,
+    };
+
+    const els = {
+      levelLabel: document.getElementById('levelLabel'),
+      currentSignLabel: document.getElementById('currentSignLabel'),
+      signBtn: document.getElementById('signBtn'),
+      signText: document.getElementById('signText'),
+      leftLabels: document.getElementById('leftLabels'),
+      leftDigits: document.getElementById('leftDigits'),
+      rightLabels: document.getElementById('rightLabels'),
+      rightDigits: document.getElementById('rightDigits'),
+      speechText: document.getElementById('speechText'),
+      settingsBox: document.getElementById('settingsBox'),
+      toggleSettingsBtn: document.getElementById('toggleSettingsBtn'),
+      soundBtn: document.getElementById('soundBtn'),
+      starCount: document.getElementById('starCount'),
+      resetStarBtn: document.getElementById('resetStarBtn'),
+      intDigitsValue: document.getElementById('intDigitsValue'),
+      decDigitsValue: document.getElementById('decDigitsValue'),
+      intMinus: document.getElementById('intMinus'),
+      intPlus: document.getElementById('intPlus'),
+      decMinus: document.getElementById('decMinus'),
+      decPlus: document.getElementById('decPlus'),
+      checkBtn: document.getElementById('checkBtn'),
+      checkBtn2: document.getElementById('checkBtn2'),
+      hintBtn: document.getElementById('hintBtn'),
+      hintBtn2: document.getElementById('hintBtn2'),
+      nextBtn: document.getElementById('nextBtn'),
+      nextBtn2: document.getElementById('nextBtn2'),
+      popupBackdrop: document.getElementById('popupBackdrop'),
+      popupCloseBtn: document.getElementById('popupCloseBtn'),
+      popupSvgHost: document.getElementById('popupSvgHost'),
+      popupMessage: document.getElementById('popupMessage'),
+      popupTitle: document.getElementById('popupTitle'),
+    };
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    function loadStorageNumber(key, fallback = 0){
+      try{
+        const raw = localStorage.getItem(key);
+        const parsed = raw === null ? NaN : Number(raw);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }catch(_err){
+        return fallback;
+      }
+    }
+
+    function saveStorageNumber(key, value){
+      try{
+        localStorage.setItem(key, String(value));
+      }catch(_err){}
+    }
+
+    function loadStorageBool(key, fallback = true){
+      try{
+        const raw = localStorage.getItem(key);
+        if(raw === null) return fallback;
+        return raw === '1' || raw === 'true';
+      }catch(_err){
+        return fallback;
+      }
+    }
+
+    function saveStorageBool(key, value){
+      try{
+        localStorage.setItem(key, value ? '1' : '0');
+      }catch(_err){}
+    }
+
+    function updateStarDisplay(){
+      els.starCount.textContent = String(state.starCount);
+    }
+
+    function setStarCount(value){
+      state.starCount = Math.max(0, Math.floor(value));
+      saveStorageNumber(STORAGE_KEYS.starCount, state.starCount);
+      updateStarDisplay();
+    }
+
+    function addStars(count = 1){
+      setStarCount(state.starCount + count);
+    }
+
+    function resetStars(){
+      setStarCount(0);
+      speakStatus('ほしをリセットしたよ。');
+    }
+
+    function updateSoundButton(){
+      if(!els.soundBtn) return;
+      if(state.soundEnabled){
+        els.soundBtn.textContent = '🔊';
+        els.soundBtn.classList.add('sound-on');
+        els.soundBtn.classList.remove('sound-off');
+        els.soundBtn.setAttribute('aria-label', '音声をオフにする');
+        els.soundBtn.title = '音声ON';
+      }else{
+        els.soundBtn.textContent = '🔇';
+        els.soundBtn.classList.add('sound-off');
+        els.soundBtn.classList.remove('sound-on');
+        els.soundBtn.setAttribute('aria-label', '音声をオンにする');
+        els.soundBtn.title = '音声OFF';
+      }
+    }
+
+    function setSoundEnabled(enabled){
+      state.soundEnabled = !!enabled;
+      saveStorageBool(STORAGE_KEYS.soundEnabled, state.soundEnabled);
+      updateSoundButton();
+      if(!state.soundEnabled){
+        try{ window.speechSynthesis?.cancel(); }catch(_err){}
+      }
+    }
+
+    async function toggleSound(){
+      const next = !state.soundEnabled;
+      setSoundEnabled(next);
+      if(state.soundEnabled){
+        await warmupAudio();
+        playUiSound('on');
+        speakStatus('音声をオンにしたよ。');
+      }
+    }
+
+    function getAudioContext(){
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if(!Ctor) return null;
+      if(!state.audioContext){
+        state.audioContext = new Ctor();
+      }
+      return state.audioContext;
+    }
+
+    async function unlockAudioContext(){
+      const ctx = getAudioContext();
+      if(ctx && ctx.state === 'suspended'){
+        try{ await ctx.resume(); }catch(_err){}
+      }
+      state.audioReady = true;
+    }
+
+    function playUiSound(kind = 'tap'){
+      if(!state.soundEnabled) return;
+      const ctx = getAudioContext();
+      if(!ctx) return;
+      if(ctx.state === 'suspended'){
+        ctx.resume().catch(() => {});
+      }
+      const now = ctx.currentTime;
+      const tones = {
+        tap:   [{ f: 880, t: 0.05, g: 0.03, type: 'sine' }],
+        on:    [{ f: 660, t: 0.06, g: 0.03, type: 'triangle' }, { f: 990, t: 0.06, g: 0.025, type: 'triangle', d: 0.07 }],
+        off:   [{ f: 320, t: 0.08, g: 0.03, type: 'sine' }],
+        ok:    [{ f: 523.25, t: 0.09, g: 0.04, type: 'triangle' }, { f: 659.25, t: 0.11, g: 0.04, type: 'triangle', d: 0.10 }, { f: 783.99, t: 0.13, g: 0.035, type: 'triangle', d: 0.22 }],
+        ng:    [{ f: 392, t: 0.10, g: 0.035, type: 'square' }, { f: 311.13, t: 0.12, g: 0.03, type: 'square', d: 0.12 }],
+        star:  [{ f: 784, t: 0.08, g: 0.035, type: 'triangle' }, { f: 1046.5, t: 0.12, g: 0.03, type: 'triangle', d: 0.09 }],
+      };
+      const pattern = tones[kind] || tones.tap;
+      pattern.forEach(({ f, t, g, type, d = 0 }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = f;
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + d);
+        gain.gain.exponentialRampToValueAtTime(Math.max(g, 0.0001), now + d + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + d + t);
+        osc.stop(now + d + t + 0.02);
+      });
+    }
+
+    function getJapaneseVoice(){
+      if(state.speechVoice) return state.speechVoice;
+      if(!window.speechSynthesis) return null;
+      const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+      const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith('ja')) || voices.find(v => (v.lang || '').toLowerCase().includes('ja')) || null;
+      state.speechVoice = voice;
+      return voice;
+    }
+
+
+    function normalizeSpeechText(text){
+      return String(text ?? '')
+        .replaceAll('★', 'ほし')
+        .replaceAll('＜', 'くみたいなマーク')
+        .replaceAll('＞', 'くのはんたいみたいなマーク');
+    }
+
+    const JAPANESE_DIGITS = ['れい', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+
+    function readJapaneseChunk(num){
+      num = Number(num);
+      if(!Number.isFinite(num) || num <= 0) return '';
+      const thousands = Math.floor(num / 1000);
+      const hundreds = Math.floor((num % 1000) / 100);
+      const tens = Math.floor((num % 100) / 10);
+      const ones = num % 10;
+      let result = '';
+
+      if(thousands){
+        if(thousands === 1) result += 'せん';
+        else if(thousands === 3) result += 'さんぜん';
+        else if(thousands === 8) result += 'はっせん';
+        else result += `${JAPANESE_DIGITS[thousands]}せん`;
+      }
+
+      if(hundreds){
+        if(hundreds === 1) result += 'ひゃく';
+        else if(hundreds === 3) result += 'さんびゃく';
+        else if(hundreds === 6) result += 'ろっぴゃく';
+        else if(hundreds === 8) result += 'はっぴゃく';
+        else result += `${JAPANESE_DIGITS[hundreds]}ひゃく`;
+      }
+
+      if(tens){
+        if(tens === 1) result += 'じゅう';
+        else result += `${JAPANESE_DIGITS[tens]}じゅう`;
+      }
+
+      if(ones){
+        result += JAPANESE_DIGITS[ones];
+      }
+
+      return result || 'れい';
+    }
+
+    function integerToJapanese(num){
+      num = Number(num);
+      if(!Number.isFinite(num)) return '';
+      if(num === 0) return 'れい';
+
+      const groupNames = ['', 'まん', 'おく', 'ちょう'];
+      const padded = String(Math.floor(Math.abs(num)));
+      const groups = [];
+      for(let end = padded.length; end > 0; end -= 4){
+        const start = Math.max(0, end - 4);
+        groups.push(padded.slice(start, end));
+      }
+
+      const parts = [];
+      for(let i = 0; i < groups.length; i++){
+        const groupValue = Number(groups[i]);
+        if(!groupValue) continue;
+        const chunk = readJapaneseChunk(groupValue);
+        const groupName = groupNames[i] || '';
+        parts.unshift(`${chunk}${groupName}`);
+      }
+      return parts.join('');
+    }
+
+    function decimalToJapanese(decPart, decDigits){
+      if(decDigits <= 0) return '';
+      const padded = padLeft(decPart, decDigits);
+      return padded.split('').map(d => JAPANESE_DIGITS[Number(d)] ?? '').join('');
+    }
+
+    function numberPartsToJapaneseSpeech(parts){
+      if(!parts) return '';
+      const intReading = integerToJapanese(parts.intPart);
+      if(parts.decDigits > 0){
+        const decReading = decimalToJapanese(parts.decPart, parts.decDigits);
+        return `${intReading}てん${decReading}`;
+      }
+      return intReading;
+    }
+
+    function buildComparisonSpeech(leftParts, rightParts, sign){
+      const left = numberPartsToJapaneseSpeech(leftParts);
+      const right = numberPartsToJapaneseSpeech(rightParts);
+      if(sign === '>') return `${left}は、${right}よりおおきいです。`;
+      if(sign === '<') return `${left}は、${right}よりちいさいです。`;
+      return `${left}と${right}は、おなじです。`;
+    }
+
+    function speakText(text, { interrupt = true, rate = 0.96, pitch = 1.0, volume = 1.0 } = {}){
+      return new Promise(resolve => {
+        if(!state.soundEnabled || !('speechSynthesis' in window)){
+          resolve();
+          return;
+        }
+        try{
+          if(interrupt) window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(normalizeSpeechText(text));
+          utter.lang = 'ja-JP';
+          utter.rate = rate;
+          utter.pitch = pitch;
+          utter.volume = volume;
+          const voice = getJapaneseVoice();
+          if(voice) utter.voice = voice;
+          utter.onend = () => resolve();
+          utter.onerror = () => resolve();
+          window.speechSynthesis.speak(utter);
+        }catch(_err){
+          resolve();
+        }
+      });
+    }
+
+    function speakStatus(text){
+      return speakText(text, { interrupt: true, rate: 1.0, pitch: 1.0 });
+    }
+
+    async function warmupAudio({ markDone = true } = {}){
+      if(!state.soundEnabled) return;
+      if(markDone && state.speechWarmupDone) return;
+      await unlockAudioContext();
+      if('speechSynthesis' in window){
+        try{
+          const utter = new SpeechSynthesisUtterance(' ');
+          utter.lang = 'ja-JP';
+          utter.volume = 0;
+          utter.rate = 1;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utter);
+        }catch(_err){}
+      }
+      if(markDone){
+        state.speechWarmupDone = true;
+      }
+    }
+
+    function randomInt(min, max){
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function shuffle(array){
+      for(let i = array.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function createNumber(intPart, decPart, intDigits, decDigits){
+      return { intPart, decPart, intDigits, decDigits };
+    }
+
+    function displayCellCount(displayIntDigits, displayDecDigits){
+      return displayIntDigits + displayDecDigits + (displayDecDigits > 0 ? 1 : 0);
+    }
+
+    function getCurrentProblem(){
+      return state.problem || {
+        displayIntDigits: state.intDigits,
+        displayDecDigits: state.decDigits,
+        kind: state.decDigits > 0 ? 'decimal' : 'integer',
+        label: state.decDigits > 0 ? `小数${state.decDigits}桁` : `${state.intDigits}桁整数`,
+      };
+    }
+
+    function updateCardSizing(){
+      const problem = getCurrentProblem();
+      const cells = displayCellCount(problem.displayIntDigits, problem.displayDecDigits);
+      const widthGuess = Math.min(window.innerWidth * 0.40, 620);
+      const digitSize = clamp(Math.floor((widthGuess - 28) / Math.max(cells, 1) * 0.92), 18, 64);
+      const labelSize = clamp(Math.floor(digitSize * 0.22), 11, 16);
+      document.querySelectorAll('.num-card').forEach(card => {
+        card.style.setProperty('--places', cells);
+        card.style.setProperty('--digit-size', `${digitSize}px`);
+        card.style.setProperty('--label-size', `${labelSize}px`);
+      });
+    }
+
+    function padLeft(str, len){
+      return String(str).padStart(len, '0');
+    }
+
+    function makeRandomNumber(intDigits, decDigits){
+      const minInt = intDigits === 1 ? 0 : Math.pow(10, intDigits - 1);
+      const maxInt = Math.pow(10, intDigits) - 1;
+      const intPart = Math.floor(Math.random() * (maxInt - minInt + 1)) + minInt;
+      if(decDigits === 0) return createNumber(intPart, 0, intDigits, 0);
+      const maxDec = Math.pow(10, decDigits) - 1;
+      const decPart = Math.floor(Math.random() * (maxDec + 1));
+      return createNumber(intPart, decPart, intDigits, decDigits);
+    }
+
+    function getComparableBigInt(parts){
+      const scale = BigInt(10) ** BigInt(parts.decDigits);
+      return BigInt(parts.intPart) * scale + BigInt(parts.decPart);
+    }
+
+    function compareValues(leftParts, rightParts){
+      const leftScaled = getComparableBigInt(leftParts) * (BigInt(10) ** BigInt(rightParts.decDigits));
+      const rightScaled = getComparableBigInt(rightParts) * (BigInt(10) ** BigInt(leftParts.decDigits));
+      if(leftScaled > rightScaled) return '>';
+      if(leftScaled < rightScaled) return '<';
+      return '=';
+    }
+
+    function formatIntegerForDisplay(parts, displayIntDigits, problem = getCurrentProblem()){
+      const actualIntStr = padLeft(parts.intPart, parts.intDigits);
+      if(problem?.kind === 'integer-different-length' && displayIntDigits > parts.intDigits){
+        return `${'空欄'.repeat(displayIntDigits - parts.intDigits)}${actualIntStr}`;
+      }
+      return padLeft(parts.intPart, displayIntDigits);
+    }
+
+    function formatNumber(parts, displayIntDigits, displayDecDigits, problem = getCurrentProblem()){
+      const intStr = formatIntegerForDisplay(parts, displayIntDigits, problem);
+      if(displayDecDigits === 0) return intStr;
+      const decStr = padLeft(parts.decPart, displayDecDigits);
+      return `${intStr}.${decStr}`;
+    }
+
+    function decimalPointSVG(){
+      return `
+        <svg class="decimal-point-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="4.4" fill="currentColor"></circle>
+        </svg>
+      `;
+    }
+
+    function getJapanesePlaceLabel(power){
+      const group = Math.floor(power / 4);
+      const within = power % 4;
+      const prefixes = ["", "十", "百", "千"];
+      const suffix = PLACE_GROUP_NAMES[group] || '';
+      if(group === 0 && within === 0) return '一';
+      return `${prefixes[within]}${suffix}`;
+    }
+
+    function getPlaceColorClass(power){
+      return COLOR_CLASSES[power % 4];
+    }
+
+    function getDisplayDigitsForProblem(problem){
+      return {
+        intDigits: problem.displayIntDigits,
+        decDigits: problem.displayDecDigits,
+      };
+    }
+
+    function buildDigitsForDisplay(parts, displayIntDigits, displayDecDigits, problem = getCurrentProblem()){
+      const intStr = padLeft(parts.intPart, parts.intDigits);
+      const decStr = displayDecDigits > 0 ? padLeft(parts.decPart, displayDecDigits) : '';
+      const digits = [];
+      const leadingBlanks = problem?.kind === 'integer-different-length'
+        ? Math.max(0, displayIntDigits - parts.intDigits)
+        : 0;
+
+      for(let i = 0; i < displayIntDigits; i++){
+        const sourceIndex = i - leadingBlanks;
+        digits.push(sourceIndex >= 0 ? intStr[sourceIndex] : '');
+      }
+
+      if(displayDecDigits > 0){
+        for(let i = 0; i < decStr.length; i++){
+          digits.push(decStr[i]);
+        }
+      }
+
+      return digits;
+    }
+
+    function renderPlaceLabels(container, problem){
+      const { intDigits, decDigits } = getDisplayDigitsForProblem(problem);
+      const all = [];
+      for(let i = 0; i < intDigits; i++){
+        const power = intDigits - 1 - i;
+        all.push({
+          label: getJapanesePlaceLabel(power),
+          cls: getPlaceColorClass(power),
+        });
+      }
+      if(decDigits > 0){
+        all.push({
+          label: '',
+          cls: 'decimal-sep',
+          separator: true,
+        });
+      }
+      for(let i = 0; i < decDigits; i++){
+        all.push({
+          label: DEC_LABELS[i],
+          cls: 'dec',
+        });
+      }
+      const card = container.closest('.num-card');
+      const cells = displayCellCount(intDigits, decDigits);
+      if(card) card.style.setProperty('--places', cells);
+      container.style.setProperty('--places', cells);
+      container.innerHTML = all.map(item => {
+        if(item.separator) return '<span class="decimal-sep" aria-hidden="true"></span>';
+        return `<span class="${item.cls}">${item.label}</span>`;
+      }).join('');
+    }
+
+    function createDigitSpans(container, parts, problem, activeIndex = -1){
+      const { intDigits, decDigits } = getDisplayDigitsForProblem(problem);
+      const card = container.closest('.num-card');
+      const cells = displayCellCount(intDigits, decDigits);
+      if(card) card.style.setProperty('--places', cells);
+      container.style.setProperty('--places', cells);
+      container.innerHTML = '';
+
+      const digitChars = buildDigitsForDisplay(parts, intDigits, decDigits, problem);
+      let digitIndex = 0;
+
+      for(let i = 0; i < intDigits; i++){
+        const span = document.createElement('span');
+        const power = intDigits - 1 - i;
+        span.className = `digit ${getPlaceColorClass(power)}`;
+        span.dataset.digitIndex = String(digitIndex);
+        span.textContent = digitChars[digitIndex];
+        if(digitIndex === activeIndex) span.classList.add('active');
+        container.appendChild(span);
+        digitIndex++;
+      }
+
+      if(decDigits > 0){
+        const sep = document.createElement('span');
+        sep.className = 'decimal-sep';
+        sep.setAttribute('aria-hidden', 'true');
+        sep.innerHTML = decimalPointSVG();
+        container.appendChild(sep);
+      }
+
+      for(let i = 0; i < decDigits; i++){
+        const span = document.createElement('span');
+        span.className = 'digit dec';
+        span.dataset.digitIndex = String(digitIndex);
+        span.textContent = digitChars[digitIndex];
+        if(digitIndex === activeIndex) span.classList.add('active');
+        container.appendChild(span);
+        digitIndex++;
+      }
+    }
+
+    function getDigitElement(container, index){
+      return container.querySelector(`.digit[data-digit-index="${index}"]`);
+    }
+
+    function renderProblem(){
+      const problem = getCurrentProblem();
+      updateCardSizing();
+      els.levelLabel.textContent = problem.label || (
+        problem.displayDecDigits > 0
+          ? `${problem.displayIntDigits}桁整数＋小数${problem.displayDecDigits}桁`
+          : `${problem.displayIntDigits}桁整数`
+      );
+      els.intDigitsValue.textContent = String(state.intDigits);
+      els.decDigitsValue.textContent = String(state.decDigits);
+      updateStarDisplay();
+
+      renderPlaceLabels(els.leftLabels, problem);
+      renderPlaceLabels(els.rightLabels, problem);
+      createDigitSpans(els.leftDigits, state.leftNumber, problem);
+      createDigitSpans(els.rightDigits, state.rightNumber, problem);
+
+      els.signText.textContent = state.signs[state.signIndex];
+      els.currentSignLabel.textContent = state.signs[state.signIndex] || '□';
+      els.speechText.textContent = '「ヒント」を押すと、どの位から比べるかを順番に見せます。';
+    }
+
+    function copyAndMutateNumber(base, mutateCount){
+      const intStr = padLeft(base.intPart, base.intDigits);
+      const decStr = base.decDigits > 0 ? padLeft(base.decPart, base.decDigits) : '';
+      const digits = (intStr + decStr).split('');
+      const total = digits.length;
+      const indices = shuffle([...Array(total).keys()]).slice(0, Math.min(mutateCount, total));
+
+      indices.forEach(index => {
+        const isFirstIntDigit = base.intDigits > 1 && index === 0;
+        const minDigit = isFirstIntDigit ? 1 : 0;
+        let next;
+        do{
+          next = randomInt(minDigit, 9);
+        } while(String(next) === digits[index]);
+        digits[index] = String(next);
+      });
+
+      const newIntStr = digits.slice(0, base.intDigits).join('');
+      const newDecStr = base.decDigits > 0 ? digits.slice(base.intDigits).join('') : '';
+      const newIntPart = parseInt(newIntStr, 10);
+      const newDecPart = base.decDigits > 0 ? parseInt(newDecStr, 10) : 0;
+      return createNumber(newIntPart, newDecPart, base.intDigits, base.decDigits);
+    }
+
+    function makeDifferentDigitCountIntegerProblem(){
+      const biggerDigits = randomInt(Math.max(2, state.intDigits - 2), state.intDigits);
+      const smallerDigits = randomInt(1, Math.max(1, biggerDigits - 1));
+      const biggerSideLeft = Math.random() < 0.5;
+
+      const big = makeRandomNumber(biggerDigits, 0);
+      const small = makeRandomNumber(smallerDigits, 0);
+
+      const left = biggerSideLeft ? big : small;
+      const right = biggerSideLeft ? small : big;
+
+      return {
+        left,
+        right,
+        displayIntDigits: Math.max(left.intDigits, right.intDigits),
+        displayDecDigits: 0,
+        kind: 'integer-different-length',
+        label: '桁数のちがう整数',
+      };
+    }
+
+    function makeCloseSameLengthProblem(){
+      const left = makeRandomNumber(state.intDigits, state.decDigits);
+      let right;
+      const rolls = Math.random();
+      const mutateCount = rolls < 0.80 ? 1 : rolls < 0.95 ? 2 : 3;
+      do{
+        right = copyAndMutateNumber(left, mutateCount);
+      } while(compareValues(left, right) === '=');
+
+      return {
+        left,
+        right,
+        displayIntDigits: Math.max(left.intDigits, right.intDigits),
+        displayDecDigits: Math.max(left.decDigits, right.decDigits),
+        kind: state.decDigits > 0 ? 'decimal-close' : 'integer-close',
+        label: state.decDigits > 0 ? '近い小数' : '近い整数',
+      };
+    }
+
+    function makeBasicDecimalProblem(){
+      const basicTypeRoll = Math.random();
+
+      if(state.decDigits <= 1){
+        if(basicTypeRoll < 0.65){
+          const left = createNumber(randomInt(1, 9), 0, 1, 0);
+          const right = createNumber(0, randomInt(1, 9), 1, 1);
+          return {
+            left,
+            right,
+            displayIntDigits: 1,
+            displayDecDigits: 1,
+            kind: 'decimal-basic',
+            label: '小数の基本（1 と 0.1）',
+          };
+        } else {
+          const int = randomInt(1, 9);
+          const left = createNumber(int, 0, 1, 0);
+          const right = createNumber(int - 1 >= 0 ? int - 1 : 0, randomInt(1, 9), 1, 1);
+          return {
+            left,
+            right,
+            displayIntDigits: 1,
+            displayDecDigits: 1,
+            kind: 'decimal-basic',
+            label: '小数の基本',
+          };
+        }
+      }
+
+      if(basicTypeRoll < 0.40){
+        const left = createNumber(randomInt(1, 9), 0, 1, 0);
+        const right = createNumber(0, randomInt(1, 9), 1, 1);
+        return {
+          left,
+          right,
+          displayIntDigits: 1,
+          displayDecDigits: 2,
+          kind: 'decimal-basic',
+          label: '小数の基本（1 と 0.1）',
+        };
+      }
+
+      if(basicTypeRoll < 0.75){
+        const left = createNumber(0, randomInt(1, 9), 1, 2); // 0.01〜0.09
+        const right = createNumber(0, randomInt(1, 9), 1, 1); // 0.1〜0.9
+        return {
+          left,
+          right,
+          displayIntDigits: 1,
+          displayDecDigits: 2,
+          kind: 'decimal-basic',
+          label: '小数の基本（0.01 と 0.1）',
+        };
+      }
+
+      const left = createNumber(1, randomInt(1, 99), 1, 2);   // 1.xx
+      const right = createNumber(1, randomInt(1, 99), 1, 2);  // 1.yy
+      return {
+        left,
+        right,
+        displayIntDigits: 1,
+        displayDecDigits: 2,
+        kind: 'decimal-basic',
+        label: '小数のくらべ方',
+      };
+    }
+
+    function makeDecimalProblem(){
+      const roll = Math.random();
+      if(roll < 0.45){
+        return makeCloseSameLengthProblem();
+      }
+      if(roll < 0.85){
+        return makeBasicDecimalProblem();
+      }
+      return makeDifferentDigitCountIntegerProblem();
+    }
+
+    function generateNewProblem(){
+      let problem;
+      if(state.decDigits === 0){
+        const roll = Math.random();
+        if(roll < 0.70){
+          problem = makeCloseSameLengthProblem();
+        } else {
+          problem = makeDifferentDigitCountIntegerProblem();
+        }
+      } else {
+        problem = makeDecimalProblem();
+      }
+
+      state.problem = problem;
+      state.leftNumber = problem.left;
+      state.rightNumber = problem.right;
+      state.signIndex = 0;
+      stopHint();
+      renderProblem();
+    }
+
+    function cycleSign(){
+      state.signIndex = (state.signIndex + 1) % state.signs.length;
+      els.signText.textContent = state.signs[state.signIndex];
+      els.currentSignLabel.textContent = state.signs[state.signIndex] || '□';
+      playUiSound('tap');
+    }
+
+    function getUserSign(){
+      return state.signs[state.signIndex] || '';
+    }
+
+    function formatReadableNumber(parts){
+      const problem = getCurrentProblem();
+      return formatNumber(parts, problem.displayIntDigits, problem.displayDecDigits, problem);
+    }
+
+    function showPopup({ title, svg, message, ok = true }){
+      els.popupTitle.textContent = title;
+      els.popupSvgHost.innerHTML = svg;
+      els.popupMessage.className = `result-text ${ok ? 'ok' : 'ng'}`;
+      els.popupMessage.textContent = message;
+      els.popupBackdrop.classList.add('show');
+      els.popupBackdrop.setAttribute('aria-hidden', 'false');
+    }
+
+    function hidePopup(){
+      els.popupBackdrop.classList.remove('show');
+      els.popupBackdrop.setAttribute('aria-hidden', 'true');
+    }
+
+    function popupComparisonSVG(leftTag, sign, rightTag){
+      const circleSize = (tag) => {
+        if(tag === '小') return { r: 44, fs: 38, dy: 112 };
+        if(tag === '大') return { r: 58, fs: 50, dy: 118 };
+        return { r: 52, fs: 46, dy: 115 };
+      };
+      const left = circleSize(leftTag);
+      const right = circleSize(rightTag);
+      return `
+      <svg viewBox="0 0 640 220" role="img" aria-label="比較ポップアップ">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.12"/>
+          </filter>
+        </defs>
+        <rect x="10" y="10" width="620" height="200" rx="24" fill="#ffffff" stroke="#dbe4ef" stroke-width="2" filter="url(#shadow)"/>
+        <circle cx="160" cy="106" r="${left.r}" fill="#fff7df" stroke="#d6b36a" stroke-width="4"/>
+        <circle cx="480" cy="106" r="${right.r}" fill="#fff7df" stroke="#d6b36a" stroke-width="4"/>
+        <text x="160" y="${left.dy}" text-anchor="middle" font-size="${left.fs}" font-weight="900" fill="#3a2d11">${leftTag}</text>
+        <text x="320" y="124" text-anchor="middle" font-size="92" font-weight="900" fill="#cc8c13">${sign}</text>
+        <text x="480" y="${right.dy}" text-anchor="middle" font-size="${right.fs}" font-weight="900" fill="#3a2d11">${rightTag}</text>
+      </svg>`;
+    }
+
+    function evaluateComparison(){
+      const expected = compareValues(state.leftNumber, state.rightNumber);
+      const userSign = getUserSign();
+      const leftText = formatReadableNumber(state.leftNumber);
+      const rightText = formatReadableNumber(state.rightNumber);
+      const correct = userSign === expected;
+      const speech = buildComparisonSpeech(state.leftNumber, state.rightNumber, expected);
+      const signLabel = expected === '>' ? '＞' : expected === '<' ? '＜' : '＝';
+
+      if(correct){
+        const svg = popupComparisonSVG(
+          expected === '>' ? '大' : expected === '<' ? '小' : '同',
+          expected,
+          expected === '>' ? '小' : expected === '<' ? '大' : '同'
+        );
+        addStars(1);
+        playUiSound('ok');
+        speakStatus(`せいかい。${speech} だから「${signLabel}」が正解だね！ ほしをひとつかくとく！`);
+        showPopup({
+          title: 'せいかい',
+          svg,
+          message: `${leftText} ${expected} ${rightText} で正解です。ほしをひとつかくとく！ たまった★：★×${state.starCount}`,
+          ok: true,
+        });
+      } else {
+        const svg = popupComparisonSVG('大', expected, '小');
+        playUiSound('ng');
+        speakStatus(`ざんねん。${speech}`);
+        showPopup({
+          title: 'ざんねん',
+          svg,
+          message: `正しい記号は「${expected}」です。${leftText} と ${rightText} をもう一度見てみよう。`,
+          ok: false,
+        });
+      }
+    }
+
+    function clearHighlight(){
+      document.querySelectorAll('.digit.active').forEach(el => el.classList.remove('active'));
+    }
+
+    function highlightPair(index){
+      clearHighlight();
+      const leftEl = getDigitElement(els.leftDigits, index);
+      const rightEl = getDigitElement(els.rightDigits, index);
+      if(leftEl) leftEl.classList.add('active');
+      if(rightEl) rightEl.classList.add('active');
+    }
+
+    function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+    function digitArrayForCompare(parts){
+      const problem = getCurrentProblem();
+      const intStr = padLeft(parts.intPart, problem.displayIntDigits);
+      const decStr = problem.displayDecDigits > 0 ? padLeft(parts.decPart, problem.displayDecDigits) : '';
+      return (intStr + decStr).split('');
+    }
+
+    function getPlaceNameByIndex(index){
+      const problem = getCurrentProblem();
+      if(index < problem.displayIntDigits){
+        const power = problem.displayIntDigits - 1 - index;
+        return getJapanesePlaceLabel(power);
+      }
+      return DEC_LABELS[index - problem.displayIntDigits] || '';
+    }
+
+    function buildHintSteps(){
+      const leftDigits = digitArrayForCompare(state.leftNumber);
+      const rightDigits = digitArrayForCompare(state.rightNumber);
+      const steps = [];
+      const total = leftDigits.length;
+      steps.push({ type:'intro', text:'大きい位から比べるよ。' });
+      for(let i = 0; i < total; i++){
+        const place = getPlaceNameByIndex(i);
+        steps.push({ type:'compare', index:i, place, left:leftDigits[i], right:rightDigits[i] });
+        if(leftDigits[i] !== rightDigits[i]) break;
+        steps.push({ type:'same', index:i, place });
+      }
+      return steps;
+    }
+
+    function updateSpeech(text){
+      els.speechText.textContent = text;
+    }
+
+    function stopHint(){
+      state.hintBusy = false;
+      state.currentHintStep = 0;
+      if(state.hintTimer){ clearTimeout(state.hintTimer); state.hintTimer = null; }
+      clearHighlight();
+    }
+
+    async function runHint(){
+      if(state.hintBusy) return;
+      state.hintBusy = true;
+      state.hintSteps = buildHintSteps();
+      try{
+        const intro = '大きい位から比べるよ。';
+        updateSpeech(intro);
+        await speakText(intro, { interrupt: true, rate: 0.94, pitch: 1.0 });
+        await sleep(250);
+
+        const leftDigits = digitArrayForCompare(state.leftNumber);
+        const rightDigits = digitArrayForCompare(state.rightNumber);
+        const diffIndex = leftDigits.findIndex((d, i) => d !== rightDigits[i]);
+
+        if(diffIndex === -1){
+          for(let i = 0; i < leftDigits.length; i++){
+            highlightPair(i);
+            const sameLine = `${getPlaceNameByIndex(i)}は同じだね。1つずらすよ。`;
+            updateSpeech(sameLine);
+            await speakText(sameLine, { interrupt: true, rate: 0.94, pitch: 1.0 });
+            await sleep(120);
+          }
+          showPopup({
+            title: 'おなじ数',
+            svg: popupComparisonSVG('同', '=', '同'),
+            message: `${formatReadableNumber(state.leftNumber)} ＝ ${formatReadableNumber(state.rightNumber)} です。`,
+            ok: true,
+          });
+          clearHighlight();
+          state.hintBusy = false;
+          return;
+        }
+
+        for(let i = 0; i < diffIndex; i++){
+          highlightPair(i);
+          const sameLine = `${getPlaceNameByIndex(i)}は同じだね。1つずらすよ。`;
+          updateSpeech(sameLine);
+          await speakText(sameLine, { interrupt: true, rate: 0.94, pitch: 1.0 });
+          await sleep(140);
+        }
+
+        highlightPair(diffIndex);
+        const place = getPlaceNameByIndex(diffIndex);
+        const left = leftDigits[diffIndex];
+        const right = rightDigits[diffIndex];
+        const leftBig = left > right;
+        const sign = leftBig ? '>' : '<';
+        const bigDigit = leftBig ? left : right;
+        const bigSide = leftBig ? '左' : '右';
+        const bigNum = leftBig ? formatReadableNumber(state.leftNumber) : formatReadableNumber(state.rightNumber);
+
+        const compareLine = `${place}は ${bigDigit} の方が大きいね。`;
+        updateSpeech(compareLine);
+        await speakText(compareLine, { interrupt: true, rate: 0.92, pitch: 1.0 });
+        await sleep(220);
+
+        const resultLine = buildComparisonSpeech(leftBig ? state.leftNumber : state.rightNumber, leftBig ? state.rightNumber : state.leftNumber, '>');
+        updateSpeech(resultLine);
+        await speakText(resultLine, { interrupt: true, rate: 0.94, pitch: 1.0 });
+        await sleep(260);
+
+        showPopup({
+          title: 'ヒント',
+          svg: popupComparisonSVG(leftBig ? '大' : '小', sign, leftBig ? '小' : '大'),
+          message: `${place}で大きさが決まったよ。`,
+          ok: true,
+        });
+        clearHighlight();
+      } finally {
+        state.hintBusy = false;
+      }
+    }
+
+    function toggleSettings(){
+      els.settingsBox.classList.toggle('open');
+    }
+
+    function refreshLimits(){
+      state.intDigits = clamp(state.intDigits, 1, MAX_INT_DIGITS);
+      state.decDigits = clamp(state.decDigits, 0, 3);
+      els.intDigitsValue.textContent = String(state.intDigits);
+      els.decDigitsValue.textContent = String(state.decDigits);
+    }
+
+    function updateAndGenerate(){
+      refreshLimits();
+      generateNewProblem();
+    }
+
+    function loadPreferences(){
+      state.starCount = loadStorageNumber(STORAGE_KEYS.starCount, 0);
+      state.soundEnabled = loadStorageBool(STORAGE_KEYS.soundEnabled, true);
+      updateStarDisplay();
+      updateSoundButton();
+    }
+
+    els.signBtn.addEventListener('click', cycleSign);
+    els.checkBtn.addEventListener('click', evaluateComparison);
+    els.checkBtn2.addEventListener('click', evaluateComparison);
+    els.hintBtn.addEventListener('click', runHint);
+    els.hintBtn2.addEventListener('click', runHint);
+    els.nextBtn.addEventListener('click', generateNewProblem);
+    els.nextBtn2.addEventListener('click', generateNewProblem);
+    els.toggleSettingsBtn.addEventListener('click', toggleSettings);
+    els.soundBtn.addEventListener('click', () => {
+      toggleSound();
+    });
+    els.resetStarBtn.addEventListener('click', () => {
+      resetStars();
+      playUiSound('tap');
+    });
+    els.popupCloseBtn.addEventListener('click', hidePopup);
+    els.popupBackdrop.addEventListener('click', (e) => { if(e.target === els.popupBackdrop) hidePopup(); });
+
+    els.intMinus.addEventListener('click', () => { state.intDigits = Math.max(1, state.intDigits - 1); updateAndGenerate(); });
+    els.intPlus.addEventListener('click', () => { state.intDigits = Math.min(MAX_INT_DIGITS, state.intDigits + 1); updateAndGenerate(); });
+    els.decMinus.addEventListener('click', () => { state.decDigits = Math.max(0, state.decDigits - 1); updateAndGenerate(); });
+    els.decPlus.addEventListener('click', () => { state.decDigits = Math.min(3, state.decDigits + 1); updateAndGenerate(); });
+
+    window.addEventListener('resize', () => {
+      updateCardSizing();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape') hidePopup();
+      if(e.key === 'Enter') evaluateComparison();
+      if(e.key === 'ArrowRight' || e.key === ' '){
+        e.preventDefault();
+        cycleSign();
+      }
+    });
+
+    loadPreferences();
+    warmupAudio({ markDone: false });
+    document.addEventListener('pointerdown', () => warmupAudio(), { passive: true });
+    if('speechSynthesis' in window && window.speechSynthesis.addEventListener){
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        state.speechVoice = null;
+        getJapaneseVoice();
+      });
+    }
+    generateNewProblem();
+  </script>
+
+</body>
+</html>
