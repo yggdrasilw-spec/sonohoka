@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>めもりたんてい｜数直線アプリ</title>
+  <style>
+    :root{
+      --bg:#f4f7fb;
+      --panel:#ffffff;
+      --ink:#1f2937;
+      --muted:#667085;
+      --line:#243042;
+      --accent:#5b8cff;
+      --good:#16a34a;
+      --bad:#dc2626;
+      --blank:#ff4f86;
+      --shadow:0 14px 32px rgba(31,41,55,.10);
+      --radius:24px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: radial-gradient(circle at top, #fff 0%, #eef3ff 42%, #f7faff 100%);
+      color:var(--ink);
+    }
+    .wrap{max-width:1440px;margin:0 auto;padding:16px}
+    .topbar{
+      display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px
+    }
+    .brand h1{margin:0;font-size:clamp(24px,3vw,38px)}
+    .brand p{margin:6px 0 0;color:var(--muted);line-height:1.7;font-size:14px}
+    .controls{display:flex;gap:10px;flex-wrap:wrap}
+    .memo-bar{
+      margin-top:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:14px;
+      font-weight:900;
+      color:#24407f;
+    }
+    .memo-bar label{
+      white-space:nowrap;
+    }
+    .memo-input{
+      width:min(220px, 42vw);
+      height:42px;
+      border:2px solid rgba(91,140,255,.22);
+      border-radius:14px;
+      padding:0 12px;
+      font:inherit;
+      font-weight:900;
+      color:var(--ink);
+      background:#fff;
+      outline:none;
+      box-shadow:0 4px 12px rgba(31,41,55,.06);
+    }
+    .memo-input:focus{
+      box-shadow:0 0 0 4px rgba(91,140,255,.14), 0 4px 12px rgba(31,41,55,.06);
+    }
+    .grade-bar{
+      margin-top:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:14px;
+      font-weight:900;
+      color:#24407f;
+    }
+    .grade-bar label{
+      white-space:nowrap;
+    }
+    .grade-select{
+      height:42px;
+      border:2px solid rgba(91,140,255,.22);
+      border-radius:14px;
+      padding:0 12px;
+      font:inherit;
+      font-weight:900;
+      color:var(--ink);
+      background:#fff;
+      outline:none;
+      box-shadow:0 4px 12px rgba(31,41,55,.06);
+    }
+    .grade-select:focus{
+      box-shadow:0 0 0 4px rgba(91,140,255,.14), 0 4px 12px rgba(31,41,55,.06);
+    }
+    .mode-toggle{
+      min-width:112px;
+      padding:12px 14px;
+      border-radius:16px;
+      border:1px solid rgba(91,140,255,.18);
+      background:#fff;
+      color:#24407f;
+      box-shadow:0 4px 12px rgba(31,41,55,.08);
+      font:inherit;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .mode-toggle.on{
+      color:#fff;
+      background:linear-gradient(135deg,var(--accent),#7d8cff);
+    }
+    .mode-toggle.off{
+      color:#9ca3af;
+      background:#f3f4f6;
+      filter:grayscale(1);
+      opacity:.72;
+    }
+    .arrow-controls{
+      display:flex;
+      justify-content:center;
+      gap:18px;
+      margin-top:12px;
+      margin-bottom:2px;
+    }
+    .arrow-step{
+      width:72px;
+      height:54px;
+      border-radius:18px;
+      border:1px solid rgba(91,140,255,.18);
+      background:#fff;
+      color:#24407f;
+      box-shadow:0 4px 12px rgba(31,41,55,.08);
+      font-size:26px;
+      font-weight:1000;
+      line-height:1;
+      cursor:pointer;
+    }
+    .arrow-step:active{
+      transform:translateY(1px);
+    }
+
+    button{
+      border:none;border-radius:16px;padding:12px 18px;font:inherit;font-weight:900;cursor:pointer;
+      box-shadow:0 4px 12px rgba(31,41,55,.08)
+    }
+    .primary{background:linear-gradient(135deg,var(--accent),#7d8cff);color:#fff}
+    .ghost{background:#fff;color:#24407f;border:1px solid rgba(91,140,255,.18)}
+    .emoji-toggle{
+      width:52px;
+      height:48px;
+      padding:0;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:22px;
+      line-height:1;
+      border-radius:16px;
+      border:1px solid rgba(91,140,255,.18);
+      background:#fff;
+      box-shadow:0 4px 12px rgba(31,41,55,.08);
+      cursor:pointer;
+      font-weight:900;
+    }
+    .emoji-toggle.on{
+      color:var(--accent);
+      background:#fff;
+    }
+    .emoji-toggle.off{
+      color:#9ca3af;
+      background:#f3f4f6;
+      filter:grayscale(1);
+      opacity:.72;
+    }
+    .reset-stars{
+      border:1px solid rgba(91,140,255,.18);
+      background:#fff;
+      color:#24407f;
+      width:auto;
+      height:auto;
+      padding:8px 12px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:16px;
+      font-size:14px;
+      font-weight:900;
+      box-shadow:0 4px 12px rgba(31,41,55,.08);
+      cursor:pointer;
+      line-height:1;
+      flex:none;
+      white-space:nowrap;
+    }
+    .star-meter{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius:16px;
+      border:1px solid rgba(91,140,255,.18);
+      background:#fff;
+      color:#24407f;
+      font-weight:900;
+      box-shadow:0 4px 12px rgba(31,41,55,.08);
+      white-space:nowrap;
+    }
+    .star-meter strong{
+      font-size:14px;
+      color:#1f3f8f;
+    }
+    .star-count{
+      font-size:18px;
+      font-weight:1000;
+    }
+    .card{
+      background:var(--panel);border:1px solid rgba(91,140,255,.12);border-radius:var(--radius);box-shadow:var(--shadow)
+    }
+    .main-card{padding:18px}
+    .question-row{
+      display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px
+    }
+    .prompt{margin:0;font-size:18px;line-height:1.8}
+    .mini{margin:4px 0 0;color:var(--muted);font-size:13px;line-height:1.7}
+    .line-shell{
+      position:relative;
+      background:linear-gradient(180deg,#fff,#fbfcff);
+      border:1px solid rgba(31,41,55,.08);
+      border-radius:22px;
+      padding:10px;
+      overflow:hidden;
+      min-height:560px;
+    }
+    .stage{
+      position:relative;
+      width:100%;
+      height:540px;
+    }
+    svg{width:100%;height:100%;display:block}
+
+    .baseline{stroke:var(--line);stroke-width:5;stroke-linecap:round}
+    .tick{stroke:var(--line);stroke-width:3}
+    .tick-min{stroke:#64748b;stroke-width:2}
+
+    .num{
+      font-size:22px;
+      font-weight:900;
+      fill:#1f2937;
+      text-anchor:middle;
+    }
+    .num-major{
+      font-size:25px;
+      font-weight:900;
+      fill:#172033;
+      text-anchor:middle;
+    }
+    .num-active{
+      fill:#0f172a;
+      paint-order:stroke fill;
+      stroke:#fff;
+      stroke-width:6px;
+      filter:drop-shadow(0 0 12px rgba(91,140,255,.35));
+      animation: labelPulse .95s ease-in-out infinite;
+    }
+    @keyframes labelPulse{
+      0%,100%{transform:scale(1)}
+      50%{transform:scale(1.08)}
+    }
+
+    .blank-wrap{
+      overflow:visible;
+      pointer-events:auto;
+    }
+    .blank-input{
+      width:100%;
+      height:100%;
+      border:3px solid var(--blank);
+      border-radius:18px;
+      background:#fff;
+      outline:none;
+      font-size:26px;
+      font-weight:900;
+      text-align:center;
+      color:var(--ink);
+      box-sizing:border-box;
+      box-shadow:0 4px 12px rgba(255,79,134,.12);
+      padding:0 10px;
+    }
+    .blank-input::placeholder{color:#cbd5e1}
+    .blank-input.correct{
+      border-color:var(--good);
+      box-shadow:0 0 0 4px rgba(22,163,74,.12);
+      background:#f0fff4;
+    }
+    .blank-input.wrong{
+      border-color:var(--bad);
+      box-shadow:0 0 0 4px rgba(220,38,38,.10);
+      background:#fff7f7;
+    }
+    .blank-input.focused{
+      box-shadow:0 0 0 5px rgba(91,140,255,.16), 0 4px 12px rgba(255,79,134,.12);
+    }
+
+    .arrow-line{
+      stroke:var(--blank);
+      stroke-width:4.5;
+      stroke-linecap:round;
+      opacity:.96;
+    }
+    .arrow-line.correct{stroke:var(--good)}
+    .arrow-line.wrong{stroke:var(--bad)}
+    .arrow-glow{
+      filter:drop-shadow(0 0 8px rgba(255,79,134,.25));
+    }
+    .arrow-line.correct.arrow-glow{filter:drop-shadow(0 0 8px rgba(22,163,74,.22))}
+    .arrow-line.wrong.arrow-glow{filter:drop-shadow(0 0 8px rgba(220,38,38,.22))}
+
+    .feedback{margin-top:12px;min-height:28px;font-size:16px;font-weight:900;line-height:1.7}
+    .good{color:var(--good)}
+    .bad{color:var(--bad)}
+    .neutral{color:#334155}
+    .helper{
+      margin-top:12px;background:#f8fbff;border:1px dashed rgba(91,140,255,.40);border-radius:18px;
+      padding:14px 16px;line-height:1.85;color:#263142;font-size:14px
+    }
+    .helper strong{display:block;margin-bottom:4px}
+    .footer-note{margin-top:10px;color:var(--muted);font-size:13px;line-height:1.7}
+
+    .hint-label{
+      font-weight:1000;
+      fill:#1f3f8f;
+      text-anchor:middle;
+      paint-order:stroke fill;
+      stroke:#fff;
+      stroke-width:6px;
+      filter:url(#glowBlue);
+    }
+    .hint-chip{
+      fill:#ffffff;
+      stroke:var(--accent);
+      stroke-width:4;
+      rx:18;
+      ry:18;
+      filter:url(#shadowBlue);
+    }
+    .hint-chip.good{stroke:var(--good);filter:url(#shadowGreen)}
+    .hint-chip.bad{stroke:var(--bad);filter:url(#shadowRed)}
+    .trial-dot{
+      fill:#ffb703;
+      stroke:#fff;
+      stroke-width:5;
+      filter:url(#shadowOrange);
+    }
+    .trial-card{
+      fill:#fff;
+      stroke:#24407f;
+      stroke-width:3;
+      rx:18;
+      ry:18;
+      filter:url(#shadowBlue);
+    }
+    .trial-count{
+      font-size:22px;
+      font-weight:1000;
+      fill:#24407f;
+      text-anchor:middle;
+    }
+
+    .final-banner{
+      opacity:0;
+      transform-box:fill-box;
+      transform-origin:center;
+      transition:opacity .15s ease;
+      pointer-events:none;
+    }
+    .final-banner.show{
+      opacity:1;
+      animation: finalPop .42s ease-out 1, finalGlow 1.2s ease-in-out infinite;
+    }
+    @keyframes finalPop{
+      0%{transform:translateY(-8px) scale(.86);opacity:.15}
+      100%{transform:translateY(0) scale(1);opacity:1}
+    }
+    @keyframes finalGlow{
+      0%,100%{filter:url(#shadowGreen) drop-shadow(0 0 0 rgba(22,163,74,0))}
+      50%{filter:url(#shadowGreen) drop-shadow(0 0 14px rgba(22,163,74,.25))}
+    }
+    .banner-stars{
+      font-size:30px;
+      font-weight:1000;
+      fill:#14532d;
+      text-anchor:middle;
+    }
+    .banner-main{
+      font-size:34px;
+      font-weight:1000;
+      fill:#14532d;
+      text-anchor:middle;
+    }
+    .banner-sub{
+      font-size:20px;
+      font-weight:900;
+      fill:#14532d;
+      text-anchor:middle;
+    }
+
+    .hint-floating{
+      animation: floaty 1.2s ease-in-out infinite;
+    }
+    @keyframes floaty{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-4px)}
+    }
+    .shake{animation:shake .35s linear 1}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+    @media (max-width:700px){
+      .wrap{padding:12px}
+      .main-card{padding:14px}
+      .prompt{font-size:16px}
+      .blank-input{font-size:24px}
+      .banner-main{font-size:28px}
+      .banner-stars{font-size:24px}
+      .banner-sub{font-size:18px}
+      .stage{height:580px}
+      .line-shell{min-height:600px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <h1>めもりたんてい</h1>
+        <p>学年を選んで、数直線のレベルを切り替えます。</p>
+        <div class="memo-bar">
+          <label for="memoInput">メモ：１ばん小さい１めもりは？</label>
+          <input id="memoInput" class="memo-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" aria-label="メモ：１ばん小さい１めもりは？">
+        </div>
+        <div class="grade-bar">
+          <label for="gradeSelect">学年</label>
+          <select id="gradeSelect" class="grade-select" aria-label="学年の選択">
+            <option value="2">2年生</option>
+            <option value="3">3年生</option>
+            <option value="4">4年生</option>
+          </select>
+        </div>
+        <div class="star-meter" aria-live="polite">獲得した★：★×<span class="star-count" id="starCount">0</span><button class="reset-stars" id="btnResetStars" aria-label="★をリセット">リセットする</button></div>
+      </div>
+      <div class="controls">
+        <button class="primary" id="btnNext">つぎのもんだい</button>
+        <button class="ghost" id="btnHint">ヒント</button>
+        <button class="emoji-toggle on" id="btnVoice" aria-label="音声のオンオフ" aria-pressed="true">🔊</button>
+        <button class="mode-toggle on" id="btnModeBlank" aria-pressed="true">空らんもんだい</button>
+        <button class="mode-toggle off" id="btnModeArrow" aria-pressed="false">やじるしもんだい</button>
+        <button class="ghost" id="btnCheck">こたえる</button>
+      </div>
+    </div>
+
+    <div class="card main-card">
+      <div class="question-row">
+        <div>
+          <p class="prompt" id="prompt">空欄に入る数を入れましょう。</p>
+          <p class="mini" id="miniText">数直線の数字を見て、同じだけ増えているかを考えます。</p>
+        </div>
+        <div class="mini" id="metaText">空欄は自動で1〜3こ</div>
+      </div>
+
+      <div class="line-shell">
+        <div class="stage" id="stage">
+          <svg id="svg" viewBox="0 0 1400 540" aria-label="数直線" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <filter id="shadowBlue" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#5b8cff" flood-opacity=".22"/>
+              </filter>
+              <filter id="shadowGreen" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#16a34a" flood-opacity=".20"/>
+              </filter>
+              <filter id="shadowRed" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#dc2626" flood-opacity=".20"/>
+              </filter>
+              <filter id="shadowOrange" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#f59e0b" flood-opacity=".22"/>
+              </filter>
+              <filter id="glowBlue" x="-60%" y="-60%" width="220%" height="220%">
+                <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#5b8cff" flood-opacity=".55"/>
+              </filter>
+              <marker id="arrowHeadBlank" viewBox="0 0 12 12" refX="12" refY="6" markerWidth="9" markerHeight="9" orient="auto" markerUnits="strokeWidth">
+                <path d="M 0 0 L 12 6 L 0 12 z" fill="var(--blank)"></path>
+              </marker>
+              <marker id="arrowHeadBlankGreen" viewBox="0 0 12 12" refX="12" refY="6" markerWidth="9" markerHeight="9" orient="auto" markerUnits="strokeWidth">
+                <path d="M 0 0 L 12 6 L 0 12 z" fill="var(--good)"></path>
+              </marker>
+              <marker id="arrowHeadBlankRed" viewBox="0 0 12 12" refX="12" refY="6" markerWidth="9" markerHeight="9" orient="auto" markerUnits="strokeWidth">
+                <path d="M 0 0 L 12 6 L 0 12 z" fill="var(--bad)"></path>
+              </marker>
+            </defs>
+            <g id="mainLayer"></g>
+            <g id="blankLayer"></g>
+            <g id="hintLayer"></g>
+            <g id="finalBannerLayer" class="final-banner">
+              <rect x="280" y="14" width="840" height="126" rx="28" ry="28" fill="#f0fdf4" stroke="#16a34a" stroke-width="5" filter="url(#shadowGreen)"></rect>
+              <text x="700" y="44" class="banner-stars">★★★★★★★★★★★★</text>
+              <text x="700" y="86" class="banner-main" id="bannerMain">1めもりは100だね！</text>
+              <text x="700" y="118" class="banner-sub">★★★★★★★★★★★★</text>
+            </g>
+          </svg>
+        </div>
+        <div class="arrow-controls" id="arrowControls" hidden>
+          <button class="arrow-step" id="btnArrowLeft" aria-label="左に一目盛り">◀</button>
+          <button class="arrow-step" id="btnArrowRight" aria-label="右に一目盛り">▶</button>
+        </div>
+      </div>
+
+      <div class="feedback neutral" id="feedback">空欄を、左から順に入れます。</div>
+
+      <div class="helper" id="helperBox">
+        <strong>たしかめ方</strong>
+        まず、見えている2つの数字を見ます。<br>
+        そのあいだが何目盛りか数えて、どれだけ増えているかをたしかめます。
+      </div>
+
+      <div class="footer-note">
+        ヒントでは、数字どうしのあいだを数えたあと、「1 / 10 / 100」を順にためします。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const svg = document.getElementById('svg');
+    const mainLayer = document.getElementById('mainLayer');
+    const blankLayer = document.getElementById('blankLayer');
+    const hintLayer = document.getElementById('hintLayer');
+    const finalBannerLayer = document.getElementById('finalBannerLayer');
+    const bannerMain = document.getElementById('bannerMain');
+    const btnNext = document.getElementById('btnNext');
+    const btnHint = document.getElementById('btnHint');
+    const btnCheck = document.getElementById('btnCheck');
+    const btnResetStars = document.getElementById('btnResetStars');
+    const btnVoice = document.getElementById('btnVoice');
+    const btnModeBlank = document.getElementById('btnModeBlank');
+    const btnModeArrow = document.getElementById('btnModeArrow');
+    const btnArrowLeft = document.getElementById('btnArrowLeft');
+    const btnArrowRight = document.getElementById('btnArrowRight');
+    const arrowControls = document.getElementById('arrowControls');
+    const memoInput = document.getElementById('memoInput');
+    const gradeSelect = document.getElementById('gradeSelect');
+    const starCountEl = document.getElementById('starCount');
+    const feedback = document.getElementById('feedback');
+    const helperBox = document.getElementById('helperBox');
+    const promptEl = document.getElementById('prompt');
+    const miniText = document.getElementById('miniText');
+    const metaText = document.getElementById('metaText');
+
+    const VIEW = { left: 110, right: 1290, lineY: 402, labelY: 300 };
+    const BOX = { w: 156, h: 68 };
+    const ROW_TOPS = [92, 170, 248];
+    const FINAL_BANNER_MS = 1900;
+    const STAR_STORAGE_KEY = 'memoori_tantei_stars_v1';
+
+    const state = {
+      data: null,
+      hintRunning: false,
+      token: 0,
+      hintNodes: [],
+      audioEnabled: true,
+      audioWarm: false,
+      audioCtx: null,
+      finalTimer: null,
+      solved: false,
+      stars: 0,
+      mode: 'blank',
+      grade: 2,
+      arrowIndex: 0,
+      arrowLineEl: null
+    };
+
+    const GRADE_CONFIG = {
+      2: {
+        label: '2年生',
+        stepOptions: [1, 10, 100],
+        intervalByStep: {
+          1: [12, 30],
+          10: [12, 30],
+          100: [10, 10]
+        },
+        format: value => String(value)
+      },
+      3: {
+        label: '3年生',
+        stepOptions: [1000000, 100000, 10000, 1000, 100],
+        intervalByStep: {
+          1000000: [12, 22],
+          100000: [12, 24],
+          10000: [12, 26],
+          1000: [12, 28],
+          100: [12, 30]
+        },
+        format: value => formatCompactNumber(value)
+      },
+      4: {
+        label: '4年生',
+        stepOptions: [100000000000, 10000000000, 1000000000, 100000000, 1000000],
+        intervalByStep: {
+          100000000000: [8, 10],
+          10000000000: [10, 14],
+          1000000000: [12, 18],
+          100000000: [12, 22],
+          1000000: [12, 30]
+        },
+        format: value => formatCompactNumber(value)
+      }
+    };
+
+    function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+    function choice(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+    function shuffle(arr){
+      const a = [...arr];
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random() * (i+1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+    function makeSvg(tag, attrs = {}){
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for(const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+
+    function getGradeConfig(){
+      return GRADE_CONFIG[state.grade] || GRADE_CONFIG[2];
+    }
+
+    function formatCompactNumber(value){
+      const n = Math.trunc(Number(value));
+      if(!Number.isFinite(n)) return String(value);
+      if(n === 0) return '0';
+      const units = ['', '万', '億', '兆', '京'];
+      let remaining = Math.abs(n);
+      const parts = [];
+      let unitIndex = 0;
+
+      while(remaining > 0 && unitIndex < units.length){
+        const chunk = remaining % 10000;
+        if(chunk){
+          parts.unshift(`${chunk}${units[unitIndex]}`);
+        }
+        remaining = Math.floor(remaining / 10000);
+        unitIndex++;
+      }
+
+      const out = parts.join('');
+      return n < 0 ? `-${out}` : out;
+    }
+
+    function formatDisplayValue(value){
+      const cfg = getGradeConfig();
+      try{
+        return cfg.format(value);
+      }catch(err){
+        return String(value);
+      }
+    }
+
+    function setMemoValue(v){
+      if(!memoInput) return;
+      memoInput.value = String(v);
+    }
+
+    function setModeButtons(){
+      if(btnModeBlank){
+        btnModeBlank.classList.toggle('on', state.mode === 'blank');
+        btnModeBlank.classList.toggle('off', state.mode !== 'blank');
+        btnModeBlank.setAttribute('aria-pressed', String(state.mode === 'blank'));
+      }
+      if(btnModeArrow){
+        btnModeArrow.classList.toggle('on', state.mode === 'arrow');
+        btnModeArrow.classList.toggle('off', state.mode !== 'arrow');
+        btnModeArrow.setAttribute('aria-pressed', String(state.mode === 'arrow'));
+      }
+      if(arrowControls){
+        arrowControls.hidden = state.mode !== 'arrow';
+      }
+    }
+
+    function setMode(mode){
+      if(mode === state.mode) return;
+      state.token += 1;
+      state.hintRunning = false;
+      state.solved = false;
+      state.mode = mode;
+      state.arrowLineEl = null;
+      if(memoInput) memoInput.value = '';
+      setModeButtons();
+      state.data = buildProblem();
+      clearHint();
+      drawProblem();
+    }
+
+    function setVoiceButton(){
+      if(!btnVoice) return;
+      btnVoice.textContent = state.audioEnabled ? '🔊' : '🔇';
+      btnVoice.classList.toggle('on', state.audioEnabled);
+      btnVoice.classList.toggle('off', !state.audioEnabled);
+      btnVoice.setAttribute('aria-pressed', String(state.audioEnabled));
+    }
+
+    function renderStars(){
+      if(starCountEl) starCountEl.textContent = String(state.stars);
+    }
+
+    function loadStars(){
+      try{
+        const raw = localStorage.getItem(STAR_STORAGE_KEY);
+        const n = Number(raw);
+        state.stars = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+      }catch(err){
+        state.stars = 0;
+      }
+      renderStars();
+    }
+
+    function saveStars(){
+      try{
+        localStorage.setItem(STAR_STORAGE_KEY, String(state.stars));
+      }catch(err){}
+    }
+
+    function addStar(){
+      state.stars += 1;
+      renderStars();
+      saveStars();
+    }
+
+    function resetStars(){
+      state.stars = 0;
+      renderStars();
+      saveStars();
+    }
+
+    function ensureAudioContext(){
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if(!Ctx) return null;
+      if(!state.audioCtx){
+        try{
+          state.audioCtx = new Ctx();
+        }catch(err){
+          state.audioCtx = null;
+        }
+      }
+      return state.audioCtx;
+    }
+
+    function playTone(freq, duration = 0.08, type = 'sine', gain = 0.03, delay = 0){
+      if(!state.audioEnabled) return;
+      const ctx = ensureAudioContext();
+      if(!ctx) return;
+      const start = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const amp = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      amp.gain.setValueAtTime(0.0001, start);
+      amp.gain.exponentialRampToValueAtTime(gain, start + 0.012);
+      amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(amp);
+      amp.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.02);
+    }
+
+    function playChord(freqs, duration = 0.11, type = 'sine', gain = 0.028){
+      freqs.forEach((freq, i) => playTone(freq, duration, type, gain, i * 0.01));
+    }
+
+    function playSfx(kind){
+      if(!state.audioEnabled) return;
+      if(kind === 'click'){
+        playTone(760, 0.05, 'triangle', 0.018);
+      }else if(kind === 'tick'){
+        playTone(920, 0.035, 'sine', 0.012);
+      }else if(kind === 'good'){
+        playChord([523.25, 659.25, 783.99], 0.12, 'triangle', 0.018);
+        setTimeout(() => playChord([659.25, 783.99, 987.77], 0.14, 'triangle', 0.016), 95);
+      }else if(kind === 'bad'){
+        playTone(196, 0.12, 'sawtooth', 0.018);
+        setTimeout(() => playTone(146.83, 0.16, 'sawtooth', 0.015), 70);
+      }else if(kind === 'pulse'){
+        playTone(587.33, 0.06, 'sine', 0.014);
+      }
+    }
+
+    function warmUpSpeech(){
+      if(!state.audioEnabled || state.audioWarm) return;
+      if(!('speechSynthesis' in window)) return;
+      state.audioWarm = true;
+      try{
+        const u = new SpeechSynthesisUtterance('あ');
+        u.lang = 'ja-JP';
+        u.volume = 0;
+        u.rate = 0.8;
+        u.pitch = 1;
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+      }catch(err){}
+    }
+
+    function numberToHiragana(input){
+      const raw = String(input).replace(/[,\s]/g, '');
+      if(raw === '') return '';
+      if(!/^-?\d+$/.test(raw)) return raw;
+      const negative = raw.startsWith('-');
+      let n = Math.abs(Number(raw));
+      if(!Number.isFinite(n)) return raw;
+      if(n === 0) return 'ぜろ';
+
+      const ones = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+      const smallUnit = ['', 'まん', 'おく', 'ちょう', 'けい'];
+      const thousandMap = {1:'せん',2:'にせん',3:'さんぜん',4:'よんせん',5:'ごせん',6:'ろくせん',7:'ななせん',8:'はっせん',9:'きゅうせん'};
+      const hundredMap = {1:'ひゃく',2:'にひゃく',3:'さんびゃく',4:'よんひゃく',5:'ごひゃく',6:'ろっぴゃく',7:'ななひゃく',8:'はっぴゃく',9:'きゅうひゃく'};
+      const tenMap = {1:'じゅう',2:'にじゅう',3:'さんじゅう',4:'よんじゅう',5:'ごじゅう',6:'ろくじゅう',7:'ななじゅう',8:'はちじゅう',9:'きゅうじゅう'};
+
+      function chunkToRead(num){
+        if(num === 0) return '';
+        const th = Math.floor(num / 1000);
+        const hu = Math.floor((num % 1000) / 100);
+        const te = Math.floor((num % 100) / 10);
+        const on = num % 10;
+        let out = '';
+        if(th) out += thousandMap[th] || `${ones[th]}せん`;
+        if(hu) out += hundredMap[hu] || `${ones[hu]}ひゃく`;
+        if(te) out += tenMap[te] || `${ones[te]}じゅう`;
+        if(on) out += ones[on];
+        return out;
+      }
+
+      const parts = [];
+      let unitIndex = 0;
+      while(n > 0){
+        const chunk = n % 10000;
+        if(chunk){
+          const chunkRead = chunkToRead(chunk);
+          const unit = smallUnit[unitIndex] || '';
+          parts.unshift(chunkRead + unit);
+        }
+        n = Math.floor(n / 10000);
+        unitIndex++;
+      }
+      const reading = parts.join('');
+      return negative ? `まいなす${reading}` : reading;
+    }
+
+    function normalizeSpeechText(text){
+      return String(text)
+        .replace(/[　]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/\d[\d,]*/g, m => numberToHiragana(m))
+        .replace(/\s*([、。,.!?！？：:／/・])\s*/g, '$1')
+        .trim();
+    }
+
+    function speakText(text, opts = {}){
+      if(!state.audioEnabled || !('speechSynthesis' in window)) return Promise.resolve();
+      const cleaned = normalizeSpeechText(text);
+      if(!cleaned) return Promise.resolve();
+      return new Promise(resolve => {
+        try{
+          const u = new SpeechSynthesisUtterance(cleaned);
+          u.lang = 'ja-JP';
+          u.rate = opts.rate || 0.98;
+          u.pitch = opts.pitch || 1.08;
+          u.volume = 1;
+          u.onend = () => resolve();
+          u.onerror = () => resolve();
+          if(opts.interrupt !== false) speechSynthesis.cancel();
+          speechSynthesis.speak(u);
+          const fallback = Math.max(700, cleaned.length * 120);
+          setTimeout(resolve, fallback);
+        }catch(err){
+          resolve();
+        }
+      });
+    }
+
+    function clearHint(){
+      state.hintNodes.forEach(n => n.remove());
+      state.hintNodes = [];
+      hintLayer.innerHTML = '';
+      finalBannerLayer.classList.remove('show');
+      if(state.finalTimer){
+        clearTimeout(state.finalTimer);
+        state.finalTimer = null;
+      }
+    }
+
+    function addHint(node){
+      state.hintNodes.push(node);
+      hintLayer.appendChild(node);
+      return node;
+    }
+
+    function showHintText(text, x, y, opts = {}){
+      const g = makeSvg('g', { class: opts.className || '' });
+      const bg = makeSvg('rect', {
+        x, y, width: opts.width || 260, height: opts.height || 60,
+        rx: 18, ry: 18,
+        class: `hint-chip ${opts.tone || ''}`.trim()
+      });
+      const tx = makeSvg('text', {
+        x: x + (opts.width || 260) / 2,
+        y: y + 38,
+        'text-anchor': 'middle',
+        class: 'hint-label',
+        'font-size': opts.fontSize || 22
+      });
+      tx.textContent = text;
+      g.appendChild(bg);
+      g.appendChild(tx);
+      addHint(g);
+      return g;
+    }
+
+    function removeNodes(nodes){
+      nodes.forEach(n => n && n.remove());
+      state.hintNodes = state.hintNodes.filter(n => !nodes.includes(n));
+    }
+
+    function getIntervalsForStep(step){
+      const cfg = getGradeConfig();
+      const entry = cfg.intervalByStep && cfg.intervalByStep[step];
+      if(entry) return entry;
+      return [12, 30];
+    }
+
+    function pickIntervals(step){
+      const [minI, maxI] = getIntervalsForStep(step);
+      return randInt(minI, maxI);
+    }
+
+    function pickStart(step, intervals){
+      const cfg = getGradeConfig();
+      if(state.grade === 2){
+        const maxStart = Math.max(0, Math.floor((1000 - step * intervals) / step));
+        return randInt(0, maxStart) * step;
+      }
+      return randInt(1, 9) * step;
+    }
+
+    function ensureVisibleLabelIndices(labelIndices, intervals){
+      const unique = [...new Set((labelIndices || []).filter(i => Number.isInteger(i) && i >= 0 && i <= intervals))].sort((a, b) => a - b);
+      if(unique.length >= 2) return unique;
+      if(intervals >= 1){
+        const fallback = unique.length === 0 ? intervals : (unique[0] === 0 ? intervals : 0);
+        if(!unique.includes(fallback)) unique.push(fallback);
+        unique.sort((a, b) => a - b);
+      }
+      return unique;
+    }
+
+    function buildBlankProblem(){
+      const cfg = getGradeConfig();
+      const step = choice(cfg.stepOptions);
+      const intervals = pickIntervals(step);
+      const start = pickStart(step, intervals);
+      const points = Array.from({ length: intervals + 1 }, (_, i) => start + i * step);
+      let labelIndices = [0, 10].filter(i => i <= intervals);
+      if(intervals >= 20 && Math.random() < 0.45) labelIndices.push(20);
+      labelIndices.sort((a, b) => a - b);
+      labelIndices = ensureVisibleLabelIndices(labelIndices, intervals);
+
+      const candidateBlankIndices = points.map((_, i) => i).filter(i => !labelIndices.includes(i));
+      const blankCount = randInt(1, 3);
+      const blanks = [];
+      for(const idx of shuffle(candidateBlankIndices)){
+        if(idx === 0 || idx === points.length - 1) continue;
+        if(blanks.every(b => Math.abs(b - idx) >= 2)){
+          blanks.push(idx);
+          if(blanks.length >= blankCount) break;
+        }
+      }
+      blanks.sort((a, b) => a - b);
+      const answers = blanks.map(i => points[i]);
+      return { step, intervals, start, points, labelIndices, blanks, answers };
+    }
+
+    function buildArrowProblem(){
+      const cfg = getGradeConfig();
+      const step = choice(cfg.stepOptions);
+      const intervals = pickIntervals(step);
+      const start = pickStart(step, intervals);
+      const points = Array.from({ length: intervals + 1 }, (_, i) => start + i * step);
+      let labelIndices = [0, 10].filter(i => i <= intervals);
+      if(intervals >= 20 && Math.random() < 0.45) labelIndices.push(20);
+      labelIndices.sort((a, b) => a - b);
+      labelIndices = ensureVisibleLabelIndices(labelIndices, intervals);
+      const hiddenIndices = points.map((_, i) => i).filter(i => !labelIndices.includes(i));
+      const targetIndex = choice(hiddenIndices.filter(i => i > 0 && i < intervals));
+      const currentIndex = randInt(0, intervals);
+      return {
+        step,
+        intervals,
+        start,
+        points,
+        labelIndices,
+        targetIndex,
+        currentIndex,
+        targetValue: points[targetIndex]
+      };
+    }
+
+    function buildProblem(){
+      return state.mode === 'arrow' ? buildArrowProblem() : buildBlankProblem();
+    }
+
+    function getTickValue(data, index){
+      if(!data) return NaN;
+      return data.start + index * data.step;
+    }
+
+    function normalizeTickValue(value, step){
+      const n = Number(value);
+      const s = Number(step);
+      if(!Number.isFinite(n) || !Number.isFinite(s) || s === 0) return NaN;
+      return n / s;
+    }
+
+    function isTenMultipleValue(value, step = 1){
+      const normalized = normalizeTickValue(value, step);
+      return Number.isFinite(normalized) && Math.abs(normalized) % 10 === 0;
+    }
+
+    function isFiveMultipleValue(value, step = 1){
+      const normalized = normalizeTickValue(value, step);
+      return Number.isFinite(normalized) && Math.abs(normalized) % 5 === 0;
+    }
+
+    function tickClass(value, step = 1){
+      if(isTenMultipleValue(value, step)) return 'tick';
+      if(isFiveMultipleValue(value, step)) return 'tick';
+      return 'tick-min';
+    }
+    function tickHeight(value, step = 1){
+      if(isTenMultipleValue(value, step)) return 62;
+      if(isFiveMultipleValue(value, step)) return 46;
+      return 24;
+    }
+
+    function clearMain(){
+      mainLayer.innerHTML = '';
+      blankLayer.innerHTML = '';
+      hintLayer.innerHTML = '';
+      finalBannerLayer.classList.remove('show');
+      state.hintNodes = [];
+      if(state.finalTimer){
+        clearTimeout(state.finalTimer);
+        state.finalTimer = null;
+      }
+    }
+
+    function drawBlankProblem(){
+      const d = state.data;
+      d.labelIndices = ensureVisibleLabelIndices(d.labelIndices, d.intervals);
+      const dx = (VIEW.right - VIEW.left) / d.intervals;
+
+      clearMain();
+
+      mainLayer.appendChild(makeSvg('line', {
+        x1: VIEW.left,
+        y1: VIEW.lineY,
+        x2: VIEW.right,
+        y2: VIEW.lineY,
+        class: 'baseline'
+      }));
+
+      const title = makeSvg('text', {
+        x: 700, y: 56, 'text-anchor': 'middle', 'font-size': '24', 'font-weight': '1000', fill: '#5b8cff'
+      });
+      title.textContent = 'まず、見えている2つの数字に注目しよう';
+      mainLayer.appendChild(title);
+
+      d.points.forEach((point, i) => {
+        const x = VIEW.left + i * dx;
+        mainLayer.appendChild(makeSvg('line', {
+          x1: x,
+          y1: VIEW.lineY,
+          x2: x,
+          y2: VIEW.lineY - tickHeight(point, d.step),
+          class: tickClass(point, d.step)
+        }));
+      });
+
+      d.labelIndices.forEach((i, idx) => {
+        const x = VIEW.left + i * dx;
+        const t = makeSvg('text', {
+          x, y: VIEW.labelY, 'text-anchor': 'middle', class: (isTenMultipleValue(d.points[i], d.step) ? 'num-major' : 'num')
+        });
+        t.dataset.labelIndex = String(i);
+        t.dataset.labelOrder = String(idx);
+        t.textContent = formatDisplayValue(d.points[i]);
+        mainLayer.appendChild(t);
+      });
+
+      const occupied = [[], [], []];
+      d.blanks.forEach((idx, order) => {
+        const x = VIEW.left + idx * dx;
+        let row = 0;
+        while(row < 3){
+          const conflict = occupied[row].some(prevX => Math.abs(prevX - x) < BOX.w + 26);
+          if(!conflict) break;
+          row++;
+        }
+        row = Math.min(row, 2);
+        occupied[row].push(x);
+
+        const top = ROW_TOPS[row];
+        const leftPos = x - BOX.w / 2;
+        const arrowTipY = VIEW.lineY - tickHeight(d.points[idx], d.step) - 4;
+
+        const fo = makeSvg('foreignObject', {
+          x: leftPos,
+          y: top,
+          width: BOX.w,
+          height: BOX.h,
+          class: 'blank-wrap'
+        });
+
+        const ns = 'http://www.w3.org/1999/xhtml';
+        const wrapper = document.createElementNS(ns, 'div');
+        wrapper.style.width = '100%';
+        wrapper.style.height = '100%';
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'stretch';
+        wrapper.style.justifyContent = 'stretch';
+
+        const input = document.createElementNS(ns, 'input');
+        input.type = 'text';
+        input.inputMode = 'text';
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+        input.removeAttribute('maxLength');
+        input.dataset.answer = String(d.answers[order]);
+        input.setAttribute('aria-label', `空欄${order + 1}`);
+        input.className = 'blank-input';
+        input.style.width = '100%';
+        input.style.height = '100%';
+        input.style.display = 'block';
+        input.style.minWidth = `${BOX.w}px`;
+
+        wrapper.appendChild(input);
+        fo.appendChild(wrapper);
+        fo.dataset.anchorX = String(x);
+        fo.dataset.anchorY = String(top);
+        fo.dataset.anchorWidth = String(BOX.w);
+        blankLayer.appendChild(fo);
+        resizeBlankInput(input);
+
+        const line = makeSvg('line', {
+          x1: x,
+          y1: top + BOX.h - 2,
+          x2: x,
+          y2: arrowTipY,
+          class: 'arrow-line arrow-glow'
+        });
+        line.dataset.blankIndex = String(idx);
+        line.setAttribute('marker-end', 'url(#arrowHeadBlank)');
+        blankLayer.appendChild(line);
+      });
+
+      promptEl.textContent = '空欄に入る数を入れましょう。';
+      miniText.textContent = `1めもりは ${formatDisplayValue(d.step)} ずつ。見えている数字どうしをたよりに考えます。`;
+      metaText.textContent = `数直線は ${d.intervals} 目盛り分。空欄は ${d.blanks.length} こ。`;
+      feedback.className = 'feedback neutral';
+      feedback.textContent = '空欄を、左から順に入れます。';
+      helperBox.innerHTML = `
+        <strong>たしかめ方</strong>
+        まず、見えている2つの数字を見ます。<br>
+        そのあいだが何目盛りか数えて、どれだけ増えているかをたしかめます。
+      `;
+      updateFooterNote();
+    }
+
+    function drawArrowProblem(){
+      const d = state.data;
+      d.labelIndices = ensureVisibleLabelIndices(d.labelIndices, d.intervals);
+      const dx = (VIEW.right - VIEW.left) / d.intervals;
+
+      clearMain();
+
+      mainLayer.appendChild(makeSvg('line', {
+        x1: VIEW.left,
+        y1: VIEW.lineY,
+        x2: VIEW.right,
+        y2: VIEW.lineY,
+        class: 'baseline'
+      }));
+
+      const title = makeSvg('text', {
+        x: 700, y: 56, 'text-anchor': 'middle', 'font-size': '24', 'font-weight': '1000', fill: '#5b8cff'
+      });
+      title.textContent = `${formatDisplayValue(d.targetValue)}はどこ？ 矢印を動かして、けっていしよう。`;
+      mainLayer.appendChild(title);
+
+      d.points.forEach((point, i) => {
+        const x = VIEW.left + i * dx;
+        mainLayer.appendChild(makeSvg('line', {
+          x1: x,
+          y1: VIEW.lineY,
+          x2: x,
+          y2: VIEW.lineY - tickHeight(point, d.step),
+          class: tickClass(point, d.step)
+        }));
+      });
+
+      d.labelIndices.forEach((i, idx) => {
+        const x = VIEW.left + i * dx;
+        const t = makeSvg('text', {
+          x, y: VIEW.labelY, 'text-anchor': 'middle', class: (isTenMultipleValue(d.points[i], d.step) ? 'num-major' : 'num')
+        });
+        t.dataset.labelIndex = String(i);
+        t.dataset.labelOrder = String(idx);
+        t.textContent = formatDisplayValue(d.points[i]);
+        mainLayer.appendChild(t);
+      });
+
+      const x = VIEW.left + d.currentIndex * dx;
+      const tipY = VIEW.lineY - tickHeight(d.points[d.currentIndex], d.step) - 4;
+      const arrow = makeSvg('line', {
+        x1: x,
+        y1: VIEW.lineY - 92,
+        x2: x,
+        y2: tipY,
+        class: 'arrow-line arrow-glow',
+        'marker-end': 'url(#arrowHeadBlank)'
+      });
+      arrow.setAttribute('stroke', 'var(--accent)');
+      mainLayer.appendChild(arrow);
+      state.arrowLineEl = arrow;
+
+      promptEl.textContent = `${formatDisplayValue(d.targetValue)}はどこ？ 矢印を動かして、けっていしよう。`;
+      miniText.textContent = `◀▶で1めもりずつ動かします。1めもりは ${formatDisplayValue(d.step)} ずつ。`;
+      metaText.textContent = `数直線は ${d.intervals} 目盛り分。現在の矢印は ${formatDisplayValue(d.points[d.currentIndex])}。`;
+      feedback.className = 'feedback neutral';
+      feedback.textContent = '矢印を動かして、あてはまる場所をさがします。';
+      helperBox.innerHTML = `
+        <strong>たしかめ方</strong>
+        左右のボタンで1目盛りずつ動かして、数がぴったり合う場所をさがします。<br>
+        見つかったら、こたえあわせを押します。
+      `;
+      updateFooterNote();
+      if(memoInput) memoInput.value = '';
+    }
+
+    function drawProblem(){
+      return state.mode === 'arrow' ? drawArrowProblem() : drawBlankProblem();
+    }
+
+    function getInputs(){
+      return Array.from(blankLayer.querySelectorAll('input.blank-input'));
+    }
+
+    function setInputState(input, stateName){
+      input.classList.remove('correct', 'wrong', 'focused');
+      if(stateName) input.classList.add(stateName);
+    }
+
+    function parseNum(v){
+      const s = String(v).trim();
+      if(!s) return NaN;
+      return Number(s.replace(/[\s,]/g, ''));
+    }
+
+    function normalizeDigitsOnly(textValue){
+      const normalized = String(textValue)
+        .normalize('NFKC')
+        .replace(/[\s,，]/g, '')
+        .trim();
+      return normalized;
+    }
+
+    function parseJapaneseNumber(value){
+      const s = normalizeDigitsOnly(value);
+      if(!s) return NaN;
+      if(/^[+-]?\d+$/.test(s)){
+        return Number(s);
+      }
+
+      const bigUnits = [
+        ['兆', 1000000000000],
+        ['億', 100000000],
+        ['万', 10000]
+      ];
+      const smallUnits = [
+        ['千', 1000],
+        ['百', 100],
+        ['十', 10]
+      ];
+
+      function parseSmallSection(section){
+        const sec = String(section);
+        if(!sec) return 0;
+        if(/^[+-]?\d+$/.test(sec)){
+          return Number(sec);
+        }
+        let total = 0;
+        let digits = '';
+        for(const ch of sec){
+          if(/\d/.test(ch)){
+            digits += ch;
+            continue;
+          }
+          const unit = smallUnits.find(([u]) => u === ch);
+          if(unit){
+            const n = digits === '' ? 1 : Number(digits);
+            total += n * unit[1];
+            digits = '';
+            continue;
+          }
+          return NaN;
+        }
+        if(digits){
+          total += Number(digits);
+        }
+        return total;
+      }
+
+      let remaining = s;
+      let total = 0;
+
+      for(const [unitChar, unitValue] of bigUnits){
+        const idx = remaining.indexOf(unitChar);
+        if(idx !== -1){
+          const head = remaining.slice(0, idx);
+          const headValue = parseSmallSection(head);
+          if(Number.isNaN(headValue)) return NaN;
+          total += (head === '' ? 1 : headValue) * unitValue;
+          remaining = remaining.slice(idx + unitChar.length);
+        }
+      }
+
+      const tailValue = parseSmallSection(remaining);
+      if(Number.isNaN(tailValue)) return NaN;
+      return total + tailValue;
+    }
+
+    function estimateBlankWidth(value, input){
+      const raw = normalizeDigitsOnly(value);
+      const len = Math.max(raw.length, 1);
+      const base = BOX.w;
+      const extra = 16 + len * 18;
+      const maxWidth = 420;
+      const width = Math.max(base, Math.min(maxWidth, extra));
+      const fontSize = 26;
+      const padding = 20;
+      const contentWidth = Math.max(24, width - padding * 2);
+      return { width, contentWidth, fontSize };
+    }
+
+    function resizeBlankInput(input){
+      if(!input) return;
+      const fo = input.closest('foreignObject');
+      if(!fo) return;
+      const anchorX = Number(fo.dataset.anchorX || fo.getAttribute('x') || 0);
+      const anchorY = Number(fo.dataset.anchorY || fo.getAttribute('y') || 0);
+      const anchorWidth = Number(fo.dataset.anchorWidth || BOX.w);
+      const measured = estimateBlankWidth(input.value || input.dataset.answer || '', input);
+      const nextWidth = Math.max(anchorWidth, measured.width);
+      fo.setAttribute('width', String(nextWidth));
+      fo.setAttribute('x', String(anchorX - nextWidth / 2));
+      fo.setAttribute('y', String(anchorY));
+      input.style.width = '100%';
+      input.style.height = '100%';
+      input.style.fontSize = `${measured.fontSize}px`;
+      input.style.boxSizing = 'border-box';
+    }
+
+    async function checkBlankAnswer(){
+      if(state.hintRunning) return;
+      playSfx('click');
+      const inputs = getInputs();
+      const user = inputs.map(inp => parseJapaneseNumber(inp.value));
+      const expected = state.data.answers;
+      const ok = user.length === expected.length && user.every((n, i) => Number.isFinite(n) && n === expected[i]);
+
+      if(ok){
+        playSfx('good');
+        inputs.forEach(inp => setInputState(inp, 'correct'));
+        helperBox.innerHTML = `
+          <strong>できたこと</strong>
+          見えている数字どうしの差から、1めもりの大きさを見つけられました。<br>
+          その考え方で、ほかの数直線も読めます。
+        `;
+        if(memoInput) memoInput.value = formatDisplayValue(state.data.step);
+        if(!state.solved){
+          state.solved = true;
+          addStar();
+        }
+        feedback.className = 'feedback good';
+        feedback.textContent = state.solved ? 'せいかい！ ★を１つかくとく！' : `せいかい！ 1めもりは ${formatDisplayValue(state.data.step)} だね。`;
+        await speakText(`せいかい。ほしをひとつかくとく。 1めもりは ${formatDisplayValue(state.data.step)} だね。`);
+      }else{
+        playSfx('bad');
+        feedback.className = 'feedback bad';
+        feedback.textContent = 'もういちど。間違った空欄を見直そう。';
+        inputs.forEach((inp, i) => {
+          const isCorrect = Number.isFinite(user[i]) && user[i] === expected[i];
+          setInputState(inp, isCorrect ? 'correct' : 'wrong');
+          if(!isCorrect){
+            const fo = inp.closest('foreignObject');
+            if(fo){
+              const n = fo.querySelector('.blank-input');
+              if(n){
+                n.classList.add('shake');
+                setTimeout(() => n.classList.remove('shake'), 380);
+              }
+            }
+          }
+        });
+        await speakText('もういちど。間違った空欄を見直そう。');
+      }
+    }
+
+    async function checkArrowAnswer(){
+      if(state.hintRunning) return;
+      playSfx('click');
+
+      const d = state.data;
+      const ok = d.currentIndex === d.targetIndex;
+
+      if(ok){
+        playSfx('good');
+        if(!state.solved){
+          state.solved = true;
+          addStar();
+        }
+        feedback.className = 'feedback good';
+        feedback.textContent = state.solved ? 'せいかい！ ★を１つかくとく！' : `せいかい！ ${formatDisplayValue(d.targetValue)} だね。`;
+        helperBox.innerHTML = `
+          <strong>できたこと</strong>
+          矢印を動かして、${formatDisplayValue(d.targetValue)} の位置を見つけられました。<br>
+          その考え方で、ほかの数直線も読めます。
+        `;
+        if(memoInput) memoInput.value = formatDisplayValue(d.step);
+        await speakText(`せいかい。${formatDisplayValue(d.targetValue)} だね。ほしをひとつかくとく。`);
+      }else{
+        playSfx('bad');
+        feedback.className = 'feedback bad';
+        feedback.textContent = 'もういちど。◀▶で矢印を動かそう。';
+        await speakText('もういちど。左と右のボタンで矢印を動かそう。');
+      }
+    }
+
+    function moveArrow(delta){
+      if(state.mode !== 'arrow' || state.hintRunning || state.solved) return;
+      const d = state.data;
+      const next = Math.max(0, Math.min(d.intervals, d.currentIndex + delta));
+      if(next === d.currentIndex) return;
+      d.currentIndex = next;
+      const dx = (VIEW.right - VIEW.left) / d.intervals;
+      const x = VIEW.left + d.currentIndex * dx;
+      const tipY = VIEW.lineY - tickHeight(d.points[d.currentIndex], d.step) - 4;
+      if(state.arrowLineEl){
+        state.arrowLineEl.setAttribute('x1', x);
+        state.arrowLineEl.setAttribute('x2', x);
+        state.arrowLineEl.setAttribute('y1', VIEW.lineY - 92);
+        state.arrowLineEl.setAttribute('y2', tipY);
+      }
+      playSfx('tick');
+      promptEl.textContent = `${formatDisplayValue(d.targetValue)}はどこ？ 矢印を動かして、けっていしよう。`;
+      metaText.textContent = `数直線は ${d.intervals} 目盛り分。現在の矢印は ${formatDisplayValue(d.points[d.currentIndex])}。`;
+    }
+
+    async function runArrowHint(){
+      if(state.hintRunning) return;
+      state.hintRunning = true;
+      state.token += 1;
+      const token = state.token;
+      clearHint();
+      feedback.className = 'feedback neutral';
+      feedback.textContent = 'ヒントを見ています。';
+      playSfx('click');
+
+      const d = state.data;
+      const startIndex = d.currentIndex;
+      const countText = `この数は ${formatDisplayValue(d.targetValue)} だよ。`;
+      const head = showHintText(countText, 430, 76, { width: 320, height: 60, fontSize: 21 });
+      state.hintNodes.push(head);
+      await speakText(`この数は ${formatDisplayValue(d.targetValue)} だよ。`);
+
+      const steps = Math.abs(d.targetIndex - startIndex);
+      const dir = d.targetIndex >= startIndex ? 1 : -1;
+
+      for(let i = 0; i < steps; i++){
+        if(token !== state.token) return;
+        moveArrow(dir);
+        await sleep(600);
+      }
+
+      if(token !== state.token) return;
+      if(memoInput) memoInput.value = formatDisplayValue(d.step);
+      const done = showHintText('ここだね！', 604, 146, { width: 140, height: 56, fontSize: 22, tone: '' });
+      state.hintNodes.push(done);
+      await speakText('ここだね。');
+      await sleep(700);
+    }
+
+    async function runHint(){
+      return state.mode === 'arrow' ? runArrowHint() : runBlankHint();
+    }
+
+    async function checkAnswer(){
+      return state.mode === 'arrow' ? checkArrowAnswer() : checkBlankAnswer();
+    }
+
+    function getVisibleLabels(){
+      return Array.from(mainLayer.querySelectorAll('[data-label-index]')).map(el => ({
+        el,
+        idx: Number(el.dataset.labelIndex),
+        order: Number(el.dataset.labelOrder),
+        value: state.data.points[Number(el.dataset.labelIndex)]
+      }));
+    }
+
+    function setLabelGlow(el, on){
+      el.classList.toggle('num-active', !!on);
+    }
+
+    function cleanupTrial(nodes){
+      removeNodes(nodes);
+    }
+
+    async function animateCountBetween(a, b, token){
+      const dx = (VIEW.right - VIEW.left) / state.data.intervals;
+      const startX = VIEW.left + a.idx * dx;
+      const endX = VIEW.left + b.idx * dx;
+      const stepCount = Math.abs(b.idx - a.idx);
+
+      setLabelGlow(a.el, true);
+      setLabelGlow(b.el, true);
+      playSfx('pulse');
+
+      const head = showHintText('この2つに注目！', (startX + endX) / 2 - 130, 76, { width: 260, height: 60, fontSize: 22 });
+      await speakText('見えている数字二つに注目。');
+
+      const line = makeSvg('line', {
+        x1: startX, y1: VIEW.lineY - 6,
+        x2: endX, y2: VIEW.lineY - 6,
+        class: 'arrow-line arrow-glow',
+        'marker-end': 'url(#arrowHeadBlank)'
+      });
+      line.setAttribute('stroke', 'var(--accent)');
+      hintLayer.appendChild(line);
+
+      const dot = makeSvg('circle', { cx: startX, cy: VIEW.lineY - 16, r: 15, class: 'trial-dot' });
+      const card = makeSvg('rect', { x: startX - 62, y: VIEW.lineY - 112, width: 124, height: 48, class: 'trial-card' });
+      const countText = makeSvg('text', { x: startX, y: VIEW.lineY - 80, 'text-anchor': 'middle', class: 'trial-count' });
+      countText.textContent = '0';
+      hintLayer.appendChild(card);
+      hintLayer.appendChild(countText);
+      hintLayer.appendChild(dot);
+      state.hintNodes.push(line, dot, card, countText, head);
+
+      for(let i = 0; i <= stepCount; i++){
+        if(token !== state.token) return null;
+        const x = startX + (endX - startX) * (stepCount === 0 ? 0 : i / stepCount);
+        dot.setAttribute('cx', x);
+        card.setAttribute('x', x - 62);
+        countText.setAttribute('x', x);
+        countText.textContent = String(i);
+        if(i < stepCount) playSfx('tick');
+        await sleep(600);
+      }
+
+      if(token !== state.token) return null;
+      const countNode = showHintText(`${stepCount}目盛りだね`, (startX + endX) / 2 - 100, 146, { width: 200, height: 56, fontSize: 22, tone: '' });
+      await speakText(`${stepCount}目盛りだね。`);
+      await sleep(700);
+      return { diff: b.value - a.value, stepCount, startX, endX, nodes: [head, line, dot, card, countText, countNode] };
+    }
+
+    async function animateCandidate(a, b, candidate, token){
+      const dx = (VIEW.right - VIEW.left) / state.data.intervals;
+      const startX = VIEW.left + a.idx * dx;
+      const endX = VIEW.left + b.idx * dx;
+      const stepCount = Math.abs(b.idx - a.idx);
+
+      const headText = `1めもりが ${formatDisplayValue(candidate)} だとしたら…`;
+      const header = showHintText(headText, startX - 10, 76, { width: 340, height: 60, fontSize: 21 });
+      await speakText(headText);
+
+      const line = makeSvg('line', {
+        x1: startX, y1: VIEW.lineY - 6,
+        x2: endX, y2: VIEW.lineY - 6,
+        class: 'arrow-line arrow-glow',
+        'marker-end': 'url(#arrowHeadBlank)'
+      });
+      line.setAttribute('stroke', 'var(--accent)');
+      line.style.opacity = '.55';
+      hintLayer.appendChild(line);
+
+      const dot = makeSvg('circle', { cx: startX, cy: VIEW.lineY - 16, r: 15, class: 'trial-dot' });
+      const card = makeSvg('rect', { x: startX - 70, y: VIEW.lineY - 112, width: 140, height: 48, class: 'trial-card' });
+      const valueText = makeSvg('text', { x: startX, y: VIEW.lineY - 80, 'text-anchor': 'middle', class: 'trial-count' });
+      valueText.textContent = String(a.value);
+      hintLayer.appendChild(card);
+      hintLayer.appendChild(valueText);
+      hintLayer.appendChild(dot);
+      state.hintNodes.push(header, line, dot, card, valueText);
+
+      for(let i = 0; i <= stepCount; i++){
+        if(token !== state.token) return false;
+        const x = startX + (endX - startX) * (stepCount === 0 ? 0 : i / stepCount);
+        dot.setAttribute('cx', x);
+        card.setAttribute('x', x - 70);
+        valueText.setAttribute('x', x);
+        valueText.textContent = String(a.value + candidate * i);
+        if(i < stepCount) playSfx('tick');
+        await sleep(600);
+      }
+
+      if(token !== state.token) return false;
+
+      const finalValue = a.value + candidate * stepCount;
+      const ok = finalValue === b.value;
+
+      card.setAttribute('stroke', ok ? 'var(--good)' : 'var(--bad)');
+      valueText.setAttribute('fill', ok ? '#166534' : '#991b1b');
+
+      if(ok){
+        playSfx('good');
+        line.setAttribute('stroke', 'var(--good)');
+        line.setAttribute('marker-end', 'url(#arrowHeadBlankGreen)');
+        bannerMain.textContent = `1めもりは ${formatDisplayValue(candidate)} だね！`;
+        finalBannerLayer.classList.add('show');
+        await speakText(`1めもりは ${formatDisplayValue(candidate)} だね！`);
+        helperBox.innerHTML = `
+          <strong>最重要</strong>
+          10目盛りで ${formatDisplayValue(b.value - a.value)} ふえたので、1めもりは ${formatDisplayValue(candidate)} です。<br>
+          ここが、いちばん大事な考え方です。
+        `;
+        feedback.className = 'feedback good';
+        feedback.textContent = `せいかい！ 1めもりは ${formatDisplayValue(candidate)} だね。`;
+
+        state.finalTimer = setTimeout(() => {
+          if(state.token === token){
+            clearHint();
+            setLabelGlow(a.el, false);
+            setLabelGlow(b.el, false);
+          }
+        }, FINAL_BANNER_MS);
+      }else{
+        playSfx('bad');
+        line.setAttribute('stroke', 'var(--bad)');
+        line.setAttribute('marker-end', 'url(#arrowHeadBlankRed)');
+        const bad = showHintText('合わないね！', (startX + endX) / 2 - 86, 146, { width: 172, height: 56, fontSize: 22, tone: 'bad' });
+        state.hintNodes.push(bad);
+        await speakText('合わないね。');
+        feedback.className = 'feedback bad';
+        feedback.textContent = `1めもりが ${formatDisplayValue(candidate)} だと、ぴったり合わないね。`;
+        await sleep(600);
+        cleanupTrial([header, line, dot, card, valueText, bad]);
+        setLabelGlow(a.el, false);
+        setLabelGlow(b.el, false);
+      }
+
+      await sleep(350);
+      return ok;
+    }
+
+    async function runBlankHint(){
+      if(state.hintRunning) return;
+      state.hintRunning = true;
+      state.token += 1;
+      const token = state.token;
+      clearHint();
+      feedback.className = 'feedback neutral';
+      feedback.textContent = 'ヒントを見ています。';
+      playSfx('click');
+
+      const labels = getVisibleLabels();
+      if(labels.length < 2){
+        feedback.textContent = 'ヒントに必要な数字が少ないです。';
+        await speakText('ヒントに必要な数字が少ないです。');
+        state.hintRunning = false;
+        return;
+      }
+
+      const pair = [labels[0], labels[1]];
+      const countInfo = await animateCountBetween(pair[0], pair[1], token);
+      if(token !== state.token || !countInfo){
+        state.hintRunning = false;
+        return;
+      }
+
+      const diffTextStr = `${formatDisplayValue(pair[0].value)}から${formatDisplayValue(pair[1].value)} だから、${formatDisplayValue(countInfo.diff)}ふえたね。`;
+      const diffText = showHintText(diffTextStr, 388, 212, { width: 420, height: 60, fontSize: 20 });
+      state.hintNodes.push(diffText);
+      await speakText(diffTextStr);
+      await sleep(700);
+      if(token !== state.token){ state.hintRunning = false; return; }
+
+      clearHint();
+      const candidates = getHintCandidateSteps();
+      let solved = false;
+      for(const candidate of candidates){
+        if(token !== state.token) break;
+        const ok = await animateCandidate(pair[0], pair[1], candidate, token);
+        if(token !== state.token) break;
+        if(ok){
+          solved = true;
+          break;
+        }
+        await sleep(250);
+      }
+
+      if(!solved){
+        helperBox.innerHTML = `
+          <strong>たしかめ方</strong>
+          2つの数字のあいだを見て、何目盛りあるかを数えます。<br>
+          そのうえで、「${getHintCandidateText()}」を順にためして、ぴったり合う数を見つけます。
+        `;
+      }
+      if(memoInput) memoInput.value = String(state.data.step);
+
+      state.hintRunning = false;
+    }
+
+    function nextProblem(){
+      state.token += 1;
+      state.hintRunning = false;
+      state.solved = false;
+      playSfx('click');
+      state.data = buildProblem();
+      clearHint();
+      if(memoInput) memoInput.value = '';
+      drawProblem();
+    }
+
+    function initVoiceButton(){
+      setVoiceButton();
+      if(btnVoice){
+        btnVoice.addEventListener('click', () => {
+          state.audioEnabled = !state.audioEnabled;
+          setVoiceButton();
+          playSfx('click');
+          if(!state.audioEnabled && 'speechSynthesis' in window){
+            speechSynthesis.cancel();
+          }else{
+            warmUpSpeech();
+          }
+        });
+      }
+    }
+
+    function syncGradeSelect(){
+      if(gradeSelect){
+        gradeSelect.value = String(state.grade);
+      }
+    }
+
+    function setGrade(grade){
+      const next = Number(grade);
+      if(!GRADE_CONFIG[next] || next === state.grade) return;
+      state.token += 1;
+      state.hintRunning = false;
+      state.solved = false;
+      state.grade = next;
+      if(gradeSelect) gradeSelect.value = String(next);
+      if(memoInput) memoInput.value = '';
+      clearHint();
+      state.data = buildProblem();
+      drawProblem();
+      updateFooterNote();
+    }
+
+    function handleCheckOrNext(){
+      if(state.solved){
+        nextProblem();
+        return;
+      }
+      checkAnswer();
+    }
+
+    btnNext.addEventListener('click', nextProblem);
+    btnHint.addEventListener('click', runHint);
+    btnCheck.addEventListener('click', handleCheckOrNext);
+    if(btnModeBlank){
+      btnModeBlank.addEventListener('click', () => setMode('blank'));
+    }
+    if(btnModeArrow){
+      btnModeArrow.addEventListener('click', () => setMode('arrow'));
+    }
+    if(btnArrowLeft){
+      btnArrowLeft.addEventListener('click', () => moveArrow(-1));
+    }
+    if(btnArrowRight){
+      btnArrowRight.addEventListener('click', () => moveArrow(1));
+    }
+    if(btnResetStars){
+      btnResetStars.addEventListener('click', () => {
+        playSfx('click');
+        resetStars();
+      });
+    }
+    if(gradeSelect){
+      gradeSelect.addEventListener('change', (e) => {
+        playSfx('click');
+        setGrade(e.target.value);
+      });
+    }
+
+    blankLayer.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        handleCheckOrNext();
+      }
+    });
+
+    blankLayer.addEventListener('focusin', (e) => {
+      const input = e.target.closest('.blank-input');
+      if(input){
+        input.classList.add('focused');
+        resizeBlankInput(input);
+      }
+    });
+    blankLayer.addEventListener('focusout', (e) => {
+      const input = e.target.closest('.blank-input');
+      if(input){
+        input.classList.remove('focused');
+      }
+    });
+
+    blankLayer.addEventListener('input', (e) => {
+      const input = e.target.closest('.blank-input');
+      if(input){
+        setInputState(input, '');
+        resizeBlankInput(input);
+      }
+    });
+
+    document.addEventListener('pointerdown', warmUpSpeech, { once: true });
+    document.addEventListener('keydown', warmUpSpeech, { once: true });
+
+    initVoiceButton();
+    loadStars();
+    syncGradeSelect();
+    setModeButtons();
+    state.data = buildProblem();
+    drawProblem();
+    updateFooterNote();
+    warmUpSpeech();
+  </script>
+</body>
+</html>
