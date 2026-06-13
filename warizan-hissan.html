@@ -7,6 +7,7 @@
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
             background-color: #f7f9fa;
+            transition: background-color 0.45s ease, background-image 0.45s ease;
             margin: 0;
             padding: 20px;
             display: flex;
@@ -50,6 +51,22 @@
             cursor: pointer;
             font-weight: bold;
         }
+        .btn-toggle {
+            background-color: #0f172a;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            font-size: 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-toggle.is-off {
+            background-color: #64748b;
+        }
+        body.ui-hints-off .step-panel {
+            display: none !important;
+        }
 
         /* 問いかけ・選択エリア */
         .question-zone {
@@ -82,6 +99,140 @@
             color: #c2410c;
             font-weight: bold;
             cursor: pointer;
+        }
+
+
+        /* ステップ循環カード */
+        .step-panel {
+            width: 100%;
+            max-width: 1000px;
+            margin-bottom: 18px;
+            background: rgba(255, 255, 255, 0.74);
+            border: 2px solid rgba(148, 163, 184, 0.35);
+            border-radius: 18px;
+            padding: 14px 18px 18px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            box-sizing: border-box;
+            backdrop-filter: blur(6px);
+        }
+        .step-panel-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #334155;
+            margin-bottom: 10px;
+            letter-spacing: 0.02em;
+        }
+        .step-panel-subtitle {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+        .step-cycle {
+            position: relative;
+            width: 100%;
+            max-width: 560px;
+            height: 220px;
+            margin: 0 auto;
+        }
+        .step-node {
+            position: absolute;
+            width: 120px;
+            height: 54px;
+            border-radius: 14px;
+            border: 2px solid #94a3b8;
+            background: rgba(255, 255, 255, 0.96);
+            color: #0f172a;
+            font-weight: 900;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+            transform: translate(var(--tx, 0), var(--ty, 0)) scale(1);
+            transform-origin: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+            user-select: none;
+        }
+        .step-node.active {
+            animation: step-node-pulse 1.1s ease-in-out infinite;
+            z-index: 2;
+        }
+        @keyframes step-node-pulse {
+            0% { transform: translate(var(--tx, 0), var(--ty, 0)) scale(1); }
+            50% { transform: translate(var(--tx, 0), var(--ty, 0)) scale(1.10); }
+            100% { transform: translate(var(--tx, 0), var(--ty, 0)) scale(1); }
+        }
+        .step-node.tateru {
+            top: 0;
+            left: 50%;
+            --tx: -50%;
+        }
+        .step-node.kakeru {
+            top: 83px;
+            right: 0;
+        }
+        .step-node.hiku {
+            bottom: 0;
+            left: 50%;
+            --tx: -50%;
+        }
+        .step-node.orosu {
+            top: 83px;
+            left: 0;
+        }
+        .step-arrow {
+            position: absolute;
+            font-size: 34px;
+            line-height: 1;
+            color: #64748b;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+        .step-arrow.a1 { top: 42px; right: 142px; transform: rotate(10deg); }
+        .step-arrow.a2 { top: 132px; right: 142px; transform: rotate(10deg); }
+        .step-arrow.a3 { bottom: 42px; left: 142px; transform: rotate(10deg); }
+        .step-arrow.a4 { top: 42px; left: 142px; transform: rotate(10deg); }
+
+        .step-panel.phase-tateru { background: rgba(219, 234, 254, 0.74); }
+        .step-panel.phase-kakeru { background: rgba(220, 252, 231, 0.74); }
+        .step-panel.phase-hiku { background: rgba(254, 226, 226, 0.74); }
+        .step-panel.phase-orosu { background: rgba(255, 237, 213, 0.74); }
+        .step-panel.phase-neutral { background: #ffffff; }
+
+        .step-panel.phase-tateru .step-node.tateru,
+        .step-panel.phase-kakeru .step-node.kakeru,
+        .step-panel.phase-hiku .step-node.hiku,
+        .step-panel.phase-orosu .step-node.orosu {
+            border-color: var(--phase-accent, #3b82f6);
+            background: var(--phase-soft, rgba(255,255,255,0.96));
+            color: #0f172a;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.42), 0 10px 18px rgba(15, 23, 42, 0.12);
+        }
+        .step-panel.phase-tateru .step-node.tateru.active,
+        .step-panel.phase-kakeru .step-node.kakeru.active,
+        .step-panel.phase-hiku .step-node.hiku.active,
+        .step-panel.phase-orosu .step-node.orosu.active {
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.48), 0 0 0 8px rgba(255,255,255,0.26), 0 14px 26px rgba(15,23,42,0.18);
+        }
+        .step-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .step-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.85);
+            border: 1px solid rgba(148,163,184,0.4);
+            font-size: 14px;
+            font-weight: 800;
+            color: #334155;
         }
 
         /* メインレイアウト */
@@ -286,6 +437,7 @@
             <input type="text" id="num-dividend" value="85"> ÷ <input type="text" id="num-divisor" value="7">
         </label>
         <button class="btn-blue" id="btn-init">問題作成</button>
+        <button class="btn-toggle" id="btn-toggle-hints">循環カード・背景ヒント：ON</button>
     </div>
 
     <div class="question-zone" id="question-zone">
@@ -299,10 +451,34 @@
         <div class="question-row" id="gaisu-sub-row" style="display: none; border-top: 1px dashed #f97316; padding-top: 10px;">
             <span>➔ 何の位までの概数（がいすう）にする？</span>
             <select class="select-box" id="gaisu-target">
-                <option value="0">一の位までの概数 (小数第1位を四捨五入)</option>
-                <option value="1" selected>小数第一位までの概数 (小数第2位を四捨五入)</option>
-                <option value="2">小数第二位までの概数 (小数第3位を四捨五入)</option>
+                <optgroup label="小数で丸める">
+                    <option value="decimal-0">一の位までの概数 (小数第1位を四捨五入)</option>
+                    <option value="decimal-1" selected>小数第一位までの概数 (小数第2位を四捨五入)</option>
+                    <option value="decimal-2">小数第二位までの概数 (小数第3位を四捨五入)</option>
+                </optgroup>
+                <optgroup label="上から何けたまで">
+                    <option value="sig-1">上から1けたまでの概数</option>
+                    <option value="sig-2">上から2けたまでの概数</option>
+                </optgroup>
             </select>
+        </div>
+    </div>
+
+    <div class="step-panel phase-neutral" id="step-panel">
+        <div class="step-status">
+            <div class="step-panel-title">わり算の筆算の流れ</div>
+            <div class="step-status-badge" id="step-status-badge">いまの工程：たてる</div>
+        </div>
+        <div class="step-panel-subtitle">「たてる → かける → ひく → おろす」の循環を、今いる場所だけ強めに表示します。</div>
+        <div class="step-cycle">
+            <div class="step-arrow a1">↘</div>
+            <div class="step-arrow a2">↙</div>
+            <div class="step-arrow a3">↖</div>
+            <div class="step-arrow a4">↗</div>
+            <div class="step-node tateru" data-step="tateru">たてる</div>
+            <div class="step-node kakeru" data-step="kakeru">かける</div>
+            <div class="step-node hiku" data-step="hiku">ひく</div>
+            <div class="step-node orosu" data-step="orosu">おろす</div>
         </div>
     </div>
 
@@ -340,14 +516,69 @@ function parseNumberMeta(numStr) {
     }
 }
 
-function formatRoundedQuotient(rawDigits, integerDigits, gaisuTargetValue) {
-    const digits = rawDigits.map(q => {
+function parseGaisuConfig(value) {
+    switch (value) {
+        case "decimal-0":
+            return { mode: "decimal", digits: 0, label: "一の位までの概数" };
+        case "decimal-1":
+            return { mode: "decimal", digits: 1, label: "小数第一位までの概数" };
+        case "decimal-2":
+            return { mode: "decimal", digits: 2, label: "小数第二位までの概数" };
+        case "sig-1":
+            return { mode: "significant", digits: 1, label: "上から1けたまでの概数" };
+        case "sig-2":
+            return { mode: "significant", digits: 2, label: "上から2けたまでの概数" };
+        default:
+            return { mode: "decimal", digits: 1, label: "小数第一位までの概数" };
+    }
+}
+
+function normalizeDigitArray(rawDigits) {
+    return rawDigits.map(q => {
         if (q === "" || q === "✕" || q === null || q === undefined) return 0;
         const n = parseInt(q, 10);
         return Number.isNaN(n) ? 0 : n;
     });
+}
 
-    const keepDigits = integerDigits + gaisuTargetValue;
+function formatNumberFromPowerOfTen(integerDigitsStr, shift) {
+    const normalized = (integerDigitsStr || "0").replace(/^0+/, "") || "0";
+    if (normalized === "0") return "0";
+    if (shift >= 0) {
+        return normalized + "0".repeat(shift);
+    }
+    const pointPos = normalized.length + shift;
+    if (pointPos > 0) {
+        return normalized.slice(0, pointPos) + "." + normalized.slice(pointPos);
+    }
+    return "0." + "0".repeat(Math.max(0, -pointPos)) + normalized;
+}
+
+function roundDigitsWithCarry(digits, roundingDigitIndex, carryStartIndex = 0) {
+    const out = digits.slice();
+    if ((out[roundingDigitIndex] || 0) >= 5) {
+        let idx = roundingDigitIndex - 1;
+        let carry = 1;
+        while (idx >= carryStartIndex && carry > 0) {
+            const sum = (out[idx] || 0) + carry;
+            out[idx] = sum % 10;
+            carry = Math.floor(sum / 10);
+            idx--;
+        }
+        while (idx >= 0 && carry > 0) {
+            const sum = (out[idx] || 0) + carry;
+            out[idx] = sum % 10;
+            carry = Math.floor(sum / 10);
+            idx--;
+        }
+        if (carry > 0) out.unshift(carry);
+    }
+    return out;
+}
+
+function formatRoundedDecimalQuotient(rawDigits, integerDigits, decimalPlaces) {
+    const digits = normalizeDigitArray(rawDigits);
+    const keepDigits = integerDigits + decimalPlaces;
     while (digits.length < keepDigits + 1) digits.push(0);
 
     const roundingDigit = digits[keepDigits] || 0;
@@ -367,11 +598,132 @@ function formatRoundedQuotient(rawDigits, integerDigits, gaisuTargetValue) {
 
     while (kept.length < integerDigits) kept.unshift(0);
 
-    let intPart = kept.slice(0, integerDigits).join('') || '0';
-    let decPart = kept.slice(integerDigits, integerDigits + gaisuTargetValue).join('');
+    let intPart = kept.slice(0, integerDigits).join("") || "0";
+    let decPart = kept.slice(integerDigits, integerDigits + decimalPlaces).join("");
 
-    intPart = intPart.replace(/^0+/, '') || '0';
-    return gaisuTargetValue > 0 ? `${intPart}.${decPart}` : intPart;
+    intPart = intPart.replace(/^0+/, "") || "0";
+    return decimalPlaces > 0 ? `${intPart}.${decPart}` : intPart;
+}
+
+function formatRoundedSignificantQuotient(rawDigits, integerDigits, sigDigits) {
+    const digits = normalizeDigitArray(rawDigits);
+    const firstNZ = digits.findIndex(d => d !== 0);
+    if (firstNZ === -1) return "0";
+
+    const exponent = integerDigits - firstNZ - 1;
+    while (digits.length < firstNZ + sigDigits + 1) digits.push(0);
+
+    const roundingDigitIndex = firstNZ + sigDigits;
+    const rounded = digits.slice(firstNZ, roundingDigitIndex);
+    const roundingDigit = digits[roundingDigitIndex] || 0;
+
+    let adjusted = rounded.slice();
+    if (roundingDigit >= 5) {
+        let idx = adjusted.length - 1;
+        let carry = 1;
+        while (idx >= 0 && carry > 0) {
+            const sum = adjusted[idx] + carry;
+            adjusted[idx] = sum % 10;
+            carry = Math.floor(sum / 10);
+            idx--;
+        }
+        if (carry > 0) adjusted.unshift(carry);
+    }
+
+    const adjustedStr = adjusted.join("") || "0";
+    const shift = exponent - (sigDigits - 1);
+    const formatted = formatNumberFromPowerOfTen(adjustedStr, shift);
+    return formatted.includes(".")
+        ? formatted.replace(/0+$/, "").replace(/\.$/, "")
+        : formatted;
+}
+
+function formatRoundedQuotient(rawDigits, integerDigits, gaisuConfig) {
+    if (!gaisuConfig) return formatRoundedDecimalQuotient(rawDigits, integerDigits, 1);
+    if (gaisuConfig.mode === "significant") {
+        return formatRoundedSignificantQuotient(rawDigits, integerDigits, gaisuConfig.digits);
+    }
+    return formatRoundedDecimalQuotient(rawDigits, integerDigits, gaisuConfig.digits);
+}
+
+function buildRoundOffMeta(rawDigits, integerDigits, gaisuConfig) {
+    const digits = normalizeDigitArray(rawDigits);
+    if (!gaisuConfig) return null;
+
+    if (gaisuConfig.mode === "significant") {
+        const firstNZ = digits.findIndex(d => d !== 0);
+        if (firstNZ === -1) {
+            return { checkIdx: 0, firstNZ: 0, roundingDigit: 0, carryStartIndex: 0, shiftStartIndex: 0 };
+        }
+        const checkIdx = firstNZ + gaisuConfig.digits;
+        while (digits.length <= checkIdx) digits.push(0);
+        return {
+            checkIdx,
+            firstNZ,
+            roundingDigit: digits[checkIdx] || 0,
+            carryStartIndex: 0,
+            shiftStartIndex: firstNZ
+        };
+    }
+
+    const checkIdx = integerDigits + gaisuConfig.digits;
+    while (digits.length <= checkIdx) digits.push(0);
+    return {
+        checkIdx,
+        firstNZ: 0,
+        roundingDigit: digits[checkIdx] || 0,
+        carryStartIndex: 0,
+        shiftStartIndex: 0
+    };
+}
+
+function buildRoundOffMeta(rawDigits, integerDigits, gaisuConfig) {
+    const digits = normalizeDigitArray(rawDigits);
+    if (!gaisuConfig) return null;
+
+    if (gaisuConfig.mode === "significant") {
+        const firstNZ = digits.findIndex(d => d !== 0);
+        if (firstNZ === -1) {
+            return { checkIdx: 0, firstNZ: 0, roundingDigit: 0, carryStartIndex: 0, shiftStartIndex: 0 };
+        }
+        const checkIdx = firstNZ + gaisuConfig.digits;
+        while (digits.length <= checkIdx) digits.push(0);
+        return {
+            checkIdx,
+            firstNZ,
+            roundingDigit: digits[checkIdx] || 0,
+            carryStartIndex: 0,
+            shiftStartIndex: firstNZ
+        };
+    }
+
+    const checkIdx = integerDigits + gaisuConfig.digits;
+    while (digits.length <= checkIdx) digits.push(0);
+    return {
+        checkIdx,
+        firstNZ: 0,
+        roundingDigit: digits[checkIdx] || 0,
+        carryStartIndex: 0,
+        shiftStartIndex: 0
+    };
+}
+
+function buildEarlySignificantRoundMeta(rawDigits, sigDigits, uptoIndex) {
+    const digits = normalizeDigitArray(rawDigits.slice(0, uptoIndex + 1));
+    const firstNZ = digits.findIndex(d => d !== 0);
+    if (firstNZ === -1) return null;
+
+    const checkIdx = firstNZ + sigDigits;
+    if (uptoIndex < checkIdx) return null;
+
+    while (digits.length <= checkIdx) digits.push(0);
+    return {
+        checkIdx,
+        firstNZ,
+        roundingDigit: digits[checkIdx] || 0,
+        carryStartIndex: 0,
+        shiftStartIndex: firstNZ
+    };
 }
 
 function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient) {
@@ -471,7 +823,7 @@ class AdvancedDivisionEngine {
         return (currentRem === 0);
     }
 
-    static generateSteps(dividendStr, divisorStr, route, gaisuTargetValue) {
+    static generateSteps(dividendStr, divisorStr, route, gaisuConfig) {
         const divParse = parseNumberMeta(divisorStr);
         const dvdParse = parseNumberMeta(dividendStr);
         const D = divParse.decimalPlaces; 
@@ -489,8 +841,8 @@ class AdvancedDivisionEngine {
 
         if (isRemainderRoute) {
             extraZeros = 0;
-        } else if (route === "advance" && gaisuTargetValue !== null) {
-            let requiredDigitsLength = finalDvdDotAfter + gaisuTargetValue + 1;
+        } else if (route === "advance" && gaisuConfig !== null) {
+            let requiredDigitsLength = finalDvdDotAfter + (gaisuConfig.mode === "significant" ? gaisuConfig.digits + 3 : gaisuConfig.digits + 1);
             if (baseDvdDigits.length < requiredDigitsLength) {
                 extraZeros = requiredDigitsLength - baseDvdDigits.length;
             }
@@ -780,6 +1132,13 @@ class AdvancedDivisionEngine {
                 pulseBoxes: subtractCells.map(sc => ({ r: sc.r, c: sc.c })), maskFromCol: currentMaskFromCol
             });
 
+            if (route === "advance" && gaisuConfig !== null && gaisuConfig.mode === "significant") {
+                const earlyRoundMeta = buildEarlySignificantRoundMeta(quotientPositions, gaisuConfig.digits, i);
+                if (earlyRoundMeta) {
+                    break;
+                }
+            }
+
             if (!isLastDigit) {
                 const nextDigit = dvdDigits[i + 1];
                 const isExtraZero = (i + 1 >= baseDvdDigits.length);
@@ -892,10 +1251,16 @@ class AdvancedDivisionEngine {
         }
 
         let finalGaisuCells = [];
-        if (route === "advance" && gaisuTargetValue !== null) {
-            let checkIdx = finalDvdDotAfter + gaisuTargetValue; 
-            let checkDigit = parseInt(quotientPositions[checkIdx], 10);
-            let targetName = gaisuTargetValue === 0 ? "一の位" : gaisuTargetValue === 1 ? "小数第一位" : "小数第二位";
+        if (route === "advance" && gaisuConfig !== null) {
+            let roundMeta = buildRoundOffMeta(quotientPositions, finalDvdDotAfter, gaisuConfig);
+            let roundedDigits = normalizeDigitArray(quotientPositions);
+            let checkIdx = roundMeta ? roundMeta.checkIdx : (finalDvdDotAfter + 1);
+            while (roundedDigits.length <= checkIdx) roundedDigits.push(0);
+
+            let checkDigit = roundedDigits[checkIdx] || 0;
+            let targetName = (gaisuConfig.mode === "significant")
+                ? `上から${gaisuConfig.digits}けた`
+                : (gaisuConfig.digits === 0 ? "一の位" : gaisuConfig.digits === 1 ? "小数第一位" : "小数第二位");
 
             let isRoundUp = (checkDigit >= 5);
             let description = `【概数にする】${targetName}までの概数にするために、一つ下のマスの「${checkDigit}」を四捨五入します。`;
@@ -910,7 +1275,7 @@ class AdvancedDivisionEngine {
                 let idx = checkIdx - 1;
                 let carry = 1;
                 while (idx >= 0 && carry > 0) {
-                    let d = parseInt(quotientPositions[idx], 10);
+                    let d = parseInt(roundedDigits[idx], 10);
                     if (isNaN(d)) d = 0;
                     let newD = d + carry;
                     if (newD >= 10) {
@@ -918,12 +1283,14 @@ class AdvancedDivisionEngine {
                             r: 0, c: M + idx, char: d.toString(),
                             hasSlash: true, topChar: "0"
                         });
+                        roundedDigits[idx] = 0;
                         carry = 1;
                     } else {
                         finalGaisuCells.push({
                             r: 0, c: M + idx, char: d.toString(),
                             hasSlash: true, topChar: newD.toString()
                         });
+                        roundedDigits[idx] = newD;
                         carry = 0;
                     }
                     idx--;
@@ -949,8 +1316,8 @@ class AdvancedDivisionEngine {
         // 人間が読める商の文字列を組み立てる。
         // 4年生ルートはそのままの商、概数ルートは四捨五入した表示にする。
         let finalQuotientStr = (() => {
-            if (route === "advance" && gaisuTargetValue !== null) {
-                return formatRoundedQuotient(quotientPositions, finalDvdDotAfter, gaisuTargetValue);
+            if (route === "advance" && gaisuConfig !== null) {
+                return formatRoundedQuotient(quotientPositions, finalDvdDotAfter, gaisuConfig);
             }
 
             const rawDigits = quotientPositions.map(q => (q === "" || q === "✕") ? "0" : q);
@@ -965,8 +1332,8 @@ class AdvancedDivisionEngine {
             phase: "complete",
             description: route === "remainder"
                 ? `【完成！】これ以上おろす数がないので、ここで終わりです！ 商は ${finalQuotientStr}、あまりは ${finalRemainderStr} になります。`
-                : (gaisuTargetValue !== null
-                    ? `【完成！】指定した位まで四捨五入した商が求められました！商は約${finalQuotientStr}です。`
+                : (gaisuConfig !== null
+                    ? `【完成！】指定した方法で四捨五入した商が求められました！商は約${finalQuotientStr}です。`
                     : `【完成！】わり進めた商が求められました！商は ${finalQuotientStr} です。`),
             dots: { ...currentDots },
             writeCells: completeWriteCells,
@@ -981,6 +1348,32 @@ let appState = null;
 let currentStepIdx = 0;
 let gridData = [];
 let quotientDotAnimFrame = null;
+let uiHintsEnabled = true;
+
+function applyUiHintsState() {
+    const panel = document.getElementById('step-panel');
+    const button = document.getElementById('btn-toggle-hints');
+    document.body.classList.toggle('ui-hints-off', !uiHintsEnabled);
+
+    if (panel) {
+        panel.style.display = uiHintsEnabled ? 'block' : 'none';
+    }
+    if (button) {
+        button.textContent = uiHintsEnabled ? '循環カード・背景ヒント：ON' : '循環カード・背景ヒント：OFF';
+        button.classList.toggle('is-off', !uiHintsEnabled);
+    }
+    if (!uiHintsEnabled) {
+        document.body.style.backgroundColor = '#f7f9fa';
+    }
+}
+
+function toggleUiHints() {
+    uiHintsEnabled = !uiHintsEnabled;
+    applyUiHintsState();
+    if (appState && appState.steps && appState.steps[currentStepIdx]) {
+        updateStepFlow(appState.steps[currentStepIdx]);
+    }
+}
 
 function cancelQuotientDotAnimation() {
     if (quotientDotAnimFrame !== null) {
@@ -1043,8 +1436,8 @@ function initSimulation() {
     }
 
     const route = calcRoute.value;
-    const gaisuTargetValue = (route === 'advance' && !dividesOut) ? parseInt(document.getElementById('gaisu-target').value, 10) : null;
-    appState = AdvancedDivisionEngine.generateSteps(dividendStr, divisorStr, route, gaisuTargetValue);
+    const gaisuConfig = (route === 'advance' && !dividesOut) ? parseGaisuConfig(document.getElementById('gaisu-target').value) : null;
+    appState = AdvancedDivisionEngine.generateSteps(dividendStr, divisorStr, route, gaisuConfig);
     currentStepIdx = 0;
 
     gridData = Array(appState.totalRows).fill(null).map(() => 
@@ -1189,6 +1582,7 @@ function applyStepUI() {
 
     const step = appState.steps[currentStepIdx];
     document.getElementById('narration').innerText = step.description;
+    updateStepFlow(step);
 
     const brainCard = document.getElementById('brain-work');
     if (step.brainHtml) {
@@ -1441,6 +1835,81 @@ function drawDecimalDots(step) {
     }
 }
 
+function updateStepFlow(step) {
+    const panel = document.getElementById('step-panel');
+    const badge = document.getElementById('step-status-badge');
+    if (!panel || !badge) return;
+
+    const phase = step && step.phase ? step.phase : "init";
+    let activeKey = "tateru";
+    let bg = "#f7f9fa";
+    let accent = "#3b82f6";
+    let soft = "rgba(255,255,255,0.96)";
+    let label = "たてる";
+
+    if (phase === "move-dots") {
+        activeKey = "none";
+        bg = "#ffffff";
+        accent = "#64748b";
+        soft = "#ffffff";
+        label = "小数点のいどう";
+    } else if (["multiply", "trial-multiply"].includes(phase)) {
+        activeKey = "kakeru";
+        bg = "#dcfce7";
+        accent = "#16a34a";
+        soft = "#f0fdf4";
+        label = "かける";
+    } else if (["subtract", "trial-fix"].includes(phase)) {
+        activeKey = "hiku";
+        bg = "#fee2e2";
+        accent = "#dc2626";
+        soft = "#fff1f2";
+        label = "ひく";
+    } else if (["drop", "remainder-drop", "decimal-zero", "remainder-dot"].includes(phase)) {
+        activeKey = "orosu";
+        bg = "#ffedd5";
+        accent = "#ea580c";
+        soft = "#fff7ed";
+        label = "おろす";
+    } else if (phase === "complete") {
+        activeKey = "tateru";
+        bg = "#f7f9fa";
+        accent = "#64748b";
+        soft = "#ffffff";
+        label = "完成";
+    } else {
+        activeKey = "tateru";
+        bg = "#dbeafe";
+        accent = "#2563eb";
+        soft = "#eff6ff";
+        label = "たてる";
+    }
+
+    if (!uiHintsEnabled) {
+        document.body.style.backgroundColor = "#f7f9fa";
+        panel.classList.remove("phase-tateru", "phase-kakeru", "phase-hiku", "phase-orosu", "phase-neutral");
+        panel.classList.add("phase-neutral");
+        panel.style.setProperty("--phase-accent", "#64748b");
+        panel.style.setProperty("--phase-soft", "rgba(255,255,255,0.96)");
+        badge.textContent = "いまの工程：表示OFF";
+        panel.querySelectorAll(".step-node").forEach(node => {
+            node.classList.remove("active");
+        });
+        return;
+    }
+
+    document.body.style.backgroundColor = bg;
+    panel.classList.remove("phase-tateru", "phase-kakeru", "phase-hiku", "phase-orosu", "phase-neutral");
+    panel.classList.add(activeKey === "none" ? "phase-neutral" : (phase === "complete" ? "phase-neutral" : `phase-${activeKey}`));
+    panel.style.setProperty("--phase-accent", accent);
+    panel.style.setProperty("--phase-soft", soft);
+    badge.textContent = `いまの工程：${label}`;
+
+    panel.querySelectorAll(".step-node").forEach(node => {
+        node.classList.toggle("active", activeKey !== "none" && node.dataset.step === activeKey);
+    });
+}
+
 function updateButtons() {
     document.getElementById('btn-prev').disabled = (currentStepIdx === 0);
     document.getElementById('btn-next').disabled = (currentStepIdx >= appState.steps.length - 1);
@@ -1454,6 +1923,7 @@ document.getElementById('num-divisor').addEventListener('input', function(e) {
 });
 
 document.getElementById('btn-init').addEventListener('click', initSimulation);
+document.getElementById('btn-toggle-hints').addEventListener('click', toggleUiHints);
 document.getElementById('calc-route').addEventListener('change', initSimulation);
 document.getElementById('gaisu-target').addEventListener('change', initSimulation);
 document.getElementById('btn-next').addEventListener('click', () => {
@@ -1461,7 +1931,8 @@ document.getElementById('btn-next').addEventListener('click', () => {
 });
 document.getElementById('btn-prev').addEventListener('click', () => {
     if (currentStepIdx > 0) {
-        currentStepIdx--; const targetIdx = currentStepIdx; initSimulation();
+        currentStepIdx--; const targetIdx = currentStepIdx; applyUiHintsState();
+initSimulation();
         while(currentStepIdx < targetIdx) { currentStepIdx++; applyStepUI(); }
         updateButtons();
     }
