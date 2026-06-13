@@ -183,6 +183,16 @@
         .hint-title { font-weight: bold; color: var(--primary-color); margin-top: 0; margin-bottom: 8px; font-size: 16px; }
         .formula-text { font-size: 16px; font-weight: bold; color: #444; margin-bottom: 15px; line-height: 1.5; }
 
+        /* テープ図（時間の解説用） */
+        .tape-container { margin-top: 10px; padding: 12px; background: #fdfdfd; border: 2px dashed #cbd5e1; border-radius: 8px; }
+        .tape-total-label { font-weight: bold; font-size: 15px; color: #2c3e50; margin-bottom: 6px; text-align: center; }
+        .tape-svg { width: 100%; height: 50px; display: block; margin-bottom: 10px; }
+        .tape-seg { opacity: 0; animation: tapeFadeIn 0.5s ease forwards; }
+        .tape-steps { font-size: 15px; line-height: 1.8; }
+        .tape-step { opacity: 0; animation: tapeFadeIn 0.5s ease forwards; padding: 2px 0; }
+        .tape-conclusion { color: #c0392b; font-size: 17px; font-weight: bold; margin-top: 6px; }
+        @keyframes tapeFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
         /* 位取り表 */
         .place-value-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #ffffff; }
         .place-value-table th, .place-value-table td { border: 2px solid #b0c4de; text-align: center; padding: 6px 4px; font-size: 16px; font-weight: bold; }
@@ -290,6 +300,7 @@
             
             <div id="table-title" class="hint-title">🗺️ たんいの位取り表（▲▼ボタンを押して数字をうごかしてみよう！）</div>
             <table class="place-value-table" id="table-display"></table>
+            <div id="tape-display" class="tape-container" style="display:none;"></div>
         </div>
 
         <div class="answer-container-wrapper" id="dynamic-answer-area"></div>
@@ -448,6 +459,106 @@
         }
     }
 
+    // 「○日」の正しい読み（いちにち・ふつか・みっか…）
+    function numberToDayReading(n) {
+        const map = { 1: 'いちにち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか', 6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか' };
+        if (map[n]) return map[n];
+        return convertNumberToKana(String(n)) + 'にち';
+    }
+
+    // 「○分」の正しい読み（いっぷん・にふん・さんぷん…ふん/ぷんの音の変化に対応）
+    function numberToMinuteReading(n) {
+        const singleMap = { 0: 'ぜろふん', 1: 'いっぷん', 2: 'にふん', 3: 'さんぷん', 4: 'よんふん', 5: 'ごふん', 6: 'ろっぷん', 7: 'ななふん', 8: 'はっぷん', 9: 'きゅうふん' };
+        if (n < 10) return singleMap[n];
+        if (n % 10 === 0) {
+            const tens = n / 10;
+            const tensMap = { 1: 'じゅっぷん', 2: 'にじゅっぷん', 3: 'さんじゅっぷん', 4: 'よんじゅっぷん', 5: 'ごじゅっぷん', 6: 'ろくじゅっぷん', 7: 'ななじゅっぷん', 8: 'はちじゅっぷん', 9: 'きゅうじゅっぷん' };
+            if (tensMap[tens]) return tensMap[tens];
+            if (tens === 10) return 'ひゃっぷん';
+            if (tens > 10 && tens < 20) {
+                const rem = tens - 10;
+                return 'ひゃく' + (tensMap[rem] || `${rem}じゅっぷん`);
+            }
+        }
+        // 上記以外（このアプリでは基本使われない）はそのまま数字読み＋ふん
+        const tensPart = Math.floor(n / 10) * 10;
+        const ones = n % 10;
+        const tensReading = numberToMinuteReading(tensPart).replace(/(じゅっぷん|ひゃっぷん|ぷん|ふん)$/, m => m.startsWith('じ') || m.startsWith('ひ') ? m.slice(0, -2) : '');
+        return tensReading + singleMap[ones];
+    }
+
+    // たし算で考える時のステップ文章を作る（例: 60＋60＝120 → のこり40をたして120＋40＝160）
+    function buildAddSteps(chunkSize, numChunks, remainder, chunkUnitName, unitSuffix) {
+        let steps = [];
+        if (numChunks === 1) {
+            steps.push(`${chunkUnitName}は${chunkSize}${unitSuffix}`);
+        } else {
+            let running = chunkSize;
+            for (let i = 2; i <= numChunks; i++) {
+                running += chunkSize;
+                steps.push(`${running - chunkSize}＋${chunkSize}＝${running}`);
+            }
+        }
+        if (remainder > 0) {
+            const base = numChunks * chunkSize;
+            steps.push(`のこりの${remainder}${unitSuffix}もたして、${base}＋${remainder}＝${base + remainder}`);
+        }
+        return steps;
+    }
+
+    // ひき算で考える時のステップ文章を作る（例: 160－60＝100 まだ引けるね → 100－60＝40 もう引けないね）
+    function buildSubtractSteps(total, chunkSize, numChunks, unitName) {
+        let steps = [];
+        let remaining = total;
+        for (let i = 1; i <= numChunks; i++) {
+            const next = remaining - chunkSize;
+            let note;
+            if (next === 0) note = `　${unitName}ぶんとれた！ちょうど0になったね。`;
+            else if (i < numChunks) note = `　${unitName}ぶんとれた！まだ引けるね。`;
+            else note = `　${unitName}ぶんとれた！もう引けないね。`;
+            steps.push(`${remaining}－${chunkSize}＝${next}${note}`);
+            remaining = next;
+        }
+        return steps;
+    }
+
+
+    function buildTapeDiagramHTML(tape) {
+        const W = 580, H = 50;
+        let x = 0;
+        let rects = '';
+        tape.segments.forEach((seg, i) => {
+            const w = (seg.value / tape.total) * W;
+            const delay = (i + 1) * 0.6;
+            const lines = String(seg.label).split('\n');
+            const lineCount = lines.length;
+            const startDy = -((lineCount - 1) * 14) / 2;
+            const tspans = lines.map((line, li) => `<tspan x="${(x + w / 2).toFixed(1)}" dy="${li === 0 ? startDy : 14}">${line}</tspan>`).join('');
+            rects += `<g class="tape-seg" style="animation-delay:${delay}s">
+                <rect x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${H}" rx="6" fill="${seg.color || '#aee1f9'}" stroke="#4a90c2" stroke-width="2"/>
+                <text x="${(x + w / 2).toFixed(1)}" y="${H / 2}" dy="0.35em" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">${tspans}</text>
+            </g>`;
+            x += w;
+        });
+
+        let stepsHtml = '';
+        tape.steps.forEach((s, i) => {
+            const delay = (i + 1) * 0.6 + 0.3;
+            stepsHtml += `<div class="tape-step" style="animation-delay:${delay}s">${s}</div>`;
+        });
+        const concDelay = (tape.steps.length + 1) * 0.6 + 0.5;
+
+        return `
+            <div class="tape-total-label">${tape.totalLabel}</div>
+            <svg viewBox="0 0 ${W} ${H}" class="tape-svg" preserveAspectRatio="none">${rects}</svg>
+            <div class="tape-steps">
+                ${stepsHtml}
+                <div class="tape-step tape-conclusion" style="animation-delay:${concDelay}s">${tape.conclusion}</div>
+            </div>
+        `;
+    }
+
+
     // 数字を日本の正しいひらがな読みに完全変換するロジック (最大7桁まで対応)
     function convertNumberToKana(numStr) {
         const num = parseInt(numStr, 10);
@@ -493,7 +604,12 @@
         if (!isSoundOn || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
         
-        let textWithKanaNumbers = text.replace(/\d+/g, (match) => {
+        // 「○日」「○分」は読みの音が不規則なので、先に専用の読みに変換しておく
+        let preProcessed = text
+            .replace(/(\d+)\s*日/g, (m, num) => numberToDayReading(parseInt(num, 10)))
+            .replace(/(\d+)\s*分/g, (m, num) => numberToMinuteReading(parseInt(num, 10)));
+
+        let textWithKanaNumbers = preProcessed.replace(/\d+/g, (match) => {
             return convertNumberToKana(match);
         });
 
@@ -691,6 +807,11 @@
                     let km = Math.floor(Math.random() * 8) + 1;
                     const digits = generateThreeDigitsWithZeroPatterns();
                     let m = digits.total;
+
+                    if (m === 0) {
+                        return { q: `${km}km は 何mですか？`, targets: ['m'], check: (ans) => ans['m'] === (km * 1000), correctStr: `${km * 1000} m`, tableVals: [km, 0, 0, 0], hint: `1kmは1000mです。kmの部屋の数字のあとに「0」を3つ書こう。` };
+                    }
+
                     return { q: `${km}km ${m}m は 何mですか？`, targets: ['m'], check: (ans) => ans['m'] === (km * 1000 + m), correctStr: `${km * 1000 + m} m`, tableVals: [km, digits.d100, digits.d10, digits.d1], hint: `kmに「${km}」を書き、mの部屋の各桁（${digits.d100}、${digits.d10}、${digits.d1}）をあてはめます。0の部屋もそのまま数字の0を書こう。` };
                 }},
                 { submode: "all", gen: () => {
@@ -791,6 +912,11 @@
                     let kg = Math.floor(Math.random() * 8) + 1;
                     const digits = generateThreeDigitsWithZeroPatterns();
                     let g = digits.total;
+
+                    if (g === 0) {
+                        return { q: `${kg}kg は 何gですか？`, targets: ['g'], check: (ans) => ans['g'] === (kg * 1000), correctStr: `${kg * 1000} g`, tableVals: [kg, 0, 0, 0], hint: `1kgは1000gです。kgの部屋の数字のあとに「0」を3つ書こう。` };
+                    }
+
                     return { q: `${kg}kg ${g}g は 何gですか？`, targets: ['g'], check: (ans) => ans['g'] === (kg * 1000 + g), correctStr: `${kg * 1000 + g} g`, tableVals: [kg, digits.d100, digits.d10, digits.d1], hint: `kgに「${kg}」を書き、gの部屋の各桁（${digits.d100}、${digits.d10}、${digits.d1}）をあてはめます。0の部屋もそのまま数字の0を書こう。` };
                 }},
                 { submode: "all", gen: () => {
@@ -815,6 +941,11 @@
                     let t = Math.floor(Math.random() * 8) + 1;
                     const digits = generateThreeDigitsWithZeroPatterns();
                     let kg = digits.total;
+
+                    if (kg === 0) {
+                        return { q: `${t}t は 何kgですか？`, targets: ['kg'], check: (ans) => ans['kg'] === (t * 1000), correctStr: `${t * 1000} kg`, tableVals: [t, 0, 0, 0], hint: `1tは1000kgです。tの部屋の数字のあとに「0」を3つ書こう。` };
+                    }
+
                     return { q: `${t}t ${kg}kg は 何kgですか？`, targets: ['kg'], check: (ans) => ans['kg'] === (t * 1000 + kg), correctStr: `${t * 1000 + kg} kg`, tableVals: [t, digits.d100, digits.d10, digits.d1], hint: `tに「${t}」を書き、kgの部屋の各桁（${digits.d100}、${digits.d10}、${digits.d1}）をあてはめます。0の部屋もそのまま数字の0を書こう。` };
                 }},
                 { submode: "all", gen: () => {
@@ -940,45 +1071,57 @@
                 "1時間 = 60分"
             ],
             problems: [
-                // 時間 ⇔ 分 (60進法)
-                { submode: "h_min", gen: () => {
-                    let h = Math.floor(Math.random() * 3) + 1;
-                    let m = Math.floor(Math.random() * 59) + 1;
-                    return { q: `${h}時間${m}分は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === (h * 60 + m), correctStr: `${h * 60 + m} 分`, hint: `1時間は60分なので、${h}時間は${h * 60}分です。そこに${m}分をたすと、${h * 60 + m}分になります。` };
-                }},
-                { submode: "h_min", gen: () => {
-                    let h = Math.floor(Math.random() * 3) + 1;
-                    let m = Math.floor(Math.random() * 59) + 1;
-                    let total = h * 60 + m;
-                    return { q: `${total}分は 何時間何分ですか？`, targets: ['時間', '分'], check: (ans) => ans['時間'] === h && ans['分'] === m, correctStr: `${h} 時間 ${m} 分`, hint: `${total}分を60分のまとまりで考えます。${total}÷60＝${h}あまり${m}なので、${h}時間${m}分になります。` };
-                }},
-                { submode: "h_min", gen: () => {
-                    let h = Math.floor(Math.random() * 5) + 1;
-                    return { q: `${h}時間は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === (h * 60), correctStr: `${h * 60} 分`, hint: `1時間は60分です。${h}時間は60分が${h}つ分なので、60×${h}＝${h * 60}分になります。` };
-                }},
-                { submode: "h_min", gen: () => {
-                    let h = Math.floor(Math.random() * 5) + 1;
-                    return { q: `${h * 60}分は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === h, correctStr: `${h} 時間`, hint: `60分で1時間になります。${h * 60}分は60分が${h}つ分なので、${h}時間になります。` };
-                }},
-                // 日 ⇔ 時間 (24進法)
+                // 日 ⇔ 時間 (1日=24時間。日と時間の複合はなし)
                 { submode: "d_h", gen: () => {
-                    let d = Math.floor(Math.random() * 3) + 1;
-                    return { q: `${d}日は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === (d * 24), correctStr: `${d * 24} 時間`, hint: `1日は24時間です。${d}日は24時間が${d}つ分なので、24×${d}＝${d * 24}時間になります。` };
+                    let d = Math.floor(Math.random() * 3) + 1; // 1〜3日
+                    const total = d * 24;
+                    const steps = buildAddSteps(24, d, 0, '1日', '時間');
+                    const segments = Array.from({ length: d }, () => ({ value: 24, label: '24時間\n(1日)' }));
+                    return {
+                        q: `${d}日は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === total, correctStr: `${total} 時間`,
+                        hint: `1日は24時間です。${d}日は24時間が${d}つ分なので、24×${d}＝${total}時間になります。`,
+                        tape: { total, totalLabel: `ぜんぶで${d}日`, segments, steps, conclusion: `だから、${d}日は${total}時間！` }
+                    };
                 }},
                 { submode: "d_h", gen: () => {
                     let d = Math.floor(Math.random() * 3) + 1;
-                    return { q: `${d * 24}時間は 何日ですか？`, targets: ['日'], check: (ans) => ans['日'] === d, correctStr: `${d} 日`, hint: `24時間で1日になります。${d * 24}時間は24時間が${d}つ分なので、${d}日になります。` };
+                    const total = d * 24;
+                    const steps = buildSubtractSteps(total, 24, d, '1日');
+                    const segments = Array.from({ length: d }, () => ({ value: 24, label: '24時間\n(1日)' }));
+                    return {
+                        q: `${total}時間は 何日ですか？`, targets: ['日'], check: (ans) => ans['日'] === d, correctStr: `${d} 日`,
+                        hint: `24時間で1日になります。${total}時間は24時間が${d}つ分なので、${d}日になります。`,
+                        tape: { total, totalLabel: `ぜんぶで${total}時間`, segments, steps, conclusion: `だから、${total}時間は${d}日！` }
+                    };
                 }},
-                { submode: "d_h", gen: () => {
-                    let d = Math.floor(Math.random() * 2) + 1;
-                    let h = Math.floor(Math.random() * 23) + 1;
-                    return { q: `${d}日${h}時間は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === (d * 24 + h), correctStr: `${d * 24 + h} 時間`, hint: `1日は24時間なので、${d}日は${d * 24}時間です。そこに${h}時間をたすと、${d * 24 + h}時間になります。` };
+                // 時間 ⇔ 分 (10分刻み、1時間〜3時間=60分〜180分の範囲)
+                { submode: "h_min", gen: () => {
+                    const totalMinutes = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const h = Math.floor(totalMinutes / 60);
+                    const m = totalMinutes % 60;
+                    const steps = buildAddSteps(60, h, m, '1時間', '分');
+                    const segments = Array.from({ length: h }, () => ({ value: 60, label: '60分\n(1時間)' }));
+                    if (m > 0) segments.push({ value: m, label: `${m}分`, color: '#ffe0a3' });
+                    const tape = { total: totalMinutes, totalLabel: `ぜんぶで${totalMinutes}分`, segments, steps, conclusion: m > 0 ? `だから、${h}時間${m}分は${totalMinutes}分！` : `だから、${h}時間は${totalMinutes}分！` };
+
+                    if (m === 0) {
+                        return { q: `${h}時間は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === totalMinutes, correctStr: `${totalMinutes} 分`, hint: `1時間は60分です。${h}時間は60分が${h}つ分なので、60×${h}＝${totalMinutes}分になります。`, tape };
+                    }
+                    return { q: `${h}時間${m}分は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === totalMinutes, correctStr: `${totalMinutes} 分`, hint: `1時間は60分なので、${h}時間は${h * 60}分です。そこに${m}分をたすと、${totalMinutes}分になります。`, tape };
                 }},
-                { submode: "d_h", gen: () => {
-                    let d = Math.floor(Math.random() * 2) + 1;
-                    let h = Math.floor(Math.random() * 23) + 1;
-                    let total = d * 24 + h;
-                    return { q: `${total}時間は 何日何時間ですか？`, targets: ['日', '時間'], check: (ans) => ans['日'] === d && ans['時間'] === h, correctStr: `${d} 日 ${h} 時間`, hint: `${total}時間を24時間のまとまりで考えます。${total}÷24＝${d}あまり${h}なので、${d}日${h}時間になります。` };
+                { submode: "h_min", gen: () => {
+                    const totalMinutes = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const h = Math.floor(totalMinutes / 60);
+                    const m = totalMinutes % 60;
+                    const steps = buildSubtractSteps(totalMinutes, 60, h, '1時間');
+                    const segments = Array.from({ length: h }, () => ({ value: 60, label: '60分\n(1時間)' }));
+                    if (m > 0) segments.push({ value: m, label: `${m}分`, color: '#ffe0a3' });
+                    const tape = { total: totalMinutes, totalLabel: `ぜんぶで${totalMinutes}分`, segments, steps, conclusion: m > 0 ? `だから、${totalMinutes}分は${h}時間${m}分！` : `だから、${totalMinutes}分は${h}時間！` };
+
+                    if (m === 0) {
+                        return { q: `${totalMinutes}分は 何時間ですか？`, targets: ['時間'], check: (ans) => ans['時間'] === h, correctStr: `${h} 時間`, hint: `60分で1時間になります。${totalMinutes}分は60分が${h}つ分なので、${h}時間になります。`, tape };
+                    }
+                    return { q: `${totalMinutes}分は 何時間何分ですか？`, targets: ['時間', '分'], check: (ans) => ans['時間'] === h && ans['分'] === m, correctStr: `${h} 時間 ${m} 分`, hint: `${totalMinutes}分を、60分のまとまりで考えます。`, tape };
                 }}
             ]
         },
@@ -987,28 +1130,39 @@
                 "1分 = 60秒"
             ],
             problems: [
+                // 分 ⇔ 秒 (10秒刻み、1分〜3分=60秒〜180秒の範囲。時間⇔分と同じロジック)
                 { submode: "min_sec", gen: () => {
-                    let m = Math.floor(Math.random() * 3) + 1;
-                    let s = Math.floor(Math.random() * 59) + 1;
-                    return { q: `${m}分${s}秒は 何秒ですか？`, targets: ['秒'], check: (ans) => ans['秒'] === (m * 60 + s), correctStr: `${m * 60 + s} 秒`, hint: `1分は60秒なので、${m}分は${m * 60}秒です。そこに${s}秒をたすと、${m * 60 + s}秒になります。` };
+                    const totalSeconds = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const m = Math.floor(totalSeconds / 60);
+                    const s = totalSeconds % 60;
+                    const steps = buildAddSteps(60, m, s, '1分', '秒');
+                    const segments = Array.from({ length: m }, () => ({ value: 60, label: '60秒\n(1分)' }));
+                    if (s > 0) segments.push({ value: s, label: `${s}秒`, color: '#ffe0a3' });
+                    const tape = { total: totalSeconds, totalLabel: `ぜんぶで${totalSeconds}秒`, segments, steps, conclusion: s > 0 ? `だから、${m}分${s}秒は${totalSeconds}秒！` : `だから、${m}分は${totalSeconds}秒！` };
+
+                    if (s === 0) {
+                        return { q: `${m}分は 何秒ですか？`, targets: ['秒'], check: (ans) => ans['秒'] === totalSeconds, correctStr: `${totalSeconds} 秒`, hint: `1分は60秒です。${m}分は60秒が${m}つ分なので、60×${m}＝${totalSeconds}秒になります。`, tape };
+                    }
+                    return { q: `${m}分${s}秒は 何秒ですか？`, targets: ['秒'], check: (ans) => ans['秒'] === totalSeconds, correctStr: `${totalSeconds} 秒`, hint: `1分は60秒なので、${m}分は${m * 60}秒です。そこに${s}秒をたすと、${totalSeconds}秒になります。`, tape };
                 }},
                 { submode: "min_sec", gen: () => {
-                    let m = Math.floor(Math.random() * 3) + 1;
-                    let s = Math.floor(Math.random() * 59) + 1;
-                    let total = m * 60 + s;
-                    return { q: `${total}秒は 何分何秒ですか？`, targets: ['分', '秒'], check: (ans) => ans['分'] === m && ans['秒'] === s, correctStr: `${m} 分 ${s} 秒`, hint: `${total}秒を60秒のまとまりで考えます。${total}÷60＝${m}あまり${s}なので、${m}分${s}秒になります。` };
-                }},
-                { submode: "min_sec", gen: () => {
-                    let m = Math.floor(Math.random() * 5) + 1;
-                    return { q: `${m}分は 何秒ですか？`, targets: ['秒'], check: (ans) => ans['秒'] === (m * 60), correctStr: `${m * 60} 秒`, hint: `1分は60秒です。${m}分は60秒が${m}つ分なので、60×${m}＝${m * 60}秒になります。` };
-                }},
-                { submode: "min_sec", gen: () => {
-                    let m = Math.floor(Math.random() * 5) + 1;
-                    return { q: `${m * 60}秒は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === m, correctStr: `${m} 分`, hint: `60秒で1分になります。${m * 60}秒は60秒が${m}つ分なので、${m}分になります。` };
+                    const totalSeconds = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const m = Math.floor(totalSeconds / 60);
+                    const s = totalSeconds % 60;
+                    const steps = buildSubtractSteps(totalSeconds, 60, m, '1分');
+                    const segments = Array.from({ length: m }, () => ({ value: 60, label: '60秒\n(1分)' }));
+                    if (s > 0) segments.push({ value: s, label: `${s}秒`, color: '#ffe0a3' });
+                    const tape = { total: totalSeconds, totalLabel: `ぜんぶで${totalSeconds}秒`, segments, steps, conclusion: s > 0 ? `だから、${totalSeconds}秒は${m}分${s}秒！` : `だから、${totalSeconds}秒は${m}分！` };
+
+                    if (s === 0) {
+                        return { q: `${totalSeconds}秒は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === m, correctStr: `${m} 分`, hint: `60秒で1分になります。${totalSeconds}秒は60秒が${m}つ分なので、${m}分になります。`, tape };
+                    }
+                    return { q: `${totalSeconds}秒は 何分何秒ですか？`, targets: ['分', '秒'], check: (ans) => ans['分'] === m && ans['秒'] === s, correctStr: `${m} 分 ${s} 秒`, hint: `${totalSeconds}秒を、60秒のまとまりで考えます。`, tape };
                 }}
             ]
         }
     };
+
 
     function selectTheme(themeKey, element) {
         activeTheme = themeKey;
@@ -1134,6 +1288,8 @@
 
     function nextProblem() {
         document.getElementById('result-panel').style.display = 'none';
+        document.getElementById('tape-display').style.display = 'none';
+        document.getElementById('tape-display').innerHTML = '';
         alreadyCorrectThisProblem = false;
         
         const data = themeData[activeTheme];
@@ -1211,6 +1367,12 @@
 
         if (!allFilled) { alert('すべての空欄に数字を入力してね！'); return; }
 
+        if (isTimeTheme && currentProblem.tape) {
+            const tapeEl = document.getElementById('tape-display');
+            tapeEl.innerHTML = buildTapeDiagramHTML(currentProblem.tape);
+            tapeEl.style.display = 'block';
+        }
+
         (currentProblem.tableVals || []).forEach((correctDigit, idx) => {
             const cell = document.getElementById(`cell-val-${idx}`);
             if (cell) {
@@ -1263,7 +1425,7 @@
                 playEffect('correct');
                 resultPanel.className = "result-panel result-success";
                 const successTip = isTimeTheme
-                    ? `よくできました！${currentProblem.hint}`
+                    ? `よくできました！下のテープ図で、考え方をたしかめてみよう！`
                     : `バッチリです！「書かない！」のマスと数字の位置の関係をよく覚えておこう！`;
                 resultPanel.innerHTML = `
                     <strong>🎉 大せいかい！素晴らしい！</strong><br>
