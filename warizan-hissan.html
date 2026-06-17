@@ -726,7 +726,61 @@ function buildEarlySignificantRoundMeta(rawDigits, sigDigits, uptoIndex) {
     };
 }
 
-function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient) {
+
+function buildVerticalMultiplicationHtml(divisorInt, multiplierInt, productInt, titleText, options = {}) {
+    const topStr = String(divisorInt);
+    const bottomStr = String(multiplierInt);
+    const productStr = String(productInt);
+    const width = Math.max(topStr.length, bottomStr.length + 1, productStr.length);
+
+    const line1 = topStr.padStart(width, " ");
+    const line2 = "×" + bottomStr.padStart(width - 1, " ");
+    const line3 = "―".repeat(width);
+    const line4 = productStr.padStart(width, " ");
+
+    const wrongOverlay = options.wrong
+        ? `
+            <div style="position:absolute; inset:0; pointer-events:none; display:flex; align-items:center; justify-content:center;">
+                <div style="position:absolute; width:92%; height:4px; background:#dc2626; transform:rotate(-18deg);"></div>
+                <div style="position:absolute; width:92%; height:4px; background:#dc2626; transform:rotate(18deg);"></div>
+                <div style="position:absolute; left:10px; top:6px; font-size:54px; font-weight:900; color:#dc2626; line-height:1;">✕</div>
+            </div>`
+        : "";
+
+    const borderStyle = options.wrong
+        ? "border:2px solid #fca5a5;background:#fff1f2;"
+        : "border:1px solid #fed7aa;background:#fff7ed;";
+
+    return `
+        <div style="position:relative;margin-top:10px;${borderStyle}border-radius:10px;padding:10px 12px;">
+            ${wrongOverlay}
+            <div style="font-size:13px;font-weight:800;color:#c2410c;margin-bottom:6px;">${titleText}</div>
+            <div style="font-family:'Courier New', monospace;font-size:22px;line-height:1.15;color:#0f172a;white-space:pre;text-align:right;padding-right:2px;">
+${line1}
+${line2}
+${line3}
+${line4}
+            </div>
+        </div>`;
+}
+
+function buildTrialHistoryHtml(trialHistory) {
+    if (!Array.isArray(trialHistory) || trialHistory.length === 0) return "";
+    let html = `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">`;
+    for (const attempt of trialHistory) {
+        html += buildVerticalMultiplicationHtml(
+            attempt.divisorInt,
+            attempt.multiplierInt,
+            attempt.productInt,
+            attempt.titleText || "仮商の筆算",
+            { wrong: !!attempt.wrong }
+        );
+    }
+    html += `</div>`;
+    return html;
+}
+
+function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient, trialHistory = null) {
     if (currentTargetValue === 0 || currentTargetValue < divisorInt) return "";
 
     const trueQuotient = Math.floor(currentTargetValue / divisorInt);
@@ -763,6 +817,7 @@ function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient) {
     const topVal = Math.floor(currentTargetValue / Math.pow(10, topLen - 1));
 
     const displayTrial = (trialQuotient !== undefined) ? trialQuotient : trueQuotient;
+    const trialProduct = divisorInt * displayTrial;
     const trialStart   = Math.max(displayTrial, trueQuotient);
     const trialEnd     = trueQuotient;
 
@@ -778,8 +833,22 @@ function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient) {
             <div style="margin-top:4px;color:#334155;">
                 <b>${topVal} ÷ ${d1}</b> で見当をつける ➜ 仮の商 <b style="color:#f97316;">${displayTrial}</b>
             </div>
-        </div>
-        <div style="margin-top:8px;padding-left:10px;border-left:3px solid #f97316;line-height:1.8;">`;
+        </div>`;
+
+    if (Array.isArray(trialHistory) && trialHistory.length > 0) {
+        html += buildTrialHistoryHtml(trialHistory);
+    } else {
+        html += buildVerticalMultiplicationHtml(
+            divisorInt,
+            displayTrial,
+            trialProduct,
+            trialQuotient !== undefined && trialQuotient !== trueQuotient
+                ? "仮の商の筆算"
+                : "商の筆算"
+        );
+    }
+
+    html += `<div style="margin-top:8px;padding-left:10px;border-left:3px solid #f97316;line-height:1.8;">`;
 
     for (let k = trialStart; k >= Math.max(1, trialEnd - 1); k--) {
         let p = divisorInt * k;
@@ -938,6 +1007,17 @@ class AdvancedDivisionEngine {
 
             currentMaskFromCol = targetCol + 1;
 
+            if (i === dvdParse.digits.length && currentDigit === "0") {
+                steps.push({
+                    phase: "zero-fill",
+                    description: `【0を補う】空いているマスに0を書いて、${currentTargetValue}と見ます。`,
+                    dots: { ...currentDots },
+                    writeCells: [{ r: 1, c: targetCol, char: "0", isNewZero: true }],
+                    pulseBoxes: [{ r: 1, c: targetCol }],
+                    maskFromCol: currentMaskFromCol
+                });
+            }
+
             let hideText = "";
             if (divisorInt < 10) {
                 hideText = `【ひらめき九九チェック】 ${divisorInt} のだんの九九で、 ${currentTargetValue} をこえない一番近い数を頭の中で見つけよう！`;
@@ -1016,18 +1096,18 @@ class AdvancedDivisionEngine {
                 trialQuotient = Math.min(9, trialQuotient);
             }
 
+            let trialHistory = [];
+
             if (trialQuotient > trueQuotient) {
-                steps.push({
-                    phase: "trial-build",
-                    description: `【仮の商をたてる】わる数の上1けたを見て、まずは仮の商「${trialQuotient}」をたててみます。`,
-                    dots: { ...currentDots },
-                    writeCells: [{ r: 0, c: targetCol, char: trialQuotient.toString() }],
-                    pulseBoxes: [{ r: 0, c: targetCol }],
-                    brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
-                    maskFromCol: currentMaskFromCol
+                let trialProduct = trialQuotient * divisorInt;
+                trialHistory.push({
+                    divisorInt,
+                    multiplierInt: trialQuotient,
+                    productInt: trialProduct,
+                    titleText: "仮の商の筆算",
+                    wrong: true
                 });
 
-                let trialProduct = trialQuotient * divisorInt;
                 let tpStr = trialProduct.toString();
                 let trialMultiplyCells = [];
                 for (let j = 0; j < tpStr.length; j++) {
@@ -1035,12 +1115,22 @@ class AdvancedDivisionEngine {
                 }
 
                 steps.push({
+                    phase: "trial-build",
+                    description: `【仮の商をたてる】わる数の上1けたを見て、まずは仮の商「${trialQuotient}」をたててみます。`,
+                    dots: { ...currentDots },
+                    writeCells: [{ r: 0, c: targetCol, char: trialQuotient.toString() }],
+                    pulseBoxes: [{ r: 0, c: targetCol }],
+                    brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient, trialHistory),
+                    maskFromCol: currentMaskFromCol
+                });
+
+                steps.push({
                     phase: "trial-multiply",
-                    description: `【かけて確認】 ${trialQuotient} × ${divisorInt} ＝ ${trialProduct} 。あ！わられる数の ${currentTargetValue} より大きくてひき算ができません！`,
+                    description: `【かけて確認】 ${divisorInt} × ${trialQuotient} の筆算で ${trialProduct} になります。あ！わられる数の ${currentTargetValue} より大きくてひき算ができません！`,
                     dots: { ...currentDots },
                     writeCells: trialMultiplyCells,
                     pulseBoxes: trialMultiplyCells.map(mc => ({ r: mc.r, c: mc.c })),
-                    brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
+                    brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient, trialHistory),
                     maskFromCol: currentMaskFromCol
                 });
 
@@ -1056,11 +1146,20 @@ class AdvancedDivisionEngine {
                             { r: 0, c: targetCol, char: "" },
                             ...trialMultiplyCells.map(mc => ({ r: mc.r, c: mc.c, char: "", borderBottom: false }))
                         ],
-                        maskFromCol: currentMaskFromCol
+                        maskFromCol: currentMaskFromCol,
+                        brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, oldQuotient, trialHistory)
                     });
 
                     if (trialQuotient > trueQuotient) {
                         trialProduct = trialQuotient * divisorInt;
+                        trialHistory.push({
+                            divisorInt,
+                            multiplierInt: trialQuotient,
+                            productInt: trialProduct,
+                            titleText: "修正版の仮の商の筆算",
+                            wrong: true
+                        });
+
                         let tpStr = trialProduct.toString();
                         trialMultiplyCells = [];
                         for (let j = 0; j < tpStr.length; j++) {
@@ -1072,7 +1171,7 @@ class AdvancedDivisionEngine {
                             dots: { ...currentDots },
                             writeCells: [{ r: 0, c: targetCol, char: trialQuotient.toString() }],
                             pulseBoxes: [{ r: 0, c: targetCol }],
-                            brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
+                            brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient, trialHistory),
                             maskFromCol: currentMaskFromCol
                         });
                         steps.push({
@@ -1081,7 +1180,7 @@ class AdvancedDivisionEngine {
                             dots: { ...currentDots },
                             writeCells: trialMultiplyCells,
                             pulseBoxes: trialMultiplyCells.map(mc => ({ r: mc.r, c: mc.c })),
-                            brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient),
+                            brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient, trialHistory),
                             maskFromCol: currentMaskFromCol
                         });
                     }
@@ -1094,7 +1193,18 @@ class AdvancedDivisionEngine {
                 firstQuotientCol = targetCol;
             }
 
-            const buildBrainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt, quotientDigit);
+            const correctAttempt = trialHistory.length > 0
+                ? {
+                    divisorInt,
+                    multiplierInt: quotientDigit,
+                    productInt: quotientDigit * divisorInt,
+                    titleText: "正しい筆算",
+                    wrong: false
+                }
+                : null;
+            const buildBrainHtml = trialHistory.length > 0
+                ? generateBrainWorkHtml(currentTargetValue, divisorInt, quotientDigit, [...trialHistory, correctAttempt])
+                : generateBrainWorkHtml(currentTargetValue, divisorInt, quotientDigit);
             steps.push({
                 phase: "build",
                 description: divisorInt >= 10 
@@ -1114,7 +1224,8 @@ class AdvancedDivisionEngine {
                 phase: "multiply",
                 description: `【かける】 ${quotientDigit} × ${divisorInt} ＝ ${product} を書きます。`,
                 dots: { ...currentDots }, writeCells: multiplyCells, 
-                pulseBoxes: multiplyCells.map(mc => ({ r: mc.r, c: mc.c })), maskFromCol: currentMaskFromCol
+                pulseBoxes: multiplyCells.map(mc => ({ r: mc.r, c: mc.c })), maskFromCol: currentMaskFromCol,
+                brainHtml: buildBrainHtml
             });
             currentRow++;
 
@@ -1127,9 +1238,10 @@ class AdvancedDivisionEngine {
             }
             steps.push({
                 phase: "subtract",
-                description: `【ひく】 引き算をして、あまりは ${currentRemainder} です。`,
+                description: `【ひく】 ${currentTargetValue}-${product}＝${currentRemainder}です。`,
                 dots: { ...currentDots }, writeCells: subtractCells, 
-                pulseBoxes: subtractCells.map(sc => ({ r: sc.r, c: sc.c })), maskFromCol: currentMaskFromCol
+                pulseBoxes: subtractCells.map(sc => ({ r: sc.r, c: sc.c })), maskFromCol: currentMaskFromCol,
+                brainHtml: buildBrainHtml
             });
 
             if (route === "advance" && gaisuConfig !== null && gaisuConfig.mode === "significant") {
@@ -1865,7 +1977,7 @@ function updateStepFlow(step) {
         accent = "#dc2626";
         soft = "#fff1f2";
         label = "ひく";
-    } else if (["drop", "remainder-drop", "decimal-zero", "remainder-dot"].includes(phase)) {
+    } else if (["drop", "remainder-drop", "decimal-zero", "remainder-dot", "zero-fill"].includes(phase)) {
         activeKey = "orosu";
         bg = "#ffedd5";
         accent = "#ea580c";
