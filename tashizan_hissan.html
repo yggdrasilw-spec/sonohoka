@@ -24,19 +24,22 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   background:linear-gradient(135deg,#4a9eff,#2d7dd2);color:#fff;cursor:pointer;
   font-family:'Noto Sans JP',sans-serif;box-shadow:0 2px 6px rgba(74,158,255,.3);transition:all .2s;}
 .gen-btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(74,158,255,.4);}
-.preset-row{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:6px;}
-.problem-btn{padding:4px 11px;font-size:12px;font-weight:bold;border:2px solid #ccc;
-  border-radius:16px;background:#fff;cursor:pointer;transition:all .2s;
-  font-family:'Noto Sans JP',sans-serif;}
-.problem-btn.active{background:#4a9eff;color:#fff;border-color:#2d7dd2;}
-.problem-btn:hover:not(.active){background:#e8f4ff;border-color:#4a9eff;}
 .err-msg{color:#e74c3c;font-size:12px;font-weight:bold;text-align:center;margin-top:4px;display:none;}
 
-.main-area{display:flex;gap:12px;padding:12px;max-width:980px;margin:0 auto;align-items:flex-start;}
+.mode-row{display:flex;align-items:center;gap:6px;margin-left:10px;padding-left:10px;
+  border-left:1px dashed #ccc;}
+.mode-row-label{font-size:12px;color:#888;font-weight:bold;}
+.mode-btn{padding:5px 14px;font-size:12px;font-weight:bold;border:2px solid #ccc;
+  border-radius:16px;background:#fff;cursor:pointer;transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;}
+.mode-btn.active{background:#8e44ad;color:#fff;border-color:#6c3483;}
+.mode-btn:hover:not(.active){background:#f3e8fb;border-color:#8e44ad;}
+
+.main-area{display:flex;gap:12px;padding:12px;max-width:1280px;margin:0 auto;align-items:flex-start;}
 
 /* ===== タイル図エリア：<table>で列位置を保証 ===== */
-.tile-area{flex:0 0 auto;background:#fff;border-radius:12px;
-  box-shadow:0 4px 14px rgba(0,0,0,.08);position:relative;overflow:visible;}
+.tile-area{flex:1;display:flex;justify-content:center;background:#fff;border-radius:12px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08);position:relative;overflow:visible;min-width:300px;}
 
 #tile-table{border-collapse:collapse;table-layout:fixed;border-radius:12px;overflow:hidden;}
 
@@ -79,31 +82,27 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 #tile-table th.th-hyaku,#tile-table td.td-hyaku{border-right:2px solid #85c1e9;}
 #tile-table th.th-juu,  #tile-table td.td-juu  {border-right:2px solid #f0d800;}
 
-/* 答え行で、まだその位にタイルが無い（くり上がり前）ときだけ薄い斜線の予告枠を重ねる */
-#tile-table td.is-empty{
-  background-image:repeating-linear-gradient(
-    45deg, transparent, transparent 6px,
-    rgba(0,0,0,.05) 6px, rgba(0,0,0,.05) 12px
-  );
-}
+/* (is-empty の斜線表示は廃止) */
 
 #anim-layer{position:absolute;top:0;left:0;width:100%;height:100%;
   pointer-events:none;overflow:visible;z-index:100;}
+#mark-layer{position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;overflow:visible;z-index:90;}
 
-.right-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-width:190px;}
+.right-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-width:260px;}
 .hissan-box{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);
   padding:10px 14px 14px;}
 .hissan-title{font-size:12px;font-weight:bold;color:#666;margin-bottom:4px;text-align:center;}
 .hissan-inner{display:flex;justify-content:center;}
-#hissan-svg{display:block;}
+#hissan-svg{display:block;width:100%;max-width:280px;height:auto;}
 
 .step-box{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);
-  padding:12px 14px;min-height:100px;}
+  padding:14px 18px;min-height:120px;flex:1;}
 .step-number{display:inline-block;background:#4a9eff;color:#fff;border-radius:50%;
-  width:24px;height:24px;line-height:24px;text-align:center;font-size:13px;
+  width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;
   font-weight:bold;margin-right:6px;}
-.step-title{font-size:14px;font-weight:bold;color:#333;margin-bottom:8px;display:flex;align-items:center;}
-.step-desc{font-size:13px;color:#444;line-height:1.9;}
+.step-title{font-size:16px;font-weight:bold;color:#333;margin-bottom:10px;display:flex;align-items:center;}
+.step-desc{font-size:15px;color:#444;line-height:2;}
 .step-desc .ic{color:#c2185b;font-weight:bold;}
 .step-desc .jc{color:#b7950b;font-weight:bold;}
 .step-desc .hc{color:#1a5276;font-weight:bold;}
@@ -148,17 +147,13 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
     <label>たす数：</label>
     <input type="number" id="inp-b" class="num-input" value="12" min="1" max="999">
     <button class="gen-btn" onclick="generateFromInput()">説明生成 ▶</button>
+    <div class="mode-row">
+      <span class="mode-row-label">図のひょうじ：</span>
+      <button class="mode-btn active" id="mode-btn-tile" onclick="setDisplayMode('tile')">🟨 タイル</button>
+      <button class="mode-btn" id="mode-btn-card" onclick="setDisplayMode('card')">🔢 カード</button>
+    </div>
   </div>
   <div id="err-msg" class="err-msg">1〜999の整数を入力してください</div>
-  <div class="preset-row">
-    <span style="font-size:12px;color:#888;align-self:center;">れい：</span>
-    <button class="problem-btn active" onclick="setProblem(35,12)">35＋12</button>
-    <button class="problem-btn" onclick="setProblem(35,94)">35＋94</button>
-    <button class="problem-btn" onclick="setProblem(46,37)">46＋37</button>
-    <button class="problem-btn" onclick="setProblem(127,45)">127＋45</button>
-    <button class="problem-btn" onclick="setProblem(245,378)">245＋378</button>
-    <button class="problem-btn" onclick="setProblem(563,748)">563＋748</button>
-  </div>
 </div>
 
 <div class="main-area">
@@ -177,7 +172,7 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
           <th class="th-sen"   id="hdr-sen">せんのくらい</th>
           <th class="th-hyaku" id="hdr-hyaku">ひゃくのくらい</th>
           <th class="th-juu"   id="hdr-juu">じゅうのくらい</th>
-          <th class="th-ichi">いちのくらい</th>
+          <th class="th-ichi" id="hdr-ichi">いちのくらい</th>
         </tr>
       </thead>
       <tbody>
@@ -200,13 +195,14 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
         <!-- 答え行 -->
         <tr class="tile-result-row" id="row-ans" style="display:none;">
           <td class="td-label equals">＝</td>
-          <td class="td-sen   is-empty" id="col-sen-ans">  <svg id="svg-sen-ans"   width="110" height="94" viewBox="0 0 110 94"></svg></td>
-          <td class="td-hyaku is-empty" id="col-hyaku-ans"><svg id="svg-hyaku-ans" width="124" height="94" viewBox="0 0 124 94"></svg></td>
+          <td class="td-sen"   id="col-sen-ans">  <svg id="svg-sen-ans"   width="110" height="94" viewBox="0 0 110 94"></svg></td>
+          <td class="td-hyaku" id="col-hyaku-ans"><svg id="svg-hyaku-ans" width="124" height="94" viewBox="0 0 124 94"></svg></td>
           <td class="td-juu">                                  <svg id="svg-juu-ans"   width="124" height="94" viewBox="0 0 124 94"></svg></td>
           <td class="td-ichi">                                 <svg id="svg-ichi-ans"  width="110" height="94" viewBox="0 0 110 94"></svg></td>
         </tr>
       </tbody>
     </table>
+    <svg id="mark-layer"></svg>
     <svg id="anim-layer"></svg>
   </div>
 
@@ -260,51 +256,43 @@ function drawStick(parent,cx,cy,u,alpha,strokeColor){
   mk('rect',{x:ox-1,y:oy-1,width:u+2,height:H+2,fill:'none',stroke:strokeColor,'stroke-width':.8,rx:1,opacity:alpha},parent);
 }
 
-// ===== 百の位：正方形タイル1枚（スケール可）=====
+// ===== タイル画像（PNG, Base64埋め込み）=====
+// 100の塊・1000の塊は格子を毎フレームSVGで描き直すと重いため、
+// 静止画(PNG)を<image>として1枚配置し、移動はtransformのみで行う。
+const IMG_HYAKU = "data:image/png;base64,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";
+const IMG_SEN = "data:image/png;base64,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";
+
+// ===== 百の位：正方形タイル1枚 =====
+// PNG画像を<image>1枚で配置（格子100個のSVG描画をやめて軽量化）。
+// くり上がりの強調表示(strokeColor指定時)は、画像の外周にreact枠を重ねて表現する。
 function drawHyakuScaled(parent,cx,cy,u,alpha,strokeColor){
-  alpha=alpha??1; strokeColor=strokeColor??SC;
-  const G=u*.15,S=u+G,TW=10*u+9*G,TH=10*u+9*G;
+  alpha=alpha??1;
+  const G=u*.15,TW=10*u+9*G,TH=10*u+9*G;
   const ox=cx-TW/2,oy=cy-TH/2;
-  for(let r=0;r<10;r++)for(let c=0;c<10;c++)
-    mk('rect',{x:ox+c*S,y:oy+r*S,width:u,height:u,fill:FC,stroke:strokeColor,'stroke-width':.4,rx:.3,opacity:alpha},parent);
-  mk('line',{x1:ox+5*S-G/2,x2:ox+5*S-G/2,y1:oy-1,y2:oy+TH+1,stroke:SC5,'stroke-width':.8,opacity:alpha},parent);
-  mk('line',{x1:ox-1,x2:ox+TW+1,y1:oy+5*S-G/2,y2:oy+5*S-G/2,stroke:SC5,'stroke-width':.8,opacity:alpha},parent);
-  mk('rect',{x:ox-1,y:oy-1,width:TW+2,height:TH+2,fill:'none',stroke:strokeColor,'stroke-width':.8,rx:1.5,opacity:alpha},parent);
+  mk('image',{href:IMG_HYAKU,x:ox,y:oy,width:TW,height:TH,opacity:alpha,
+    'preserveAspectRatio':'none'},parent);
+  if(strokeColor && strokeColor!==SC){
+    // くり上がり等の強調色が指定された場合のみ、外枠を重ねて目立たせる
+    mk('rect',{x:ox-1,y:oy-1,width:TW+2,height:TH+2,fill:'none',
+      stroke:strokeColor,'stroke-width':2,rx:3,opacity:alpha},parent);
+  }
 }
 
-// ===== 千の位：百タイルを10枚重ねた束（kuraidorihyoより移植・スケール対応）=====
+// ===== 千の位：百タイル10枚重ねの束 =====
+// PNG画像(立体的な重なり・テープを描き込み済み)を<image>1枚で配置。
 function drawSenScaled(parent,cx,cy,u,alpha,strokeColor){
-  alpha=alpha??1; strokeColor=strokeColor??SC;
-  const G=u*.15,S=u+G,W=10*u+9*G,H=10*u+9*G;
-  const OX=u*.35,OY=u*.35;
-  const sheets=10;
-  for(let k=sheets-1;k>=0;k--){
-    const ox=cx-W/2+k*OX, oy=cy-H/2-k*OY;
-    if(k>0){
-      // 背面は単色プレート
-      const bg=mk('rect',{x:ox,y:oy,width:W,height:H,
-        fill:k%2===0?'#f7d060':'#eabc30',stroke:strokeColor,'stroke-width':.5,rx:.8,opacity:alpha},parent);
-    } else {
-      // 前面だけ格子
-      for(let r=0;r<10;r++)for(let c=0;c<10;c++)
-        mk('rect',{x:ox+c*S,y:oy+r*S,width:u,height:u,fill:FC,stroke:strokeColor,'stroke-width':.4,rx:.3,opacity:alpha},parent);
-      mk('line',{x1:ox+5*S-G/2,x2:ox+5*S-G/2,y1:oy-1,y2:oy+H+1,stroke:SC5,'stroke-width':.8,opacity:alpha},parent);
-      mk('line',{x1:ox-1,x2:ox+W+1,y1:oy+5*S-G/2,y2:oy+5*S-G/2,stroke:SC5,'stroke-width':.8,opacity:alpha},parent);
-    }
+  alpha=alpha??1;
+  // 画像自体に奥行き(重なり)が含まれているため、表示領域は正方形(10u分)より
+  // やや大きく取る必要がある。元のdrawSenScaledの見た目に合わせて1.34倍を確保。
+  const G=u*.15,baseSide=10*u+9*G;
+  const side=baseSide*1.34;
+  const ox=cx-side/2*0.94, oy=cy-side/2*1.06; // 画像内の重心が右下寄りなので微調整
+  mk('image',{href:IMG_SEN,x:ox,y:oy,width:side,height:side,opacity:alpha,
+    'preserveAspectRatio':'none'},parent);
+  if(strokeColor && strokeColor!==SC){
+    mk('rect',{x:ox+side*0.06,y:oy+side*0.1,width:side*0.6,height:side*0.6,
+      fill:'none',stroke:strokeColor,'stroke-width':2,rx:3,opacity:alpha},parent);
   }
-  // テープ（固定バンド）
-  const TW=u*.7,tapeColor='#c05010',tapeOpa=String(alpha*.6);
-  const frontOx=cx-W/2,frontOy=cy-H/2;
-  const backOx=frontOx+(sheets-1)*OX,backOy=frontOy-(sheets-1)*OY;
-  const midY=frontOy+H/2,midX=frontOx+W/2;
-  function tape(pts){
-    const p=mk('polygon',{points:pts.map(([x,y])=>x+','+y).join(' '),
-      fill:tapeColor,opacity:tapeOpa},parent);
-  }
-  tape([[frontOx,midY-TW/2],[frontOx+W,midY-TW/2],[frontOx+W,midY+TW/2],[frontOx,midY+TW/2]]);
-  tape([[frontOx+W,midY-TW/2],[backOx+W,backOy+H/2-TW/2],[backOx+W,backOy+H/2+TW/2],[frontOx+W,midY+TW/2]]);
-  tape([[midX-TW/2,frontOy],[backOx+W/2-TW/2,backOy],[backOx+W/2+TW/2,backOy],[midX+TW/2,frontOy]]);
-  tape([[midX-TW/2,frontOy],[midX+TW/2,frontOy],[midX+TW/2,frontOy+H],[midX-TW/2,frontOy+H]]);
 }
 
 // ===== 一の位：個別ブロック =====
@@ -411,6 +399,94 @@ function renderIchi(svgEl,count,alpha,hColor){
 }
 
 // ============================================================
+// カード方式（位取り表アプリを参考にしたSVG数字カード）
+// タイル/棒/百タイル/千タイルの代わりに「1」「10」「100」「1000」と
+// 数字を書いた長方形カードを使う表現。桁が増えても CARD_CFG に
+// エントリを足すだけで対応できる（例：1万＝'man'を追加するだけ）。
+// ============================================================
+const CARD_CFG={
+  ichi : {label:'1',    w:34,h:26,fs:13,bg:'#fce4ec',stroke:'#e91e63',tc:'#c2185b'},
+  juu  : {label:'10',   w:34,h:26,fs:13,bg:'#fff9cc',stroke:'#d4ac0d',tc:'#b7950b'},
+  hyaku: {label:'100',  w:34,h:26,fs:12,bg:'#cce8f4',stroke:'#2980b9',tc:'#1a5276'},
+  sen  : {label:'1000', w:34,h:26,fs:11,bg:'#ffffff',stroke:'#222222',tc:'#222222'}
+};
+
+// ===== カード1枚描画（中心座標cx,cy基準。drawStick等と座標系をそろえる）=====
+function drawCardSingle(parent,cx,cy,place,scale,alpha,strokeColor){
+  const cfg=CARD_CFG[place];
+  scale=scale??1;alpha=alpha??1;
+  const w=cfg.w*scale,h=cfg.h*scale;
+  const x=cx-w/2,y=cy-h/2;
+  mk('rect',{x,y,width:w,height:h,fill:cfg.bg,
+    stroke:strokeColor||cfg.stroke,'stroke-width':1.6*scale,rx:3*scale,opacity:alpha},parent);
+  mk('text',{x:cx,y:cy+cfg.fs*scale*.36,'text-anchor':'middle',
+    'font-size':cfg.fs*scale,'font-weight':'bold',fill:cfg.tc,
+    'font-family':"'Noto Sans JP',sans-serif",opacity:alpha},parent).textContent=cfg.label;
+}
+
+// ===== カードの格子配置 =====
+// 「縦5枚×横2列」を基本とする格子レイアウト。1列目に下から5枚積み、
+// 6枚目からは2列目を使う。すべての位でカードサイズが同じなので、
+// 列の横幅は常に「2列分」を基準に固定し、桁の列幅とぴったり合わせる
+// （= はみ出しが起こらない）。縦に入りきらない場合のみスケールを縮小する。
+// count枚のカードの中心座標配列を返す（描画はしない・座標計算のみ）。
+function cardPositions(count,place,svgW,svgH){
+  if(!count)return[];
+  const cfg=CARD_CFG[place];
+  const margin=6;
+  const perCol=5;
+  const nCols=Math.max(1,Math.ceil(count/perCol));
+  const gapX0=10,gapYRatio=.22;
+
+  // 横幅は「実際に必要な列数」で固定計算する（無限幅でプローブすると
+  // 列数が暴走して位取り表からはみ出すため、常にperCol基準で決定する）
+  const needW=nCols*cfg.w+(nCols-1)*gapX0;
+  const needH=perCol*cfg.h+(perCol-1)*cfg.h*gapYRatio;
+  let scale=1;
+  if(needW>svgW-margin*2) scale=Math.min(scale,(svgW-margin*2)/needW);
+  if(needH>svgH-margin*2) scale=Math.min(scale,(svgH-margin*2)/needH);
+  scale=Math.max(scale,.45); // 縮小しすぎて読めなくなるのを防ぐ下限
+
+  const w=cfg.w*scale,h=cfg.h*scale,gapX=gapX0*scale,gapY=h*gapYRatio,colW=w+gapX;
+  const totW=nCols*w+(nCols-1)*gapX;
+  const sx=svgW/2-totW/2+w/2;
+  const botY=svgH-margin-h/2;
+  const pos=[];let drawn=0;
+  for(let c=0;c<nCols&&drawn<count;c++){
+    const remain=count-drawn;
+    const inCol=Math.min(perCol,remain);
+    const cx=sx+c*colW;
+    for(let i=0;i<inCol;i++){
+      pos.push({cx,cy:botY-i*(h+gapY),scale});drawn++;
+    }
+  }
+  return pos;
+}
+
+// ===== カード版render（タイル版render系と同じシグネチャ）=====
+function renderCard(svgEl,count,place,alpha,hColor){
+  svgEl.innerHTML='';if(!count)return[];
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
+  const pos=cardPositions(count,place,W,H);
+  pos.forEach(p=>drawCardSingle(svgEl,p.cx,p.cy,place,p.scale??1,alpha??1,null));
+  if(hColor){
+    const cfg=CARD_CFG[place];
+    const sc=pos[0].scale??1;
+    const xs=pos.map(p=>p.cx),ys=pos.map(p=>p.cy),m=5;
+    mk('rect',{x:Math.min(...xs)-cfg.w*sc/2-m,y:Math.min(...ys)-cfg.h*sc/2-m,
+      width:Math.max(...xs)-Math.min(...xs)+cfg.w*sc+m*2,
+      height:Math.max(...ys)-Math.min(...ys)+cfg.h*sc+m*2,
+      fill:'none',stroke:hColor,'stroke-width':2.5,'stroke-dasharray':'5,3',rx:4},svgEl);
+  }
+  return pos;
+}
+// 桁ごとの薄い別名（paintTiles等から呼びやすくするため）
+function renderIchiCard(svgEl,count,alpha,hColor){return renderCard(svgEl,count,'ichi',alpha,hColor);}
+function renderJuuCard(svgEl,count,alpha,hColor){return renderCard(svgEl,count,'juu',alpha,hColor);}
+function renderHyakuCard(svgEl,count,alpha,hColor){return renderCard(svgEl,count,'hyaku',alpha,hColor);}
+function renderSenCard(svgEl,count,alpha,hColor){return renderCard(svgEl,count,'sen',alpha,hColor);}
+
+// ============================================================
 // 筆算SVG描画  viewBox="0 0 210 230"
 // 位置: 千=35, 百=73, 十=111, 一=149  (2桁なら十=111,一=149)
 // ============================================================
@@ -465,9 +541,10 @@ function drawHissan(svgEl,state){
   if(S.showBJ) txt(S.bJ,HJX,HROW2_Y,34,'bold','#222');
   if(S.showBI) txt(S.bI,HIX,HROW2_Y,34,'bold','#222');
 
-  // くり上がり
-  if(S.showCarryJ) {const ct=mk('text',{x:HJX,y:HCARRY_Y,'font-size':19,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif','class':'pop-in'},svgEl);ct.textContent='1';}
-  if(S.showCarryH&&(S.has3||S.has4)) {const ct=mk('text',{x:H2X,y:HCARRY_Y,'font-size':19,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif','class':'pop-in'},svgEl);ct.textContent='1';}
+  // くり上がり：数字「1」自体は showCarryJ/showCarryH が true の間ずっと表示するが、
+  // ポップ（拡大縮小）アニメーションは carryJPop/carryHPop が true の最初の1ステップだけ再生する
+  if(S.showCarryJ) {const ct=mk('text',{x:HJX,y:HCARRY_Y,'font-size':19,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);ct.textContent='1';if(S.carryJPop)ct.setAttribute('class','pop-in');}
+  if(S.showCarryH&&(S.has3||S.has4)) {const ct=mk('text',{x:H2X,y:HCARRY_Y,'font-size':19,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);ct.textContent='1';if(S.carryHPop)ct.setAttribute('class','pop-in');}
 
   // こたえ
   if(S.showAnsI) txt(S.iAns,HIX,HROW3_Y,34,'bold','#1a7f37');
@@ -537,6 +614,8 @@ function aboveHdr(id){
 // アプリ状態
 // ============================================================
 let numA=35,numB=12,stepIdx=0,steps=[],animBusy=false;
+let DISPLAY_MODE='tile'; // 'tile'：実物タイル／'card'：数字カード
+
 function cloneState(s){return JSON.parse(JSON.stringify(s));}
 
 // ============================================================
@@ -570,6 +649,7 @@ function buildSteps(){
     showBS:false,showBH:false,showBJ:false,showBI:false,
     showPlus:false,showLine:false,
     showCarryJ:false,showCarryH:false,
+    carryJPop:false,carryHPop:false, // trueの間だけpop-inアニメを再生（くり上がり直後の1ステップのみ）
     showAnsI:false,showAnsJ:false,showAnsH:false,showAnsS:false,
     hlIchi:false,hlJuu:false,hlHyaku:false,ansBox:false
   };
@@ -581,6 +661,7 @@ function buildSteps(){
     juuB:{count:0,alpha:1,hl:null},   ichiB:{count:0,alpha:1,hl:null},
     senAns:{count:0,alpha:1,hl:null}, hyakuAns:{count:0,alpha:1,hl:null},
     juuAns:{count:0,alpha:1,hl:null}, ichiAns:{count:0,alpha:1,hl:null},
+    markJ:{show:false,alpha:1}, markH:{show:false,alpha:1}, // じゅう／ひゃくのヘッダー上に残るくり上がりマーク
     showAnsRow:false
   };
 
@@ -713,8 +794,10 @@ function buildSteps(){
       +`その たばを <span class="jc">じゅうのくらい</span> に くり上げます。<br>`
       +`のこり <span class="ic">${iAns}こ</span> が いちのくらいの こたえです。`;
     p.h.showCarryJ=true;p.h.hlIchi=true;
+    p.h.carryJPop=true; // この「くり上げる」ステップでだけポップ演出
     p.t.ichiAns={count:iAns,alpha:1,hl:null};
     p.t.juuAns={count:1,alpha:1,hl:'#e74c3c'};
+    p.t.markJ={show:true,alpha:1}; // ヘッダー上のくり上がりは、まだ使われていないのでしっかり表示
     p.anim='carry-i';
     list.push(p);
   }
@@ -728,9 +811,11 @@ function buildSteps(){
       +`<span class="jc">${hasCarryI?'1＋':''}${aJ} ＋ ${bJ} ＝ ${jRaw}</span>`
       +(hasCarryJ?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
     p.h.hlIchi=false;p.h.hlJuu=true;p.h.showAnsJ=true;
+    p.h.carryJPop=false; // ここから先は静的表示（ポップ演出は再生しない）
     p.t.juuA={count:aJ,alpha:.25,hl:null};
     p.t.juuB={count:bJ,alpha:.25,hl:null};
     p.t.juuAns={count:jRaw,alpha:1,hl:null};
+    if(hasCarryI)p.t.markJ={show:true,alpha:.35}; // 下の段に降りて使われたので、以後は半透明のまま残す
     p.anim='juu-calc';
     list.push(p);
   }
@@ -744,8 +829,10 @@ function buildSteps(){
       +`その タイルを <span class="hc">ひゃくのくらい</span> に くり上げます。<br>`
       +`のこり <span class="jc">${jAns}本</span> が じゅうのくらいの こたえです。`;
     p.h.showCarryH=true;p.h.hlJuu=true;p.h.showAnsJ=true;
+    p.h.carryHPop=true; // この「くり上げる」ステップでだけポップ演出
     p.t.juuAns={count:jAns,alpha:1,hl:null};
     p.t.hyakuAns={count:1,alpha:1,hl:'#e74c3c'};
+    p.t.markH={show:true,alpha:1}; // ヘッダー上のくり上がりは、まだ使われていないのでしっかり表示
     p.anim='carry-j';
     list.push(p);
   }
@@ -760,9 +847,11 @@ function buildSteps(){
       +`<span class="hc">${hasCarryJ?'1＋':''}${aH} ＋ ${bH} ＝ ${totalH}</span>`
       +(hasCarryH?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
     p.h.hlJuu=false;p.h.hlHyaku=true;p.h.showAnsH=true;
+    p.h.carryHPop=false; // 十→百のポップ演出はここで終了（数字「1」自体は表示し続ける）
     p.t.hyakuA={count:aH,alpha:.25,hl:null};
     p.t.hyakuB={count:bH,alpha:.25,hl:null};
     p.t.hyakuAns={count:hRaw,alpha:1,hl:null};
+    if(hasCarryJ)p.t.markH={show:true,alpha:.35}; // 下の段に降りて使われたので、以後は半透明のまま残す
     p.anim='hyaku-calc';
     list.push(p);
   }
@@ -777,8 +866,20 @@ function buildSteps(){
       +`のこり <span class="hc">${hAns}まい</span> が ひゃくのくらいの こたえです。`;
     p.h.showAnsS=true;p.h.hlHyaku=true;
     p.t.hyakuAns={count:hAns,alpha:1,hl:null};
-    p.t.senAns={count:1,alpha:1,hl:'#e74c3c'};
+    p.t.senAns={count:0,alpha:1,hl:null}; // まだ答え行には降りていない(ヘッダー上に留まっている)
     p.anim='carry-h';
+    list.push(p);
+  }
+
+  // せんのくらいの計算（has4のとき）：ヘッダー上のせんタイルが答え行に降りてくる
+  if(has4){
+    const p=prev();
+    p.title=`せんのくらいの こたえ：${sAns}`;
+    p.desc=`<span class="sc">せんのくらい</span>には、くり上がった `
+      +`<span class="cc">1まい</span> がそのまま こたえになります。`;
+    p.h.hlHyaku=false;
+    p.t.senAns={count:sAns,alpha:1,hl:null};
+    p.anim='sen-calc';
     list.push(p);
   }
 
@@ -792,7 +893,8 @@ function buildSteps(){
     parts.push(`<span class="jc">じゅうのくらい ${jAns}</span>`);
     parts.push(`<span class="ic">いちのくらい ${iAns}</span>`);
     p.desc=parts.join('、')+`<br><span class="ac">${numA} ＋ ${numB} ＝ ${ans}</span>`;
-    p.h.hlJuu=false;p.h.hlHyaku=false;p.h.showCarryJ=false;p.h.showCarryH=false;p.h.ansBox=true;
+    p.h.hlJuu=false;p.h.hlHyaku=false;p.h.ansBox=true;
+    p.h.carryJPop=false;p.h.carryHPop=false;
     p.t.juuA={count:aJ,alpha:.25,hl:null};p.t.juuB={count:bJ,alpha:.25,hl:null};
     if(has3){p.t.hyakuA={count:aH,alpha:.25,hl:null};p.t.hyakuB={count:bH,alpha:.25,hl:null};}
     p.anim=null;
@@ -806,29 +908,241 @@ function buildSteps(){
 // タイル描画
 // ============================================================
 function paintTiles(ts){
-  renderSens  (document.getElementById('svg-sen-a'),   ts.senA.count,  ts.senA.alpha,  ts.senA.hl);
-  renderHyakus(document.getElementById('svg-hyaku-a'), ts.hyakuA.count,ts.hyakuA.alpha,ts.hyakuA.hl);
-  renderSticks(document.getElementById('svg-juu-a'),   ts.juuA.count,  ts.juuA.alpha,  ts.juuA.hl);
-  renderIchi  (document.getElementById('svg-ichi-a'),  ts.ichiA.count, ts.ichiA.alpha, ts.ichiA.hl);
-  renderSens  (document.getElementById('svg-sen-b'),   ts.senB.count,  ts.senB.alpha,  ts.senB.hl);
-  renderHyakus(document.getElementById('svg-hyaku-b'), ts.hyakuB.count,ts.hyakuB.alpha,ts.hyakuB.hl);
-  renderSticks(document.getElementById('svg-juu-b'),   ts.juuB.count,  ts.juuB.alpha,  ts.juuB.hl);
-  renderIchi  (document.getElementById('svg-ichi-b'),  ts.ichiB.count, ts.ichiB.alpha, ts.ichiB.hl);
+  const rSen  =DISPLAY_MODE==='card'?renderSenCard  :renderSens;
+  const rHyaku=DISPLAY_MODE==='card'?renderHyakuCard:renderHyakus;
+  const rJuu  =DISPLAY_MODE==='card'?renderJuuCard  :renderSticks;
+  const rIchi =DISPLAY_MODE==='card'?renderIchiCard :renderIchi;
+
+  rSen  (document.getElementById('svg-sen-a'),   ts.senA.count,  ts.senA.alpha,  ts.senA.hl);
+  rHyaku(document.getElementById('svg-hyaku-a'), ts.hyakuA.count,ts.hyakuA.alpha,ts.hyakuA.hl);
+  rJuu  (document.getElementById('svg-juu-a'),   ts.juuA.count,  ts.juuA.alpha,  ts.juuA.hl);
+  rIchi (document.getElementById('svg-ichi-a'),  ts.ichiA.count, ts.ichiA.alpha, ts.ichiA.hl);
+  rSen  (document.getElementById('svg-sen-b'),   ts.senB.count,  ts.senB.alpha,  ts.senB.hl);
+  rHyaku(document.getElementById('svg-hyaku-b'), ts.hyakuB.count,ts.hyakuB.alpha,ts.hyakuB.hl);
+  rJuu  (document.getElementById('svg-juu-b'),   ts.juuB.count,  ts.juuB.alpha,  ts.juuB.hl);
+  rIchi (document.getElementById('svg-ichi-b'),  ts.ichiB.count, ts.ichiB.alpha, ts.ichiB.hl);
 
   const rowAns=document.getElementById('row-ans');
-  if(ts.showAnsRow){
-    rowAns.style.display='table-row';
-    renderSens  (document.getElementById('svg-sen-ans'),   ts.senAns.count,  ts.senAns.alpha,  ts.senAns.hl);
-    renderHyakus(document.getElementById('svg-hyaku-ans'), ts.hyakuAns.count,ts.hyakuAns.alpha,ts.hyakuAns.hl);
-    renderSticks(document.getElementById('svg-juu-ans'),   ts.juuAns.count,  ts.juuAns.alpha,  ts.juuAns.hl);
-    renderIchi  (document.getElementById('svg-ichi-ans'),  ts.ichiAns.count, ts.ichiAns.alpha, ts.ichiAns.hl);
+  rowAns.style.display=ts.showAnsRow?'table-row':'none';
+  rSen  (document.getElementById('svg-sen-ans'),   ts.senAns.count,  ts.senAns.alpha,  ts.senAns.hl);
+  rHyaku(document.getElementById('svg-hyaku-ans'), ts.hyakuAns.count,ts.hyakuAns.alpha,ts.hyakuAns.hl);
+  rJuu  (document.getElementById('svg-juu-ans'),   ts.juuAns.count,  ts.juuAns.alpha,  ts.juuAns.hl);
+  rIchi (document.getElementById('svg-ichi-ans'),  ts.ichiAns.count, ts.ichiAns.alpha, ts.ichiAns.hl);
+
+  drawHeaderMarks(ts);
+}
+
+// じゅう／ひゃくのヘッダーの真上に残る「くり上がりマーク」を描く。
+// アニメーション専用のanim-layerとは別の常設レイヤー(mark-layer)に描くため、
+// ステップを進めてもanim-layerがクリアされても消えずに残り続ける。
+// くり上がった直後はしっかり表示（alpha:1）、下の段の計算に使われた後は
+// 半透明（alpha:.35）になり、そのまま手順の最後まで残る。
+function drawHeaderMarks(ts){
+  const layer=document.getElementById('mark-layer');
+  layer.innerHTML='';
+  if(DISPLAY_MODE==='card'){
+    if(ts.markJ&&ts.markJ.show){
+      const pos=aboveHdr('hdr-juu');
+      drawCardSingle(mk('g',{},layer),pos.x,pos.y,'juu',1,ts.markJ.alpha,'#e74c3c');
+    }
+    if(ts.markH&&ts.markH.show){
+      const pos=aboveHdr('hdr-hyaku');
+      drawCardSingle(mk('g',{},layer),pos.x,pos.y,'hyaku',1,ts.markH.alpha,'#e74c3c');
+    }
   } else {
-    rowAns.style.display='none';
+    if(ts.markJ&&ts.markJ.show){
+      const pos=aboveHdr('hdr-juu');
+      const JH=10*U+9*U*.15,bx=pos.x-U/2,by=pos.y-JH/2;
+      const g=mk('g',{opacity:ts.markJ.alpha},layer);
+      for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},g);}
+      mk('rect',{x:bx-1,y:by-1,width:U+2,height:JH+2,fill:'none',stroke:'#e74c3c','stroke-width':2,rx:1},g);
+    }
+    if(ts.markH&&ts.markH.show){
+      const pos=aboveHdr('hdr-hyaku');
+      const HW=vbW('svg-hyaku-a'),HH_SVG=86;
+      const u=U,G=u*.15,side=10*u+9*G;
+      const su=u*Math.min((HW-8)/side,(HH_SVG-8)/side);
+      drawHyakuScaled(mk('g',{},layer),pos.x,pos.y,su,ts.markH.alpha,'#e74c3c');
+    }
+  }
+}
+
+// ============================================================
+// カード方式 専用アニメーション
+// タイル版にある「appear / ○○-calc / carry-○」の3パターンを、
+// 桁(place)を引数に取る汎用関数3つで表現する。
+// 新しい桁（例：万の位 'man'）を追加したときも、CARD_CFGに
+// エントリを足すだけでこの3関数がそのまま動く。
+// ============================================================
+const PLACE_HDR={ichi:'hdr-ichi',juu:'hdr-juu',hyaku:'hdr-hyaku',sen:'hdr-sen'};
+const PLACE_SVG={ichi:'svg-ichi',juu:'svg-juu',hyaku:'svg-hyaku',sen:'svg-sen'};
+
+// place方向の1つ上の桁を返す（ichi→juu→hyaku→sen）
+function upperPlace(place){
+  return {ichi:'juu',juu:'hyaku',hyaku:'sen'}[place]||null;
+}
+
+// --- カードが1枚ずつポップインで出現 ---
+function runAppearCard(place,who,count,onDone){
+  const svgEl=document.getElementById(`${PLACE_SVG[place]}-${who}`);
+  svgEl.innerHTML='';
+  const W=vbW(svgEl.id),H=parseInt(svgEl.getAttribute('height'))||86;
+  const pos=cardPositions(count,place,W,H);
+  let i=0;
+  (function next(){
+    if(i>=pos.length){onDone();return;}
+    const g=mk('g',{opacity:0},svgEl);
+    drawCardSingle(g,pos[i].cx,pos[i].cy,place,pos[i].scale??1,1,null);
+    tween(180,t=>g.setAttribute('opacity',t),()=>{i++;next();});
+  })();
+}
+
+// --- A・Bのカードが答え行へ集まる（くり上がり分は見出し上から合流）---
+function runCalcCard(place,countA,countB,sumCount,hasCarryIn,onDone,layer){
+  document.getElementById('row-ans').style.display='table-row';
+  const svgA=document.getElementById(`${PLACE_SVG[place]}-a`);
+  const svgB=document.getElementById(`${PLACE_SVG[place]}-b`);
+  const svgAns=document.getElementById(`${PLACE_SVG[place]}-ans`);
+  const Wa=vbW(svgA.id),Ha=parseInt(svgA.getAttribute('height'))||86;
+  const Wb=vbW(svgB.id),Hb=parseInt(svgB.getAttribute('height'))||86;
+  const Wans=vbW(svgAns.id),Hans=parseInt(svgAns.getAttribute('height'))||94;
+
+  const carryAbove=hasCarryIn?aboveHdr(PLACE_HDR[place]):null;
+  const carrySrc=hasCarryIn?[{...carryAbove,scale:1}]:[];
+  const posA=cardPositions(countA,place,Wa,Ha).map(p=>({...svgToLayer(svgA,p.cx,p.cy),scale:p.scale??1}));
+  const posB=cardPositions(countB,place,Wb,Hb).map(p=>({...svgToLayer(svgB,p.cx,p.cy),scale:p.scale??1}));
+  const dstAll=cardPositions(sumCount,place,Wans,Hans).map(p=>({...svgToLayer(svgAns,p.cx,p.cy),scale:p.scale??1}));
+  const allSrc=[...carrySrc,...posA,...posB];
+
+  renderCard(svgA,countA,place,.25);
+  renderCard(svgB,countB,place,.25);
+  svgAns.innerHTML='';layer.innerHTML='';
+
+  const cardGs=allSrc.map((p,i)=>{
+    const g=mk('g',{},layer);
+    const isCarry=(hasCarryIn&&i===0);
+    drawCardSingle(g,p.x,p.y,place,p.scale,1,isCarry?'#e74c3c':null);
+    return g;
+  });
+  tween(560,t=>{
+    cardGs.forEach((g,i)=>{
+      const dst=dstAll[i]||dstAll[dstAll.length-1];
+      const tx=allSrc[i].x+(dst.x-allSrc[i].x)*t;
+      const ty=allSrc[i].y+(dst.y-allSrc[i].y)*t;
+      const sc=allSrc[i].scale+(dst.scale-allSrc[i].scale)*t;
+      g.innerHTML='';
+      drawCardSingle(g,tx,ty,place,sc,1,(hasCarryIn&&i===0)?'#e74c3c':null);
+    });
+  },()=>{
+    layer.innerHTML='';
+    renderCard(svgAns,sumCount,place,1);
+    onDone();
+  });
+}
+
+// --- 10枚のカードが弾けて1枚の上位カードに変わり、上の桁へ移動 ---
+function runCarryCard(place,totalCount,remainCount,onDone,layer){
+  const upper=upperPlace(place);
+  const svgAns=document.getElementById(`${PLACE_SVG[place]}-ans`);
+  const W=vbW(svgAns.id),H=parseInt(svgAns.getAttribute('height'))||94;
+  const allPos=cardPositions(totalCount,place,W,H);
+  const baseScale=allPos[0]?.scale??1;
+  const pos10=allPos.slice(0,10).map(p=>({...svgToLayer(svgAns,p.cx,p.cy),scale:p.scale??1}));
+  renderCard(svgAns,totalCount,place,.25);
+
+  const dest=aboveHdr(PLACE_HDR[upper]);
+  // 10枚の重心を出発点とする（タイル版のcarry-i同様、まとまりとして移動させる）
+  const srcCx=pos10.reduce((s,p)=>s+p.x,0)/pos10.length;
+  const srcCy=pos10.reduce((s,p)=>s+p.y,0)/pos10.length;
+  const gs=pos10.map(p=>{
+    const g=mk('g',{},layer);
+    drawCardSingle(g,p.x,p.y,place,p.scale,1,'#e74c3c');
+    return g;
+  });
+  // phase1: 10枚が集まりながら縮小
+  tween(260,t=>{
+    gs.forEach((g,i)=>{
+      const sx=pos10[i].x+(srcCx-pos10[i].x)*t;
+      const sy=pos10[i].y+(srcCy-pos10[i].y)*t;
+      const sc=1-0.55*t;
+      g.setAttribute('transform',`translate(${sx-pos10[i].x},${sy-pos10[i].y}) translate(${pos10[i].x},${pos10[i].y}) scale(${sc}) translate(${-pos10[i].x},${-pos10[i].y})`);
+      g.setAttribute('opacity',1-0.4*t);
+    });
+  },()=>{
+    layer.innerHTML='';
+    // phase2: 1枚の上位カードに変わってポップ
+    const gUp=mk('g',{opacity:0},layer);
+    drawCardSingle(gUp,srcCx,srcCy,upper,baseScale*0.4,1,'#e74c3c');
+    tween(260,t=>{
+      const sc=baseScale*(0.4+0.6*Math.min(1,t*1.3));
+      gUp.innerHTML='';
+      drawCardSingle(gUp,srcCx,srcCy,upper,sc,1,'#e74c3c');
+      gUp.setAttribute('opacity',Math.min(1,t*2));
+    },()=>{
+      // phase3: 上位の見出しの真上へ移動
+      tween(360,t=>{
+        const cx=srcCx+(dest.x-srcCx)*t;
+        const cy=srcCy+(dest.y-srcCy)*t;
+        gUp.innerHTML='';
+        drawCardSingle(gUp,cx,cy,upper,baseScale,1,'#e74c3c');
+      },()=>{
+        layer.innerHTML='';
+        // 元の桁：残りカードを正式に描画
+        svgAns.innerHTML='';
+        if(remainCount>0)renderCard(svgAns,remainCount,place,1);
+        // 上位の見出しの真上にしっかり表示で残す（まだ使われていないので半透明にしない。
+        // ichi→juu, juu→hyakuの場合はこの直後にpaintTilesがmark-layerへ引き継ぐ）
+        const gRest=mk('g',{},layer);
+        drawCardSingle(gRest,dest.x,dest.y,upper,baseScale,1,'#e74c3c');
+        onDone();
+      });
+    });
+  });
+}
+
+function runAnimCard(animType,n,layer,onDone){
+  const{aH,aJ,aI,bH,bJ,bI,hasCarryI,iSum,iAns,jRaw,hasCarryJ,jAns,hRaw,hasCarryH,hAns}=n;
+
+  if(animType==='appear-hyaku-a'){runAppearCard('hyaku','a',aH,onDone);return;}
+  if(animType==='appear-hyaku-b'){runAppearCard('hyaku','b',bH,onDone);return;}
+  if(animType==='appear-juu-a'){runAppearCard('juu','a',aJ,onDone);return;}
+  if(animType==='appear-juu-b'){runAppearCard('juu','b',bJ,onDone);return;}
+  if(animType==='appear-ichi-a'){runAppearCard('ichi','a',aI,onDone);return;}
+  if(animType==='appear-ichi-b'){runAppearCard('ichi','b',bI,onDone);return;}
+
+  if(animType==='ichi-calc'){runCalcCard('ichi',aI,bI,iSum,false,onDone,layer);return;}
+  if(animType==='juu-calc'){runCalcCard('juu',aJ,bJ,jRaw,hasCarryI,onDone,layer);return;}
+  if(animType==='hyaku-calc'){runCalcCard('hyaku',aH,bH,hRaw,hasCarryJ,onDone,layer);return;}
+
+  if(animType==='carry-i'){runCarryCard('ichi',iSum,iAns,onDone,layer);return;}
+  if(animType==='carry-j'){runCarryCard('juu',jRaw,jAns,onDone,layer);return;}
+  if(animType==='carry-h'){runCarryCard('hyaku',hRaw,hAns,onDone,layer);return;}
+
+  // --- sen-calc: ヘッダー真上のせんカードが答え行(せんのくらい)へ降りてくる ---
+  if(animType==='sen-calc'){
+    document.getElementById('row-ans').style.display='table-row';
+    const svgSenAns=document.getElementById('svg-sen-ans');
+    svgSenAns.innerHTML='';
+    const src=aboveHdr('hdr-sen');
+    const cx=vbW('svg-sen-ans')/2, cy=94/2;
+    const dest=svgToLayer(svgSenAns,cx,cy);
+    layer.innerHTML='';
+    const g=mk('g',{},layer);
+    drawCardSingle(g,src.x,src.y,'sen',1,1,'#e74c3c');
+    tween(420,t=>{
+      const tx=src.x+(dest.x-src.x)*t;
+      const ty=src.y+(dest.y-src.y)*t;
+      g.setAttribute('transform',`translate(${tx-src.x},${ty-src.y})`);
+    },()=>{
+      layer.innerHTML='';
+      renderCard(svgSenAns,1,'sen',1);
+      onDone();
+    });
+    return;
   }
 
-  // is-empty: 答え行のそのセルにタイルがまだ無いときだけ斜線予告枠を表示
-  document.getElementById('col-sen-ans').classList.toggle('is-empty', !ts.senAns.count);
-  document.getElementById('col-hyaku-ans').classList.toggle('is-empty', !ts.hyakuAns.count);
+  layer.innerHTML='';
+  onDone();
 }
 
 // ============================================================
@@ -857,6 +1171,16 @@ function runAnim(animType,prevState,nextState,onDone){
   const HW=vbW('svg-hyaku-a'),HH_SVG=86;
   const u=U,G=u*.15,side=10*u+9*G;
   const su=u*Math.min((HW-8)/side,(HH_SVG-8)/side);
+
+  // ============================================================
+  // カードモード：アニメーションはタイル版と完全に別ルートで処理する。
+  // 桁の種類（ichi/juu/hyaku/sen）に関わらず同じ4つの汎用関数で
+  // 表現できるため、桁数が増えても新しい分岐を追加する必要がない。
+  // ============================================================
+  if(DISPLAY_MODE==='card'){
+    runAnimCard(animType,{aH,aJ,aI,bH,bJ,bI,ans,hasCarryI,iSum,iAns,jRaw,hasCarryJ,jAns,hRaw,hasCarryH,hAns,has3,has4},layer,onDone);
+    return;
+  }
 
   // --- appear-hyaku-a / b ---
   if(animType==='appear-hyaku-a'||animType==='appear-hyaku-b'){
@@ -990,9 +1314,6 @@ function runAnim(animType,prevState,nextState,onDone){
           mk('rect',{x:bx-1,y:by-1,width:U+2,height:JH+2,fill:'none',stroke:'#e74c3c','stroke-width':2*(1-t*.7),rx:1},layer);
         },()=>{
           layer.innerHTML='';
-          // ヘッダー真上に半透明棒を残す
-          const bxF=dest.x-U/2,byF=dest.y-JH/2;
-          for(let fi=0;fi<10;fi++){const sh=JH/10;mk('rect',{x:bxF,y:byF+fi*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3,opacity:.4},layer);}
           onDone();
         });
       });
@@ -1021,12 +1342,6 @@ function runAnim(animType,prevState,nextState,onDone){
     const allSrc=[...carrySrc,...srcA,...srcB];
     renderSticks(svgJA,aJ,.25);renderSticks(svgJB,bJ,.25);
     svgJAns.innerHTML='';layer.innerHTML='';
-    // carry棒グレーをlayerに
-    if(hasCarryI){
-      const JH=10*U+9*U*.15;
-      const bxF=carryAbove.x-U/2,byF=carryAbove.y-JH/2;
-      for(let fi=0;fi<10;fi++){const sh=JH/10;mk('rect',{x:bxF,y:byF+fi*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3,opacity:.25},layer);}
-    }
     const stickGs=allSrc.map((p,i)=>{
       const g=mk('g',{},layer);
       const isC=(hasCarryI&&i===0);
@@ -1041,12 +1356,6 @@ function runAnim(animType,prevState,nextState,onDone){
       });
     },()=>{
       layer.innerHTML='';
-      // グレー棒をヘッダー真上に残す
-      if(hasCarryI){
-        const JH=10*U+9*U*.15;
-        const bxF=carryAbove.x-U/2,byF=carryAbove.y-JH/2;
-        for(let fi=0;fi<10;fi++){const sh=JH/10;mk('rect',{x:bxF,y:byF+fi*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3,opacity:.25},layer);}
-      }
       renderSticks(svgJAns,jRaw,1);
       onDone();
     });
@@ -1064,12 +1373,13 @@ function runAnim(animType,prevState,nextState,onDone){
     const dest=aboveHdr('hdr-hyaku');
     const gs=src10.map(p=>{const g=mk('g',{},layer);drawStick(g,p.x,p.y,U,1,'#e74c3c');return g;});
     tween(450,t=>{
-      const cx=src10.reduce((s,p)=>s+p.x,0)/10,cy=src10.reduce((s,p)=>s+p.y,0)/10;
       gs.forEach((g,i)=>{
         const tx=src10[i].x+(dest.x-src10[i].x)*t;
         const ty=src10[i].y+(dest.y-src10[i].y)*t;
         const sc=Math.max(.2,1-t*.75);
-        g.setAttribute('transform',`translate(${tx-src10[i].x},${ty-src10[i].y}) scale(${sc}) translate(0,0)`);
+        const dx=tx-src10[i].x, dy=ty-src10[i].y;
+        // p(src10[i])の位置を中心に縮小しつつ、(dx,dy)だけ平行移動する
+        g.setAttribute('transform',`translate(${dx},${dy}) translate(${src10[i].x},${src10[i].y}) scale(${sc}) translate(${-src10[i].x},${-src10[i].y})`);
       });
     },()=>{
       layer.innerHTML='';
@@ -1077,9 +1387,6 @@ function runAnim(animType,prevState,nextState,onDone){
       const svgJ2=document.getElementById('svg-juu-ans');
       svgJ2.innerHTML='';
       if(jAns>0)renderSticks(svgJ2,jAns,1);
-      // ヘッダー真上にグレー百タイル
-      const gH=mk('g',{},layer);
-      drawHyakuScaled(gH,dest.x,dest.y,su,.35,'#e74c3c');
       onDone();
     });
     return;
@@ -1105,11 +1412,6 @@ function runAnim(animType,prevState,nextState,onDone){
     const allSrc=[...carrySrc,...srcA,...srcB];
     renderHyakus(svgHA,aH,.25);renderHyakus(svgHB,bH,.25);
     svgHAns.innerHTML='';layer.innerHTML='';
-    // グレーcarryタイル残す
-    if(hasCarryJ){
-      const gG=mk('g',{},layer);
-      drawHyakuScaled(gG,carryAbove.x,carryAbove.y,su,.25,'#e74c3c');
-    }
     const hGs=allSrc.map((p,i)=>{
       const g=mk('g',{},layer);
       const isC=(hasCarryJ&&i===0);
@@ -1124,10 +1426,6 @@ function runAnim(animType,prevState,nextState,onDone){
       });
     },()=>{
       layer.innerHTML='';
-      if(hasCarryJ){
-        const gG2=mk('g',{},layer);
-        drawHyakuScaled(gG2,carryAbove.x,carryAbove.y,su,.25,'#e74c3c');
-      }
       renderHyakus(svgHAns,hTotal,1);
       onDone();
     });
@@ -1151,7 +1449,8 @@ function runAnim(animType,prevState,nextState,onDone){
         const tx=src10[i].x+(dest.x-src10[i].x)*t;
         const ty=src10[i].y+(dest.y-src10[i].y)*t;
         const sc=Math.max(.15,1-t*.8);
-        g.setAttribute('transform',`translate(${tx-src10[i].x},${ty-src10[i].y}) scale(${sc})`);
+        const dx=tx-src10[i].x, dy=ty-src10[i].y;
+        g.setAttribute('transform',`translate(${dx},${dy}) translate(${src10[i].x},${src10[i].y}) scale(${sc}) translate(${-src10[i].x},${-src10[i].y})`);
       });
     },()=>{
       layer.innerHTML='';
@@ -1159,10 +1458,34 @@ function runAnim(animType,prevState,nextState,onDone){
       const svgH2=document.getElementById('svg-hyaku-ans');
       svgH2.innerHTML='';
       if(hAns>0)renderHyakus(svgH2,hAns,1);
-      // 千タイルをヘッダー真上にグレーで
+      // 千タイルをヘッダー真上にしっかり表示で残す（まだ使われていないので半透明にしない）
       const senSc=getSenScale();
       const gS=mk('g',{},layer);
-      drawSenScaled(gS,dest.x,dest.y,senSc,.3,'#e74c3c');
+      drawSenScaled(gS,dest.x,dest.y,senSc,1,'#e74c3c');
+      onDone();
+    });
+    return;
+  }
+
+  // --- sen-calc: ヘッダー真上のせんタイルが答え行(せんのくらい)へ降りてくる ---
+  if(animType==='sen-calc'){
+    document.getElementById('row-ans').style.display='table-row';
+    const svgSenAns=document.getElementById('svg-sen-ans');
+    svgSenAns.innerHTML='';
+    const src=aboveHdr('hdr-sen');
+    const senSc=getSenScale();
+    const cx=vbW('svg-sen-ans')/2, cy=94/2;
+    const dest=svgToLayer(svgSenAns,cx,cy);
+    layer.innerHTML='';
+    const g=mk('g',{},layer);
+    drawSenScaled(g,src.x,src.y,senSc,1,SC);
+    tween(450,t=>{
+      const tx=src.x+(dest.x-src.x)*t;
+      const ty=src.y+(dest.y-src.y)*t;
+      g.setAttribute('transform',`translate(${tx-src.x},${ty-src.y})`);
+    },()=>{
+      layer.innerHTML='';
+      renderSens(svgSenAns,1,1,null);
       onDone();
     });
     return;
@@ -1177,6 +1500,20 @@ function getSenScale(){
   const W=110,H=86,u=U,G=u*.15,W10=10*u+9*G,H10=10*u+9*G,OX=u*.35,OY=u*.35;
   const needW=W10+9*OX,needH=H10+9*OY;
   return u*Math.min((W-6)/needW,(H-6)/needH);
+}
+
+// カードモード時の桁の必要幅を計算
+// カードは「縦5枚×横の列」が基本のため、必要な列数はceil(枚数/5)で決まる
+// （0〜10枚なら2列に収まる）。cardPositionsと同じ式を使うことで、
+// 位取り表の列幅とカードの実際の描画幅が常に一致し、はみ出さない。
+function cardNeedWidth(maxCount,place){
+  const cfg=CARD_CFG[place];
+  if(maxCount<=0)return cfg.w+20;
+  const perCol=5;
+  const cols=Math.max(1,Math.ceil(maxCount/perCol));
+  const gapX=10;
+  const needW=cols*cfg.w+(cols-1)*gapX;
+  return Math.round(needW+16);
 }
 
 // ============================================================
@@ -1201,13 +1538,29 @@ function updateLayout(){
   document.getElementById('colgrp-sen').style.display=has4?'table-column':'none';
   document.querySelectorAll('.th-sen, .td-sen').forEach(el=>{el.style.display=senDisp;});
 
-  // ---- 十の位の幅：この問題で表示しうる最大の棒の本数から逆算 ----
   const hasCarryI=(aI+bI>=10);
   const jRaw=aJ+bJ+(hasCarryI?1:0);
+  const hasCarryJ=(jRaw>=10);
+  const hRaw=aH+bH+(hasCarryJ?1:0);
   const maxJuuCount=Math.max(aJ,bJ,jRaw,1);
-  const stW=U+1,gap=5; // renderSticksと同じ計算式
-  const juuNeedW=maxJuuCount*stW+(maxJuuCount-1)*gap+16; // 余白
-  const juuWidth=Math.max(124,Math.round(juuNeedW));
+  const maxHyakuCount=Math.max(aH,bH,hRaw,1);
+
+  let juuWidth,hyakuWidth;
+  if(DISPLAY_MODE==='card'){
+    // カード方式：5枚で1ブロック・最大2列という固定レイアウトなので、
+    // cardNeedWidthで実際に必要な幅を逆算する（桁数が増えても同じ式で対応）。
+    juuWidth=Math.max(124,cardNeedWidth(maxJuuCount,'juu'));
+    hyakuWidth=Math.max(124,cardNeedWidth(maxHyakuCount,'hyaku'));
+  } else {
+    // ---- 十の位の幅：この問題で表示しうる最大の棒の本数から逆算 ----
+    const stW=U+1,gap=5; // renderSticksと同じ計算式
+    const juuNeedW=maxJuuCount*stW+(maxJuuCount-1)*gap+16; // 余白
+    juuWidth=Math.max(124,Math.round(juuNeedW));
+    // ---- 百の位の幅：答えタイル枚数が多い場合に少し広げる（重なり表示なので緩やかに）----
+    const hyakuNeedW=124+Math.max(0,(maxHyakuCount-1))*3;
+    hyakuWidth=Math.max(124,Math.round(hyakuNeedW));
+  }
+
   document.querySelector('col.col-juu').style.width=juuWidth+'px';
   ['svg-juu-a','svg-juu-b','svg-juu-ans'].forEach(id=>{
     const svg=document.getElementById(id);
@@ -1216,12 +1569,6 @@ function updateLayout(){
     svg.setAttribute('viewBox',`0 0 ${juuWidth} ${vbH}`);
   });
 
-  // ---- 百の位の幅：答えタイル枚数が多い場合に少し広げる（重なり表示なので緩やかに）----
-  const hasCarryJ=(jRaw>=10);
-  const hRaw=aH+bH+(hasCarryJ?1:0);
-  const maxHyakuCount=Math.max(aH,bH,hRaw,1);
-  const hyakuNeedW=124+Math.max(0,(maxHyakuCount-1))*3;
-  const hyakuWidth=Math.max(124,Math.round(hyakuNeedW));
   document.getElementById('colgrp-hyaku').style.width=hyakuWidth+'px';
   ['svg-hyaku-a','svg-hyaku-b','svg-hyaku-ans'].forEach(id=>{
     const svg=document.getElementById(id);
@@ -1230,9 +1577,7 @@ function updateLayout(){
     svg.setAttribute('viewBox',`0 0 ${hyakuWidth} ${vbH}`);
   });
 
-  // ---- is-empty トグル：答え行のそのセルにタイルが無いときだけ斜線予告枠を表示 ----
-  document.getElementById('col-sen-ans').classList.add('is-empty');
-  document.getElementById('col-hyaku-ans').classList.add('is-empty');
+  // (is-empty トグルは廃止)
 }
 
 // ============================================================
@@ -1289,6 +1634,20 @@ function goStep(dir){
   if(newIdx<0||newIdx>=steps.length)return;
   stepIdx=newIdx;
   updateUI(dir<0);
+}
+
+// タイル方式／カード方式の切り替え。
+// stepsのデータ自体（数値・状態）はモードに依存しないので作り直さなくてよく、
+// レイアウト幅の再計算と、現在のステップの再描画だけ行えばよい。
+function setDisplayMode(mode){
+  if(animBusy||mode===DISPLAY_MODE)return;
+  cancelAnim();
+  DISPLAY_MODE=mode;
+  document.getElementById('mode-btn-tile').classList.toggle('active',mode==='tile');
+  document.getElementById('mode-btn-card').classList.toggle('active',mode==='card');
+  document.getElementById('anim-layer').innerHTML='';
+  updateLayout();
+  updateUI(true);
 }
 
 function setProblem(a,b){
