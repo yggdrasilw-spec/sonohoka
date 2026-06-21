@@ -120,6 +120,11 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 .nav-btn.prev:hover{background:#ddd;}
 .nav-btn.next{background:linear-gradient(135deg,#4a9eff,#2d7dd2);color:#fff;}
 .nav-btn.next:hover{transform:translateY(-1px);box-shadow:0 5px 12px rgba(74,158,255,.35);}
+
+.voice-btn{font-size:22px;line-height:1;border:none;background:none;cursor:pointer;
+  padding:6px 10px;border-radius:50%;transition:all .2s;filter:none;opacity:1;}
+.voice-btn:hover{background:#f0f0f0;}
+.voice-btn.off{filter:grayscale(1);opacity:.45;}
 .nav-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;}
 .step-indicator{font-size:13px;color:#888;font-weight:bold;min-width:80px;text-align:center;}
 
@@ -227,6 +232,7 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   <button class="nav-btn prev" id="btn-prev" onclick="goStep(-1)">◀ もどる</button>
   <span class="step-indicator" id="step-ind">1 / 1</span>
   <button class="nav-btn next" id="btn-next" onclick="goStep(1)">すすむ ▶</button>
+  <button class="voice-btn" id="btn-voice" onclick="toggleVoice()" title="読み上げON/OFF">🔊</button>
 </div>
 
 <script>
@@ -614,6 +620,85 @@ function aboveHdr(id){
 // アプリ状態
 // ============================================================
 let numA=35,numB=12,stepIdx=0,steps=[],animBusy=false;
+
+// ============================================================
+// 音声読み上げ（すべての数字・演算記号を日本語の読みに変換してから話す）
+// ============================================================
+let voiceOn=true,ttsWarmedUp=false,currentUtter=null;
+
+// 0〜9999の整数を日本語の読み（ひらがな）に変換する
+function numToYomi(n){
+  n=Math.round(n);
+  if(n===0)return'ぜろ';
+  if(n<0)return'まいなす '+numToYomi(-n);
+  const ichiMap=['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+  const juuMap  =['','じゅう','にじゅう','さんじゅう','よんじゅう','ごじゅう','ろくじゅう','ななじゅう','はちじゅう','きゅうじゅう'];
+  const hyakuMap=['','ひゃく','にひゃく','さんびゃく','よんひゃく','ごひゃく','ろっぴゃく','ななひゃく','はっぴゃく','きゅうひゃく'];
+  const senMap  =['','せん','にせん','さんぜん','よんせん','ごせん','ろくせん','ななせん','はっせん','きゅうせん'];
+  const sen=Math.floor(n/1000)%10, hyaku=Math.floor(n/100)%10, juu=Math.floor(n/10)%10, ichi=n%10;
+  let s='';
+  s+=senMap[sen];
+  s+=hyakuMap[hyaku];
+  s+=juuMap[juu];
+  s+=ichiMap[ichi];
+  return s;
+}
+
+// HTML（タグ・数字・演算記号入り）を読み上げ用の日本語テキストに変換する
+function toSpeechText(html){
+  let s=String(html);
+  s=s.replace(/<br\s*\/?>/gi,'。');     // 改行は「、」のように一拍おく
+  s=s.replace(/<[^>]+>/g,'');           // 残りのタグは除去
+  s=s.replace(/＋|\+/g,' たす ');
+  s=s.replace(/－|-/g,' ひく ');
+  s=s.replace(/×/g,' かける ');
+  s=s.replace(/÷/g,' わる ');
+  s=s.replace(/＝|=/g,' は ');
+  s=s.replace(/▶|◀/g,'');
+  s=s.replace(/\d+/g,m=>numToYomi(parseInt(m,10))); // 数字をすべて日本語の読みに変換
+  s=s.replace(/\s+/g,' ').trim();
+  return s;
+}
+
+// 無音のウォームアップ発話（一部のブラウザは最初の発話が無視されることがあるため、
+// 起動直後（や音声ON直後）に1音だけ無音で読み上げてエンジンを起こしておく）
+function warmupTTS(){
+  if(ttsWarmedUp)return;
+  if(!('speechSynthesis'in window))return;
+  try{
+    const u=new SpeechSynthesisUtterance('ん');
+    u.lang='ja-JP';u.volume=0;
+    window.speechSynthesis.speak(u);
+    ttsWarmedUp=true;
+  }catch(e){/* 読み上げ非対応環境では無視 */}
+}
+
+function speakText(text){
+  if(!voiceOn)return;
+  if(!('speechSynthesis'in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='ja-JP';u.rate=.95;u.pitch=1.05;
+    currentUtter=u;
+    window.speechSynthesis.speak(u);
+  }catch(e){/* 読み上げ非対応環境では無視 */}
+}
+
+function speakStep(descHtml){
+  speakText(toSpeechText(descHtml));
+}
+
+function toggleVoice(){
+  voiceOn=!voiceOn;
+  const btn=document.getElementById('btn-voice');
+  btn.classList.toggle('off',!voiceOn);
+  if(voiceOn){
+    warmupTTS();
+  } else if('speechSynthesis'in window){
+    window.speechSynthesis.cancel();
+  }
+}
 let DISPLAY_MODE='tile'; // 'tile'：実物タイル／'card'：数字カード
 
 function cloneState(s){return JSON.parse(JSON.stringify(s));}
@@ -1047,56 +1132,73 @@ function runCarryCard(place,totalCount,remainCount,onDone,layer){
   const W=vbW(svgAns.id),H=parseInt(svgAns.getAttribute('height'))||94;
   const allPos=cardPositions(totalCount,place,W,H);
   const baseScale=allPos[0]?.scale??1;
-  const pos10=allPos.slice(0,10).map(p=>({...svgToLayer(svgAns,p.cx,p.cy),scale:p.scale??1}));
-  renderCard(svgAns,totalCount,place,.25);
+  const pos10L=allPos.slice(0,10).map(p=>({...svgToLayer(svgAns,p.cx,p.cy),scale:p.scale??1}));
+  const posR=allPos.slice(10);
 
   const dest=aboveHdr(PLACE_HDR[upper]);
-  // 10枚の重心を出発点とする（タイル版のcarry-i同様、まとまりとして移動させる）
-  const srcCx=pos10.reduce((s,p)=>s+p.x,0)/pos10.length;
-  const srcCy=pos10.reduce((s,p)=>s+p.y,0)/pos10.length;
-  const gs=pos10.map(p=>{
-    const g=mk('g',{},layer);
-    drawCardSingle(g,p.x,p.y,place,p.scale,1,'#e74c3c');
-    return g;
-  });
-  // phase1: 10枚が集まりながら縮小
-  tween(260,t=>{
-    gs.forEach((g,i)=>{
-      const sx=pos10[i].x+(srcCx-pos10[i].x)*t;
-      const sy=pos10[i].y+(srcCy-pos10[i].y)*t;
-      const sc=1-0.55*t;
-      g.setAttribute('transform',`translate(${sx-pos10[i].x},${sy-pos10[i].y}) translate(${pos10[i].x},${pos10[i].y}) scale(${sc}) translate(${-pos10[i].x},${-pos10[i].y})`);
-      g.setAttribute('opacity',1-0.4*t);
-    });
-  },()=>{
-    layer.innerHTML='';
-    // phase2: 1枚の上位カードに変わってポップ
-    const gUp=mk('g',{opacity:0},layer);
-    drawCardSingle(gUp,srcCx,srcCy,upper,baseScale*0.4,1,'#e74c3c');
-    tween(260,t=>{
-      const sc=baseScale*(0.4+0.6*Math.min(1,t*1.3));
-      gUp.innerHTML='';
-      drawCardSingle(gUp,srcCx,srcCy,upper,sc,1,'#e74c3c');
-      gUp.setAttribute('opacity',Math.min(1,t*2));
-    },()=>{
-      // phase3: 上位の見出しの真上へ移動
-      tween(360,t=>{
-        const cx=srcCx+(dest.x-srcCx)*t;
-        const cy=srcCy+(dest.y-srcCy)*t;
-        gUp.innerHTML='';
-        drawCardSingle(gUp,cx,cy,upper,baseScale,1,'#e74c3c');
+  const srcCx=pos10L.reduce((s,p)=>s+p.x,0)/pos10L.length;
+  const srcCy=pos10L.reduce((s,p)=>s+p.y,0)/pos10L.length;
+  const cfg=CARD_CFG[place];
+  const cw=cfg.w*baseScale,ch=cfg.h*baseScale;
+
+  // 点線で「10枚のかたまり」だけを囲む。残りはそのまま通常表示で動かさない。
+  const xs=pos10L.map(p=>p.x),ys=pos10L.map(p=>p.y),m=6;
+  const bx0=Math.min(...xs)-cw/2-m, by0=Math.min(...ys)-ch/2-m;
+  const bw0=Math.max(...xs)-Math.min(...xs)+cw+m*2, bh0=Math.max(...ys)-Math.min(...ys)+ch+m*2;
+  const dash=mk('rect',{x:bx0,y:by0,width:bw0,height:bh0,fill:'none',stroke:'#e74c3c','stroke-width':2,'stroke-dasharray':'5,4',rx:5,opacity:0},layer);
+  tween(220,t=>dash.setAttribute('opacity',t),()=>{
+    setTimeout(()=>{
+      // 囲んだ10枚を元の場所から外し、残りカードだけ通常表示で描き直す
+      svgAns.innerHTML='';
+      posR.forEach(p=>drawCardSingle(mk('g',{},svgAns),p.cx,p.cy,place,p.scale??1,1));
+      // phase1: 点線で囲んだ部分（10枚＋枠）だけを中心に縮小する
+      const gs=pos10L.map(p=>{
+        const g=mk('g',{},layer);
+        drawCardSingle(g,p.x,p.y,place,p.scale,1,'#e74c3c');
+        return g;
+      });
+      tween(320,t=>{
+        gs.forEach((g,i)=>{
+          const sx=pos10L[i].x+(srcCx-pos10L[i].x)*t;
+          const sy=pos10L[i].y+(srcCy-pos10L[i].y)*t;
+          const sc=1-0.55*t;
+          g.setAttribute('transform',`translate(${sx-pos10L[i].x},${sy-pos10L[i].y}) translate(${pos10L[i].x},${pos10L[i].y}) scale(${sc}) translate(${-pos10L[i].x},${-pos10L[i].y})`);
+        });
+        const bw=bw0*(1-.85*t), bh=bh0*(1-.85*t);
+        dash.setAttribute('x',srcCx-bw/2);dash.setAttribute('y',srcCy-bh/2);
+        dash.setAttribute('width',bw);dash.setAttribute('height',bh);
+        dash.setAttribute('opacity',1-t);
       },()=>{
         layer.innerHTML='';
-        // 元の桁：残りカードを正式に描画
-        svgAns.innerHTML='';
-        if(remainCount>0)renderCard(svgAns,remainCount,place,1);
-        // 上位の見出しの真上にしっかり表示で残す（まだ使われていないので半透明にしない。
-        // ichi→juu, juu→hyakuの場合はこの直後にpaintTilesがmark-layerへ引き継ぐ）
-        const gRest=mk('g',{},layer);
-        drawCardSingle(gRest,dest.x,dest.y,upper,baseScale,1,'#e74c3c');
-        onDone();
+        // phase2: 1枚の上位カードに変わってポップ
+        const gUp=mk('g',{opacity:0},layer);
+        drawCardSingle(gUp,srcCx,srcCy,upper,baseScale*0.4,1,'#e74c3c');
+        tween(260,t=>{
+          const sc=baseScale*(0.4+0.6*Math.min(1,t*1.3));
+          gUp.innerHTML='';
+          drawCardSingle(gUp,srcCx,srcCy,upper,sc,1,'#e74c3c');
+          gUp.setAttribute('opacity',Math.min(1,t*2));
+        },()=>{
+          // phase3: 上位の見出しの真上へ移動
+          tween(360,t=>{
+            const cx=srcCx+(dest.x-srcCx)*t;
+            const cy=srcCy+(dest.y-srcCy)*t;
+            gUp.innerHTML='';
+            drawCardSingle(gUp,cx,cy,upper,baseScale,1,'#e74c3c');
+          },()=>{
+            layer.innerHTML='';
+            // 元の桁：残りカードを正式に描画
+            svgAns.innerHTML='';
+            if(remainCount>0)renderCard(svgAns,remainCount,place,1);
+            // 上位の見出しの真上にしっかり表示で残す（まだ使われていないので半透明にしない。
+            // ichi→juu, juu→hyakuの場合はこの直後にpaintTilesがmark-layerへ引き継ぐ）
+            const gRest=mk('g',{},layer);
+            drawCardSingle(gRest,dest.x,dest.y,upper,baseScale,1,'#e74c3c');
+            onDone();
+          });
+        });
       });
-    });
+    },480);
   });
 }
 
@@ -1272,51 +1374,61 @@ function runAnim(animType,prevState,nextState,onDone){
     const W=110,HA=94;
     const posAll=drawIchi(mk('svg',{width:0,height:0}),iSum,W,HA,1,null);
     const pos10=posAll.slice(0,10);
+    const posR=posAll.slice(10);
     const l10=pos10.map(p=>svgToLayer(svgAnsI,p.cx,p.cy));
-    // 10個をグレーに、残りはそのまま
-    svgAnsI.innerHTML='';
-    drawIchi(svgAnsI,10,W,HA,.25,null);
-    if(iAns>0){
-      const posR=drawIchi(mk('svg',{width:0,height:0}),iSum,W,HA,1,null).slice(10);
-      posR.forEach(p=>mk('rect',{x:p.cx-U/2,y:p.cy-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},svgAnsI));
-    }
-    // 移動先：じゅうのくらいヘッダーの真上
     const dest=aboveHdr('hdr-juu');
     const srcCx=l10.reduce((s,p)=>s+p.x,0)/10;
     const srcCy=l10.reduce((s,p)=>s+p.y,0)/10;
-    const rects=l10.map(p=>mk('rect',{x:p.x-U/2,y:p.y-U/2,width:U,height:U,fill:FC,stroke:'#e74c3c','stroke-width':1.2,rx:.6},layer));
-    // phase1: 集まる
-    tween(280,t=>{
-      rects.forEach((r,i)=>{
-        const sz=U*(1-.3*t);
-        r.setAttribute('x',l10[i].x+(srcCx-l10[i].x)*t-sz/2);
-        r.setAttribute('y',l10[i].y+(srcCy-l10[i].y)*t-sz/2);
-        r.setAttribute('width',sz);r.setAttribute('height',sz);
-      });
-    },()=>{
-      // phase2: 棒に変形
-      layer.innerHTML='';
-      const JH=10*U+9*U*.15;
-      tween(260,t=>{
-        layer.innerHTML='';
-        const curH=U+(JH-U)*t;
-        const bx=srcCx-U/2,by=srcCy-curH/2;
-        for(let i=0;i<10;i++){const sh=curH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6*(.2+t*.8),rx:.3,opacity:.4+.6*t},layer);}
-        mk('rect',{x:bx-1,y:by-1,width:U+2,height:curH+2,fill:'none',stroke:'#e74c3c','stroke-width':2},layer);
-      },()=>{
-        // phase3: 真上へ飛ぶ
-        tween(380,t=>{
-          layer.innerHTML='';
-          const cx=srcCx+(dest.x-srcCx)*t;
-          const cy=srcCy+(dest.y-srcCy)*t;
-          const bx=cx-U/2,by=cy-JH/2;
-          for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},layer);}
-          mk('rect',{x:bx-1,y:by-1,width:U+2,height:JH+2,fill:'none',stroke:'#e74c3c','stroke-width':2*(1-t*.7),rx:1},layer);
+
+    // 点線で「10個のかたまり」だけを囲む。囲んでいない残りは通常表示のまま動かさない。
+    const xs=l10.map(p=>p.x),ys=l10.map(p=>p.y),m=U*.8;
+    const bx0=Math.min(...xs)-U/2-m, by0=Math.min(...ys)-U/2-m;
+    const bw0=Math.max(...xs)-Math.min(...xs)+U+m*2, bh0=Math.max(...ys)-Math.min(...ys)+U+m*2;
+    const dash=mk('rect',{x:bx0,y:by0,width:bw0,height:bh0,fill:'none',stroke:'#e74c3c','stroke-width':2,'stroke-dasharray':'5,4',rx:4,opacity:0},layer);
+    tween(220,t=>dash.setAttribute('opacity',t),()=>{
+      setTimeout(()=>{
+        // 囲んだ10個を元の場所から外し、残り（iAns個）だけを通常表示で描き直す
+        svgAnsI.innerHTML='';
+        posR.forEach(p=>mk('rect',{x:p.cx-U/2,y:p.cy-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},svgAnsI));
+        // phase1: 点線で囲んだ部分（10個＋枠）だけを中心に縮小する
+        const rects=l10.map(p=>mk('rect',{x:p.x-U/2,y:p.y-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},layer));
+        tween(320,t=>{
+          rects.forEach((r,i)=>{
+            const cx=l10[i].x+(srcCx-l10[i].x)*t, cy=l10[i].y+(srcCy-l10[i].y)*t;
+            const sz=U*(1-.5*t);
+            r.setAttribute('x',cx-sz/2);r.setAttribute('y',cy-sz/2);
+            r.setAttribute('width',sz);r.setAttribute('height',sz);
+          });
+          const bw=bw0+(U*1.2-bw0)*t, bh=bh0+(U*1.2-bh0)*t;
+          dash.setAttribute('x',srcCx-bw/2);dash.setAttribute('y',srcCy-bh/2);
+          dash.setAttribute('width',bw);dash.setAttribute('height',bh);
+          dash.setAttribute('opacity',1-t);
         },()=>{
+          // phase2: 棒に変形
           layer.innerHTML='';
-          onDone();
+          const JH=10*U+9*U*.15;
+          tween(260,t=>{
+            layer.innerHTML='';
+            const curH=U+(JH-U)*t;
+            const bx=srcCx-U/2,by=srcCy-curH/2;
+            for(let i=0;i<10;i++){const sh=curH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6*(.2+t*.8),rx:.3,opacity:.4+.6*t},layer);}
+            mk('rect',{x:bx-1,y:by-1,width:U+2,height:curH+2,fill:'none',stroke:'#e74c3c','stroke-width':2},layer);
+          },()=>{
+            // phase3: 真上へ飛ぶ
+            tween(380,t=>{
+              layer.innerHTML='';
+              const cx=srcCx+(dest.x-srcCx)*t;
+              const cy=srcCy+(dest.y-srcCy)*t;
+              const bx=cx-U/2,by=cy-JH/2;
+              for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},layer);}
+              mk('rect',{x:bx-1,y:by-1,width:U+2,height:JH+2,fill:'none',stroke:'#e74c3c','stroke-width':2*(1-t*.7),rx:1},layer);
+            },()=>{
+              layer.innerHTML='';
+              onDone();
+            });
+          });
         });
-      });
+      },480);
     });
     return;
   }
@@ -1367,27 +1479,57 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgJAns=document.getElementById('svg-juu-ans');
     const W=vbW('svg-juu-ans'),HA=94,stW=U+1,gap=5;
     const totW=jRaw*stW+(jRaw-1)*gap,sx=(W-totW)/2+stW/2;
-    const src10=Array.from({length:10},(_,i)=>svgToLayer(svgJAns,sx+i*(stW+gap),HA/2));
-    renderSticks(svgJAns,jRaw,.25);
-    // 移動先：ひゃくのくらいヘッダーの真上
+    const allPos=Array.from({length:jRaw},(_,i)=>({x:sx+i*(stW+gap),y:HA/2}));
+    const pos10=allPos.slice(0,10);
+    const posR=allPos.slice(10);
+    const src10=pos10.map(p=>svgToLayer(svgJAns,p.x,p.y));
     const dest=aboveHdr('hdr-hyaku');
-    const gs=src10.map(p=>{const g=mk('g',{},layer);drawStick(g,p.x,p.y,U,1,'#e74c3c');return g;});
-    tween(450,t=>{
-      gs.forEach((g,i)=>{
-        const tx=src10[i].x+(dest.x-src10[i].x)*t;
-        const ty=src10[i].y+(dest.y-src10[i].y)*t;
-        const sc=Math.max(.2,1-t*.75);
-        const dx=tx-src10[i].x, dy=ty-src10[i].y;
-        // p(src10[i])の位置を中心に縮小しつつ、(dx,dy)だけ平行移動する
-        g.setAttribute('transform',`translate(${dx},${dy}) translate(${src10[i].x},${src10[i].y}) scale(${sc}) translate(${-src10[i].x},${-src10[i].y})`);
-      });
-    },()=>{
-      layer.innerHTML='';
-      // 残り棒
-      const svgJ2=document.getElementById('svg-juu-ans');
-      svgJ2.innerHTML='';
-      if(jAns>0)renderSticks(svgJ2,jAns,1);
-      onDone();
+    const srcCx=src10.reduce((s,p)=>s+p.x,0)/10;
+    const srcCy=src10.reduce((s,p)=>s+p.y,0)/10;
+
+    // 点線で「10本のかたまり」だけを囲む。残り（jAns本）は通常表示のまま動かさない。
+    // 縦方向は棒1本分の高さ(JH=10ユニット分)を基準にする（U単位の高さだと10倍狭すぎる）
+    const JH0=10*U+9*U*.15;
+    const xs=src10.map(p=>p.x),m=4;
+    const bx0=Math.min(...xs)-stW/2-m, by0=srcCy-JH0/2-m;
+    const bw0=Math.max(...xs)-Math.min(...xs)+stW+m*2, bh0=JH0+m*2;
+    const dash=mk('rect',{x:bx0,y:by0,width:bw0,height:bh0,fill:'none',stroke:'#e74c3c','stroke-width':2,'stroke-dasharray':'5,4',rx:4,opacity:0},layer);
+    tween(220,t=>dash.setAttribute('opacity',t),()=>{
+      setTimeout(()=>{
+        // 囲んだ10本を元の場所から外し、残りだけ通常表示で描き直す
+        svgJAns.innerHTML='';
+        posR.forEach(p=>{const g=mk('g',{},svgJAns);drawStick(g,p.x,p.y,U,1,SC);});
+        // phase1: 点線で囲んだ部分（10本＋枠）だけを中心に縮小する
+        const gs=src10.map(p=>{const g=mk('g',{},layer);drawStick(g,p.x,p.y,U,1,SC);return g;});
+        tween(320,t=>{
+          gs.forEach((g,i)=>{
+            const cx=src10[i].x+(srcCx-src10[i].x)*t, cy=src10[i].y+(srcCy-src10[i].y)*t;
+            const sc=1-.5*t;
+            const dx=cx-src10[i].x, dy=cy-src10[i].y;
+            g.setAttribute('transform',`translate(${dx},${dy}) translate(${src10[i].x},${src10[i].y}) scale(${sc}) translate(${-src10[i].x},${-src10[i].y})`);
+          });
+          const bw=bw0+(stW*1.2-bw0)*t, bh=bh0+(U*1.2-bh0)*t;
+          dash.setAttribute('x',srcCx-bw/2);dash.setAttribute('y',srcCy-bh/2);
+          dash.setAttribute('width',bw);dash.setAttribute('height',bh);
+          dash.setAttribute('opacity',1-t);
+        },()=>{
+          // phase2: ひゃくタイルに変形しつつ真上へ飛ぶ
+          layer.innerHTML='';
+          const g2=mk('g',{},layer);
+          drawHyakuScaled(g2,srcCx,srcCy,su*.001,1,'#e74c3c'); // 初期はごく小さく
+          tween(420,t=>{
+            const cx=srcCx+(dest.x-srcCx)*t;
+            const cy=srcCy+(dest.y-srcCy)*t;
+            const sc=su*(.15+.85*t);
+            layer.innerHTML='';
+            const g3=mk('g',{},layer);
+            drawHyakuScaled(g3,cx,cy,sc,1,'#e74c3c');
+          },()=>{
+            layer.innerHTML='';
+            onDone();
+          });
+        });
+      },480);
     });
     return;
   }
@@ -1436,33 +1578,63 @@ function runAnim(animType,prevState,nextState,onDone){
   if(animType==='carry-h'){
     const svgHAns=document.getElementById('svg-hyaku-ans');
     const W=vbW('svg-hyaku-ans'),HA=94,step=2.5;
-    // hRaw枚のうち10枚をくり上げ
-    const src10=Array.from({length:10},(_,i)=>{
-      const cx=W/2+(i-(hRaw-1)/2)*step,cy=HA/2;
-      return svgToLayer(svgHAns,cx,cy);
-    });
-    renderHyakus(svgHAns,hRaw,.25);
+    const allPos=Array.from({length:hRaw},(_,i)=>({x:W/2+(i-(hRaw-1)/2)*step,y:HA/2}));
+    const pos10=allPos.slice(0,10);
+    const posR=allPos.slice(10);
+    const src10=pos10.map(p=>svgToLayer(svgHAns,p.x,p.y));
     const dest=aboveHdr('hdr-sen');
-    const gs=src10.map(p=>{const g=mk('g',{},layer);drawHyakuScaled(g,p.x,p.y,su,1,'#e74c3c');return g;});
-    tween(500,t=>{
-      gs.forEach((g,i)=>{
-        const tx=src10[i].x+(dest.x-src10[i].x)*t;
-        const ty=src10[i].y+(dest.y-src10[i].y)*t;
-        const sc=Math.max(.15,1-t*.8);
-        const dx=tx-src10[i].x, dy=ty-src10[i].y;
-        g.setAttribute('transform',`translate(${dx},${dy}) translate(${src10[i].x},${src10[i].y}) scale(${sc}) translate(${-src10[i].x},${-src10[i].y})`);
-      });
-    },()=>{
-      layer.innerHTML='';
-      // hAns枚残す
-      const svgH2=document.getElementById('svg-hyaku-ans');
-      svgH2.innerHTML='';
-      if(hAns>0)renderHyakus(svgH2,hAns,1);
-      // 千タイルをヘッダー真上にしっかり表示で残す（まだ使われていないので半透明にしない）
-      const senSc=getSenScale();
-      const gS=mk('g',{},layer);
-      drawSenScaled(gS,dest.x,dest.y,senSc,1,'#e74c3c');
-      onDone();
+    const srcCx=src10.reduce((s,p)=>s+p.x,0)/10;
+    const srcCy=src10.reduce((s,p)=>s+p.y,0)/10;
+
+    // 点線で「10枚のかたまり」だけを囲む。残り（hAns枚）は通常表示のまま動かさない。
+    // タイル1枚の実際の大きさ(TW=10ユニット分)を基準にする（su*4だと小さすぎてタイルが枠から飛び出す）
+    const TW0=10*su+9*su*.15;
+    const xs=src10.map(p=>p.x),m=4;
+    const bx0=Math.min(...xs)-TW0/2-m, by0=srcCy-TW0/2-m;
+    const bw0=Math.max(...xs)-Math.min(...xs)+TW0+m*2, bh0=TW0+m*2;
+    const dash=mk('rect',{x:bx0,y:by0,width:bw0,height:bh0,fill:'none',stroke:'#e74c3c','stroke-width':2,'stroke-dasharray':'5,4',rx:4,opacity:0},layer);
+    tween(220,t=>dash.setAttribute('opacity',t),()=>{
+      setTimeout(()=>{
+        // 囲んだ10枚を元の場所から外し、残りだけ通常表示で描き直す
+        svgHAns.innerHTML='';
+        posR.forEach(p=>{const g=mk('g',{},svgHAns);drawHyakuScaled(g,p.x,p.y,su,1,SC);});
+        // phase1: 点線で囲んだ部分（10枚＋枠）だけを中心に縮小する
+        const gs=src10.map(p=>{const g=mk('g',{},layer);drawHyakuScaled(g,p.x,p.y,su,1,SC);return g;});
+        tween(320,t=>{
+          gs.forEach((g,i)=>{
+            const cx=src10[i].x+(srcCx-src10[i].x)*t, cy=src10[i].y+(srcCy-src10[i].y)*t;
+            const sc=1-.5*t;
+            const dx=cx-src10[i].x, dy=cy-src10[i].y;
+            g.setAttribute('transform',`translate(${dx},${dy}) translate(${src10[i].x},${src10[i].y}) scale(${sc}) translate(${-src10[i].x},${-src10[i].y})`);
+          });
+          const bw=bw0*(1-.85*t), bh=bh0*(1-.85*t);
+          dash.setAttribute('x',srcCx-bw/2);dash.setAttribute('y',srcCy-bh/2);
+          dash.setAttribute('width',bw);dash.setAttribute('height',bh);
+          dash.setAttribute('opacity',1-t);
+        },()=>{
+          // phase2: せんタイルに変形しつつ真上へ飛ぶ
+          layer.innerHTML='';
+          const senSc=getSenScale();
+          tween(420,t=>{
+            const cx=srcCx+(dest.x-srcCx)*t;
+            const cy=srcCy+(dest.y-srcCy)*t;
+            const sc=senSc*(.15+.85*t);
+            layer.innerHTML='';
+            const g3=mk('g',{},layer);
+            drawSenScaled(g3,cx,cy,sc,1,'#e74c3c');
+          },()=>{
+            layer.innerHTML='';
+            // hAns枚残す（再描画はpaintTiles側でも行われるが、ここでも確定表示しておく）
+            const svgH2=document.getElementById('svg-hyaku-ans');
+            svgH2.innerHTML='';
+            if(hAns>0)renderHyakus(svgH2,hAns,1);
+            // 千タイルをヘッダー真上にしっかり表示で残す（まだ使われていないので半透明にしない）
+            const gS=mk('g',{},layer);
+            drawSenScaled(gS,dest.x,dest.y,senSc,1,'#e74c3c');
+            onDone();
+          });
+        });
+      },480);
     });
     return;
   }
@@ -1589,6 +1761,7 @@ function updateUI(skipAnim){
   document.getElementById('step-num').textContent=stepIdx+1;
   document.getElementById('step-title-text').innerHTML=step.title;
   document.getElementById('step-desc').innerHTML=step.desc;
+  speakStep(step.desc);
   document.getElementById('step-ind').textContent=`${stepIdx+1} / ${total}`;
   document.getElementById('btn-prev').disabled=animBusy||(stepIdx===0);
   document.getElementById('btn-next').disabled=animBusy||(stepIdx===total-1);
@@ -1685,10 +1858,37 @@ function generateFromInput(){
 document.getElementById('inp-a').addEventListener('keydown',e=>{if(e.key==='Enter')generateFromInput();});
 document.getElementById('inp-b').addEventListener('keydown',e=>{if(e.key==='Enter')generateFromInput();});
 
+// キーボード操作：テキストボックス外でのEnter／←→キーでステップ送り
+document.addEventListener('keydown',e=>{
+  const tag=(e.target&&e.target.tagName)||'';
+  const inTextField=(tag==='INPUT'||tag==='TEXTAREA');
+  if(e.key==='Enter'){
+    if(inTextField)return; // 入力欄内のEnterは各入力欄のリスナーに任せる
+    e.preventDefault();
+    if(!document.getElementById('btn-next').disabled)goStep(1);
+    return;
+  }
+  if(e.key==='ArrowRight'){
+    if(inTextField)return; // 数値入力欄では矢印キーの本来の動作を優先する
+    e.preventDefault();
+    if(!document.getElementById('btn-next').disabled)goStep(1);
+    return;
+  }
+  if(e.key==='ArrowLeft'){
+    if(inTextField)return;
+    e.preventDefault();
+    if(!document.getElementById('btn-prev').disabled)goStep(-1);
+    return;
+  }
+});
+
 // 初期化
 updateLayout();
 steps=buildSteps();
+warmupTTS();
 updateUI(true);
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,warmupTTS,{once:true}));
+
 </script>
 </body>
 </html>
