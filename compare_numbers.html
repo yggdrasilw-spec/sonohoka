@@ -440,6 +440,69 @@
       margin-top:-4px;
     }
 
+    .custom-box{
+      margin-top:14px;
+      padding:14px;
+      border:1px solid #d8e2ee;
+      border-radius:18px;
+      background:#fbfdff;
+      display:grid;
+      gap:12px;
+    }
+    .custom-title{
+      font-weight:900;
+      font-size:16px;
+    }
+    .custom-inputs{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:10px;
+    }
+    .custom-field{
+      display:grid;
+      gap:6px;
+      font-weight:800;
+      color:#334155;
+    }
+    .custom-field span{
+      font-size:13px;
+    }
+    .custom-field input{
+      width:100%;
+      border:1px solid #cfd9e6;
+      border-radius:14px;
+      padding:12px 12px;
+      font-size:16px;
+      background:#fff;
+      color:var(--text);
+      outline:none;
+    }
+    .custom-field input:focus{
+      border-color:#6ca8e6;
+      box-shadow:0 0 0 4px rgba(108,168,230,.14);
+    }
+    .custom-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .custom-actions button{
+      flex:1 1 180px;
+    }
+    .mode-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:76px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#eef5ff;
+      border:1px solid #d9e6f7;
+      color:#2557a7;
+      font-weight:900;
+      font-size:13px;
+    }
+
     .hidden{display:none !important;}
     .nowrap{white-space:nowrap}
 
@@ -466,6 +529,7 @@
       <div class="card problem-area">
         <div class="status">
           <div>出題レベル：<strong id="levelLabel">3桁整数</strong></div>
+          <div>モード：<strong id="modeLabel" class="mode-pill">ランダム</strong></div>
           <div class="star-box">たまった★：★×<strong id="starCount">0</strong><button class="star-reset" id="resetStarBtn">リセット</button></div>
           <div>記号：<strong id="currentSignLabel">□</strong></div>
         </div>
@@ -513,6 +577,24 @@
             <button class="smallbtn" id="decMinus">－</button>
             <div class="value-pill" id="decDigitsValue">0</div>
             <button class="smallbtn" id="decPlus">＋</button>
+          </div>
+          <div class="custom-box">
+            <div class="custom-title">好きな数をくらべる</div>
+            <div class="custom-inputs">
+              <label class="custom-field">
+                <span>左の数</span>
+                <input type="text" id="customLeftInput" inputmode="decimal" placeholder="例: 123.45" autocomplete="off" />
+              </label>
+              <label class="custom-field">
+                <span>右の数</span>
+                <input type="text" id="customRightInput" inputmode="decimal" placeholder="例: 98.7" autocomplete="off" />
+              </label>
+            </div>
+            <div class="custom-actions">
+              <button class="btn-primary" id="applyCustomBtn">この数で確認</button>
+              <button class="btn-ghost" id="clearCustomBtn">ランダムに戻す</button>
+            </div>
+            <div class="footer-tip" id="customModeTip">入力した数が位取り表にそのまま表示され、ヒントもその数で動きます。</div>
           </div>
           <div class="footer-tip">整数は1～13桁、小数は0～3桁まで設定できます。</div>
         </div>
@@ -562,11 +644,13 @@
       audioReady: false,
       speechVoice: null,
       speechWarmupDone: false,
+      customMode: false,
     };
 
     const els = {
       levelLabel: document.getElementById('levelLabel'),
       currentSignLabel: document.getElementById('currentSignLabel'),
+      modeLabel: document.getElementById('modeLabel'),
       signBtn: document.getElementById('signBtn'),
       signText: document.getElementById('signText'),
       leftLabels: document.getElementById('leftLabels'),
@@ -575,6 +659,11 @@
       rightDigits: document.getElementById('rightDigits'),
       speechText: document.getElementById('speechText'),
       settingsBox: document.getElementById('settingsBox'),
+      customLeftInput: document.getElementById('customLeftInput'),
+      customRightInput: document.getElementById('customRightInput'),
+      applyCustomBtn: document.getElementById('applyCustomBtn'),
+      clearCustomBtn: document.getElementById('clearCustomBtn'),
+      customModeTip: document.getElementById('customModeTip'),
       toggleSettingsBtn: document.getElementById('toggleSettingsBtn'),
       soundBtn: document.getElementById('soundBtn'),
       starCount: document.getElementById('starCount'),
@@ -1117,6 +1206,9 @@
 
       els.signText.textContent = state.signs[state.signIndex];
       els.currentSignLabel.textContent = state.signs[state.signIndex] || '□';
+      if(els.modeLabel){
+        els.modeLabel.textContent = state.customMode ? '任意の数' : 'ランダム';
+      }
       els.speechText.textContent = '「ヒント」を押すと、どの位から比べるかを順番に見せます。';
     }
 
@@ -1264,6 +1356,7 @@
     }
 
     function generateNewProblem(){
+      setModeLabel(false);
       let problem;
       if(state.decDigits === 0){
         const roll = Math.random();
@@ -1527,6 +1620,115 @@
       updateSoundButton();
     }
 
+    function normalizeInputNumberText(text){
+      return String(text ?? '')
+        .trim()
+        .replace(/[，,]/g, '')
+        .replace(/[。．]/g, '.')
+        .replace(/[０-９]/g, ch => String(ch.charCodeAt(0) - 0xFEE0))
+        .replace(/[－ー−―]/g, '-');
+    }
+
+    function parseCustomNumberInput(text){
+      const raw = normalizeInputNumberText(text);
+      if(raw === '') return { error: '数を入れてください。' };
+      if(/^-/.test(raw)) return { error: 'マイナスはこの画面ではまだ使えません。0以上の数を入れてください。' };
+
+      let intStr = '';
+      let decStr = '';
+      if(raw.startsWith('.')){
+        intStr = '0';
+        decStr = raw.slice(1);
+      }else if(raw.includes('.')){
+        const parts = raw.split('.');
+        if(parts.length !== 2) return { error: '小数点は1つだけにしてください。' };
+        [intStr, decStr] = parts;
+      }else{
+        intStr = raw;
+      }
+
+      if(intStr === '') intStr = '0';
+      if(!/^\d+$/.test(intStr)) return { error: '整数の部分は数字だけで入れてください。' };
+      if(decStr !== '' && !/^\d+$/.test(decStr)) return { error: '小数の部分は数字だけで入れてください。' };
+
+      const intPart = parseInt(intStr, 10);
+      const decDigits = decStr.length;
+      const decPart = decDigits > 0 ? parseInt(decStr, 10) : 0;
+      const intDigits = Math.max(1, intStr.length);
+
+      return {
+        intPart,
+        decPart: Number.isFinite(decPart) ? decPart : 0,
+        intDigits,
+        decDigits,
+        raw,
+      };
+    }
+
+    function setModeLabel(isCustom){
+      state.customMode = !!isCustom;
+      if(els.modeLabel){
+        els.modeLabel.textContent = state.customMode ? '任意の数' : 'ランダム';
+      }
+    }
+
+    function makeProblemFromInputs(leftText, rightText){
+      const left = parseCustomNumberInput(leftText);
+      if(left.error) return { error: `左の数: ${left.error}` };
+      const right = parseCustomNumberInput(rightText);
+      if(right.error) return { error: `右の数: ${right.error}` };
+
+      return {
+        left: createNumber(left.intPart, left.decPart, left.intDigits, left.decDigits),
+        right: createNumber(right.intPart, right.decPart, right.intDigits, right.decDigits),
+        displayIntDigits: Math.max(left.intDigits, right.intDigits),
+        displayDecDigits: Math.max(left.decDigits, right.decDigits),
+        kind: 'custom',
+        label: '好きな数',
+      };
+    }
+
+    function applyCustomNumbers(){
+      const leftText = els.customLeftInput?.value ?? '';
+      const rightText = els.customRightInput?.value ?? '';
+      const problem = makeProblemFromInputs(leftText, rightText);
+      if(problem.error){
+        if(els.customModeTip){
+          els.customModeTip.textContent = problem.error;
+        }
+        showPopup({
+          title: '入力エラー',
+          svg: popupComparisonSVG('？', '=', '？'),
+          message: problem.error,
+          ok: false,
+        });
+        playUiSound('ng');
+        return false;
+      }
+
+      state.problem = problem;
+      state.leftNumber = problem.left;
+      state.rightNumber = problem.right;
+      state.signIndex = 0;
+      setModeLabel(true);
+      stopHint();
+      renderProblem();
+      if(els.customModeTip){
+        els.customModeTip.textContent = '入力した数が位取り表に表示されています。ヒントや答え合わせはこの数で動きます。';
+      }
+      playUiSound('tap');
+      speakStatus('好きな数を反映したよ。');
+      return true;
+    }
+
+    function clearCustomMode(){
+      setModeLabel(false);
+      if(els.customModeTip){
+        els.customModeTip.textContent = '入力した数が位取り表にそのまま表示され、ヒントもその数で動きます。';
+      }
+      generateNewProblem();
+    }
+
     els.signBtn.addEventListener('click', cycleSign);
     els.checkBtn.addEventListener('click', evaluateComparison);
     els.checkBtn2.addEventListener('click', evaluateComparison);
@@ -1535,6 +1737,17 @@
     els.nextBtn.addEventListener('click', generateNewProblem);
     els.nextBtn2.addEventListener('click', generateNewProblem);
     els.toggleSettingsBtn.addEventListener('click', toggleSettings);
+    els.applyCustomBtn.addEventListener('click', applyCustomNumbers);
+    els.clearCustomBtn.addEventListener('click', clearCustomMode);
+    [els.customLeftInput, els.customRightInput].forEach(input => {
+      if(!input) return;
+      input.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          applyCustomNumbers();
+        }
+      });
+    });
     els.soundBtn.addEventListener('click', () => {
       toggleSound();
     });
@@ -1564,6 +1777,7 @@
     });
 
     loadPreferences();
+    setModeLabel(false);
     warmupAudio({ markDone: false });
     document.addEventListener('pointerdown', () => warmupAudio(), { passive: true });
     if('speechSynthesis' in window && window.speechSynthesis.addEventListener){
