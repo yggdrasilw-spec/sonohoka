@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1000の数 ドットアニメーション</title>
+  <style>
+    :root{
+      --ink:#222;
+      --blue:#18a9e6;
+      --red:#ff5e84;
+      --yellow:#f0c33b;
+      --groupBlue:#4aa3ff;
+      --groupBlack:#222;
+      --tableBorder:#333;
+      --tableHead:#f3f3f3;
+      --tableActive:#fff4c9;
+    }
+    html,body{
+      margin:0;
+      padding:0;
+      width:100%;
+      background:#fff;
+      color:var(--ink);
+      font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    }
+    .app{
+      width:100%;
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+    }
+    .header{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      padding:10px 12px 8px;
+      box-sizing:border-box;
+    }
+    .title{font-size:20px;font-weight:700;letter-spacing:.03em;}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+    button{
+      appearance:none;
+      border:0;
+      border-radius:999px;
+      padding:11px 16px;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+      background:#2d2d2d;
+      color:#fff;
+      box-shadow:0 4px 14px rgba(0,0,0,.12);
+    }
+    button.secondary{
+      background:#fff;
+      color:#2d2d2d;
+      border:1px solid #d8d8d8;
+    }
+
+    .stage{
+      width:100%;
+      padding:0 0 8px;
+      box-sizing:border-box;
+      position:relative;
+    }
+    .place-value{
+      position:absolute;
+      top:12px;
+      left:12px;
+      z-index:20;
+      background:#fff;
+      border:2px solid var(--tableBorder);
+      border-radius:10px;
+      box-shadow:0 4px 12px rgba(0,0,0,.12);
+      overflow:hidden;
+      user-select:none;
+      pointer-events:auto;
+      touch-action:none;
+      cursor:grab;
+    }
+    .place-value.dragging{cursor:grabbing;}
+    .pv-handle{
+      background:#eaeaea;
+      color:#333;
+      font-size:12px;
+      line-height:1;
+      padding:6px 8px;
+      text-align:center;
+      border-bottom:1px solid #999;
+      letter-spacing:.04em;
+      cursor:grab;
+    }
+    .place-value.dragging .pv-handle{cursor:grabbing;}
+    .place-value table{border-collapse:collapse;}
+    .place-value th,
+    .place-value td{
+      width:52px;
+      height:42px;
+      text-align:center;
+      vertical-align:middle;
+      border-right:1px solid #999;
+      border-bottom:1px solid #999;
+    }
+    .place-value th:last-child,
+    .place-value td:last-child{border-right:none;}
+    .place-value tr:last-child td{border-bottom:none;}
+    .place-value th{
+      background:var(--tableHead);
+      font-size:18px;
+      font-weight:700;
+    }
+    .place-value td{
+      font-size:28px;
+      font-weight:800;
+      background:#fff;
+    }
+    .place-value .active{
+      background:var(--tableActive);
+    }
+    canvas{
+      display:block;
+      width:100%;
+      height:auto;
+      background:#fff;
+      border-top:1px solid #eee;
+      border-bottom:1px solid #eee;
+    }
+
+    /* ===== 問題モード ===== */
+    #quizPanel{
+      display:none;
+      padding:10px 16px 14px;
+      border-top:2px solid #eee;
+      box-sizing:border-box;
+    }
+    #quizPanel.active{ display:block; }
+    .quiz-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .quiz-question{
+      font-size:22px;
+      font-weight:800;
+      color:#1d1d1d;
+      letter-spacing:.02em;
+      background:#f9f9f9;
+      border:2px solid #ddd;
+      border-radius:12px;
+      padding:8px 18px;
+    }
+    .quiz-input{
+      font-size:26px;
+      font-weight:800;
+      width:110px;
+      text-align:center;
+      border:3px solid #18a9e6;
+      border-radius:10px;
+      padding:6px 8px;
+      outline:none;
+      color:#1d1d1d;
+      background:#fff;
+    }
+    .quiz-input.correct{ border-color:#22bb66; background:#eafff2; }
+    .quiz-input.wrong  { border-color:#ff5e84; background:#fff0f4; }
+    .quiz-btn{
+      appearance:none; border:0;
+      border-radius:999px;
+      padding:10px 20px;
+      font-size:16px; font-weight:700;
+      cursor:pointer;
+      background:#2d2d2d; color:#fff;
+      box-shadow:0 4px 14px rgba(0,0,0,.12);
+    }
+    .quiz-btn.green { background:#22bb66; }
+    .quiz-btn.red   { background:#ff5e84; }
+    .quiz-btn.blue  { background:#18a9e6; }
+    .quiz-btn.gray  { background:#888; }
+    #quizFeedback{
+      font-size:16px; font-weight:700;
+      min-height:26px;
+      margin-top:4px;
+    }
+    #quizFeedback.ok  { color:#22bb66; }
+    #quizFeedback.ng  { color:#ff5e84; }
+    .mode-tabs{
+      display:flex; gap:6px; flex-wrap:wrap;
+    }
+    .mode-tab{
+      appearance:none; border:0;
+      border-radius:999px;
+      padding:8px 16px;
+      font-size:14px; font-weight:700;
+      cursor:pointer;
+      background:#eee; color:#555;
+      box-shadow:none;
+    }
+    .mode-tab.active{
+      background:#2d2d2d; color:#fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div>
+        <div class="title">1000の数の導入アニメーション</div>
+      </div>
+      <div class="mode-tabs" id="modeTabs">
+        <button class="mode-tab active" data-tab="anim">▶ アニメーション</button>
+        <button class="mode-tab" data-tab="quiz">🎯 問題モード</button>
+      </div>
+      <div class="controls" id="animControls">
+        <button id="playBtn">▶ 再生</button>
+        <button id="stepBackBtn" class="secondary">◀ 戻る</button>
+        <button id="stepBtn" class="secondary">次へ ▶</button>
+        <button id="resetBtn" class="secondary">リセット</button>
+      </div>
+      <button id="voiceBtn" title="音声ON/OFF" style="appearance:none;border:0;background:none;font-size:26px;cursor:pointer;padding:4px 6px;border-radius:8px;line-height:1;" aria-label="音声ON/OFF">🔊</button>
+    </div>
+
+    <div class="stage">
+      <div class="place-value" id="placeValueTable" aria-label="位取り表">
+        <div class="pv-handle" id="pvHandle">位取り表（ドラッグして動きます）</div>
+        <table>
+          <tr>
+            <th>千</th>
+            <th>百</th>
+            <th>十</th>
+            <th>一</th>
+          </tr>
+          <tr>
+            <td id="pvThousands">0</td>
+            <td id="pvHundreds">0</td>
+            <td id="pvTens">0</td>
+            <td id="pvOnes">0</td>
+          </tr>
+        </table>
+      </div>
+      <canvas id="scene" width="1200" height="440"></canvas>
+    </div>
+
+    <!-- 問題モードパネル -->
+    <div id="quizPanel">
+      <!-- 問題指定セレクター -->
+      <div class="quiz-row" id="quizSelector" style="gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+        <span style="font-size:15px;font-weight:700;color:#555;">問題を選ぶ：</span>
+        <select id="unitSelect" style="font-size:16px;font-weight:700;padding:6px 10px;border-radius:8px;border:2px solid #18a9e6;background:#fff;cursor:pointer;">
+          <option value="ones">１の倍数を引く</option>
+          <option value="tens">１０の倍数を引く</option>
+          <option value="hundreds">１００の倍数を引く</option>
+        </select>
+        <select id="diffSelect" style="font-size:16px;font-weight:700;padding:6px 10px;border-radius:8px;border:2px solid #22bb66;background:#fff;cursor:pointer;">
+        </select>
+        <button class="quiz-btn blue" id="quizStartSpecBtn" style="padding:8px 16px;font-size:15px;">この問題を出す</button>
+        <button class="quiz-btn gray" id="quizRandomBtn" style="padding:8px 16px;font-size:15px;">ランダム</button>
+      </div>
+      <div class="quiz-row">
+        <div class="quiz-question" id="quizQuestion">—</div>
+      </div>
+      <div class="quiz-row">
+        <span style="font-size:18px;font-weight:700;">答え：</span>
+        <input class="quiz-input" id="quizInput" type="number" min="0" max="9999" placeholder="?" />
+        <button class="quiz-btn green" id="quizCheckBtn">確かめる</button>
+        <button class="quiz-btn blue" id="quizExplainBtn">解説を見る</button>
+        <button class="quiz-btn gray" id="quizNextBtn" style="display:none">次の問題 ▶▶</button>
+      </div>
+      <!-- 解説ステップナビ -->
+      <div id="stepNav" style="display:none">
+        <div class="quiz-row" style="gap:8px;align-items:center;margin-bottom:4px;">
+          <button class="quiz-btn" id="stepPrevBtn" style="font-size:20px;padding:8px 18px;">◀</button>
+          <button class="quiz-btn green" id="stepNextBtn" style="font-size:20px;padding:8px 18px;">▶</button>
+          <span id="stepCounter" style="font-size:14px;color:#666;font-weight:700;min-width:80px;"></span>
+        </div>
+        <div style="font-size:12px;color:#999;margin-top:2px;">← → キー・Enterキーでも操作できます</div>
+      </div>
+      <div id="quizFeedback"></div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+  const statusEl = { textContent: '' };  // status欄削除済み
+  const playBtn = document.getElementById('playBtn');
+  const stepBtn = document.getElementById('stepBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  const pvThousands = document.getElementById('pvThousands');
+  const pvHundreds = document.getElementById('pvHundreds');
+  const pvTens = document.getElementById('pvTens');
+  const pvOnes = document.getElementById('pvOnes');
+  const pvCells = [pvThousands, pvHundreds, pvTens, pvOnes];
+
+  const placeValueTable = document.getElementById('placeValueTable');
+  const pvHandle = document.getElementById('pvHandle');
+
+  const PV_STORAGE_KEY = 'placeValueTablePosV1';
+  const DEFAULT_PV_POS = { left: 980, top: 344 };
+
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function getStageRect() {
+    const stage = document.querySelector('.stage');
+    return stage.getBoundingClientRect();
+  }
+
+  function applyPlaceValuePos(pos) {
+    if (!placeValueTable) return;
+    placeValueTable.style.left = `${pos.left}px`;
+    placeValueTable.style.top = `${pos.top}px`;
+    placeValueTable.style.right = 'auto';
+    placeValueTable.dataset.left = String(pos.left);
+    placeValueTable.dataset.top = String(pos.top);
+  }
+
+  function loadPlaceValuePos() {
+    try {
+      const raw = localStorage.getItem(PV_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.left === 'number' && typeof parsed.top === 'number') {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function savePlaceValuePos(pos) {
+    try {
+      localStorage.setItem(PV_STORAGE_KEY, JSON.stringify(pos));
+    } catch (e) {}
+  }
+
+  function setDefaultPlaceValuePos() {
+    const rect = placeValueTable.getBoundingClientRect();
+    const stageRect = getStageRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const width = rect.width || 208;
+    const height = rect.height || 100;
+    const left = clamp(stageRect.width - width - 12, 12, stageRect.width - width - 12);
+    const top = clamp(canvasRect.height - height - 12, 12, canvasRect.height - height - 12);
+    applyPlaceValuePos({ left, top });
+  }
+
+  function restorePlaceValuePos() {
+    const saved = loadPlaceValuePos();
+    if (!saved) {
+      setDefaultPlaceValuePos();
+      return;
+    }
+    const stageRect = getStageRect();
+    const rect = placeValueTable.getBoundingClientRect();
+    const maxLeft = Math.max(12, stageRect.width - rect.width - 12);
+    const maxTop = Math.max(12, canvas.getBoundingClientRect().height - rect.height - 12);
+    applyPlaceValuePos({
+      left: clamp(saved.left, 12, maxLeft),
+      top: clamp(saved.top, 12, maxTop),
+    });
+  }
+
+  let dragState = null;
+
+  function onPointerDown(ev) {
+    ev.preventDefault();
+    const stageRect = getStageRect();
+    const currentLeft = parseFloat(placeValueTable.style.left || placeValueTable.dataset.left || '0') || 0;
+    const currentTop = parseFloat(placeValueTable.style.top || placeValueTable.dataset.top || '0') || 0;
+    dragState = {
+      pointerId: ev.pointerId,
+      startX: ev.clientX,
+      startY: ev.clientY,
+      startLeft: currentLeft,
+      startTop: currentTop,
+      stageWidth: stageRect.width,
+      stageHeight: stageRect.height,
+      tableWidth: placeValueTable.offsetWidth,
+      tableHeight: placeValueTable.offsetHeight,
+    };
+    placeValueTable.classList.add('dragging');
+    placeValueTable.setPointerCapture(ev.pointerId);
+  }
+
+  function onPointerMove(ev) {
+    if (!dragState || ev.pointerId !== dragState.pointerId) return;
+    ev.preventDefault();
+    const dx = ev.clientX - dragState.startX;
+    const dy = ev.clientY - dragState.startY;
+    const maxLeft = Math.max(12, dragState.stageWidth - dragState.tableWidth - 12);
+    const maxTop = Math.max(12, canvas.getBoundingClientRect().height - dragState.tableHeight - 12);
+    const left = clamp(dragState.startLeft + dx, 12, maxLeft);
+    const top = clamp(dragState.startTop + dy, 12, maxTop);
+    applyPlaceValuePos({ left, top });
+  }
+
+  function endPointer(ev) {
+    if (!dragState || ev.pointerId !== dragState.pointerId) return;
+    try { placeValueTable.releasePointerCapture(ev.pointerId); } catch (e) {}
+    const pos = {
+      left: parseFloat(placeValueTable.style.left || '0') || 0,
+      top: parseFloat(placeValueTable.style.top || '0') || 0,
+    };
+    savePlaceValuePos(pos);
+    placeValueTable.classList.remove('dragging');
+    dragState = null;
+  }
+
+  pvHandle.addEventListener('pointerdown', onPointerDown);
+  placeValueTable.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove, { passive: false });
+  window.addEventListener('pointerup', endPointer);
+  window.addEventListener('pointercancel', endPointer);
+
+  if (!canvas || !ctx) {
+    statusEl.textContent = 'canvasの初期化に失敗しました。';
+    return;
+  }
+
+  const C = {
+    blue: '#18a9e6',
+    red: '#ff5e84',
+    yellow: '#f0c33b',
+    groupBlue: '#4aa3ff',
+    groupBlack: '#222'
+  };
+
+  const L = {
+    mx: 40,
+    topY: 34,
+    lineY: 176,
+    textY: 242,
+    pitch: 100,
+    hundredInset: 8,
+    hundredW: 84,
+    hundredH: 84,
+    cell: 8.4,
+    r: 3.35
+  };
+
+  const state = { mode: 0, step: 1 };
+  let timer = null;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  function clear() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function rect(x, y, w, h, color, width = 2, dash = [7, 6]) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash);
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+  }
+
+  function ellipse(x, y, rx, ry, color, width = 2, dash = [7, 6]) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawDot(x, y, active = false) {
+    ctx.beginPath();
+    ctx.arc(x, y, L.r, 0, Math.PI * 2);
+    ctx.fillStyle = C.blue;
+    ctx.fill();
+    if (active) {
+      ctx.save();
+      ctx.strokeStyle = C.red;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(x, y, L.r + 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function hundredX(h) {
+    return L.mx + h * L.pitch + L.hundredInset;
+  }
+
+  function tenX(h, t) {
+    return hundredX(h) + t * L.cell;
+  }
+
+  function getValue() {
+    if (state.mode === 0) return state.step;
+    if (state.mode === 1) return state.step * 10;
+    if (state.mode === 2) return state.step * 100;
+    return 1000;
+  }
+
+  function updatePlaceValue(value) {
+    const thousands = Math.floor(value / 1000);
+    const hundreds = Math.floor((value % 1000) / 100);
+    const tens = Math.floor((value % 100) / 10);
+    const ones = value % 10;
+
+    pvThousands.textContent = String(thousands);
+    pvHundreds.textContent = String(hundreds);
+    pvTens.textContent = String(tens);
+    pvOnes.textContent = String(ones);
+
+    pvCells.forEach(el => el.classList.remove('active'));
+
+    if (value >= 1000) {
+      pvThousands.classList.add('active');
+    } else if (value >= 100) {
+      pvHundreds.classList.add('active');
+    } else if (value >= 10) {
+      pvTens.classList.add('active');
+    } else {
+      pvOnes.classList.add('active');
+    }
+  }
+
+  function drawNumberLine(value = 0) {
+    const left = L.mx;
+    const right = L.mx + 1000;
+    const y = L.lineY;
+    const scale = (right - left) / 1000;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 244, 204, 0.16)';
+    ctx.fillRect(0, y - 40, W, 96);
+
+    ctx.strokeStyle = '#1f1f1f';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
+    ctx.stroke();
+
+    for (let v = 0; v <= 1000; v += 10) {
+      const x = left + v * scale;
+      const major = v % 100 === 0;
+      const mid = v % 50 === 0;
+      const h = major ? 28 : mid ? 18 : 11;
+      ctx.strokeStyle = '#404040';
+      ctx.lineWidth = major ? 2.4 : 1.1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - h);
+      ctx.stroke();
+      if (major) {
+        ctx.fillStyle = '#222';
+        ctx.font = '18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(String(v), x, y - 30);
+      }
+    }
+
+    const markerX = left + Math.max(0, Math.min(1000, value)) * scale;
+    ctx.fillStyle = '#d94c78';
+    ctx.beginPath();
+    ctx.moveTo(markerX, y - 36);
+    ctx.lineTo(markerX - 8, y - 22);
+    ctx.lineTo(markerX + 8, y - 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawTitle() {
+    ctx.save();
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('1つずつ増やして、10・100・1000 のまとまりを見る', L.mx, 18);
+    ctx.restore();
+  }
+
+  function drawText(head, body) {
+    ctx.save();
+    ctx.fillStyle = '#1d1d1d';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(head, L.mx, L.textY);
+    ctx.font = '18px sans-serif';
+    ctx.fillStyle = '#404040';
+    const lines = body.split('\n');
+    let y = L.textY + 32;
+    for (const line of lines) {
+      ctx.fillText(line, L.mx, y);
+      y += 24;
+    }
+    ctx.restore();
+  }
+
+  function drawOneStage() {
+    const count = state.step;
+    const x = hundredX(0);
+    for (let i = 0; i < count; i++) {
+      drawDot(x + L.cell / 2, L.topY + i * L.cell + L.cell / 2, i === count - 1);
+    }
+    if (count === 10) {
+      rect(x, L.topY, L.cell, 84, C.yellow, 2, [7, 6]);
+    } else {
+      const yy = L.topY + (count - 1) * L.cell + L.cell / 2;
+      ellipse(x + L.cell / 2, yy, 6, 6, C.red, 2, [7, 6]);
+    }
+    drawNumberLine(count);
+    drawText('1を10こ集める', 'いま ' + count + ' こめです。\n1こずつ増えて、10こになります。');
+    statusEl.textContent = '1こずつ増やしています。いま ' + count + ' こ目です。';
+  }
+
+  function drawTenStage() {
+    const count = state.step;
+    for (let t = 0; t < count; t++) {
+      const x = tenX(0, t);
+      for (let row = 0; row < 10; row++) {
+        drawDot(x + L.cell / 2, L.topY + row * L.cell + L.cell / 2, false);
+      }
+      rect(x, L.topY, L.cell, 84, C.yellow, 2, [7, 6]);
+    }
+    rect(hundredX(0), L.topY, L.hundredW, L.hundredH, C.groupBlue, 2.2, [8, 6]);
+    drawNumberLine(count * 10);
+    drawText('10を10こ集める', 'いま ' + count + ' こめの10です。\n10こずつ増えて、100になります。');
+    statusEl.textContent = '10こずつ増やしています。いま ' + count + ' こめの10です。';
+  }
+
+  function drawHundredStage() {
+    const count = state.step;
+    for (let h = 0; h < count; h++) {
+      const x = hundredX(h);
+      for (let t = 0; t < 10; t++) {
+        const tx = tenX(h, t);
+        for (let row = 0; row < 10; row++) {
+          drawDot(tx + L.cell / 2, L.topY + row * L.cell + L.cell / 2, false);
+        }
+        rect(tx, L.topY, L.cell, 84, C.yellow, 1.5, [7, 6]);
+      }
+      rect(x, L.topY, L.hundredW, L.hundredH, C.groupBlue, 2.2, [8, 6]);
+    }
+    drawNumberLine(count * 100);
+    drawText('100を10こ集める', 'いま ' + count + ' こめの100です。\n100こずつ増えて、1000になります。');
+    statusEl.textContent = '100こずつ増やしています。いま ' + count + ' こめの100です。';
+  }
+
+  function drawFullStage() {
+    for (let h = 0; h < 10; h++) {
+      const x = hundredX(h);
+      for (let t = 0; t < 10; t++) {
+        const tx = tenX(h, t);
+        for (let row = 0; row < 10; row++) {
+          drawDot(tx + L.cell / 2, L.topY + row * L.cell + L.cell / 2, false);
+        }
+        rect(tx, L.topY, L.cell, 84, C.yellow, 1.4, [7, 6]);
+      }
+      rect(x, L.topY, L.hundredW, L.hundredH, C.groupBlack, 2.1, [8, 6]);
+    }
+    drawNumberLine(1000);
+    drawText('1000', '100が10こで 1000 です。');
+    statusEl.textContent = '1000 までできました。';
+  }
+
+  function render() {
+    try {
+      clear();
+      drawTitle();
+      if (state.mode === 0) drawOneStage();
+      else if (state.mode === 1) drawTenStage();
+      else if (state.mode === 2) drawHundredStage();
+      else drawFullStage();
+      updatePlaceValue(getValue());
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = '描画エラー: ' + (e && e.message ? e.message : String(e));
+    }
+  }
+
+  function advance() {
+    if (state.mode === 0) {
+      if (state.step < 10) state.step += 1;
+      else { state.mode = 1; state.step = 1; }
+    } else if (state.mode === 1) {
+      if (state.step < 10) state.step += 1;
+      else { state.mode = 2; state.step = 1; }
+    } else if (state.mode === 2) {
+      if (state.step < 10) state.step += 1;
+      else { state.mode = 3; state.step = 10; }
+    } else {
+      state.mode = 0; state.step = 1;
+    }
+    render();
+    speakAnimStatus();
+  }
+
+  function retreat() {
+    if (state.mode === 3) { state.mode = 2; state.step = 10; }
+    else if (state.mode === 2) {
+      if (state.step > 1) state.step -= 1;
+      else { state.mode = 1; state.step = 10; }
+    } else if (state.mode === 1) {
+      if (state.step > 1) state.step -= 1;
+      else { state.mode = 0; state.step = 10; }
+    } else {
+      if (state.step > 1) state.step -= 1;
+    }
+    render();
+    speakAnimStatus();
+  }
+
+  function stopAuto() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    playBtn.textContent = '▶ 再生';
+  }
+
+  function startAuto() {
+    stopAuto();
+    playBtn.textContent = '⏸ 停止';
+    timer = setInterval(function () {
+      const beforeMode = state.mode;
+      const beforeStep = state.step;
+      advance();
+      if (beforeMode === 2 && beforeStep === 10) {
+        setTimeout(stopAuto, 800);
+      }
+    }, 520);
+  }
+
+  playBtn.addEventListener('click', function () {
+    if (timer) stopAuto();
+    else startAuto();
+  });
+
+  stepBtn.addEventListener('click', function () {
+    stopAuto();
+    advance();
+  });
+
+  document.getElementById('stepBackBtn').addEventListener('click', function () {
+    stopAuto();
+    retreat();
+  });
+
+  resetBtn.addEventListener('click', function () {
+    stopAuto();
+    state.mode = 0;
+    state.step = 1;
+    render();
+  });
+
+  // アニメモードのキーボード（問題モードでない場合のみ）
+  document.addEventListener('keydown', function(ev) {
+    if (quizPanel.classList.contains('active')) return; // 問題モードは別ハンドラ
+    if (ev.key === 'ArrowRight' || ev.key === 'Enter') {
+      if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+      ev.preventDefault();
+      stopAuto();
+      advance();
+    } else if (ev.key === 'ArrowLeft') {
+      ev.preventDefault();
+      stopAuto();
+      retreat();
+    }
+  });
+
+  render();
+  restorePlaceValuePos();
+  statusEl.textContent = 'canvas初期化完了。描画します。';
+
+  // =====================================================
+  // 問題モード
+  // =====================================================
+  const quizPanel      = document.getElementById('quizPanel');
+  const quizQuestion   = document.getElementById('quizQuestion');
+  const quizInput      = document.getElementById('quizInput');
+  const quizCheckBtn   = document.getElementById('quizCheckBtn');
+  const quizExplainBtn = document.getElementById('quizExplainBtn');
+  const quizNextBtn    = document.getElementById('quizNextBtn');
+  const quizFeedback   = document.getElementById('quizFeedback');
+  const animControls   = document.getElementById('animControls');
+
+  // タブ切り替え
+  document.querySelectorAll('.mode-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.mode-tab').forEach(function(t){ t.classList.remove('active'); });
+      tab.classList.add('active');
+      if (tab.dataset.tab === 'quiz') {
+        animControls.style.display = 'none';
+        quizPanel.classList.add('active');
+        stopAuto();
+        startQuiz();
+      } else {
+        animControls.style.display = '';
+        quizPanel.classList.remove('active');
+        stopAuto();
+        stopAnimTimers();
+        state.mode = 0; state.step = 1;
+        render();
+      }
+    });
+  });
+
+  // 問題データ生成
+  // type: 'hundreds'(100の倍数), 'tens'(10の倍数), 'ones'(1の倍数)
+  var quizState = { type: null, diff: 0, answer: 0, explained: false };
+  var quizOrder = [];
+  var quizMode  = 'random'; // 'random' | 'spec'
+
+  // ---- セレクター連動 ----
+  var unitSelect  = document.getElementById('unitSelect');
+  var diffSelect  = document.getElementById('diffSelect');
+  var startSpecBtn = document.getElementById('quizStartSpecBtn');
+  var randomBtn    = document.getElementById('quizRandomBtn');
+
+  var UNIT_DEFS = {
+    ones:     { unit: 1,   label: function(v){ return String(v); },         values: [1,2,3,4,5,6,7,8,9] },
+    tens:     { unit: 10,  label: function(v){ return String(v); },         values: [10,20,30,40,50,60,70,80,90] },
+    hundreds: { unit: 100, label: function(v){ return String(v); },         values: [100,200,300,400,500,600,700,800,900] }
+  };
+
+  function updateDiffSelect() {
+    var type = unitSelect.value;
+    var vals = UNIT_DEFS[type].values;
+    diffSelect.innerHTML = '';
+    vals.forEach(function(v) {
+      var opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      diffSelect.appendChild(opt);
+    });
+  }
+
+  unitSelect.addEventListener('change', updateDiffSelect);
+  updateDiffSelect(); // 初期化
+
+  startSpecBtn.addEventListener('click', function() {
+    quizMode = 'spec';
+    loadSpecQuestion(unitSelect.value, parseInt(diffSelect.value, 10));
+  });
+
+  randomBtn.addEventListener('click', function() {
+    quizMode = 'random';
+    loadNextQuestion();
+  });
+
+  function makeQuizPool() {
+    var pool = [];
+    for (var h = 1; h <= 9; h++) pool.push({ type: 'hundreds', diff: h * 100 });
+    for (var t = 1; t <= 9; t++) pool.push({ type: 'tens',     diff: t * 10  });
+    for (var o = 1; o <= 9; o++) pool.push({ type: 'ones',     diff: o       });
+    return pool;
+  }
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function nextQuizItem() {
+    if (quizOrder.length === 0) quizOrder = shuffle(makeQuizPool());
+    return quizOrder.shift();
+  }
+
+  function startQuiz() {
+    updateDiffSelect();
+    loadNextQuestion();
+  }
+
+  // 指定問題ロード
+  function loadSpecQuestion(type, diff) {
+    _applyQuestion({ type: type, diff: diff });
+  }
+
+  function loadNextQuestion() {
+    _applyQuestion(nextQuizItem());
+  }
+
+  function _applyQuestion(item) {
+    quizState.type   = item.type;
+    quizState.diff   = item.diff;
+    quizState.answer = 1000 - item.diff;
+    quizState.explained = false;
+
+    quizQuestion.textContent = '1000より ' + item.diff + ' 小さい数は？';
+    quizInput.value = '';
+    quizInput.className = 'quiz-input';
+    quizFeedback.textContent = '';
+    quizFeedback.className = '';
+    quizNextBtn.style.display = 'none';
+    quizCheckBtn.style.display = '';
+    quizExplainBtn.style.display = '';
+    stepNavEl.style.display = 'none';
+    animSnaps = [];
+    animIdx   = -1;
+    quizInput.focus();
+
+    // canvas に問題（idle）を描く
+    drawIdleFrame();
+    speak('せんより ' + numToKana(quizState.diff) + ' ちいさいかずは？');
+  }
+
+  // =====================================================
+  // アニメーション解説エンジン（スナップショット＋ステップナビ方式）
+  // =====================================================
+
+  var QUIZ_COLORS = {
+    base:    '#18a9e6',
+    missing: '#ff5e84',
+    answer:  '#22bb66',
+    count:   '#f0a500',
+    gray:    '#aaa'
+  };
+
+  // ----- スナップショット型アニメ状態 -----
+  // steps[] : 各ステップのスナップショット（描画に必要な全データ）
+  // stepIdx : 現在表示中のステップ番号
+  var animSnaps = [];
+  var animIdx   = -1;  // -1 = idle（問題表示中）
+
+  var stepNavEl    = document.getElementById('stepNav');
+  var stepPrevBtn  = document.getElementById('stepPrevBtn');
+  var stepNextBtn  = document.getElementById('stepNextBtn');
+  var stepCounter  = document.getElementById('stepCounter');
+
+  // ----- スナップショット生成 -----
+  function buildSnaps() {
+    animSnaps = [];
+    var diff  = quizState.diff;
+    var ans   = quizState.answer;
+    var type  = quizState.type;
+    var unit  = type === 'hundreds' ? 100 : type === 'tens' ? 10 : 1;
+    var total = diff / unit;
+    var ansH  = Math.floor((ans % 1000) / 100);
+    var ansT  = Math.floor((ans % 100) / 10);
+    var ansO  = ans % 10;
+
+    function freshDots() {
+      var d = []; for (var i = 0; i < 1000; i++) d.push('blue'); return d;
+    }
+
+    // スナップ生成ヘルパー（共通フィールドまとめ）
+    function mk(extra) {
+      return Object.assign({
+        subTotal: total, subUnit: unit,
+        _ansH: ansH, _ansT: ansT, _ansO: ansO,
+        highlightH: -1, highlightT: -1, onesHL: 0,
+        confirmedH: 0,  // 百を数えるフェーズで何個確定済みか（緑塗り用）
+        confirmedT: 0,  // 十を数えるフェーズで何本確定済みか
+        pvConfirmed: { thousands: 0, hundreds: -1, tens: -1, ones: -1 }
+      }, extra);
+    }
+
+    // ---- subtract フェーズ ----
+    var dots = freshDots();
+    animSnaps.push(mk({
+      phase: 'subtract', dotColors: dots.slice(), subStep: 0, markerVal: 1000,
+      line1: unit + ' ずつ引いていきます（全部で ' + total + ' 回）',
+      line2: '▶ を押して1ステップずつ進めましょう'
+    }));
+
+    for (var s = 1; s <= total; s++) {
+      var base = 1000 - s * unit;
+      for (var i = 0; i < unit; i++) dots[base + i] = 'red';
+      var removed = s * unit, current = 1000 - removed;
+      animSnaps.push(mk({
+        phase: 'subtract', dotColors: dots.slice(), subStep: s, markerVal: current,
+        line1: unit + ' ずつ引いています（' + s + ' 回目 ／ ' + total + ' 回）',
+        line2: '引いた数：' + removed + '　　のこり：' + current
+      }));
+    }
+
+    var dotsAfterSub = dots.slice();
+
+    // ---- count フェーズ ----
+    animSnaps.push(mk({
+      phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+      countStage: 0, countStep: 0,
+      line1: '残った青いドットを数えます',
+      line2: '百のまとまり → 十のたば → 一つぶ の順に確認します'
+    }));
+
+    // 百を数える
+    if (ansH === 0) {
+      animSnaps.push(mk({
+        phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+        countStage: 0, countStep: 0, confirmedH: 0,
+        pvConfirmed: { thousands: 0, hundreds: 0, tens: -1, ones: -1 },
+        line1: '百のまとまり：0 こ（確定）', line2: '青い百ブロックはありません'
+      }));
+    } else {
+      for (var h = 0; h < ansH; h++) {
+        animSnaps.push(mk({
+          phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+          countStage: 0, countStep: h + 1,
+          highlightH: h, confirmedH: h,
+          line1: '百のまとまりを数えています',
+          line2: (h + 1) + ' こ目の百ブロックを確認中…'
+        }));
+      }
+      // 百確定
+      animSnaps.push(mk({
+        phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+        countStage: 1, countStep: 0, confirmedH: ansH,
+        pvConfirmed: { thousands: 0, hundreds: ansH, tens: -1, ones: -1 },
+        line1: '百のまとまり：' + ansH + ' こ → 確定！',
+        line2: '位取り表の「百」が決まりました'
+      }));
+    }
+
+    // 十を数える
+    if (ansT === 0) {
+      animSnaps.push(mk({
+        phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+        countStage: 1, countStep: 0, confirmedH: ansH, confirmedT: 0,
+        pvConfirmed: { thousands: 0, hundreds: ansH, tens: 0, ones: -1 },
+        line1: '十のたば：0 本（確定）',
+        line2: '百 ' + ansH + ' の後に十のたばはありません'
+      }));
+    } else {
+      for (var t = 0; t < ansT; t++) {
+        animSnaps.push(mk({
+          phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+          countStage: 1, countStep: t + 1,
+          highlightH: ansH, highlightT: t, confirmedH: ansH, confirmedT: t,
+          pvConfirmed: { thousands: 0, hundreds: ansH, tens: -1, ones: -1 },
+          line1: '十のたばを数えています（百は ' + ansH + ' こ確定）',
+          line2: (t + 1) + ' 本目の十のたばを確認中…'
+        }));
+      }
+      // 十確定
+      animSnaps.push(mk({
+        phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+        countStage: 2, countStep: 0, confirmedH: ansH, confirmedT: ansT,
+        pvConfirmed: { thousands: 0, hundreds: ansH, tens: ansT, ones: -1 },
+        line1: '十のたば：' + ansT + ' 本 → 確定！',
+        line2: '位取り表の「十」が決まりました'
+      }));
+    }
+
+    // 一を数える
+    if (ansO === 0) {
+      animSnaps.push(mk({
+        phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+        countStage: 2, countStep: 0, confirmedH: ansH, confirmedT: ansT,
+        pvConfirmed: { thousands: 0, hundreds: ansH, tens: ansT, ones: 0 },
+        line1: '一：0 こ（確定）', line2: '余りのドットはありません'
+      }));
+    } else {
+      for (var o = 1; o <= ansO; o++) {
+        animSnaps.push(mk({
+          phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+          countStage: 2, countStep: o,
+          onesHL: o, confirmedH: ansH, confirmedT: ansT,
+          pvConfirmed: { thousands: 0, hundreds: ansH, tens: ansT, ones: -1 },
+          line1: '一を数えています（百:' + ansH + '　十:' + ansT + ' は確定）',
+          line2: o + ' こ目の一つぶを確認中…'
+        }));
+      }
+      // 一確定
+      animSnaps.push(mk({
+        phase: 'count', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+        countStage: 3, countStep: ansO, confirmedH: ansH, confirmedT: ansT,
+        pvConfirmed: { thousands: 0, hundreds: ansH, tens: ansT, ones: ansO },
+        line1: '一：' + ansO + ' こ → 確定！',
+        line2: '百:' + ansH + '　十:' + ansT + '　一:' + ansO + '　→　' + ans
+      }));
+    }
+
+    // done
+    animSnaps.push(mk({
+      phase: 'done', dotColors: dotsAfterSub.slice(), subStep: total, markerVal: ans,
+      confirmedH: ansH, confirmedT: ansT,
+      pvConfirmed: { thousands: 0, hundreds: ansH, tens: ansT, ones: ansO },
+      line1: '1000 − ' + diff + ' = ' + ans,
+      line2: '答え：' + ans + '　（位取り表を確認しよう）'
+    }));
+  }
+
+  // ----- スナップショット描画 -----
+  function applySnap(snap) {
+    clear();
+    var phase       = snap.phase;
+    var diff        = quizState.diff;
+    var ans         = quizState.answer;
+    var dc          = snap.dotColors;
+    var hH          = snap.highlightH;
+    var hT          = snap.highlightT;
+    var onesHL      = snap.onesHL      || 0;
+    var confirmedH  = snap.confirmedH  || 0;  // 確定済みの百ブロック数
+    var confirmedT  = snap.confirmedT  || 0;  // 確定済みの十列数
+    var countStage  = snap.countStage  || 0;
+    var ansH        = snap._ansH || 0;
+    var ansT        = snap._ansT || 0;
+    var ansO        = snap._ansO || 0;
+
+    drawQuizTitle('解説：1000 − ' + diff + ' = ' + ans);
+    drawQuizNumberLine(snap.markerVal, snap.subStep > 0 || phase !== 'subtract');
+
+    // ---- ドット & 枠の描画 ----
+    for (var h = 0; h < 10; h++) {
+      var hx = hundredX(h);
+
+      // 百ブロックの確定済み背景（緑）
+      // count フェーズで h < confirmedH のブロックを薄緑背景
+      if (phase === 'count' && h < confirmedH) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(34,187,102,0.12)';
+        ctx.fillRect(hx, L.topY, L.hundredW, L.hundredH);
+        ctx.restore();
+      }
+
+      for (var t = 0; t < 10; t++) {
+        var tx = tenX(h, t);
+
+        // 十列の確定済み背景（緑）
+        // count フェーズ stage>=1 で、ansH ブロック内かつ t < confirmedT
+        var tenConfirmed = (phase === 'count' && countStage >= 1
+                            && h === ansH && t < confirmedT);
+        if (tenConfirmed) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(34,187,102,0.18)';
+          ctx.fillRect(tx, L.topY, L.cell, 84);
+          ctx.restore();
+        }
+
+        for (var row = 0; row < 10; row++) {
+          var idx = h * 100 + t * 10 + row;
+          var dx  = tx + L.cell / 2;
+          var dy  = L.topY + row * L.cell + L.cell / 2;
+
+          // ones ハイライト：上（row=0）から onesHL 個
+          var isOnesHL = (onesHL > 0 && h === ansH && t === ansT && row < onesHL);
+
+          ctx.beginPath();
+          ctx.arc(dx, dy, isOnesHL ? L.r + 1.5 : L.r, 0, Math.PI * 2);
+          if (dc[idx] === 'red') {
+            ctx.fillStyle = QUIZ_COLORS.missing;
+          } else if (isOnesHL) {
+            ctx.fillStyle = QUIZ_COLORS.count;
+          } else {
+            ctx.fillStyle = QUIZ_COLORS.base;
+          }
+          ctx.fill();
+        }
+
+        // 十の列枠：現在ハイライト中（黄）
+        var tenHL = (phase === 'count' && countStage === 1
+                     && h === ansH && t === hT);
+        ctx.save();
+        ctx.strokeStyle = tenHL  ? QUIZ_COLORS.count
+                        : tenConfirmed ? QUIZ_COLORS.answer
+                        : C.yellow;
+        ctx.lineWidth   = (tenHL || tenConfirmed) ? 2.5 : 1.2;
+        ctx.setLineDash((tenHL || tenConfirmed) ? [] : [7, 6]);
+        ctx.strokeRect(tx, L.topY, L.cell, 84);
+        ctx.restore();
+      }
+
+      // 百の塊枠：現在ハイライト中 or 確定済みで色を分ける
+      var hundHL        = (phase === 'count' && countStage === 0 && h === hH);
+      var hundConfirmed = (phase === 'count' && h < confirmedH);
+      ctx.save();
+      ctx.strokeStyle = hundHL        ? QUIZ_COLORS.count
+                      : hundConfirmed ? QUIZ_COLORS.answer
+                      : C.groupBlue;
+      ctx.lineWidth   = hundHL ? 3.5 : hundConfirmed ? 2.5 : 2;
+      ctx.setLineDash((hundHL || hundConfirmed) ? [] : [8, 6]);
+      ctx.strokeRect(hx, L.topY, L.hundredW, L.hundredH);
+      ctx.restore();
+    }
+
+    // テキスト
+    drawAnimText(snap.line1, snap.line2);
+
+    // 位取り表
+    var pv = snap.pvConfirmed || { thousands: 0, hundreds: -1, tens: -1, ones: -1 };
+    pvThousands.textContent = String(pv.thousands);
+    pvHundreds.textContent  = pv.hundreds < 0 ? '?' : String(pv.hundreds);
+    pvTens.textContent      = pv.tens     < 0 ? '?' : String(pv.tens);
+    pvOnes.textContent      = pv.ones     < 0 ? '?' : String(pv.ones);
+    pvCells.forEach(function(el){ el.classList.remove('active'); });
+    if      (pv.ones     >= 0) pvOnes.classList.add('active');
+    else if (pv.tens     >= 0) pvTens.classList.add('active');
+    else if (pv.hundreds >= 0) pvHundreds.classList.add('active');
+
+    if (phase === 'done') quizNextBtn.style.display = '';
+
+    // ステップカウンター
+    if (animIdx >= 0) {
+      stepCounter.textContent = (animIdx + 1) + ' / ' + animSnaps.length;
+      stepPrevBtn.disabled = (animIdx === 0);
+      stepNextBtn.disabled = (animIdx === animSnaps.length - 1);
+    }
+
+    // 音声読み上げ
+    speakSnap(snap);
+  }
+
+  // ----- ナビ操作 -----
+  function goToStep(idx) {
+    if (idx < 0) idx = 0;
+    if (idx >= animSnaps.length) idx = animSnaps.length - 1;
+    animIdx = idx;
+    applySnap(animSnaps[animIdx]);
+  }
+
+  function stepForward() {
+    if (animIdx < 0 || animSnaps.length === 0) return;
+    if (animIdx < animSnaps.length - 1) goToStep(animIdx + 1);
+  }
+
+  function stepBack() {
+    if (animIdx <= 0) return;
+    goToStep(animIdx - 1);
+  }
+
+  // ----- 解説開始 -----
+  function startExplainAnim() {
+    buildSnaps();
+    animIdx = 0;
+    stepNavEl.style.display = 'block';
+    applySnap(animSnaps[0]);
+  }
+
+  // =====================================================
+  // 音声読み上げエンジン
+  // =====================================================
+  var voiceEnabled = true;
+  var voiceBtn = document.getElementById('voiceBtn');
+
+  // ウォームアップ：AudioContext 無音バッファ再生後に speechSynthesis を初期化
+  // Chrome では volume=0 が無視されることがあるため、
+  // AudioContext 側で音を出さずに speechSynthesis のエンジンだけ起こす
+  (function warmUpTTS() {
+    if (!window.speechSynthesis) return;
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var buf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate); // 0.1秒の無音
+      var src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.onended = function() {
+        // AudioContext 再生後に speechSynthesis を volume=0 rate=10 で呼ぶ
+        var u = new SpeechSynthesisUtterance('​'); // ゼロ幅スペース（実質無音テキスト）
+        u.volume = 0;
+        u.rate   = 10;
+        u.lang   = 'ja-JP';
+        window.speechSynthesis.speak(u);
+        ctx.close();
+      };
+      src.start();
+    } catch(e) {
+      // AudioContext が使えない環境ではフォールバック
+      var u2 = new SpeechSynthesisUtterance('​');
+      u2.volume = 0; u2.rate = 10; u2.lang = 'ja-JP';
+      window.speechSynthesis.speak(u2);
+    }
+  })();
+
+  voiceBtn.addEventListener('click', function() {
+    voiceEnabled = !voiceEnabled;
+    voiceBtn.style.filter = voiceEnabled ? '' : 'grayscale(1) opacity(0.4)';
+    if (!voiceEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
+  });
+
+  // 数字→ひらがな変換
+  function numToKana(n) {
+    n = parseInt(n, 10);
+    if (isNaN(n)) return String(n);
+    if (n === 0) return 'ぜろ';
+    var result = '';
+    var sen = Math.floor(n / 1000);
+    var hya = Math.floor((n % 1000) / 100);
+    var juu = Math.floor((n % 100) / 10);
+    var iti = n % 10;
+    // 千の位（4000は「よんせん」）
+    if (sen === 1) result += 'せん';
+    else if (sen === 4) result += 'よんせん';
+    else if (sen > 1) result += ['','いち','に','さん','し','ご','ろく','なな','はち','きゅう'][sen] + 'せん';
+    // 百の位：不規則変音 + 4→よん
+    if (hya === 1) result += 'ひゃく';
+    else if (hya === 2) result += 'にひゃく';
+    else if (hya === 3) result += 'さんびゃく';
+    else if (hya === 4) result += 'よんひゃく';
+    else if (hya === 5) result += 'ごひゃく';
+    else if (hya === 6) result += 'ろっぴゃく';
+    else if (hya === 7) result += 'ななひゃく';
+    else if (hya === 8) result += 'はっぴゃく';
+    else if (hya === 9) result += 'きゅうひゃく';
+    // 十の位：4→よん、7→なな、9→きゅう
+    if (juu === 1) result += 'じゅう';
+    else if (juu === 4) result += 'よんじゅう';
+    else if (juu === 7) result += 'ななじゅう';
+    else if (juu === 9) result += 'きゅうじゅう';
+    else if (juu > 1) result += ['','いち','に','さん','し','ご','ろく','なな','はち','きゅう'][juu] + 'じゅう';
+    // 一の位：4→よん、7→なな、9→きゅう
+    if (iti === 4) result += 'よん';
+    else if (iti === 7) result += 'なな';
+    else if (iti === 9) result += 'きゅう';
+    else if (iti > 0) result += ['','いち','に','さん','','ご','ろく','','はち',''][iti];
+    return result || 'ぜろ';
+  }
+
+  // テキスト中の数字をすべてひらがな読みに変換
+  function numReplace(txt) {
+    // 3桁以上の数は全体で numToKana 変換、1-2桁も同様
+    return txt.replace(/\d+/g, function(m) { return numToKana(parseInt(m, 10)); });
+  }
+
+  function speak(text) {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    // 読み方を確定させたい語を先に置換
+    var fixed = text.replace(/位取り表/g, 'くらいどりひょう');
+    var u = new SpeechSynthesisUtterance(numReplace(fixed));
+    u.lang = 'ja-JP';
+    u.rate = 1.0;
+    window.speechSynthesis.speak(u);
+  }
+
+  // 解説スナップの専用読み上げ
+  function speakSnap(snap) {
+    if (!snap) return;
+    var phase = snap.phase;
+    var cs    = snap.countStage !== undefined ? snap.countStage : 0;
+    var s     = snap.subStep   !== undefined ? snap.subStep   : 0;
+    var total = snap.subTotal  || 0;
+    var pv    = snap.pvConfirmed || { hundreds: -1, tens: -1, ones: -1 };
+    var step  = snap.countStep !== undefined ? snap.countStep : 0;
+    var ansH  = snap._ansH || 0;
+
+    // ---- subtract ----
+    if (phase === 'subtract') {
+      if (s === 0) {
+        speak(numToKana(snap.subUnit) + 'ずつひいていきます。ぜんぶで' + numToKana(total) + 'かい。');
+      } else {
+        // 1回目だけ「○ずつ引いていきます」を頭に付け、以降は合計数だけ
+        var removed = s * snap.subUnit;
+        var txt = (s === 1 ? numToKana(snap.subUnit) + 'ずつひいていきます。' : '') + numToKana(removed);
+        speak(txt);
+      }
+      return;
+    }
+
+    // ---- count ----
+    if (phase === 'count') {
+      // 百を数えている（cs=0）
+      if (cs === 0) {
+        if (step === 0 && pv.hundreds === 0) {
+          speak('ひゃくのまとまりはぜろこ');
+        } else if (step === 0) {
+          speak('のこったあおいどっとをかぞえます。ひゃくのまとまりからかぞえましょう');
+        } else {
+          // 1こ目だけ「百のまとまりを数えています」を頭に付ける
+          var txt = (step === 1 ? 'ひゃくのまとまりをかぞえています。' : '') + numToKana(step * 100);
+          speak(txt);
+        }
+        return;
+      }
+      // cs=1, step=0 は2種類ある：
+      //   (A) 百確定フレーム: pv.hundreds>=0 かつ pv.tens<0  → 「百N個確定！十を数えよう」
+      //   (B) 十が0確定フレーム: pv.tens===0                  → 「十のたばはぜろ」
+      if (cs === 1 && step === 0) {
+        if (pv.tens === 0) {
+          // 十が0で確定済み → 十0本
+          speak('ひゃくのまとまり' + numToKana(pv.hundreds) + 'こかくてい。じゅうのたばはぜろほん');
+        } else if (pv.tens < 0) {
+          // 百確定・十はまだ → 百確定の読み上げ＋十を数える予告
+          speak('ひゃくのまとまり' + numToKana(pv.hundreds) + 'こ、かくてい！じゅうのたばをかぞえましょう');
+        }
+        return;
+      }
+      // 十を数えている（cs=1, step>0）
+      if (cs === 1 && step > 0) {
+        var txt2 = (step === 1 ? 'じゅうのたばをかぞえています。' : '') + numToKana(step * 10);
+        speak(txt2);
+        return;
+      }
+      // cs=2, step=0 は2種類：
+      //   (A) 十確定フレーム: pv.ones<0  → 「十N本確定！一を数えよう」
+      //   (B) 一が0確定フレーム: pv.ones===0 → 「一はぜろ」
+      if (cs === 2 && step === 0) {
+        if (pv.ones === 0) {
+          speak('じゅうのたば' + numToKana(pv.tens) + 'ほんかくてい。いちのばらはぜろこ');
+        } else if (pv.ones < 0) {
+          speak('じゅうのたば' + numToKana(pv.tens) + 'ほん、かくてい！いちのばらをかぞえましょう');
+        }
+        return;
+      }
+      // 一を数えている（cs=2, step>0）
+      if (cs === 2 && step > 0) {
+        var txt3 = (step === 1 ? 'いちのばらをかぞえています。' : '') + numToKana(step);
+        speak(txt3);
+        return;
+      }
+      // 全桁確定（cs=3）
+      if (cs === 3) {
+        speak('いちのばら' + numToKana(snap._ansO || 0) + 'こ、かくてい！こたえは' + numToKana(snap.markerVal));
+        return;
+      }
+    }
+
+    // ---- done ----
+    if (phase === 'done') {
+      speak('こたえは' + numToKana(snap.markerVal) + '！位取り表をかくにんしよう！');
+    }
+  }
+
+  // アニメモードの読み上げ
+  function speakAnimStatus() {
+    var v = getValue();
+    var m = state.mode;
+    var s = state.step;
+    // step=10 は繰り上がり（その位が満杯になった）
+    if (m === 0) {
+      if (s === 10) speak(numToKana(v) + '、いちのくらいからくりあがって、じゅう');
+      else          speak(numToKana(v) + '、いちのくらい、' + numToKana(s) + 'こ');
+    } else if (m === 1) {
+      if (s === 10) speak(numToKana(v) + '、じゅうのくらいからくりあがって、ひゃく');
+      else          speak(numToKana(v) + '、じゅうのくらい、' + numToKana(s * 10));
+    } else if (m === 2) {
+      if (s === 10) speak(numToKana(v) + '、ひゃくのくらいからくりあがって、せん');
+      else          speak(numToKana(v) + '、ひゃくのくらい、' + numToKana(s * 100));
+    } else {
+      speak('せん！');
+    }
+  }
+
+  // ----- 旧タイマー関数（互換用スタブ）-----
+  function stopAnimTimers() { /* スナップショット方式ではタイマー不使用 */ }
+
+  // ----- 描画ユーティリティ -----
+
+  function drawQuizTitle(txt) {
+    ctx.save();
+    ctx.fillStyle = '#333'; ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(txt, L.mx, 6);
+    ctx.restore();
+  }
+
+  function drawAnimText(line1, line2) {
+    ctx.save();
+    ctx.fillStyle = '#1d1d1d';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(line1, L.mx, L.textY);
+    if (line2) {
+      ctx.font = '18px sans-serif'; ctx.fillStyle = '#444';
+      ctx.fillText(line2, L.mx, L.textY + 34);
+    }
+    ctx.restore();
+  }
+
+  function drawQuizNumberLine(markerVal, showArrow) {
+    var left  = L.mx;
+    var right = L.mx + 1000;
+    var y     = L.lineY;
+    var scale = (right - left) / 1000;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,244,204,0.16)';
+    ctx.fillRect(0, y - 40, W, 96);
+
+    ctx.strokeStyle = '#1f1f1f'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+
+    for (var v = 0; v <= 1000; v += 10) {
+      var x     = left + v * scale;
+      var major = v % 100 === 0;
+      var mid   = v % 50  === 0;
+      var hh    = major ? 28 : mid ? 18 : 11;
+      ctx.strokeStyle = '#404040';
+      ctx.lineWidth = major ? 2.4 : 1.1;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - hh); ctx.stroke();
+      if (major) {
+        ctx.fillStyle = '#222';
+        ctx.font = '18px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(String(v), x, y - 30);
+      }
+    }
+
+    // 1000 マーカー（青、常時）
+    var x1000 = right;
+    ctx.fillStyle = QUIZ_COLORS.base;
+    ctx.beginPath();
+    ctx.moveTo(x1000, y - 36); ctx.lineTo(x1000 - 8, y - 22); ctx.lineTo(x1000 + 8, y - 22);
+    ctx.closePath(); ctx.fill();
+
+    if (markerVal >= 0 && markerVal < 1000) {
+      var xM = left + markerVal * scale;
+
+      // 矢印（1000 → markerVal）
+      if (showArrow) {
+        var arrowY = y + 28;
+        ctx.strokeStyle = QUIZ_COLORS.missing;
+        ctx.lineWidth = 2.5; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(x1000, arrowY); ctx.lineTo(xM, arrowY); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = QUIZ_COLORS.missing;
+        ctx.beginPath();
+        ctx.moveTo(xM, arrowY); ctx.lineTo(xM + 10, arrowY - 6); ctx.lineTo(xM + 10, arrowY + 6);
+        ctx.closePath(); ctx.fill();
+        // 矢印下のラベル（引いた数）
+        var snapNow = (animIdx >= 0) ? animSnaps[animIdx] : null;
+        var labelVal = quizState.diff;
+        if (snapNow && snapNow.phase === 'subtract' && snapNow.subStep > 0) {
+          labelVal = snapNow.subStep * snapNow.subUnit;
+        }
+        ctx.fillStyle = QUIZ_COLORS.missing;
+        ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+        if (labelVal > 0) ctx.fillText('−' + labelVal, (x1000 + xM) / 2, arrowY + 18);
+      }
+
+      // マーカー三角（subtract中は赤、count/done は緑）。数値テキストは非表示。
+      var snap2 = (animIdx >= 0) ? animSnaps[animIdx] : null;
+      var mColor = (snap2 && snap2.phase === 'subtract') ? QUIZ_COLORS.missing : QUIZ_COLORS.answer;
+      ctx.fillStyle = mColor;
+      ctx.beginPath();
+      ctx.moveTo(xM, y - 36); ctx.lineTo(xM - 8, y - 22); ctx.lineTo(xM + 8, y - 22);
+      ctx.closePath(); ctx.fill();
+      // ↑マーカー三角のみ。fillText(markerVal) は削除（数直線上の数字テキストを非表示）
+    }
+    ctx.restore();
+
+    // ones タイプのとき拡大数直線を追加描画
+    if (quizState.type === 'ones') {
+      drawZoomNumberLine(markerVal, showArrow, left, right, y, scale);
+    }
+  }
+
+  // 拡大数直線（989〜1002 を 元数直線の500〜1000区間の真下に表示）
+  function drawZoomNumberLine(markerVal, showArrow, mainLeft, mainRight, mainY, mainScale) {
+    var ZOOM_MIN  = 989;           // 拡大表示の左端
+    var ZOOM_MAX  = 1002;          // 拡大表示の右端
+    // 元の数直線で 500〜1000 に対応するX座標
+    var PAD_L     = mainLeft + 500 * mainScale;   // x=540
+    var PAD_R     = mainRight;                    // x=1040
+    var ZY        = mainY + 68;   // 元数直線のすぐ下（lineY+68=244）
+    var ZH_BOX    = 80;           // 枠の高さ
+    var boxTop    = ZY - 30;
+    var zScale    = (PAD_R - PAD_L) / (ZOOM_MAX - ZOOM_MIN); // px/1
+
+    // ---- 拡大枠の背景 ----
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 240, 220, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(PAD_L - 8, boxTop, (PAD_R - PAD_L) + 16, ZH_BOX, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#f0a500';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+
+    // ---- 上の数直線の989・1002点から枠上端へ縦線（虫眼鏡の脚） ----
+    var xZminMain = mainLeft + ZOOM_MIN * mainScale;
+    var xZmaxMain = mainLeft + ZOOM_MAX * mainScale;
+    ctx.strokeStyle = '#f0a500';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xZminMain, mainY + 4);
+    ctx.lineTo(PAD_L,     boxTop);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(xZmaxMain, mainY + 4);
+    ctx.lineTo(PAD_R,     boxTop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ---- 拡大数直線の軸 ----
+    ctx.strokeStyle = '#1f1f1f'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(PAD_L, ZY); ctx.lineTo(PAD_R, ZY); ctx.stroke();
+
+    // ---- 目盛り（984〜1000 を 1 刻み） ----
+    for (var v = ZOOM_MIN; v <= ZOOM_MAX; v++) {
+      var zx    = PAD_L + (v - ZOOM_MIN) * zScale;
+      var major = v % 5 === 0;
+      var zh    = major ? 20 : 10;
+      ctx.strokeStyle = '#404040';
+      ctx.lineWidth   = major ? 1.8 : 0.9;
+      ctx.beginPath(); ctx.moveTo(zx, ZY); ctx.lineTo(zx, ZY - zh); ctx.stroke();
+      if (v % 5 === 0) {
+        ctx.fillStyle = '#333';
+        ctx.font = '15px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(String(v), zx, ZY - 22);
+      }
+    }
+
+    // ---- 1000 マーカー（青三角）----
+    var zx1000 = PAD_R;
+    ctx.fillStyle = QUIZ_COLORS.base;
+    ctx.beginPath();
+    ctx.moveTo(zx1000, ZY - 28); ctx.lineTo(zx1000 - 7, ZY - 16); ctx.lineTo(zx1000 + 7, ZY - 16);
+    ctx.closePath(); ctx.fill();
+
+    // ---- 現在値マーカー ----
+    if (markerVal >= ZOOM_MIN && markerVal < ZOOM_MAX) {
+      var zxM   = PAD_L + (markerVal - ZOOM_MIN) * zScale;
+      var snap3 = (animIdx >= 0) ? animSnaps[animIdx] : null;
+      var mColor2 = (snap3 && snap3.phase === 'subtract') ? QUIZ_COLORS.missing : QUIZ_COLORS.answer;
+
+      // 矢印（1000 → markerVal）
+      if (showArrow) {
+        var arrowY2 = ZY + 20;
+        ctx.strokeStyle = QUIZ_COLORS.missing;
+        ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.moveTo(zx1000, arrowY2); ctx.lineTo(zxM, arrowY2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = QUIZ_COLORS.missing;
+        ctx.beginPath();
+        ctx.moveTo(zxM, arrowY2); ctx.lineTo(zxM + 8, arrowY2 - 5); ctx.lineTo(zxM + 8, arrowY2 + 5);
+        ctx.closePath(); ctx.fill();
+        // ラベル（引いた数）
+        var snapNow2 = (animIdx >= 0) ? animSnaps[animIdx] : null;
+        var labelVal2 = quizState.diff;
+        if (snapNow2 && snapNow2.phase === 'subtract' && snapNow2.subStep > 0) {
+          labelVal2 = snapNow2.subStep * snapNow2.subUnit;
+        }
+        ctx.fillStyle = QUIZ_COLORS.missing;
+        ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+        if (labelVal2 > 0) ctx.fillText('−' + labelVal2, (zx1000 + zxM) / 2, arrowY2 + 14);
+      }
+
+      // マーカー三角（数値付き）
+      ctx.fillStyle = mColor2;
+      ctx.beginPath();
+      ctx.moveTo(zxM, ZY - 28); ctx.lineTo(zxM - 7, ZY - 16); ctx.lineTo(zxM + 7, ZY - 16);
+      ctx.closePath(); ctx.fill();
+      // 拡大数直線ではマーカーの値を表示する
+      ctx.fillStyle = mColor2;
+      ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(String(markerVal), zxM, ZY - 30);
+    }
+    ctx.restore();
+  }
+
+  // 問題表示（解説前）の idle フレーム描画
+  function drawIdleFrame() {
+    clear();
+    var diff = quizState.diff;
+    ctx.save();
+    ctx.fillStyle = '#333'; ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('1000より小さい数を考えよう', L.mx, 6);
+    ctx.restore();
+    drawQuizNumberLine(-1, false);
+    for (var h = 0; h < 10; h++) {
+      var hx = hundredX(h);
+      for (var t = 0; t < 10; t++) {
+        var tx = tenX(h, t);
+        for (var row = 0; row < 10; row++) {
+          ctx.beginPath();
+          ctx.arc(tx + L.cell/2, L.topY + row*L.cell + L.cell/2, L.r, 0, Math.PI*2);
+          ctx.fillStyle = QUIZ_COLORS.base; ctx.fill();
+        }
+        rect(tx, L.topY, L.cell, 84, C.yellow, 1.2, [7, 6]);
+      }
+      rect(hx, L.topY, L.hundredW, L.hundredH, C.groupBlue, 2, [8, 6]);
+    }
+    drawAnimText('1000より ' + diff + ' 小さい数は？', '');
+    updatePlaceValue(1000);
+  }
+
+  // ---------- 問題パネルのボタン制御 ----------
+
+  quizCheckBtn.addEventListener('click', function() {
+    var val = parseInt(quizInput.value, 10);
+    if (isNaN(val)) {
+      quizFeedback.textContent = '数字を入力してください。';
+      quizFeedback.className = 'ng';
+      speak('かずをにゅうりょくしてください');
+      return;
+    }
+    if (val === quizState.answer) {
+      quizInput.className = 'quiz-input correct';
+      quizFeedback.textContent = '⭕️ 正解！よくできました！';
+      quizFeedback.className = 'ok';
+      quizCheckBtn.style.display = 'none';
+      speak('せいかい！よくできました！');
+    } else {
+      quizInput.className = 'quiz-input wrong';
+      quizFeedback.textContent = '❌ もう一度考えてみよう。';
+      quizFeedback.className = 'ng';
+      speak('ちがいます。もういちどかんがえてみよう。');
+      quizInput.select();
+    }
+  });
+
+  quizExplainBtn.addEventListener('click', function() {
+    quizState.explained = true;
+    quizFeedback.textContent = '▶ で1ステップずつ進めましょう。答えは ' + quizState.answer + ' です。';
+    quizFeedback.className = 'ok';
+    quizInput.value = quizState.answer;
+    quizInput.className = 'quiz-input correct';
+    quizCheckBtn.style.display = 'none';
+    quizExplainBtn.style.display = 'none';
+    quizNextBtn.style.display = 'none';
+    startExplainAnim();
+  });
+
+  quizNextBtn.addEventListener('click', function() {
+    if (quizMode === 'spec') {
+      loadSpecQuestion(unitSelect.value, parseInt(diffSelect.value, 10));
+    } else {
+      loadNextQuestion();
+    }
+  });
+
+  stepPrevBtn.addEventListener('click', function() { stepBack(); });
+  stepNextBtn.addEventListener('click', function() { stepForward(); });
+
+  // キーボード操作（解説中のみ有効）
+  document.addEventListener('keydown', function(ev) {
+    if (animIdx < 0) {
+      // 解説中でなければ Enter → 確かめる
+      if (ev.key === 'Enter' && document.activeElement !== quizInput) return;
+      return;
+    }
+    // 解説ステップ操作
+    if (ev.key === 'ArrowRight' || ev.key === 'Enter') {
+      ev.preventDefault();
+      stepForward();
+    } else if (ev.key === 'ArrowLeft') {
+      ev.preventDefault();
+      stepBack();
+    }
+  });
+
+  quizInput.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Enter') {
+      if (animIdx >= 0) {
+        // 解説中はステップ前進
+        ev.preventDefault();
+        stepForward();
+      } else {
+        quizCheckBtn.click();
+      }
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
