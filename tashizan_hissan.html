@@ -296,7 +296,8 @@ function drawSenScaled(parent,cx,cy,u,alpha,strokeColor){
   mk('image',{href:IMG_SEN,x:ox,y:oy,width:side,height:side,opacity:alpha,
     'preserveAspectRatio':'none'},parent);
   if(strokeColor && strokeColor!==SC){
-    mk('rect',{x:ox+side*0.06,y:oy+side*0.1,width:side*0.6,height:side*0.6,
+    const m=side*0.04;
+    mk('rect',{x:ox-m,y:oy-m,width:side+m*2,height:side+m*2,
       fill:'none',stroke:strokeColor,'stroke-width':2,rx:3,opacity:alpha},parent);
   }
 }
@@ -313,7 +314,7 @@ function drawIchi(parent,count,svgW,svgH,alpha,hColor){
   for(let b=0;b<nBlocks&&drawn<count;b++){
     const col=b%cols,brow=Math.floor(b/cols);
     const inB=(b===nBlocks-1&&rem)?rem:5;
-    const cx=sx+col*colPitch,botY=svgH-6;
+    const cx=sx+col*colPitch,botY=svgH-14;
     const blockBotY=botY-brow*(BH+bGap);
     for(let i=0;i<inB&&drawn<count;i++){
       const cy=blockBotY-i*S;
@@ -337,29 +338,32 @@ function drawIchi(parent,count,svgW,svgH,alpha,hColor){
 function renderSticks(svgEl,count,alpha,hColor,strokeColor){
   svgEl.innerHTML='';if(!count)return[];
   const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
-  const stW=U+1,gap=5,centers=[];
-  const totW=count*stW+(count-1)*gap;
-  const sx=(W-totW)/2+stW/2;
+  const{xs,totW}=stickLayout(count);
+  const sx0=(W-totW)/2,centers=[];
   for(let i=0;i<count;i++){
+    const cx=sx0+xs[i]+STICK_W/2,cy=H/2;
     const g=mk('g',{},svgEl);
-    drawStick(g,sx+i*(stW+gap),H/2,U,alpha??1,strokeColor||SC);
-    centers.push({cx:sx+i*(stW+gap),cy:H/2});
+    drawStick(g,cx,cy,U,alpha??1,strokeColor||SC);
+    centers.push({cx,cy});
   }
   if(hColor){
     const G=U*.15,TH=10*U+9*G,m=4;
-    mk('rect',{x:(W-totW)/2-m,y:H/2-TH/2-m,width:totW+m*2,height:TH+m*2,
+    mk('rect',{x:sx0-m,y:H/2-TH/2-m,width:totW+m*2,height:TH+m*2,
       fill:'none',stroke:hColor,'stroke-width':2.5,'stroke-dasharray':'5,3',rx:4},svgEl);
   }
   return centers;
 }
 
+// ひゃくタイルを重ねて並べるときの「ずらす距離」（x軸・y軸とも）。視認性のため通常の2倍にしてある。
+const HYAKU_STEP=5, HYAKU_SIDE=10*U+9*U*.15;
+
 // 百タイル
 function renderHyakus(svgEl,count,alpha,hColor,strokeColor){
   svgEl.innerHTML='';if(!count)return[];
   const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
-  const u=U,G=u*.15,side=10*u+9*G;
-  const sc=Math.min((W-8)/side,(H-8)/side);
-  const su=u*sc,step=2.5,centers=[];
+  const u=U,G=u*.15,side=HYAKU_SIDE;
+  const sc=Math.min((W-8)/side,(H-8)/side,1);
+  const su=u*sc,step=HYAKU_STEP*sc,centers=[];
   for(let i=0;i<count;i++){
     const cx=W/2+(i-(count-1)/2)*step,cy=H/2-(i-(count-1)/2)*step;
     const g=mk('g',{},svgEl);
@@ -367,8 +371,9 @@ function renderHyakus(svgEl,count,alpha,hColor,strokeColor){
     centers.push({cx,cy});
   }
   if(hColor){
-    const side2=10*su+9*su*.15,m=4;
-    mk('rect',{x:W/2-side2/2-m,y:H/2-side2/2-m,width:side2+m*2,height:side2+m*2,
+    // タイルは斜め方向にstepずつ重ねて並ぶので、囲み枠は「1枚分の大きさ＋(枚数-1)分の広がり」が必要
+    const tileSide=10*su+9*su*.15,spread=(count-1)*step,boxSide=tileSide+spread,m=4;
+    mk('rect',{x:W/2-boxSide/2-m,y:H/2-boxSide/2-m,width:boxSide+m*2,height:boxSide+m*2,
       fill:'none',stroke:hColor,'stroke-width':2.5,'stroke-dasharray':'5,3',rx:4},svgEl);
   }
   return centers;
@@ -575,6 +580,24 @@ function cancelAnim(){if(animId){cancelAnimationFrame(animId);animId=null;}}
 function vbW(id){
   const svg=document.getElementById(id);
   return parseFloat(svg.getAttribute('viewBox').split(' ')[2]);
+}
+// SVG要素の現在のviewBox高さを取得
+function vbH(id){
+  const svg=document.getElementById(id);
+  return parseFloat(svg.getAttribute('viewBox').split(' ')[3]);
+}
+
+// じゅうの棒を「5本・すきま・5本」とグルーピングして並べたときのx座標(中心からの相対オフセット)を返す。
+// renderSticksと、くり上がりアニメーション側で同じ式を使うことで、見た目の食い違いを防ぐ。
+const STICK_W=U+1, STICK_GAP=5, STICK_GROUP_GAP=16;
+function stickLayout(count){
+  const xs=[0];
+  for(let i=1;i<count;i++){
+    const g=(i%5===0)?STICK_GROUP_GAP:STICK_GAP;
+    xs.push(xs[i-1]+STICK_W+g);
+  }
+  const totW=count>0?(xs[xs.length-1]+STICK_W):0;
+  return{xs,totW};
 }
 
 function tween(ms,onFrame,onDone){
@@ -1044,9 +1067,8 @@ function drawHeaderMarks(ts){
     }
     if(ts.markH&&ts.markH.show){
       const pos=aboveHdr('hdr-hyaku');
-      const HW=vbW('svg-hyaku-a'),HH_SVG=86;
-      const u=U,G=u*.15,side=10*u+9*G;
-      const su=u*Math.min((HW-8)/side,(HH_SVG-8)/side);
+      const HW=vbW('svg-hyaku-ans'),HH_SVG=vbH('svg-hyaku-ans');
+      const su=U*Math.min((HW-8)/HYAKU_SIDE,(HH_SVG-8)/HYAKU_SIDE,1);
       drawHyakuScaled(mk('g',{},layer),pos.x,pos.y,su,ts.markH.alpha,'#e74c3c');
     }
   }
@@ -1269,10 +1291,9 @@ function runAnim(animType,prevState,nextState,onDone){
   const has3=(aH>0||bH>0||ans>=100);
   const has4=(ans>=1000);
 
-  // 百タイル描画スケール（hyakuセル用：動的に広がった幅に対応）
-  const HW=vbW('svg-hyaku-a'),HH_SVG=86;
-  const u=U,G=u*.15,side=10*u+9*G;
-  const su=u*Math.min((HW-8)/side,(HH_SVG-8)/side);
+  // 百タイル描画スケール（hyakuセル用：動的に広がった幅・高さに対応）
+  const HW=vbW('svg-hyaku-ans'),HH_SVG=vbH('svg-hyaku-ans');
+  const su=U*Math.min((HW-8)/HYAKU_SIDE,(HH_SVG-8)/HYAKU_SIDE,1);
 
   // ============================================================
   // カードモード：アニメーションはタイル版と完全に別ルートで処理する。
@@ -1290,12 +1311,15 @@ function runAnim(animType,prevState,nextState,onDone){
     const count=animType==='appear-hyaku-a'?aH:bH;
     const svgEl=document.getElementById(id);
     svgEl.innerHTML='';
-    const W=vbW(id),H=86,step=2.5;let si=0;
+    // renderHyakusと完全に同じ式で位置・縮尺を計算する（最初の出現位置と最終位置を一致させる）
+    const W=vbW(id),H=vbH(id),side=HYAKU_SIDE;
+    const sc=Math.min((W-8)/side,(H-8)/side,1);
+    const suA=U*sc,step=HYAKU_STEP*sc;let si=0;
     (function next(){
       if(si>=count){onDone();return;}
-      const cx=W/2+(si-(count-1)/2)*step,cy=H/2;
+      const cx=W/2+(si-(count-1)/2)*step,cy=H/2-(si-(count-1)/2)*step;
       const g=mk('g',{opacity:0},svgEl);
-      drawHyakuScaled(g,cx,cy,su,1,SC);
+      drawHyakuScaled(g,cx,cy,suA,1,SC);
       tween(280,t=>g.setAttribute('opacity',t),()=>{si++;next();});
     })();
     return;
@@ -1307,12 +1331,14 @@ function runAnim(animType,prevState,nextState,onDone){
     const count=animType==='appear-juu-a'?aJ:bJ;
     const svgEl=document.getElementById(id);
     svgEl.innerHTML='';
-    const W=vbW(id),H=86,stW=U+1,gap=5;
-    const totW=count*stW+(count-1)*gap,sx=(W-totW)/2+stW/2;
+    // renderSticksと完全に同じ式で位置を計算する（最初の出現位置と最終位置を一致させる）
+    const W=vbW(id),H=vbH(id);
+    const{xs,totW}=stickLayout(count);
+    const sx0=(W-totW)/2;
     let si=0;
     (function next(){
       if(si>=count){onDone();return;}
-      const cx=sx+si*(stW+gap),cy=H/2;
+      const cx=sx0+xs[si]+STICK_W/2,cy=H/2;
       const g=mk('g',{opacity:0},svgEl);
       drawStick(g,cx,cy,U,1);
       tween(200,t=>g.setAttribute('opacity',t),()=>{si++;next();});
@@ -1439,18 +1465,18 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgJA=document.getElementById('svg-juu-a');
     const svgJB=document.getElementById('svg-juu-b');
     const svgJAns=document.getElementById('svg-juu-ans');
-    const W=vbW('svg-juu-a'),H=86,HA=94,stW=U+1,gap=5;
+    const W=vbW('svg-juu-a'),H=vbH('svg-juu-a'),HA=vbH('svg-juu-ans'),stW=STICK_W;
     // carry棒の出発位置（ヘッダー真上）
     const carryAbove=aboveHdr('hdr-juu');
     const carrySrc=hasCarryI?[carryAbove]:[];
-    // A棒・B棒出発位置
-    const totWA=aJ>0?aJ*stW+(aJ-1)*gap:0,sxA=(W-totWA)/2+stW/2;
-    const srcA=Array.from({length:aJ},(_,i)=>svgToLayer(svgJA,sxA+i*(stW+gap),H/2));
-    const totWB=bJ>0?bJ*stW+(bJ-1)*gap:0,sxB=(W-totWB)/2+stW/2;
-    const srcB=Array.from({length:bJ},(_,i)=>svgToLayer(svgJB,sxB+i*(stW+gap),H/2));
+    // A棒・B棒出発位置（renderSticksと同じグループ間隔の式を使う）
+    const layA=stickLayout(aJ),sxA0=(W-layA.totW)/2;
+    const srcA=layA.xs.map(x=>svgToLayer(svgJA,sxA0+x+stW/2,H/2));
+    const layB=stickLayout(bJ),sxB0=(W-layB.totW)/2;
+    const srcB=layB.xs.map(x=>svgToLayer(svgJB,sxB0+x+stW/2,H/2));
     // 移動先
-    const totWAns=jRaw*stW+(jRaw-1)*gap,sxAns=(W-totWAns)/2+stW/2;
-    const dstAll=Array.from({length:jRaw},(_,i)=>svgToLayer(svgJAns,sxAns+i*(stW+gap),HA/2));
+    const layAns=stickLayout(jRaw),sxAns0=(W-layAns.totW)/2;
+    const dstAll=layAns.xs.map(x=>svgToLayer(svgJAns,sxAns0+x+stW/2,HA/2));
     const allSrc=[...carrySrc,...srcA,...srcB];
     renderSticks(svgJA,aJ,.25);renderSticks(svgJB,bJ,.25);
     svgJAns.innerHTML='';layer.innerHTML='';
@@ -1477,9 +1503,10 @@ function runAnim(animType,prevState,nextState,onDone){
   // --- carry-j: 十→百くり上がり ---
   if(animType==='carry-j'){
     const svgJAns=document.getElementById('svg-juu-ans');
-    const W=vbW('svg-juu-ans'),HA=94,stW=U+1,gap=5;
-    const totW=jRaw*stW+(jRaw-1)*gap,sx=(W-totW)/2+stW/2;
-    const allPos=Array.from({length:jRaw},(_,i)=>({x:sx+i*(stW+gap),y:HA/2}));
+    const HA=vbH('svg-juu-ans'),stW=STICK_W;
+    const{xs,totW}=stickLayout(jRaw);
+    const W=vbW('svg-juu-ans'),sx0=(W-totW)/2;
+    const allPos=xs.map(x=>({x:sx0+x+stW/2,y:HA/2}));
     const pos10=allPos.slice(0,10);
     const posR=allPos.slice(10);
     const src10=pos10.map(p=>svgToLayer(svgJAns,p.x,p.y));
@@ -1490,9 +1517,9 @@ function runAnim(animType,prevState,nextState,onDone){
     // 点線で「10本のかたまり」だけを囲む。残り（jAns本）は通常表示のまま動かさない。
     // 縦方向は棒1本分の高さ(JH=10ユニット分)を基準にする（U単位の高さだと10倍狭すぎる）
     const JH0=10*U+9*U*.15;
-    const xs=src10.map(p=>p.x),m=4;
-    const bx0=Math.min(...xs)-stW/2-m, by0=srcCy-JH0/2-m;
-    const bw0=Math.max(...xs)-Math.min(...xs)+stW+m*2, bh0=JH0+m*2;
+    const xs2=src10.map(p=>p.x),m=4;
+    const bx0=Math.min(...xs2)-stW/2-m, by0=srcCy-JH0/2-m;
+    const bw0=Math.max(...xs2)-Math.min(...xs2)+stW+m*2, bh0=JH0+m*2;
     const dash=mk('rect',{x:bx0,y:by0,width:bw0,height:bh0,fill:'none',stroke:'#e74c3c','stroke-width':2,'stroke-dasharray':'5,4',rx:4,opacity:0},layer);
     tween(220,t=>dash.setAttribute('opacity',t),()=>{
       setTimeout(()=>{
@@ -1540,14 +1567,14 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgHA=document.getElementById('svg-hyaku-a');
     const svgHB=document.getElementById('svg-hyaku-b');
     const svgHAns=document.getElementById('svg-hyaku-ans');
-    const W=vbW('svg-hyaku-a'),H=86,HA=94,step=2.5;
+    const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a'),HB=vbH('svg-hyaku-b'),HA=vbH('svg-hyaku-ans'),step=2.5;
     // carry百タイルの出発位置：ヘッダー真上
     const carryAbove=aboveHdr('hdr-hyaku');
     const carrySrc=hasCarryJ?[carryAbove]:[];
     const srcA=Array.from({length:aH},(_,i)=>{
       const cx=W/2+(i-(aH-1)/2)*step,cy=H/2;return svgToLayer(svgHA,cx,cy);});
     const srcB=Array.from({length:bH},(_,i)=>{
-      const cx=W/2+(i-(bH-1)/2)*step,cy=H/2;return svgToLayer(svgHB,cx,cy);});
+      const cx=W/2+(i-(bH-1)/2)*step,cy=HB/2;return svgToLayer(svgHB,cx,cy);});
     const hTotal=hRaw;
     const dstAll=Array.from({length:hTotal},(_,i)=>{
       const cx=W/2+(i-(hTotal-1)/2)*step,cy=HA/2;return svgToLayer(svgHAns,cx,cy);});
@@ -1577,7 +1604,7 @@ function runAnim(animType,prevState,nextState,onDone){
   // --- carry-h: 百→千くり上がり ---
   if(animType==='carry-h'){
     const svgHAns=document.getElementById('svg-hyaku-ans');
-    const W=vbW('svg-hyaku-ans'),HA=94,step=2.5;
+    const W=vbW('svg-hyaku-ans'),HA=vbH('svg-hyaku-ans'),step=2.5;
     const allPos=Array.from({length:hRaw},(_,i)=>({x:W/2+(i-(hRaw-1)/2)*step,y:HA/2}));
     const pos10=allPos.slice(0,10);
     const posR=allPos.slice(10);
@@ -1718,35 +1745,42 @@ function updateLayout(){
   const maxHyakuCount=Math.max(aH,bH,hRaw,1);
 
   let juuWidth,hyakuWidth;
+  let hyakuHeights={'svg-hyaku-a':86,'svg-hyaku-b':86,'svg-hyaku-ans':94}; // 既定（カード方式や枚数が少ない場合はこのまま）
   if(DISPLAY_MODE==='card'){
     // カード方式：5枚で1ブロック・最大2列という固定レイアウトなので、
     // cardNeedWidthで実際に必要な幅を逆算する（桁数が増えても同じ式で対応）。
     juuWidth=Math.max(124,cardNeedWidth(maxJuuCount,'juu'));
     hyakuWidth=Math.max(124,cardNeedWidth(maxHyakuCount,'hyaku'));
   } else {
-    // ---- 十の位の幅：この問題で表示しうる最大の棒の本数から逆算 ----
-    const stW=U+1,gap=5; // renderSticksと同じ計算式
-    const juuNeedW=maxJuuCount*stW+(maxJuuCount-1)*gap+16; // 余白
+    // ---- 十の位の幅：この問題で表示しうる最大の棒の本数から逆算（5本ごとの間隔も含む）----
+    const juuNeedW=stickLayout(maxJuuCount).totW+16; // 余白
     juuWidth=Math.max(124,Math.round(juuNeedW));
-    // ---- 百の位の幅：答えタイル枚数が多い場合に少し広げる（重なり表示なので緩やかに）----
-    const hyakuNeedW=124+Math.max(0,(maxHyakuCount-1))*3;
-    hyakuWidth=Math.max(124,Math.round(hyakuNeedW));
+    // ---- 百の位：タイルの重なりをずらす距離(HYAKU_STEP)をx・y方向とも基準にして、
+    //      枚数が多いときに幅・高さの両方を広げ、すべてのタイルが必ず収まるようにする ----
+    const hyakuNeedSize=n=>n<=0?0:HYAKU_SIDE+(n-1)*HYAKU_STEP;
+    hyakuWidth=Math.max(124,Math.round(hyakuNeedSize(maxHyakuCount)+16));
+    hyakuHeights={
+      'svg-hyaku-a':  Math.max(86,Math.round(hyakuNeedSize(aH)+16)),
+      'svg-hyaku-b':  Math.max(86,Math.round(hyakuNeedSize(bH)+16)),
+      'svg-hyaku-ans':Math.max(94,Math.round(hyakuNeedSize(hRaw)+16)),
+    };
   }
 
   document.querySelector('col.col-juu').style.width=juuWidth+'px';
   ['svg-juu-a','svg-juu-b','svg-juu-ans'].forEach(id=>{
     const svg=document.getElementById(id);
     svg.setAttribute('width',juuWidth);
-    const vbH=svg.getAttribute('viewBox').split(' ')[3];
-    svg.setAttribute('viewBox',`0 0 ${juuWidth} ${vbH}`);
+    const h=svg.getAttribute('viewBox').split(' ')[3];
+    svg.setAttribute('viewBox',`0 0 ${juuWidth} ${h}`);
   });
 
   document.getElementById('colgrp-hyaku').style.width=hyakuWidth+'px';
   ['svg-hyaku-a','svg-hyaku-b','svg-hyaku-ans'].forEach(id=>{
     const svg=document.getElementById(id);
+    const h=hyakuHeights[id];
     svg.setAttribute('width',hyakuWidth);
-    const vbH=svg.getAttribute('viewBox').split(' ')[3];
-    svg.setAttribute('viewBox',`0 0 ${hyakuWidth} ${vbH}`);
+    svg.setAttribute('height',h);
+    svg.setAttribute('viewBox',`0 0 ${hyakuWidth} ${h}`);
   });
 
   // (is-empty トグルは廃止)
