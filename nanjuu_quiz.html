@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>何十・何百の けいさん</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background: #eef2f7;
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
+            user-select: none; min-height: 100vh;
+        }
+        .score-header {
+            max-width: 960px; width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(135deg, #ffeaa7, #ffb8b8);
+            padding: 10px 20px; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.06); margin-bottom: 14px;
+        }
+        .star-count { font-size: 20px; font-weight: bold; color: #d35400; display: flex; align-items: center; gap: 10px; }
+        .btn-reset { background: rgba(255,255,255,0.7); border: 1px solid #cca; padding: 5px 11px; font-size: 13px; border-radius: 6px; cursor: pointer; color: #666; font-weight: bold; }
+        .btn-reset:hover { background:#fff; color:#c0392b; }
+        .btn-sound { font-size: 24px; background: none; border: none; cursor: pointer; padding: 4px; }
+        .sound-off { opacity: 0.3; filter: grayscale(100%); }
+
+        .app-container { max-width: 960px; width: 100%; background: white; border-radius: 20px; padding: 22px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; font-size: 23px; margin: 0 0 16px; }
+
+        .tab-menu { display: flex; gap: 7px; margin-bottom: 14px; flex-wrap: wrap; }
+        .tab-menu button { flex: 1; min-width: 110px; padding: 10px 5px; border: none; background: #dfe6e9; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s; color: #555; }
+        .tab-menu button.active { background: #2c3e50; color: white; }
+
+        .step-toggle { display: flex; align-items: center; justify-content: center; gap: 10px; background: #f1f2f6; padding: 7px 18px; border-radius: 30px; width: fit-content; margin: 0 auto 14px; font-size: 14px; font-weight: bold; color: #57606f; }
+        .switch { position: relative; display: inline-block; width: 52px; height: 30px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top:0; left:0; right:0; bottom:0; background: #3498db; border-radius: 30px; transition: .3s; }
+        .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: .3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background: #2ed573; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .level-selector { display: flex; justify-content: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+        .level-btn { padding: 6px 14px; border: 2px solid #bbb; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; background: white; color: #555; transition: 0.2s; }
+        .level-btn.active { background: #2c3e50; color: white; border-color: #2c3e50; }
+
+        .problem-box { background: #f8f9fa; border-radius: 14px; border: 2px solid #e0e0e0; padding: 15px; margin-bottom: 12px; }
+        .problem-formula { font-size: 34px; font-weight: bold; text-align: center; color: #2c3e50; letter-spacing: 3px; }
+
+        .svg-area { width: 100%; margin: 10px 0; overflow-x: auto; }
+        .svg-area svg { width: 100%; height: auto; display: block; }
+
+        .steps-container { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+        .step-card { border-radius: 12px; padding: 12px 16px; border: 2px solid transparent; font-size: 16px; opacity: 0.35; transition: 0.3s; }
+        .step-card.active { opacity: 1; border-color: #2c3e50; box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
+        .step-card.done   { opacity: 0.85; }
+        .step-num { font-size: 12px; font-weight: bold; opacity: 0.6; margin-bottom: 4px; }
+        .step-tens { background: #fffde7; }
+        .step-huns { background: #e1f5fe; }
+        .step-hide { background: #f0f0f0; }
+        .step-calc { background: #f3e5f5; }
+        .step-ans  { background: #d4edda; }
+        .hl-tens { color: #e67e22; font-weight: bold; }
+        .hl-huns { color: #0984e3; font-weight: bold; }
+        .hl-ans  { color: #27ae60; font-weight: bold; font-size: 1.12em; }
+
+        .zero-hide-box { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 28px; font-weight: bold; margin: 6px 0; }
+        .zc { display: inline-block; background: #555; border-radius: 4px; vertical-align: middle; }
+
+        .answer-input-area { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 14px 0 6px; flex-wrap: wrap; }
+        .formula-lbl { font-size: 22px; font-weight: bold; color: #2c3e50; }
+        .digit-spinner { display: flex; flex-direction: column; align-items: center; }
+        .btn-arrow { background: none; border: none; font-size: 22px; cursor: pointer; color: #555; padding: 5px 10px; line-height: 1; }
+        .btn-arrow:active { color: #000; }
+        .digit-box { font-size: 40px; font-weight: bold; width: 50px; text-align: center; border-bottom: 3px solid #2c3e50; min-height: 50px; line-height: 1.2; }
+        .digit-lbl { font-size: 12px; color: #888; font-weight: bold; margin-top: 2px; }
+
+        .explanation { border-radius: 13px; padding: 15px; display: none; font-size: 17px; line-height: 1.85; margin-top: 12px; }
+        .explanation.correct   { background: #d4edda; border: 2px solid #b8dbb8; color: #155724; }
+        .explanation.incorrect { background: #f8d7da; border: 2px solid #f5c2c7; color: #721c24; }
+
+        .controls { display: flex; justify-content: center; gap: 12px; margin-top: 13px; flex-wrap: wrap; }
+        .btn-main { padding: 12px 32px; font-size: 17px; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-main:hover { opacity: 0.88; transform: scale(1.03); }
+        .btn-check { background: #27ae60; }
+        .btn-next  { background: #3498db; }
+        .btn-step  { background: #8e44ad; }
+    </style>
+</head>
+<body>
+
+<div class="score-header">
+    <div class="star-count">
+        <span id="star-display">🌟 あつめた★: 0こ</span>
+        <button class="btn-reset" onclick="resetStars()">★リセット</button>
+    </div>
+    <button id="sound-btn" class="btn-sound" onclick="toggleSound()">🔊</button>
+</div>
+
+<div class="app-container">
+    <h1>🔢 何十・何百の けいさん</h1>
+
+    <div class="tab-menu">
+        <button id="tab1" class="active" onclick="changeTab(1)">➕ 何十の たし算</button>
+        <button id="tab2" onclick="changeTab(2)">➖ 何十の ひき算</button>
+        <button id="tab3" onclick="changeTab(3)">💯 何百の たし算</button>
+        <button id="tab4" onclick="changeTab(4)">💯 何百の ひき算</button>
+        <button id="tab5" onclick="changeTab(5)">🔢 百何十の ひき算</button>
+        <button id="tab6" onclick="changeTab(6)">🔢 千ひく何百</button>
+    </div>
+
+    <div class="step-toggle">
+        <span>⚡ こたえだけ</span>
+        <label class="switch">
+            <input type="checkbox" id="step-checkbox" onchange="toggleStepMode()">
+            <span class="slider"></span>
+        </label>
+        <span>👣 ステップで まなぶ</span>
+    </div>
+
+    <div class="level-selector">
+        <button class="level-btn active" id="lv1" onclick="changeLevel(1)">かんたん</button>
+        <button class="level-btn" id="lv2" onclick="changeLevel(2)">ふつう</button>
+        <button class="level-btn" id="lv3" onclick="changeLevel(3)">むずかしい</button>
+    </div>
+
+    <div class="problem-box">
+        <div class="problem-formula" id="formula-display"></div>
+    </div>
+
+    <div class="svg-area" id="svg-area"></div>
+    <div id="steps-area" class="steps-container" style="display:none;"></div>
+    <div id="answer-area">
+        <div class="answer-input-area" id="answer-spinners"></div>
+    </div>
+
+    <div class="controls">
+        <button id="step-btn"  class="btn-main btn-step"  onclick="nextStep()"    style="display:none;">つぎのステップ ▶</button>
+        <button id="check-btn" class="btn-main btn-check" onclick="checkAnswer()">こたえあわせ</button>
+        <button id="next-btn"  class="btn-main btn-next"  onclick="initProblem()" style="display:none;">つぎの もんだい ▶</button>
+    </div>
+    <div id="explanation" class="explanation"></div>
+</div>
+
+<script>
+// ===== 状態 =====
+let currentTab = 1;
+let isStepMode = false;
+let level = 1;
+let stars = parseInt(localStorage.getItem('nanjuu_stars') || '0');
+let isSoundOn = true;
+let audioCtx = null;
+let prob = {};   // { aVal, bVal, ans, op, probType, ... }
+let currentStep = 0;
+let steps = [];
+let userDigits = [0,0,0,0]; // 万,千,百,十,一 → 4桁まで
+
+updateStarDisplay();
+
+/*
+  probType:
+    'tens_add'   : 何十＋何十
+    'tens_sub'   : 何十－何十
+    'huns_add'   : 何百＋何百
+    'huns_sub'   : 何百－何百
+    'mixed_sub'  : 百何十－何十（例: 130-40, 100-40）
+    'thou_sub'   : 千－何百（例: 1000-300）
+*/
+
+function initProblem() {
+    currentStep = 0;
+
+    let maxBase = (level === 1) ? 4 : (level === 2) ? 7 : 9;
+    let p = generateProblem(currentTab, maxBase);
+    prob = p;
+
+    document.getElementById('formula-display').textContent =
+        `${p.aVal} ${p.op} ${p.bVal} ＝ ？`;
+    document.getElementById('explanation').style.display = 'none';
+    document.getElementById('next-btn').style.display  = 'none';
+    document.getElementById('check-btn').style.display = 'inline-block';
+
+    drawSVG();
+
+    if (isStepMode) {
+        document.getElementById('answer-area').style.display = 'none';
+        document.getElementById('steps-area').style.display  = 'flex';
+        document.getElementById('step-btn').style.display    = 'inline-block';
+        document.getElementById('check-btn').style.display   = 'none';
+        buildSteps(); renderSteps();
+    } else {
+        document.getElementById('answer-area').style.display = 'block';
+        document.getElementById('steps-area').style.display  = 'none';
+        document.getElementById('step-btn').style.display    = 'none';
+        document.getElementById('check-btn').style.display   = 'inline-block';
+        buildSpinners();
+    }
+
+    userDigits = [0,0,0,0];
+    updateSpinnerDisplay();
+    playSound('click');
+}
+
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function generateProblem(tab, maxBase) {
+    let aVal, bVal, ans, op, probType;
+    let a, b;
+
+    if (tab === 1) {
+        // 何十＋何十
+        probType = 'tens_add'; op = '+';
+        a = rand(1, maxBase); b = rand(1, maxBase);
+        if (level === 3 && a + b < 10) b = 10 - a + rand(0,1);
+        b = Math.min(b, 9);
+        aVal = a * 10; bVal = b * 10; ans = aVal + bVal;
+
+    } else if (tab === 2) {
+        // 何十－何十
+        probType = 'tens_sub'; op = '-';
+        do { a = rand(2, maxBase + 1); b = rand(1, maxBase); } while (a <= b);
+        aVal = a * 10; bVal = b * 10; ans = aVal - bVal;
+
+    } else if (tab === 3) {
+        // 何百＋何百
+        probType = 'huns_add'; op = '+';
+        a = rand(1, maxBase); b = rand(1, maxBase);
+        if (level === 3 && a + b < 10) b = 10 - a + rand(0,1);
+        b = Math.min(b, 9);
+        aVal = a * 100; bVal = b * 100; ans = aVal + bVal;
+
+    } else if (tab === 4) {
+        // 何百－何百
+        probType = 'huns_sub'; op = '-';
+        do { a = rand(2, maxBase + 1); b = rand(1, maxBase); } while (a <= b);
+        aVal = a * 100; bVal = b * 100; ans = aVal - bVal;
+
+    } else if (tab === 5) {
+        // 百何十－何十（または 百－何十）
+        // aVal = 100*ah + 10*at, bVal = 10*b
+        // 答えは整十または整百
+        // パターン: (1) 百何十 - 何十 = 百何十 (2) 百何十 - 何十 = 百 (3) 百 - 何十 = 何十
+        probType = 'mixed_sub'; op = '-';
+        let pattern = rand(1, 3);
+        if (pattern === 1) {
+            // 百何十 - 何十 = 百何十  例: 130-20=110
+            b = rand(1, Math.min(maxBase, 4));
+            let at = rand(b + 1, Math.min(maxBase + 2, 9)); // at > b
+            aVal = 100 + at * 10; bVal = b * 10; ans = aVal - bVal;
+        } else if (pattern === 2) {
+            // 百何十 - 何十 = 百  例: 130-30=100
+            b = rand(1, Math.min(maxBase, 8));
+            aVal = 100 + b * 10; bVal = b * 10; ans = 100;
+        } else {
+            // 百 - 何十 = 何十  例: 100-30=70
+            b = rand(1, Math.min(maxBase, 8));
+            aVal = 100; bVal = b * 10; ans = 100 - bVal;
+        }
+
+    } else {
+        // 千－何百
+        probType = 'thou_sub'; op = '-';
+        do { b = rand(1, maxBase); } while (b === 10);
+        aVal = 1000; bVal = b * 100; ans = aVal - bVal;
+    }
+
+    return { aVal, bVal, ans, op, probType };
+}
+
+// ===== タブ・レベル =====
+function changeTab(n) {
+    currentTab = n;
+    for (let i=1;i<=6;i++) document.getElementById('tab'+i).classList.toggle('active', i===n);
+    initProblem();
+}
+function changeLevel(n) {
+    level = n;
+    [1,2,3].forEach(i => document.getElementById('lv'+i).classList.toggle('active', i===n));
+    initProblem();
+}
+function toggleStepMode() {
+    isStepMode = document.getElementById('step-checkbox').checked;
+    initProblem();
+}
+
+// ===== ステップ学習 =====
+function buildSteps() {
+    let { aVal, bVal, ans, op, probType } = prob;
+
+    // probTypeごとにロジックを決める
+    // tens_add/tens_sub: 10のたば
+    // huns_add/huns_sub: 100のたば
+    // mixed_sub: 100のたばと10のたばを使う
+    // thou_sub: 1000のたばと100のたば
+
+    if (probType === 'mixed_sub') {
+        buildStepsMixed();
+    } else if (probType === 'thou_sub') {
+        buildStepsThou();
+    } else {
+        buildStepsSimple();
+    }
+}
+
+function buildStepsSimple() {
+    let { aVal, bVal, ans, op, probType } = prob;
+    let isTens = probType === 'tens_add' || probType === 'tens_sub';
+    let unit = isTens ? 10 : 100;
+    let a = aVal / unit, b = bVal / unit, s = ans / unit;
+    let unitLabel = isTens ? '１０' : '１００';
+    let hlCls = isTens ? 'hl-tens' : 'hl-huns';
+    let opStr = op === '+' ? '＋' : '－';
+    let zeros = isTens ? '0' : '00';
+    let zeroW = isTens ? 18 : 32, zeroH = 30;
+
+    let aHide = `<span>${a}</span><span class="zc" style="width:${zeroW}px;height:${zeroH}px;"></span>`;
+    let bHide = `<span>${b}</span><span class="zc" style="width:${zeroW}px;height:${zeroH}px;"></span>`;
+
+    steps = [
+        {
+            cls: isTens ? 'step-tens' : 'step-huns',
+            title: `ステップ① ${unitLabel}のたばで かんがえよう`,
+            html: `<b>${aVal}</b> は ${unitLabel}のたばが <span class="${hlCls}">${a}たば</span>、`
+                + `<b>${bVal}</b> は ${unitLabel}のたばが <span class="${hlCls}">${b}たば</span>。`
+        },
+        {
+            cls: 'step-hide',
+            title: 'ステップ② ０を かくして かんがえよう',
+            html: `０を かくすと…<div class="zero-hide-box">${aHide} ${opStr} ${bHide}</div>`
+                + `<small style="color:#666">（黒いところを てで かくして かんがえよう！）</small>`
+        },
+        {
+            cls: 'step-calc',
+            title: 'ステップ③ かんたんな けいさん！',
+            html: `<b style="font-size:1.15em">${a} ${opStr} ${b} ＝ <span style="color:#8e44ad;font-size:1.2em">${s}</span></b><br>`
+                + `１ねんせいで ならった かんたんな けいさんで もとめられます！`
+        },
+        {
+            cls: 'step-ans',
+            title: 'ステップ④ こたえに ０を つけよう',
+            html: `${s}たば ＝ ${unitLabel}が ${s}こ<br>`
+                + `→ <span class="${hlCls}">${s}</span> に ０を ${zeros.length}つ つけると…<br>`
+                + `<b style="font-size:1.35em">こたえ <span class="hl-ans">${s}${zeros} ＝ ${ans}</span>！</b>`
+        }
+    ];
+}
+
+function buildStepsMixed() {
+    let { aVal, bVal, ans } = prob;
+    let ah = Math.floor(aVal / 100);  // 百の部分
+    let at = Math.floor((aVal % 100) / 10); // 十の部分
+    let b  = bVal / 10;
+
+    steps = [
+        {
+            cls: 'step-huns',
+            title: 'ステップ① １０のたばで かんがえよう',
+            html: `<b>${aVal}</b> は １０のたばが <span class="hl-huns">${ah*10 + at}たば</span>（百${ah>0?ah+'まとまり':''}＋十が${at}こ）、`
+                + `<b>${bVal}</b> は １０のたばが <span class="hl-tens">${b}たば</span>。`
+        },
+        {
+            cls: 'step-hide',
+            title: 'ステップ② １０のたばで ひき算',
+            html: `１０のたばで かんがえると…<br>`
+                + `<b style="font-size:1.2em">${ah*10+at} － ${b} ＝ <span style="color:#8e44ad">${(ah*10+at)-b}</span></b><br>`
+                + `→ こたえは <b>${((ah*10+at)-b)}０ ＝ ${ans}</b>`
+        },
+        {
+            cls: 'step-calc',
+            title: 'ステップ③ なぜそうなる？',
+            html: `${aVal} を １０のたばで みると <b>${ah*10+at}たば</b><br>`
+                + `そこから ${b}たば とりのぞくと <b>${(ah*10+at)-b}たば</b><br>`
+                + `１０のたばが <span class="hl-huns">${(ah*10+at)-b}</span>こ → <b>${ans}</b>`
+        },
+        {
+            cls: 'step-ans',
+            title: 'ステップ④ こたえ',
+            html: `<b style="font-size:1.4em">こたえ <span class="hl-ans">${ans}</span>！</b>`
+        }
+    ];
+}
+
+function buildStepsThou() {
+    let { aVal, bVal, ans } = prob;
+    let b = bVal / 100;
+    let s = ans / 100;
+    steps = [
+        {
+            cls: 'step-huns',
+            title: 'ステップ① １００のたばで かんがえよう',
+            html: `<b>${aVal}</b> は １００のたばが <span class="hl-huns">10たば</span>、`
+                + `<b>${bVal}</b> は １００のたばが <span class="hl-huns">${b}たば</span>。`
+        },
+        {
+            cls: 'step-hide',
+            title: 'ステップ② ０を かくして かんがえよう',
+            html: `０を かくすと…<div class="zero-hide-box">`
+                + `<span>10</span> <span>－</span> <span>${b}</span>`
+                + `</div><small style="color:#666">（１０ から ${b} を ひく！）</small>`
+        },
+        {
+            cls: 'step-calc',
+            title: 'ステップ③ かんたんな けいさん！',
+            html: `<b style="font-size:1.15em">10 － ${b} ＝ <span style="color:#8e44ad;font-size:1.2em">${s}</span></b><br>`
+                + `１ねんせいで ならった かんたんな けいさんで もとめられます！`
+        },
+        {
+            cls: 'step-ans',
+            title: 'ステップ④ こたえに ００を つけよう',
+            html: `${s}たば ＝ １００のたばが ${s}こ<br>`
+                + `→ <span class="hl-huns">${s}</span> に ００ を つけると…<br>`
+                + `<b style="font-size:1.35em">こたえ <span class="hl-ans">${s}00 ＝ ${ans}</span>！</b>`
+        }
+    ];
+}
+
+function renderSteps() {
+    let html = '';
+    steps.forEach((s, i) => {
+        let cls = s.cls;
+        if (i < currentStep)   cls += ' done';
+        if (i === currentStep) cls += ' active';
+        html += `<div class="step-card ${cls}">
+            <div class="step-num">${s.title}</div>
+            <div>${i <= currentStep ? s.html : '・・・'}</div>
+        </div>`;
+    });
+    document.getElementById('steps-area').innerHTML = html;
+}
+
+function nextStep() {
+    playSound('click');
+    if (currentStep < steps.length - 1) {
+        currentStep++;
+        renderSteps();
+        if (currentStep === steps.length - 1) {
+            document.getElementById('step-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'inline-block';
+            stars++; localStorage.setItem('nanjuu_stars', stars); updateStarDisplay();
+            playSound('correct');
+        }
+    }
+}
+
+// ===== スピナー =====
+function buildSpinners() {
+    let { aVal, bVal, ans, op } = prob;
+    let digits = String(ans).length;
+    let spinnerCount = Math.max(digits, 3);
+    let labels = ['千','百','十','一'];
+    let opStr = op === '+' ? '＋' : '－';
+    let html = `<div class="formula-lbl">${aVal} ${opStr} ${bVal} ＝</div>`;
+    for (let i = 4 - spinnerCount; i < 4; i++) {
+        html += `<div class="digit-spinner">
+            <button class="btn-arrow" onclick="adjustDigit(${i},1)">▲</button>
+            <div class="digit-box" id="d${i}">0</div>
+            <div class="digit-lbl">${labels[i]}</div>
+            <button class="btn-arrow" onclick="adjustDigit(${i},-1)">▼</button>
+        </div>`;
+    }
+    document.getElementById('answer-spinners').innerHTML = html;
+    updateSpinnerDisplay();
+}
+
+function adjustDigit(pos, val) {
+    playSound('click');
+    userDigits[pos] = (userDigits[pos] + val + 10) % 10;
+    updateSpinnerDisplay();
+}
+function updateSpinnerDisplay() {
+    for (let i=0;i<4;i++) { let el=document.getElementById('d'+i); if(el) el.textContent=userDigits[i]; }
+}
+function getUserAnswer() {
+    return userDigits[0]*1000 + userDigits[1]*100 + userDigits[2]*10 + userDigits[3];
+}
+
+function checkAnswer() {
+    let userAns = getUserAnswer();
+    let correct = (userAns === prob.ans);
+    playSound(correct ? 'correct' : 'incorrect');
+
+    let { aVal, bVal, ans, op } = prob;
+    let opStr = op === '+' ? '＋' : '－';
+
+    let area = document.getElementById('explanation');
+    area.style.display = 'block';
+    area.className = `explanation ${correct ? 'correct' : 'incorrect'}`;
+
+    let expBody = buildExplanation();
+
+    if (correct) {
+        stars++; localStorage.setItem('nanjuu_stars', stars); updateStarDisplay();
+        area.innerHTML = `<strong style="font-size:20px;">⭕ せいかい！ ★を 1つ ゲット！</strong>
+            <hr style="border:0;border-top:1px solid #ccc;margin:8px 0">${expBody}`;
+    } else {
+        area.innerHTML = `<strong style="font-size:20px;">❌ まちがい… もう一度かんがえよう！</strong>
+            <hr style="border:0;border-top:1px solid #ccc;margin:8px 0">${expBody}`;
+    }
+    document.getElementById('check-btn').style.display = 'none';
+    document.getElementById('next-btn').style.display  = 'inline-block';
+}
+
+function buildExplanation() {
+    let { aVal, bVal, ans, op, probType } = prob;
+    let opStr = op === '+' ? '＋' : '－';
+
+    if (probType === 'thou_sub') {
+        let b = bVal / 100, s = ans / 100;
+        return `・１００のたばで かんがえると… <b>10 ${opStr} ${b} ＝ ${s}</b><br>`
+             + `・${s}たばは １００のたばが ${s}こ → <b>${s}00</b><br>`
+             + `・こたえは <span style="font-size:1.15em;font-weight:bold;">${ans}</span> です！`;
+    } else if (probType === 'mixed_sub') {
+        let at10 = aVal / 10, b = bVal / 10, s = ans / 10;
+        return `・１０のたばで かんがえると… <b>${at10} ${opStr} ${b} ＝ ${s}</b><br>`
+             + `・${s}たばは １０のたばが ${s}こ → <b>${s}0</b><br>`
+             + `・こたえは <span style="font-size:1.15em;font-weight:bold;">${ans}</span> です！`;
+    } else {
+        let isTens = probType === 'tens_add' || probType === 'tens_sub';
+        let unit = isTens ? 10 : 100;
+        let a = aVal/unit, b = bVal/unit, s = ans/unit;
+        let unitLabel = isTens ? '１０' : '１００';
+        let zeros = isTens ? '0' : '00';
+        return `・${unitLabel}のたばで かんがえると… <b>${a} ${opStr} ${b} ＝ ${s}</b><br>`
+             + `・${s}たばは ${unitLabel}のたばが ${s}こ → <b>${s}${zeros}</b><br>`
+             + `・こたえは <span style="font-size:1.15em;font-weight:bold;">${ans}</span> です！`;
+    }
+}
+
+// ===== SVG描画 =====
+
+// たば描画共通
+// 積み重なり3枚風。w×h のサイズで描画
+function makeTenBundle(x, y, c) {
+    // 10枚たば (38×40)
+    return `<g transform="translate(${x},${y})">
+        <rect x="6" y="-5" width="38" height="40" fill="${c.d}" rx="3"/>
+        <rect x="3" y="-2" width="38" height="40" fill="${c.m}" rx="2"/>
+        <rect x="0" y="0"  width="38" height="40" fill="${c.f}" rx="2" stroke="${c.d}" stroke-width="1"/>
+        <rect x="0" y="13" width="38" height="13" fill="rgba(255,255,255,0.85)"/>
+        <text x="19" y="23" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">10</text>
+    </g>`;
+}
+function makeHunBundle(x, y, c) {
+    // 100枚たば (44×46)
+    return `<g transform="translate(${x},${y})">
+        <rect x="8" y="-7" width="44" height="46" fill="${c.d}" rx="3"/>
+        <rect x="4" y="-3" width="44" height="46" fill="${c.m}" rx="2"/>
+        <rect x="0" y="0"  width="44" height="46" fill="${c.f}" rx="2" stroke="${c.d}" stroke-width="1"/>
+        <rect x="0" y="15" width="44" height="15" fill="rgba(255,255,255,0.88)"/>
+        <text x="22" y="26" font-size="12" font-weight="bold" text-anchor="middle" fill="#333">100</text>
+    </g>`;
+}
+function makeHunBundleSmall(x, y, c) {
+    // mixed_sub用の小さい100たば (34×36)
+    return `<g transform="translate(${x},${y})">
+        <rect x="6" y="-5" width="34" height="36" fill="${c.d}" rx="2"/>
+        <rect x="3" y="-2" width="34" height="36" fill="${c.m}" rx="2"/>
+        <rect x="0" y="0"  width="34" height="36" fill="${c.f}" rx="2" stroke="${c.d}" stroke-width="1"/>
+        <rect x="0" y="11" width="34" height="13" fill="rgba(255,255,255,0.88)"/>
+        <text x="17" y="21" font-size="10" font-weight="bold" text-anchor="middle" fill="#333">100</text>
+    </g>`;
+}
+function makeThouBundle(x, y, c) {
+    // 1000枚たば (54×56)
+    return `<g transform="translate(${x},${y})">
+        <rect x="10" y="-9" width="54" height="56" fill="${c.d}" rx="4"/>
+        <rect x="5"  y="-4" width="54" height="56" fill="${c.m}" rx="3"/>
+        <rect x="0"  y="0"  width="54" height="56" fill="${c.f}" rx="3" stroke="${c.d}" stroke-width="1.5"/>
+        <rect x="0"  y="18" width="54" height="18" fill="rgba(255,255,255,0.88)"/>
+        <text x="27" y="31" font-size="13" font-weight="bold" text-anchor="middle" fill="#333">1000</text>
+    </g>`;
+}
+
+// グリッドレイアウト: xStart,yStart から maxCols列で並べる
+// 返り値: { parts:[], gridW, gridH }
+function layoutGrid(maker, count, xStart, yStart, maxCols, bW, bH, gx, gy, c) {
+    let parts = [];
+    let cols = Math.min(count, maxCols);
+    let rows = Math.ceil(count / maxCols);
+    for (let i = 0; i < count; i++) {
+        let col = i % maxCols, row = Math.floor(i / maxCols);
+        parts.push(maker(xStart + col*(bW+gx), yStart + row*(bH+gy), c));
+    }
+    return { parts, gridW: cols*(bW+gx)-gx, gridH: rows*(bH+gy)-gy };
+}
+
+// 取り除き矢印SVG（点線ボックス＋斜め右上矢印）
+function removalOverlay(minX, minY, maxX, maxY, b) {
+    let cx = (minX + maxX) / 2;
+    let cy = (minY + maxY) / 2;
+    // 矢印: ボックス中央右上へ
+    let ax1 = cx + 10, ay1 = cy;
+    let ax2 = cx + 55, ay2 = cy - 40;
+    return `
+        <rect x="${minX}" y="${minY}" width="${maxX-minX}" height="${maxY-minY}"
+            fill="rgba(231,76,60,0.10)" stroke="#e74c3c" stroke-width="2.5"
+            stroke-dasharray="9 5" rx="7"/>
+        <text x="${cx}" y="${maxY+20}" font-size="13" fill="#e74c3c"
+            text-anchor="middle" font-weight="bold">とりのぞく（${b}たば）</text>
+        <line x1="${ax1}" y1="${ay1}" x2="${ax2}" y2="${ay2}"
+            stroke="#e74c3c" stroke-width="2.5" marker-end="url(#arrowRed)"/>`;
+}
+
+const COLORS = {
+    yellow: { f:'#f9ca24', m:'#f0932b', d:'#d68910' },
+    green:  { f:'#55efc4', m:'#00b894', d:'#00a381' },
+    blue:   { f:'#74b9ff', m:'#0984e3', d:'#0770c4' },
+    pink:   { f:'#fd79a8', m:'#e84393', d:'#c0376e' },
+    purple: { f:'#a29bfe', m:'#6c5ce7', d:'#5649c0' },
+    orange: { f:'#fdcb6e', m:'#e17055', d:'#c0392b' },
+};
+
+function svgHeader(W, H) {
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="background:#f8f9fa;border-radius:12px;">
+    <defs>
+        <marker id="arrowRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c"/>
+        </marker>
+    </defs>`;
+}
+
+function svgLbl(x, y, txt, fill) {
+    return `<text x="${x}" y="${y}" font-size="14" font-weight="bold" fill="${fill}">${txt}</text>`;
+}
+function svgOp(x, y, txt) {
+    return `<text x="${x}" y="${y}" font-size="28" font-weight="bold" fill="#2c3e50" text-anchor="middle">${txt}</text>`;
+}
+
+function drawSVG() {
+    let { probType } = prob;
+    let el = document.getElementById('svg-area');
+    if      (probType === 'tens_add')  el.innerHTML = svgSimple('tens', '+');
+    else if (probType === 'tens_sub')  el.innerHTML = svgSimpleSub('tens');
+    else if (probType === 'huns_add')  el.innerHTML = svgSimple('huns', '+');
+    else if (probType === 'huns_sub')  el.innerHTML = svgSimpleSub('huns');
+    else if (probType === 'mixed_sub') el.innerHTML = svgMixedSub();
+    else if (probType === 'thou_sub')  el.innerHTML = svgThouSub();
+}
+
+// ---- たし算SVG ----
+function svgSimple(type, op) {
+    let { aVal, bVal, ans } = prob;
+    let isTens = type === 'tens';
+    let maker = isTens ? makeTenBundle : makeHunBundle;
+    let bW = isTens ? 38 : 44, bH = isTens ? 40 : 46;
+    let gx = 6, gy = 10, maxC = 9;
+    let pad = 14, opW = 40, eqW = 40, lblH = 24;
+
+    let a = aVal / (isTens?10:100);
+    let b = bVal / (isTens?10:100);
+    let ansCount = ans / (isTens?10:100);
+
+    let CA = COLORS.yellow, CB = COLORS.green, CC = COLORS.blue;
+
+    let aR = layoutGrid(maker, a, 0, 0, maxC, bW, bH, gx, gy, CA);
+    let bR = layoutGrid(maker, b, 0, 0, maxC, bW, bH, gx, gy, CB);
+    let cR = layoutGrid(maker, ansCount, 0, 0, maxC, bW, bH, gx, gy, CC);
+
+    let xA = pad, xOp = xA + aR.gridW + pad;
+    let xB = xOp + opW, xEq = xB + bR.gridW + pad;
+    let xC = xEq + eqW;
+    let topY = lblH + pad;
+
+    let svgH = topY + Math.max(aR.gridH, bR.gridH, cR.gridH) + pad * 2 + 10;
+    let svgW = xC + cR.gridW + pad;
+
+    let parts = [svgHeader(svgW, svgH)];
+    parts.push(svgLbl(xA,  lblH, `${aVal}（${a}たば）`, '#555'));
+    parts.push(svgLbl(xB,  lblH, `${bVal}（${b}たば）`, '#555'));
+    // ★答えラベルは非表示（問題モード）
+    // parts.push(svgLbl(xC, lblH, ...)); ← 消す
+
+    let aG = layoutGrid(maker, a, xA, topY, maxC, bW, bH, gx, gy, CA);
+    aG.parts.forEach(p => parts.push(p));
+    parts.push(svgOp(xOp + opW/2, topY + bH/2 + 10, '＋'));
+    let bG = layoutGrid(maker, b, xB, topY, maxC, bW, bH, gx, gy, CB);
+    bG.parts.forEach(p => parts.push(p));
+    parts.push(svgOp(xEq + eqW/2, topY + bH/2 + 10, '＝'));
+    // 答えたば（問題モードでも表示）
+    let cG = layoutGrid(maker, ansCount, xC, topY, maxC, bW, bH, gx, gy, CC);
+    cG.parts.forEach(p => parts.push(p));
+    // ★答えラベルは「？」のみ
+    parts.push(svgLbl(xC, lblH, '？', '#0770c4'));
+
+    parts.push('</svg>');
+    return parts.join('');
+}
+
+// ---- ひき算SVG（何十－何十 / 何百－何百） ----
+function svgSimpleSub(type) {
+    let { aVal, bVal, ans } = prob;
+    let isTens = type === 'tens';
+    let maker = isTens ? makeTenBundle : makeHunBundle;
+    let bW = isTens ? 38 : 44, bH = isTens ? 40 : 46;
+    let gx = 6, gy = 10, maxC = 9;
+    let pad = 14, lblH = 24;
+
+    let a = aVal / (isTens?10:100);
+    let b = bVal / (isTens?10:100);
+    let ansCount = ans / (isTens?10:100);
+
+    // 全部同じ色: オレンジ
+    let CA = COLORS.orange;
+
+    let aR = layoutGrid(maker, a, 0, 0, maxC, bW, bH, gx, gy, CA);
+    let xA = pad, topY = lblH + pad;
+
+    let totalCols = Math.min(a, maxC);
+    let totalRows = Math.ceil(a / maxC);
+    let svgH = topY + totalRows * (bH + gy) + pad + 58;
+    let svgW = xA + totalCols * (bW + gx) + pad;
+
+    let parts = [svgHeader(svgW, svgH)];
+    parts.push(svgLbl(xA, lblH, `${aVal}（${a}たば）`, '#555'));
+
+    // 答え部分（ansCount個）- 同じ色
+    let ansG = layoutGrid(maker, ansCount, xA, topY, maxC, bW, bH, gx, gy, CA);
+    ansG.parts.forEach(p => parts.push(p));
+
+    // とりのぞく部分（b個）- 同じ色
+    let bBundles = [];
+    for (let i = 0; i < b; i++) {
+        let idx = ansCount + i;
+        let col = idx % maxC, row = Math.floor(idx / maxC);
+        let x = xA + col * (bW + gx), y = topY + row * (bH + gy);
+        bBundles.push({ x, y });
+        parts.push(maker(x, y, CA));
+    }
+
+    // 取り除き矢印オーバーレイ
+    if (bBundles.length > 0) {
+        let minX = Math.min(...bBundles.map(p=>p.x)) - 5;
+        let minY = Math.min(...bBundles.map(p=>p.y)) - 7;
+        let maxX = Math.max(...bBundles.map(p=>p.x)) + bW + 5;
+        let maxY = Math.max(...bBundles.map(p=>p.y)) + bH + 7;
+        parts.push(removalOverlay(minX, minY, maxX, maxY, b));
+    }
+
+    // 答えラベルは「？」
+    parts.push(svgLbl(xA, topY + ansG.gridH + 40, `のこり ？`, '#0770c4'));
+
+    parts.push('</svg>');
+    return parts.join('');
+}
+
+// ---- 百何十のひき算SVG ----
+function svgMixedSub() {
+    let { aVal, bVal, ans } = prob;
+    // aVal = 百何十 (例:130), bVal = 何十 (例:40)
+    let ah = Math.floor(aVal / 100);   // 百の束数
+    let at = Math.floor((aVal % 100) / 10); // 十の束数（aValの十の位）
+    let b  = bVal / 10;                // ひく十の束数
+    let ansCount = ans / 10;           // 答えの十の束数
+
+    // 全部同じ色: オレンジ
+    let CA = COLORS.orange;
+
+    // 100たばを小さく、10たばと並べる
+    let hunW = 34, hunH = 36, tenW = 38, tenH = 40;
+    let gx = 6, gy = 8, pad = 14, lblH = 24, maxC = 9;
+
+    // SVGのY方向: 上に100たば、下に10たばを段違いに並べる
+    // 実際には全部10のたばに換算して横並びにする方が分かりやすい
+    // → 「10のたばを (ah*10+at) 個並べ、左からansCount個が答え」
+    let totalTen = ah * 10 + at; // 10のたば総数 (例:130→13, 100→10)
+
+    // ただし totalTen が多い場合(最大19)はグリッド化
+    let topY = lblH + pad;
+    let totalCols = Math.min(totalTen, maxC);
+    let totalRows = Math.ceil(totalTen / maxC);
+    let svgW = pad + totalCols * (tenW + gx) + pad;
+    let svgH = topY + totalRows * (tenH + gy) + pad + 58;
+
+    let parts = [svgHeader(svgW, svgH)];
+    parts.push(svgLbl(pad, lblH, `${aVal}（１０のたばが${totalTen}こ）`, '#555'));
+
+    // 全たば描画（同色）
+    let ansG = layoutGrid(makeTenBundle, ansCount, pad, topY, maxC, tenW, tenH, gx, gy, CA);
+    ansG.parts.forEach(p => parts.push(p));
+
+    let bBundles = [];
+    for (let i = 0; i < b; i++) {
+        let idx = ansCount + i;
+        let col = idx % maxC, row = Math.floor(idx / maxC);
+        let x = pad + col * (tenW + gx), y = topY + row * (tenH + gy);
+        bBundles.push({ x, y });
+        parts.push(makeTenBundle(x, y, CA));
+    }
+
+    if (bBundles.length > 0) {
+        let minX = Math.min(...bBundles.map(p=>p.x)) - 5;
+        let minY = Math.min(...bBundles.map(p=>p.y)) - 7;
+        let maxX = Math.max(...bBundles.map(p=>p.x)) + tenW + 5;
+        let maxY = Math.max(...bBundles.map(p=>p.y)) + tenH + 7;
+        parts.push(removalOverlay(minX, minY, maxX, maxY, b));
+    }
+
+    parts.push(svgLbl(pad, topY + ansG.gridH + 40, `のこり ？`, '#0770c4'));
+    parts.push('</svg>');
+    return parts.join('');
+}
+
+// ---- 千ひく何百 SVG ----
+function svgThouSub() {
+    let { aVal, bVal, ans } = prob;
+    let b = bVal / 100;
+    let ansCount = ans / 100;
+    let total = 10; // 1000 = 100×10
+
+    let CA = COLORS.orange;
+    let bW = 44, bH = 46, gx = 7, gy = 10, maxC = 5, pad = 14, lblH = 24;
+    let topY = lblH + pad;
+
+    let totalCols = Math.min(total, maxC);
+    let totalRows = Math.ceil(total / maxC);
+    let svgW = pad + totalCols * (bW + gx) + pad;
+    let svgH = topY + totalRows * (bH + gy) + pad + 58;
+
+    let parts = [svgHeader(svgW, svgH)];
+    parts.push(svgLbl(pad, lblH, `${aVal}（１００のたばが${total}こ）`, '#555'));
+
+    let ansG = layoutGrid(makeHunBundle, ansCount, pad, topY, maxC, bW, bH, gx, gy, CA);
+    ansG.parts.forEach(p => parts.push(p));
+
+    let bBundles = [];
+    for (let i = 0; i < b; i++) {
+        let idx = ansCount + i;
+        let col = idx % maxC, row = Math.floor(idx / maxC);
+        let x = pad + col * (bW + gx), y = topY + row * (bH + gy);
+        bBundles.push({ x, y });
+        parts.push(makeHunBundle(x, y, CA));
+    }
+
+    if (bBundles.length > 0) {
+        let minX = Math.min(...bBundles.map(p=>p.x)) - 5;
+        let minY = Math.min(...bBundles.map(p=>p.y)) - 7;
+        let maxX = Math.max(...bBundles.map(p=>p.x)) + bW + 5;
+        let maxY = Math.max(...bBundles.map(p=>p.y)) + bH + 7;
+        parts.push(removalOverlay(minX, minY, maxX, maxY, b));
+    }
+
+    parts.push(svgLbl(pad, topY + ansG.gridH + 40, `のこり ？`, '#0770c4'));
+    parts.push('</svg>');
+    return parts.join('');
+}
+
+// ===== サウンド =====
+function playSound(type) {
+    if (!isSoundOn) return;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        let t = audioCtx.currentTime;
+        if (type === 'correct') {
+            o.type = 'sine';
+            o.frequency.setValueAtTime(523,t); o.frequency.setValueAtTime(659,t+0.1); o.frequency.setValueAtTime(784,t+0.2);
+            g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+            o.start(); o.stop(t+0.55);
+        } else if (type === 'incorrect') {
+            o.type = 'square'; o.frequency.setValueAtTime(200,t);
+            g.gain.setValueAtTime(0.08,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+            o.start(); o.stop(t+0.3);
+        } else {
+            o.type = 'sine'; o.frequency.setValueAtTime(440,t);
+            g.gain.setValueAtTime(0.05,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
+            o.start(); o.stop(t+0.1);
+        }
+    } catch(e){}
+}
+function toggleSound() {
+    isSoundOn = !isSoundOn;
+    let btn = document.getElementById('sound-btn');
+    btn.textContent = isSoundOn ? '🔊' : '🔇';
+    btn.classList.toggle('sound-off', !isSoundOn);
+}
+function updateStarDisplay() {
+    document.getElementById('star-display').textContent = `🌟 あつめた★: ${stars}こ`;
+}
+function resetStars() {
+    playSound('click');
+    if (confirm('あつめた★を 0こに リセットしますか？')) {
+        stars = 0; localStorage.setItem('nanjuu_stars', 0); updateStarDisplay();
+    }
+}
+
+initProblem();
+</script>
+</body>
+</html>
