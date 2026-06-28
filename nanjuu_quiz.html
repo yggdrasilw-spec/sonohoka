@@ -189,6 +189,7 @@ function initProblem() {
         document.getElementById('step-btn').style.display    = 'inline-block';
         document.getElementById('check-btn').style.display   = 'none';
         buildSteps(); renderSteps();
+        setTimeout(() => speakStep(0), 400);
     } else {
         document.getElementById('answer-area').style.display = 'block';
         document.getElementById('steps-area').style.display  = 'none';
@@ -314,8 +315,8 @@ function buildStepsSimple() {
     let zeros = isTens ? '0' : '00';
     let zeroW = isTens ? 18 : 32, zeroH = 30;
 
-    let aHide = `<span>${a}</span><span class="zc" style="width:${zeroW}px;height:${zeroH}px;"></span>`;
-    let bHide = `<span>${b}</span><span class="zc" style="width:${zeroW}px;height:${zeroH}px;"></span>`;
+    let aHide = `<span>${a}</span>${fingerSVG(zeroW, zeroH)}`;
+    let bHide = `<span>${b}</span>${fingerSVG(zeroW, zeroH)}`;
 
     steps = [
         {
@@ -327,8 +328,7 @@ function buildStepsSimple() {
         {
             cls: 'step-hide',
             title: 'ステップ② ０を かくして かんがえよう',
-            html: `０を かくすと…<div class="zero-hide-box">${aHide} ${opStr} ${bHide}</div>`
-                + `<small style="color:#666">（黒いところを てで かくして かんがえよう！）</small>`
+            html: `０を 指で かくして かんがえるといいよ。<div class="zero-hide-box">${aHide} ${opStr} ${bHide}</div>`
         },
         {
             cls: 'step-calc',
@@ -341,7 +341,7 @@ function buildStepsSimple() {
             title: 'ステップ④ こたえに ０を つけよう',
             html: `${s}たば ＝ ${unitLabel}が ${s}こ<br>`
                 + `→ <span class="${hlCls}">${s}</span> に ０を ${zeros.length}つ つけると…<br>`
-                + `<b style="font-size:1.35em">こたえ <span class="hl-ans">${s}${zeros} ＝ ${ans}</span>！</b>`
+                + `<b style="font-size:1.35em">こたえ <span class="hl-ans">${ans}</span>！</b>`
         }
     ];
 }
@@ -410,7 +410,7 @@ function buildStepsThou() {
             title: 'ステップ④ こたえに ００を つけよう',
             html: `${s}たば ＝ １００のたばが ${s}こ<br>`
                 + `→ <span class="hl-huns">${s}</span> に ００ を つけると…<br>`
-                + `<b style="font-size:1.35em">こたえ <span class="hl-ans">${s}00 ＝ ${ans}</span>！</b>`
+                + `<b style="font-size:1.35em">こたえ <span class="hl-ans">${ans}</span>！</b>`
         }
     ];
 }
@@ -434,6 +434,7 @@ function nextStep() {
     if (currentStep < steps.length - 1) {
         currentStep++;
         renderSteps();
+        speakStep(currentStep);
         if (currentStep === steps.length - 1) {
             document.getElementById('step-btn').style.display = 'none';
             document.getElementById('next-btn').style.display = 'inline-block';
@@ -499,6 +500,7 @@ function checkAnswer() {
     }
     document.getElementById('check-btn').style.display = 'none';
     document.getElementById('next-btn').style.display  = 'inline-block';
+    setTimeout(() => speakExplanation(), 300);
 }
 
 function buildExplanation() {
@@ -525,6 +527,62 @@ function buildExplanation() {
              + `・${s}たばは ${unitLabel}のたばが ${s}こ → <b>${s}${zeros}</b><br>`
              + `・こたえは <span style="font-size:1.15em;font-weight:bold;">${ans}</span> です！`;
     }
+}
+
+// ===== 指イラスト（インラインSVG） =====
+// 数字の０を人差し指で上から押さえているイメージ
+function fingerSVG(w, h) {
+    // w: 隠したい0の幅, h: 0の高さ
+    // 指は少し広め・長めに描いて自然に見せる
+    let fw = Math.max(w + 6, 22);  // 指の幅
+    let fh = h + 14;               // 指の高さ（0よりはみ出す）
+    let W  = fw + 14;              // SVG全幅（左右に少し余白）
+    let H  = fh + 4;               // SVG全高
+
+    let skin  = '#FDBCB4';
+    let skinM = '#F0A090';
+    let skinD = '#D07060';
+    let nail  = '#FCE8E5';
+    let nailB = '#D8948A';
+
+    let fx = 7, fy = 0; // 指起点
+
+    // 指の丸みR
+    let rx = Math.round(fw * 0.42);
+
+    // 爪の高さ（指高さの約28%）
+    let nh = Math.round(fh * 0.28);
+    let nw = fw - 8;
+    let nx = fx + 4, ny = fy + 4;
+
+    // 第一関節ライン
+    let j1y = fy + Math.round(fh * 0.52);
+    // 第二関節ライン
+    let j2y = fy + Math.round(fh * 0.76);
+
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"
+        style="display:inline-block;vertical-align:middle;margin-left:-1px;" xmlns="http://www.w3.org/2000/svg">
+      <!-- 指の影（少しずらして立体感） -->
+      <rect x="${fx+2}" y="${fy+3}" width="${fw}" height="${fh}"
+            fill="${skinD}" rx="${rx}" ry="${rx}" opacity="0.25"/>
+      <!-- 指本体 -->
+      <rect x="${fx}" y="${fy}" width="${fw}" height="${fh}"
+            fill="${skin}" rx="${rx}" ry="${rx}"
+            stroke="${skinM}" stroke-width="1.4"/>
+      <!-- 爪のベース -->
+      <rect x="${nx}" y="${ny}" width="${nw}" height="${nh}"
+            fill="${nail}" rx="${Math.round(nw*0.38)}" ry="${Math.round(nw*0.38)}"
+            stroke="${nailB}" stroke-width="0.9"/>
+      <!-- 爪の光沢 -->
+      <rect x="${nx+2}" y="${ny+2}" width="${Math.round(nw*0.45)}" height="${Math.round(nh*0.4)}"
+            fill="white" rx="2" opacity="0.55"/>
+      <!-- 第一関節 -->
+      <path d="M${fx+4},${j1y} Q${fx+fw/2},${j1y-3} ${fx+fw-4},${j1y}"
+            fill="none" stroke="${skinD}" stroke-width="1.1" opacity="0.5"/>
+      <!-- 第二関節 -->
+      <path d="M${fx+4},${j2y} Q${fx+fw/2},${j2y-2} ${fx+fw-4},${j2y}"
+            fill="none" stroke="${skinD}" stroke-width="1.1" opacity="0.4"/>
+    </svg>`;
 }
 
 // ===== SVG描画 =====
@@ -700,8 +758,8 @@ function svgSimpleSub(type) {
     let b = bVal / (isTens?10:100);
     let ansCount = ans / (isTens?10:100);
 
-    // 全部同じ色: オレンジ
-    let CA = COLORS.orange;
+    // 何十・何百ともに青系（赤の破線矩形と区別するため）
+    let CA = COLORS.blue;
 
     let aR = layoutGrid(maker, a, 0, 0, maxC, bW, bH, gx, gy, CA);
     let xA = pad, topY = lblH + pad;
@@ -753,8 +811,8 @@ function svgMixedSub() {
     let b  = bVal / 10;                // ひく十の束数
     let ansCount = ans / 10;           // 答えの十の束数
 
-    // 全部同じ色: オレンジ
-    let CA = COLORS.orange;
+    // 100のたばを含む問題は青系（赤の破線矩形と区別するため）
+    let CA = COLORS.blue;
 
     // 100たばを小さく、10たばと並べる
     let hunW = 34, hunH = 36, tenW = 38, tenH = 40;
@@ -808,7 +866,7 @@ function svgThouSub() {
     let ansCount = ans / 100;
     let total = 10; // 1000 = 100×10
 
-    let CA = COLORS.orange;
+    let CA = COLORS.blue;
     let bW = 44, bH = 46, gx = 7, gy = 10, maxC = 5, pad = 14, lblH = 24;
     let topY = lblH + pad;
 
@@ -886,7 +944,189 @@ function resetStars() {
     }
 }
 
+// ===== 数字→ひらがな変換 =====
+function numToHira(str) {
+    // 文字列中の数字列をひらがな読みに変換
+    return String(str).replace(/\d+/g, n => {
+        const num = parseInt(n, 10);
+        return numToHiraCore(num);
+    });
+}
+
+function numToHiraCore(n) {
+    if (n === 0) return 'ぜろ';
+    if (n < 0)   return 'まいなす' + numToHiraCore(-n);
+
+    const ones  = ['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+
+    // 1〜9は直接返す
+    if (n <= 9) return ones[n];
+
+    const units = [
+        { v: 100000000, k: 'おく'  },
+        { v: 10000,     k: 'まん'  },
+        { v: 1000,      k: 'せん'  },
+        { v: 100,       k: 'ひゃく'},
+        { v: 10,        k: 'じゅう'},
+        { v: 1,         k: ''      },
+    ];
+
+    // 音変化する特殊読み
+    const special = {
+        300: 'さんびゃく', 600: 'ろっぴゃく', 800: 'はっぴゃく',
+        3000: 'さんぜん',  8000: 'はっせん',
+    };
+    if (special[n]) return special[n];
+
+    let result = '';
+    let rest = n;
+    for (let { v, k } of units) {
+        if (rest >= v) {
+            let q = Math.floor(rest / v);
+            rest -= q * v;
+            if (v >= 100) {
+                let combo = q * v;
+                if (special[combo]) {
+                    result += special[combo];
+                } else {
+                    let prefix = (q === 1) ? '' : numToHiraCore(q);
+                    result += prefix + k;
+                }
+            } else if (v === 10) {
+                let prefix = (q === 1) ? '' : ones[q];
+                result += prefix + k;
+            } else {
+                result += ones[q];
+            }
+        }
+    }
+    return result || 'ぜろ';
+}
+
+// テキスト中の全角数字・半角数字と演算記号をひらがなに変換
+function toSpeechText(text) {
+    // HTMLタグを除去（brは先に句点に変換）
+    let t = text.replace(/<br\s*\/?>/gi, '。');
+    t = t.replace(/<[^>]+>/g, '');
+    // 全角数字→半角
+    t = t.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    // 演算記号
+    t = t.replace(/＋/g, 'たす');
+    t = t.replace(/－/g, 'ひく');
+    t = t.replace(/＝/g, 'は');
+    t = t.replace(/×/g, 'かける');
+    t = t.replace(/÷/g, 'わる');
+    t = t.replace(/？/g, '。');
+    // → は「だから」と読む
+    t = t.replace(/→/g, 'だから');
+    // ★は「ほし」と読む
+    t = t.replace(/★/g, 'ほし');
+    // 助数詞「1つ」「１つ」→「ひとつ」（数字変換前に処理）
+    t = t.replace(/1つ/g, 'ひとつ');
+    t = t.replace(/１つ/g, 'ひとつ');
+    // 数字をひらがなに
+    t = numToHira(t);
+    // 記号類を除去
+    t = t.replace(/[☆⭕❌▲▼・…＊※【】「」『』〔〕]/g, '');
+    t = t.replace(/[!！？\?]/g, '。');
+    return t.trim();
+}
+
+// ===== 音声読み上げ =====
+let speechEnabled = true;
+let speechWarm    = false; // ウォームアップ済みフラグ
+
+function warmUpSpeech() {
+    if (!window.speechSynthesis) return;
+    // 無音（空白）で1発読み上げてエンジンを起こす
+    const utt = new SpeechSynthesisUtterance('\u200B'); // ゼロ幅スペース
+    utt.volume = 0;
+    utt.lang = 'ja-JP';
+    utt.onend = () => { speechWarm = true; };
+    window.speechSynthesis.speak(utt);
+}
+
+function speak(text) {
+    if (!speechEnabled || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(toSpeechText(text));
+    utt.lang  = 'ja-JP';
+    utt.rate  = 0.9;
+    utt.pitch = 1.1;
+    window.speechSynthesis.speak(utt);
+}
+
+// 問題文を読み上げ
+function speakProblem() {
+    let { aVal, bVal, op } = prob;
+    let opWord = op === '+' ? 'たす' : 'ひく';
+    speak(`${numToHiraCore(aVal)} ${opWord} ${numToHiraCore(bVal)} は いくつ？`);
+}
+
+// ステップを読み上げ
+function speakStep(idx) {
+    if (!steps[idx]) return;
+    // titleとhtmlのテキストを合わせて読む
+    speak(steps[idx].title + '。' + steps[idx].html);
+}
+
+// 解説を読み上げ
+function speakExplanation() {
+    let area = document.getElementById('explanation');
+    if (area) speak(area.innerText || area.textContent);
+}
+
+// ===== キーボード操作 =====
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        // ステップモード中
+        if (isStepMode) {
+            let stepBtn  = document.getElementById('step-btn');
+            let nextBtn  = document.getElementById('next-btn');
+            if (stepBtn.style.display !== 'none') {
+                nextStep();
+                speakStep(currentStep);
+            } else if (nextBtn.style.display !== 'none') {
+                initProblem();
+            }
+        } else {
+            // こたえだけモード: 次の問題 or こたえあわせ
+            let checkBtn = document.getElementById('check-btn');
+            let nextBtn  = document.getElementById('next-btn');
+            if (nextBtn.style.display !== 'none') {
+                initProblem();
+            } else if (checkBtn.style.display !== 'none') {
+                checkAnswer();
+                speakExplanation();
+            }
+        }
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (isStepMode && currentStep > 0) {
+            currentStep--;
+            renderSteps();
+            speakStep(currentStep);
+        }
+    }
+});
+
+// initProblemを上書きして読み上げも行う
+const _origInitProblem = initProblem;
+// 問題生成後に読み上げをフック（initProblem末尾で呼ぶ）
+function speakAfterInit() {
+    setTimeout(() => speakProblem(), 300);
+}
+
 initProblem();
+warmUpSpeech();
+
+// initProblem内でspeakAfterInitを呼ぶため、ここでパッチ
+const _rawInit = initProblem;
+initProblem = function() {
+    _rawInit();
+    speakAfterInit();
+};
 </script>
 </body>
 </html>
