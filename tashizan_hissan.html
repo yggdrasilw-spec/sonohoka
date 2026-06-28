@@ -502,11 +502,18 @@ function renderSenCard(svgEl,count,alpha,hColor){return renderCard(svgEl,count,'
 // 位置: 千=35, 百=73, 十=111, 一=149  (2桁なら十=111,一=149)
 // ============================================================
 const HSX=35,H2X=73,HJX=111,HIX=149;
-const HCARRY_Y=30,HROW1_Y=70,HROW2_Y=110,HLINE_Y=128,HROW3_Y=166;
+const HG=38; // ノートのマス目1個分の大きさ（数字1つ・記号1つがちょうど1マスに収まる）
+const HCARRY_Y=30,HROW1_Y=70,HROW2_Y=108,HLINE_Y=114,HROW3_Y=146;
 
 function drawHissan(svgEl,state){
   svgEl.innerHTML='';
   const S=state;
+
+  // ノートのマス目（薄いグレーの格子）を背景に敷く。
+  // 1マス＝1つの数字・記号の大きさ(HG)にして、数字の列・行とぴったり重なるようにする。
+  const VBW=210,VBH=230,gx0=HSX-HG/2; // gx0：いちばん左の列(HSX)がマスの中心になるように原点をずらす
+  for(let gx=gx0;gx<=VBW;gx+=HG)mk('line',{x1:gx,y1:0,x2:gx,y2:VBH,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
+  for(let gy=0;gy<=VBH;gy+=HG)mk('line',{x1:0,y1:gy,x2:VBW,y2:gy,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
 
   function txt(content,x,y,fs,fw,color,cls){
     const t=mk('text',{x,y,'font-size':fs||34,'font-weight':fw||'bold',
@@ -519,15 +526,15 @@ function drawHissan(svgEl,state){
     mk('rect',{x,y,width:w,height:h,rx:5,fill:color,opacity:a||.18},svgEl);
   }
 
-  // 横線
+  // ＋記号（「たす数」＝B の桁数の、いちばん大きい位の1つ左のマスに書く。答えの桁数は関係ない）
+  const leftmostColB=S.bDigits>=3?H2X:(S.bDigits===2?HJX:HIX);
+  const plusX=leftmostColB-HG;
+  if(S.showPlus) txt('＋',plusX,HROW2_Y+4,20,'bold','#e67e22');
+
+  // 横線（＋記号の下のマスも含めて伸ばす）
   if(S.showLine){
-    const lx1=S.has4?16:(S.has3?54:92);
+    const lx1=plusX-HG/2;
     mk('line',{x1:lx1,y1:HLINE_Y,x2:168,y2:HLINE_Y,stroke:'#333','stroke-width':2.5},svgEl);
-  }
-  // ＋記号
-  if(S.showPlus){
-    const px=S.has4?30:(S.has3?50:70);
-    txt('＋',px,HROW2_Y+4,20,'bold','#e67e22');
   }
 
   // ハイライト
@@ -558,15 +565,26 @@ function drawHissan(svgEl,state){
   if(S.showCarryH&&(S.has3||S.has4)) {const ct=mk('text',{x:H2X,y:HCARRY_Y,'font-size':19,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);ct.textContent='1';if(S.carryHPop)ct.setAttribute('class','pop-in');}
 
   // こたえ
-  if(S.showAnsI) txt(S.iAns,HIX,HROW3_Y,34,'bold','#1a7f37');
-  if(S.showAnsJ) txt(S.jAns,HJX,HROW3_Y,34,'bold','#1a7f37');
-  if(S.showAnsH&&(S.has3||S.has4)) txt(S.hAns,H2X,HROW3_Y,34,'bold','#1a7f37');
+  // くり上がり前：その位の答え欄に「2桁の生の合計」を2つの数字として並べて表示する
+  // （1つの位には1つの数字しか入らないことを視覚的に示すため、わざと桁の幅から
+  //  はみ出すように見せる。後でくり上がりアニメーションがこれを2つに割る）
+  function tempPair(raw,cx,id){
+    const tens=Math.floor(raw/10),ones=raw%10,off=11;
+    const t1=txt(String(tens),cx-off,HROW3_Y,34,'bold','#1a7f37');t1.id=id+'-tens';
+    const t2=txt(String(ones),cx+off,HROW3_Y,34,'bold','#1a7f37');t2.id=id+'-ones';
+  }
+  if(S.showAnsITemp) tempPair(S.iSum,HIX,'hs-ansI');
+  else if(S.showAnsI) txt(S.iAns,HIX,HROW3_Y,34,'bold','#1a7f37');
+  if(S.showAnsJTemp) tempPair(S.jRaw,HJX,'hs-ansJ');
+  else if(S.showAnsJ) txt(S.jAns,HJX,HROW3_Y,34,'bold','#1a7f37');
+  if(S.showAnsHTemp&&(S.has3||S.has4)) tempPair(S.hRaw,H2X,'hs-ansH');
+  else if(S.showAnsH&&(S.has3||S.has4)) txt(S.hAns,H2X,HROW3_Y,34,'bold','#1a7f37');
   if(S.showAnsS&&S.has4) txt(S.sAns,HSX,HROW3_Y,34,'bold','#1a7f37');
 
-  // 完成枠
+  // 完成枠（答えの行のマスにぴったり重ねる）
   if(S.ansBox){
     const bx=S.has4?16:(S.has3?54:92);
-    mk('rect',{x:bx,y:HROW3_Y-34,width:168-bx+4,height:44,
+    mk('rect',{x:bx+1,y:HLINE_Y+1,width:168-bx-2,height:HG-2,
       fill:'none',stroke:'#1a7f37','stroke-width':2.5,rx:6},svgEl);
   }
 }
@@ -609,6 +627,30 @@ function tween(ms,onFrame,onDone){
     else{animId=null;if(onDone)onDone();}
   }
   animId=requestAnimationFrame(loop);
+}
+
+// ひっ算：くり上がり前に答え欄に表示した「2桁の生の合計」を、
+// 「1の位はそのまま残る数字」と「くり上がってよそへ飛んでいく数字」の2つに分けるアニメーション。
+// drawHissan(prevH)が描いた hs-ans{I/J/H}-tens / -ones の2つのテキスト要素をそのまま動かす。
+function runHissanCarrySplit(svgEl,spec,onDone){
+  const{raw,colX,destX,destY,idSuffix}=spec;
+  const destFontSize=spec.destFontSize||19, destColor=spec.destColor||'#e74c3c';
+  const off=11;
+  const tEl=document.getElementById('hs-ans'+idSuffix+'-tens');
+  const oEl=document.getElementById('hs-ans'+idSuffix+'-ones');
+  if(!tEl||!oEl){onDone();return;}
+  tween(480,t=>{
+    // 1の位（残る数字）はわずかに中央へ寄るだけ
+    oEl.setAttribute('x',String((colX+off)+(colX-(colX+off))*t));
+    // くり上がる数字は、目的地へ移動しながら大きさ・色が変わる
+    const x=(colX-off)+(destX-(colX-off))*t;
+    const y=HROW3_Y+(destY-HROW3_Y)*t;
+    const fs=34+(destFontSize-34)*t;
+    tEl.setAttribute('x',String(x));
+    tEl.setAttribute('y',String(y));
+    tEl.setAttribute('font-size',String(fs));
+    tEl.setAttribute('fill', t<0.5?'#1a7f37':destColor);
+  },onDone);
 }
 
 // SVG座標 → アニメレイヤー座標
@@ -672,6 +714,12 @@ function toSpeechText(html){
   let s=String(html);
   s=s.replace(/<br\s*\/?>/gi,'。');     // 改行は「、」のように一拍おく
   s=s.replace(/<[^>]+>/g,'');           // 残りのタグは除去
+  // 読み間違えやすい言葉は先に決まった読みへ置き換える（数字変換より前に処理する）
+  s=s.replace(/1つ/g,'ひとつ');
+  s=s.replace(/10こ/g,'じゅっこ');
+  s=s.replace(/10本/g,'じゅっぽん');
+  s=s.replace(/くり上/g,'くりあ');
+  s=s.replace(/入らない/g,'はいらない');
   s=s.replace(/＋|\+/g,' たす ');
   s=s.replace(/－|-/g,' ひく ');
   s=s.replace(/×/g,' かける ');
@@ -750,8 +798,10 @@ function buildSteps(){
   // has4: 千の位の列が必要（答えが4桁、つまり1000以上）
   const has4=(ans>=1000);
 
+  const bDigits=numB>=100?3:(numB>=10?2:1); // ＋記号は「たす数（B）」の桁数だけで位置を決める（答えの桁数は関係ない）
   const hBase={
-    aS:0,aH,aJ,aI,bS:0,bH,bJ,bI,
+    aS:0,aH,aJ,aI,bS:0,bH,bJ,bI,bDigits,
+    iSum,jRaw,hRaw, // くり上がり前の「2桁になってしまう」生の合計（くり上がり説明の表示用）
     iAns,jAns,hAns,sAns,has3,has4,
     showAS:false,showAH:false,showAJ:false,showAI:false,
     showBS:false,showBH:false,showBJ:false,showBI:false,
@@ -759,6 +809,7 @@ function buildSteps(){
     showCarryJ:false,showCarryH:false,
     carryJPop:false,carryHPop:false, // trueの間だけpop-inアニメを再生（くり上がり直後の1ステップのみ）
     showAnsI:false,showAnsJ:false,showAnsH:false,showAnsS:false,
+    showAnsITemp:false,showAnsJTemp:false,showAnsHTemp:false, // くり上がり前：答え欄に2桁の生の合計を表示する
     hlIchi:false,hlJuu:false,hlHyaku:false,ansBox:false
   };
 
@@ -774,7 +825,12 @@ function buildSteps(){
   };
 
   const list=[];
-  function prev(){return list.length?cloneState(list[list.length-1]):{h:cloneState(hBase),t:cloneState(tBase),title:'',desc:'',anim:null};}
+  function prev(){
+    if(!list.length)return{h:cloneState(hBase),t:cloneState(tBase),title:'',desc:'',anim:null,hissanSplit:null};
+    const c=cloneState(list[list.length-1]);
+    c.hissanSplit=null; // ワンショットの演出トリガーなので、次のステップには引き継がない
+    return c;
+  }
 
   // Step0: 空スタート
   {
@@ -884,12 +940,24 @@ function buildSteps(){
       +`<span class="ic">${aI} ＋ ${bI} ＝ ${iSum}</span><br>`
       +(hasCarryI?`10より おおきいので <span class="cc">くり上がり</span> があります。`
                :`答えの いちのくらいは <span class="ic">${iAns}</span> です。`);
-    p.h.hlIchi=true;p.h.showAnsI=true;
+    p.h.hlIchi=true;
+    if(hasCarryI)p.h.showAnsITemp=true; else p.h.showAnsI=true;
     p.t.ichiA={count:aI,alpha:.25,hl:null};
     p.t.ichiB={count:bI,alpha:.25,hl:null};
     p.t.ichiAns={count:iSum,alpha:1,hl:null};
     p.t.showAnsRow=true;
     p.anim='ichi-calc';
+    list.push(p);
+  }
+
+  // 一の位：1つの位には1つの数字しか入らないことの説明（くり上がりがあるときだけ）
+  if(hasCarryI){
+    const p=prev();
+    p.title='1つの位には1つの数字しか入らないよ';
+    p.desc=`<span class="ic">${iSum}</span> は 2けたの 数字です。<br>`
+      +`<span class="cc">1つの位には、1つの数字しか入らないよ。</span><br>`
+      +`10の まとまりを <span class="jc">じゅうのくらい</span> に くり上げて かんがえます。`;
+    p.anim=null;
     list.push(p);
   }
 
@@ -901,8 +969,10 @@ function buildSteps(){
       +`<span class="cc">10こ</span> が 10の たばに なります。<br>`
       +`その たばを <span class="jc">じゅうのくらい</span> に くり上げます。<br>`
       +`のこり <span class="ic">${iAns}こ</span> が いちのくらいの こたえです。`;
+    p.h.showAnsITemp=false;p.h.showAnsI=true;
     p.h.showCarryJ=true;p.h.hlIchi=true;
     p.h.carryJPop=true; // この「くり上げる」ステップでだけポップ演出
+    p.hissanSplit={raw:iSum,colX:HIX,destX:HJX,destY:HCARRY_Y,idSuffix:'I'};
     p.t.ichiAns={count:iAns,alpha:1,hl:null};
     p.t.juuAns={count:1,alpha:1,hl:'#e74c3c'};
     p.t.markJ={show:true,alpha:1}; // ヘッダー上のくり上がりは、まだ使われていないのでしっかり表示
@@ -918,13 +988,25 @@ function buildSteps(){
       +(hasCarryI?`くり上がった <span class="cc">1</span> と <span class="jc">${aJ} ＋ ${bJ}</span> で<br>`:'')
       +`<span class="jc">${hasCarryI?'1＋':''}${aJ} ＋ ${bJ} ＝ ${jRaw}</span>`
       +(hasCarryJ?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
-    p.h.hlIchi=false;p.h.hlJuu=true;p.h.showAnsJ=true;
+    p.h.hlIchi=false;p.h.hlJuu=true;
+    if(hasCarryJ&&has3)p.h.showAnsJTemp=true; else p.h.showAnsJ=true;
     p.h.carryJPop=false; // ここから先は静的表示（ポップ演出は再生しない）
     p.t.juuA={count:aJ,alpha:.25,hl:null};
     p.t.juuB={count:bJ,alpha:.25,hl:null};
     p.t.juuAns={count:jRaw,alpha:1,hl:null};
     if(hasCarryI)p.t.markJ={show:true,alpha:.35}; // 下の段に降りて使われたので、以後は半透明のまま残す
     p.anim='juu-calc';
+    list.push(p);
+  }
+
+  // 十の位：1つの位には1つの数字しか入らないことの説明（くり上がりがあるときだけ）
+  if(hasCarryJ&&has3){
+    const p=prev();
+    p.title='1つの位には1つの数字しか入らないよ';
+    p.desc=`<span class="jc">${jRaw}</span> は 2けたの 数字です。<br>`
+      +`<span class="cc">1つの位には、1つの数字しか入らないよ。</span><br>`
+      +`10の まとまりを <span class="hc">ひゃくのくらい</span> に くり上げて かんがえます。`;
+    p.anim=null;
     list.push(p);
   }
 
@@ -936,8 +1018,10 @@ function buildSteps(){
       +`<span class="cc">10本</span> が ひゃくの タイルに なります。<br>`
       +`その タイルを <span class="hc">ひゃくのくらい</span> に くり上げます。<br>`
       +`のこり <span class="jc">${jAns}本</span> が じゅうのくらいの こたえです。`;
+    p.h.showAnsJTemp=false;p.h.showAnsJ=true;
     p.h.showCarryH=true;p.h.hlJuu=true;p.h.showAnsJ=true;
     p.h.carryHPop=true; // この「くり上げる」ステップでだけポップ演出
+    p.hissanSplit={raw:jRaw,colX:HJX,destX:H2X,destY:HCARRY_Y,idSuffix:'J'};
     p.t.juuAns={count:jAns,alpha:1,hl:null};
     p.t.hyakuAns={count:1,alpha:1,hl:'#e74c3c'};
     p.t.markH={show:true,alpha:1}; // ヘッダー上のくり上がりは、まだ使われていないのでしっかり表示
@@ -954,13 +1038,25 @@ function buildSteps(){
       +(hasCarryJ?`くり上がった <span class="cc">1</span> と <span class="hc">${aH} ＋ ${bH}</span> で<br>`:'')
       +`<span class="hc">${hasCarryJ?'1＋':''}${aH} ＋ ${bH} ＝ ${totalH}</span>`
       +(hasCarryH?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
-    p.h.hlJuu=false;p.h.hlHyaku=true;p.h.showAnsH=true;
+    p.h.hlJuu=false;p.h.hlHyaku=true;
+    if(hasCarryH&&has4)p.h.showAnsHTemp=true; else p.h.showAnsH=true;
     p.h.carryHPop=false; // 十→百のポップ演出はここで終了（数字「1」自体は表示し続ける）
     p.t.hyakuA={count:aH,alpha:.25,hl:null};
     p.t.hyakuB={count:bH,alpha:.25,hl:null};
     p.t.hyakuAns={count:hRaw,alpha:1,hl:null};
     if(hasCarryJ)p.t.markH={show:true,alpha:.35}; // 下の段に降りて使われたので、以後は半透明のまま残す
     p.anim='hyaku-calc';
+    list.push(p);
+  }
+
+  // 百の位：1つの位には1つの数字しか入らないことの説明（くり上がりがあるときだけ）
+  if(hasCarryH&&has4){
+    const p=prev();
+    p.title='1つの位には1つの数字しか入らないよ';
+    p.desc=`<span class="hc">${hRaw}</span> は 2けたの 数字です。<br>`
+      +`<span class="cc">1つの位には、1つの数字しか入らないよ。</span><br>`
+      +`10の まとまりを <span class="sc">せんのくらい</span> に くり上げて かんがえます。`;
+    p.anim=null;
     list.push(p);
   }
 
@@ -972,7 +1068,10 @@ function buildSteps(){
       +`<span class="cc">10まい</span> が せんのたばに なります。<br>`
       +`その たばを <span class="sc">せんのくらい</span> に くり上げます。<br>`
       +`のこり <span class="hc">${hAns}まい</span> が ひゃくのくらいの こたえです。`;
+    p.h.showAnsHTemp=false;p.h.showAnsH=true;
     p.h.showAnsS=true;p.h.hlHyaku=true;
+    // 千の位は他の桁のような「小さい赤字のくり上がり」ではなく、そのまま答えの数字になる
+    p.hissanSplit={raw:hRaw,colX:H2X,destX:HSX,destY:HROW3_Y,destFontSize:34,destColor:'#1a7f37',idSuffix:'H'};
     p.t.hyakuAns={count:hAns,alpha:1,hl:null};
     p.t.senAns={count:0,alpha:1,hl:null}; // まだ答え行には降りていない(ヘッダー上に留まっている)
     p.anim='carry-h';
@@ -1799,7 +1898,15 @@ function updateUI(skipAnim){
   document.getElementById('step-ind').textContent=`${stepIdx+1} / ${total}`;
   document.getElementById('btn-prev').disabled=animBusy||(stepIdx===0);
   document.getElementById('btn-next').disabled=animBusy||(stepIdx===total-1);
-  drawHissan(document.getElementById('hissan-svg'),step.h);
+
+  const prevH=stepIdx>0?steps[stepIdx-1].h:step.h;
+  const hissanSvg=document.getElementById('hissan-svg');
+  if(step.hissanSplit&&!skipAnim){
+    drawHissan(hissanSvg,prevH); // くり上がり前（2桁の生の合計）をまず描く
+    runHissanCarrySplit(hissanSvg,step.hissanSplit,()=>{drawHissan(hissanSvg,step.h);});
+  } else {
+    drawHissan(hissanSvg,step.h);
+  }
 
   if(skipAnim||!step.anim){paintTiles(step.t);return;}
 
