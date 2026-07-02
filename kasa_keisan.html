@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かさの計算学習アプリ（筆算ロジック・カラー修正版）</title>
+    <style>
+        :root {
+            /* 指定カラー：dLは赤、Lは青 */
+            --color-l: #3b82f6;      /* L (十・百の位) = 青 */
+            --color-dl: #ef4444;     /* dL (一の位) = 赤 */
+            --color-bg: #f8fafc;
+            --color-border: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 10px;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 1200px; 
+            max-height: 820px; 
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tts-btn {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            font-size: 20px;
+            line-height: 1;
+            background: #f1f5f9;
+            border: 1px solid var(--color-border);
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: none;
+            opacity: 1;
+            transition: filter 0.2s, opacity 0.2s, background 0.2s;
+        }
+        .tts-btn:hover { background: #e2e8f0; }
+        .tts-btn.off {
+            filter: grayscale(1);
+            opacity: 0.45;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0;
+            text-align: center;
+            color: #334155;
+        }
+
+        /* 補助線が枠外に出ないよう、上下パディングを55pxに確保 */
+        .formula-container {
+            position: relative;
+            background: var(--color-bg);
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            padding: 55px 10px; 
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: center; 
+        }
+
+        /* 1段ですべてが美しく収まる等幅セル配置（14列） */
+        .formula-grid {
+            display: grid;
+            grid-template-columns: repeat(14, 38px); 
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .grid-cell {
+            width: 38px;
+            height: 40px;
+            position: relative;
+        }
+
+        .unit-l { color: var(--color-l); }
+        .unit-dl { color: var(--color-dl); }
+        .operator { color: #64748b; }
+
+        .formula-svg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .anno-line {
+            stroke-width: 2.5;
+            fill: none;
+        }
+        .anno-l { stroke: var(--color-l); }
+        .anno-dl { stroke: var(--color-dl); }
+
+        .sub-formula-text {
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        .text-l { fill: var(--color-l); }
+        .text-dl { fill: var(--color-dl); }
+
+        .stage {
+            flex: 1; 
+            min-height: 340px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            position: relative;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .room-divider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            border-left: 2px dashed #cbd5e1;
+            display: none;
+        }
+        .room-label {
+            position: absolute;
+            top: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            display: none;
+            z-index: 2;
+        }
+        .room-l-label { left: 15px; color: var(--color-l); }
+        .room-dl-label { left: calc(50% + 15px); color: var(--color-dl); }
+
+        .item-box {
+            position: absolute;
+            transition: all 0.8s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transform-origin: top left; 
+            z-index: 3;
+        }
+
+        .box-l {
+            width: 46px;
+            height: 54px;
+            background-color: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .box-dl {
+            width: 30px;
+            height: 36px;
+            background-color: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .item-box svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+        .transforming {
+            animation: flash 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes flash {
+            0% { filter: brightness(1); }
+            100% { filter: brightness(1.4); }
+        }
+
+        .fade-out {
+            opacity: 0;
+            transform: scale(0) !important;
+            transition: all 0.5s ease;
+        }
+
+        .annihilation-line {
+            position: absolute;
+            border: 1px dashed #ef4444;
+            transform-origin: top left;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .status-msg {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #0f172a;
+            margin: 2px 0;
+            min-height: 20px;
+        }
+
+        .bottom-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            height: 190px; 
+        }
+
+        .math-panel {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px;
+            background: #fafafa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 筆算コンテナ設定（3マスの等幅） */
+        .column-calculation {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 30px;
+            font-weight: bold;
+            display: none;
+            position: relative;
+            width: 155px;
+        }
+        
+        .math-row {
+            display: flex;
+            justify-content: flex-end;
+            width: 155px;
+            height: 36px;
+            line-height: 36px;
+        }
+        .math-cell {
+            width: 38px;
+            text-align: center;
+            position: relative;
+        }
+        .math-op-cell {
+            width: 38px;
+            text-align: left;
+        }
+        
+        /* 繰り下がり補助 row */
+        .borrow-row {
+            display: flex;
+            justify-content: flex-end;
+            width: 155px;
+            height: 22px;
+            margin-bottom: -2px;
+        }
+        .borrow-cell {
+            width: 38px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--color-l);
+            line-height: 22px;
+        }
+
+        /* 斜線専用独立SVG */
+        .slash-svg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
+
+        .carry-row {
+            display: flex;
+            justify-content: flex-end;
+            width: 155px;
+            height: 20px;
+        }
+        .carry-cell {
+            width: 38px;
+            text-align: center;
+            font-size: 15px;
+            color: var(--color-l);
+            line-height: 20px;
+        }
+
+        .line {
+            border-bottom: 3px solid #1e293b;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            width: 155px;
+        }
+
+        .control-panel {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .inputs {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+        }
+
+        .inputs input {
+            width: 44px;
+            padding: 4px;
+            font-size: 14px;
+            text-align: center;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+        }
+
+        .inputs select {
+            padding: 4px;
+            font-size: 14px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #64748b;
+            color: white;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #475569; }
+        button#btn-next { background-color: #10b981; }
+        button#btn-next:hover { background-color: #059669; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+<button id="btn-tts" class="tts-btn" onclick="toggleTTS()" title="よみあげ ON/OFF" aria-label="よみあげ ON/OFF">🔊</button>
+    <h1>かさの計算学習アプリ</h1>
+
+    <div class="formula-container" id="formula-container">
+        <svg class="formula-svg-overlay" id="formula-svg"></svg>
+        
+        <div class="formula-grid" id="formula-grid">
+            <div class="grid-cell unit-l" id="c-l1">15</div>
+            <div class="grid-cell unit-l" id="c-lbl-l1">L</div>
+            <div class="grid-cell unit-dl" id="c-dl1">8</div>
+            <div class="grid-cell unit-dl" id="c-lbl-dl1">dL</div>
+            <div class="grid-cell operator" id="c-op">-</div>
+            <div class="grid-cell unit-l" id="c-l2">9</div>
+            <div class="grid-cell unit-l" id="c-lbl-l2">L</div>
+            <div class="grid-cell unit-dl" id="c-dl2">9</div>
+            <div class="grid-cell unit-dl" id="c-lbl-dl2">dL</div>
+            <div class="grid-cell operator">=</div>
+            <div class="grid-cell unit-l" id="c-res-l">?</div>
+            <div class="grid-cell unit-l" id="c-lbl-res-l" style="visibility: hidden;">L</div>
+            <div class="grid-cell unit-dl" id="c-res-dl"></div>
+            <div class="grid-cell unit-dl" id="c-lbl-res-dl" style="visibility: hidden;">dL</div>
+        </div>
+    </div>
+
+    <div class="stage" id="stage">
+        <div class="room-divider" id="room-divider"></div>
+        <div class="room-label room-l-label" id="label-l">L のへや</div>
+        <div class="room-label room-dl-label" id="label-dl">dL のへや</div>
+    </div>
+
+    <div class="status-msg" id="status-msg">数値をいれて「1. ならべる」を押してね！</div>
+
+    <div class="bottom-area">
+        <div class="math-panel">
+            <div class="column-calculation" id="column-calculation">
+                <svg class="slash-svg-overlay" id="slash-overlay">
+                    <line id="slash-line" x1="0" y1="0" x2="0" y2="0" stroke="#ef4444" stroke-width="3" />
+                    <line id="slash-line-2" x1="0" y1="0" x2="0" y2="0" stroke="#ef4444" stroke-width="3" />
+                </svg>
+
+                <div class="borrow-row">
+                    <div class="borrow-cell" id="calc-borrow-100">&nbsp;</div> <div class="borrow-cell" id="calc-borrow-10">&nbsp;</div>  <div class="borrow-cell" id="calc-borrow-1" style="color:var(--color-dl); font-size:14px;">&nbsp;</div>   </div>
+                <div class="carry-row" id="calc-carry-row" style="display:none;">
+                    <div class="carry-cell" id="calc-carry-c1">&nbsp;</div>
+                    <div class="carry-cell" id="calc-carry-c2">&nbsp;</div>
+                    <div class="carry-cell">&nbsp;</div>
+                </div>
+                
+                <div class="math-row">
+                    <div class="math-cell unit-l" id="calc-t100">1</div>  <div class="math-cell unit-l" id="calc-t10">5</div>   <div class="math-cell unit-dl" id="calc-t1">8</div>   </div>
+                
+                <div class="math-row">
+                    <div class="math-op-cell" id="calc-op">－</div>
+                    <div class="math-cell unit-l" id="calc-b100">&nbsp;</div>
+                    <div class="math-cell unit-l" id="calc-b10">9</div>
+                    <div class="math-cell unit-dl" id="calc-b1">9</div>
+                </div>
+                <div class="line"></div>
+                
+                <div class="math-row">
+                    <div class="math-cell unit-l" id="calc-a100">&nbsp;</div>
+                    <div class="math-cell unit-l" id="calc-a10">0</div>
+                    <div class="math-cell unit-dl" id="calc-a1">9</div>
+                </div>
+            </div>
+            <div id="math-placeholder" style="color: #94a3b8; font-size:14px;">ステップを進めると筆算が表示されます</div>
+        </div>
+
+        <div class="control-panel">
+            <div class="inputs">
+                <input type="number" id="in-l1" value="15" min="0" max="99"> <span class="unit-l">L</span>
+                <input type="number" id="in-dl1" value="8" min="0" max="9"> <span class="unit-dl">dL</span>
+                
+                <select id="in-op">
+                    <option value="-">－</option>
+                    <option value="+">＋</option>
+                </select>
+
+                <input type="number" id="in-l2" value="9" min="0" max="99"> <span class="unit-l">L</span>
+                <input type="number" id="in-dl2" value="9" min="0" max="9"> <span class="unit-dl">dL</span>
+            </div>
+
+            <div class="buttons">
+                <button id="btn-init" onclick="startRun()">1. ならべる</button>
+                <button id="btn-next" onclick="goForward()" disabled>つぎのステップへ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentStep = 0;               // 完了したステップ数（0=未開始）
+    let stepPlan = [];                  // 動的に組み立てるステップ関数の配列
+    let appData = { l1: 15, dl1: 8, op: '-', l2: 9, dl2: 9 };
+    let items = [];
+    let brokenLId = null; 
+    let currentScale = 1.0; 
+
+    let textL_Id = "sub-formula-text-l";
+    let textDl_Id = "sub-formula-text-dl";
+
+    const DEFAULT_PROMPT = "数値をいれて「1. ならべる」を押してね！";
+
+    const BASE_SIZE = {
+        'L': { w: 46, h: 54 },
+        'dL': { w: 30, h: 36 }
+    };
+
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+    const wait = (ms, instant) => instant ? Promise.resolve() : sleep(ms);
+
+    /* ================= 音声読み上げ（TTS） ================= */
+    let ttsEnabled = true;
+    let jaVoice = null;
+    let lastStatusText = DEFAULT_PROMPT;
+
+    function pickJaVoice() {
+        if (!('speechSynthesis' in window)) return;
+        const voices = window.speechSynthesis.getVoices();
+        jaVoice = voices.find(v => v.lang === 'ja-JP') || voices.find(v => v.lang && v.lang.startsWith('ja')) || null;
+    }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = pickJaVoice;
+        pickJaVoice();
+    }
+
+    /* ================= 読み上げ用テキスト変換（数値・単位・記号→ひらがな） ================= */
+
+    // 0〜999程度の整数を「ひらがなの読み」に変換（よん・なな・きゅう表記で統一）
+    function numberToHiragana(num) {
+        num = Math.round(num);
+        if (num === 0) return 'ゼロ';
+        if (num < 0) return 'マイナス' + numberToHiragana(-num);
+
+        const digits = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+        let n = num;
+        let result = '';
+
+        if (n >= 100) {
+            const h = Math.floor(n / 100);
+            if (h === 1) result += 'ひゃく';
+            else if (h === 3) result += 'さんびゃく';
+            else if (h === 6) result += 'ろっぴゃく';
+            else if (h === 8) result += 'はっぴゃく';
+            else result += digits[h] + 'ひゃく';
+            n %= 100;
+        }
+        if (n >= 10) {
+            const t = Math.floor(n / 10);
+            if (t === 1) result += 'じゅう';
+            else result += digits[t] + 'じゅう';
+            n %= 10;
+        }
+        if (n > 0) result += digits[n];
+        return result;
+    }
+
+    // 「〜つ」という個数の言い方（ひとつ・ふたつ…）専用の読み
+    const TSU_READINGS = ['', 'ひとつ', 'ふたつ', 'みっつ', 'よっつ', 'いつつ', 'むっつ', 'ななつ', 'やっつ', 'ここのつ', 'とお'];
+    function convertTsuCounters(text) {
+        return text.replace(/(\d+)つ/g, (m, d) => {
+            const n = parseInt(d, 10);
+            return (n >= 1 && n <= 10) ? TSU_READINGS[n] : (numberToHiragana(n) + 'つ');
+        });
+    }
+
+    // 数値＋単位（L・dL）と、残りの裸の数値をひらがな読みに変換
+    function convertNumbersAndUnits(text) {
+        // dL は L より先に処理する（"L" が "dL" の一部にマッチしてしまうのを防ぐため）
+        text = text.replace(/(\d+)\s*dL/g, (m, d) => numberToHiragana(parseInt(d, 10)) + 'デシリットル');
+        text = text.replace(/(\d+)\s*L/g, (m, d) => numberToHiragana(parseInt(d, 10)) + 'リットル');
+        // 数値を伴わない単位表記（「Lの部屋」「dLは」など）
+        text = text.replace(/dL/g, 'デシリットル');
+        text = text.replace(/L/g, 'リットル');
+        // 残った裸の数値（「10こ」などの個数表現を含む）
+        text = text.replace(/\d+/g, (m) => numberToHiragana(parseInt(m, 10)));
+        return text;
+    }
+
+    // 式の記号（＋－＝など）をひらがなの読みに変換
+    function convertSymbols(text) {
+        return text
+            .replace(/[＋+]/g, ' たす ')
+            .replace(/[－\-]/g, ' ひく ')
+            .replace(/[＝=]/g, ' は ')
+            .replace(/[／\/]/g, '、')
+            .replace(/…/g, '、')
+            .replace(/OK/gi, 'オーケー')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    // 表示用テキスト → 読み上げ用テキストへの変換をまとめてかける関数
+    // ・先頭の「1. 」等のステップ番号は読み上げから除外（"。" と誤読されやすいため）
+    // ・数値／単位／式の記号はすべてひらがな読みに変換する
+    function toSpeechText(text) {
+        let t = text.replace(/^\d+\.\s*/, '');
+        t = convertTsuCounters(t);
+        t = convertNumbersAndUnits(t);
+        t = convertSymbols(t);
+        return t;
+    }
+
+    function speak(text) {
+        if (!ttsEnabled || !text) return;
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const spokenText = toSpeechText(text);
+        const utter = new SpeechSynthesisUtterance(spokenText);
+        utter.lang = 'ja-JP';
+        utter.rate = 0.95;
+        utter.pitch = 1.05;
+        if (jaVoice) utter.voice = jaVoice;
+        window.speechSynthesis.speak(utter);
+    }
+
+    // 起動時に無音の1音を読み上げてウォームアップ（初回発話の遅延・詰まり対策）
+    function warmupTTS() {
+        if (!('speechSynthesis' in window)) return;
+        try {
+            const u = new SpeechSynthesisUtterance('あ');
+            u.lang = 'ja-JP';
+            u.volume = 0;
+            if (jaVoice) u.voice = jaVoice;
+            window.speechSynthesis.speak(u);
+        } catch(e) { /* noop */ }
+    }
+    window.addEventListener('load', warmupTTS);
+
+    function toggleTTS() {
+        ttsEnabled = !ttsEnabled;
+        const btn = document.getElementById('btn-tts');
+        if (ttsEnabled) {
+            btn.classList.remove('off');
+            speak('おんせいを オンに したよ');
+        } else {
+            btn.classList.add('off');
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        }
+    }
+
+    // ステータス表示＋読み上げをまとめて行う。instant=true のときは表示のみで読み上げない（早送り再現用）
+    function setStatus(text, instant) {
+        document.getElementById('status-msg').innerText = text;
+        lastStatusText = text;
+        if (!instant) speak(text);
+    }
+
+    /* ================= キーボード操作 ================= */
+    document.addEventListener('keydown', (e) => {
+        const tag = document.activeElement ? document.activeElement.tagName : '';
+        const isFormField = (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA');
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            startRun();
+        } else if (e.key === 'ArrowRight') {
+            if (isFormField) return;
+            e.preventDefault();
+            goForward();
+        } else if (e.key === 'ArrowLeft') {
+            if (isFormField) return;
+            e.preventDefault();
+            goBack();
+        }
+    });
+
+    // 【kasa-symから流用】1Lます・1dLます（円筒形）のミニアイコンSVGを生成
+    // unit: 'L' | 'dL'　　filled: true=満タン（水あり） / false=空（水なし）
+    function generateMasuIconSVG(unit, filled) {
+        const strokeColor = unit === 'L' ? 'var(--color-l)' : 'var(--color-dl)';
+        const y = 180; // 満タン時の水面Y座標（generateCylinderSVGのdL=10相当）
+        const liquid = filled ? `
+            <path d="M 50,${y} A 250,55 0 0,0 550,${y} L 550,800 A 250,55 0 0,1 50,800 Z" fill="#1ca7ff"/>
+            <ellipse cx="300" cy="${y}" rx="250" ry="55" fill="#1ca7ff"/>
+            <ellipse cx="300" cy="${y}" rx="250" ry="55" fill="none" stroke="#7cd2ff" stroke-width="6"/>
+            <path d="M 50,${y} A 250,55 0 0,0 550,${y}" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>` : '';
+        return `
+            <svg viewBox="0 0 600 900" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 50,100 L 50,800 A 250,55 0 0,0 550,800 L 550,100 A 250,55 0 0,0 50,100 Z" fill="#fff"/>
+                ${liquid}
+                <path d="M 50,100 L 50,800 A 250,55 0 0,0 550,800 L 550,100" fill="none" stroke="${strokeColor}" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+                <ellipse cx="300" cy="100" rx="250" ry="55" fill="none" stroke="${strokeColor}" stroke-width="22"/>
+            </svg>`;
+    }
+
+    /* ================= 開始・進む・戻る ================= */
+
+    function applyProblemToGrid() {
+        document.getElementById('c-l1').innerText = appData.l1;
+        document.getElementById('c-dl1').innerText = appData.dl1;
+        document.getElementById('c-op').innerText = appData.op;
+        document.getElementById('c-l2').innerText = appData.l2;
+        document.getElementById('c-dl2').innerText = appData.dl2;
+    }
+
+    function resetStageForStep0() {
+        document.getElementById('formula-svg').innerHTML = "";
+
+        const stage = document.getElementById('stage');
+        stage.querySelectorAll('.item-box, .annihilation-line').forEach(el => el.remove());
+
+        document.getElementById('room-divider').style.display = 'none';
+        document.getElementById('label-l').style.display = 'none';
+        document.getElementById('label-dl').style.display = 'none';
+        document.getElementById('column-calculation').style.display = 'none';
+        document.getElementById('math-placeholder').style.display = 'block';
+
+        document.getElementById('slash-overlay').style.display = "none";
+        document.getElementById('calc-borrow-100').innerHTML = "&nbsp;";
+        document.getElementById('calc-borrow-10').innerHTML = "&nbsp;";
+        document.getElementById('calc-borrow-1').innerHTML = "&nbsp;";
+        document.getElementById('calc-carry-row').style.display = "none";
+
+        document.getElementById('c-res-l').innerText = "?";
+        document.getElementById('c-res-dl').innerText = "";
+        document.getElementById('c-lbl-res-l').style.visibility = "hidden";
+        document.getElementById('c-lbl-res-dl').style.visibility = "hidden";
+
+        items = [];
+        brokenLId = null;
+    }
+
+    function startRun() {
+        appData.l1 = parseInt(document.getElementById('in-l1').value) || 0;
+        appData.dl1 = parseInt(document.getElementById('in-dl1').value) || 0;
+        appData.op = document.getElementById('in-op').value;
+        appData.l2 = parseInt(document.getElementById('in-l2').value) || 0;
+        appData.dl2 = parseInt(document.getElementById('in-dl2').value) || 0;
+
+        if (appData.op === '-') {
+            let total1 = appData.l1 * 10 + appData.dl1;
+            let total2 = appData.l2 * 10 + appData.dl2;
+            if (total2 > total1) {
+                alert("ひく数のほうが 大きいです！");
+                return;
+            }
+        }
+
+        applyProblemToGrid();
+        resetStageForStep0();
+        buildStepPlan();
+        currentStep = 0;
+        document.getElementById('btn-next').disabled = false;
+
+        // 入力欄からフォーカスを外し、直後から矢印キーでステップ操作できるようにする
+        if (document.activeElement && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
+
+        goForward();
+    }
+
+    async function goForward() {
+        if (!stepPlan.length || currentStep >= stepPlan.length) return;
+        const btnInit = document.getElementById('btn-init');
+        const btnNext = document.getElementById('btn-next');
+        btnInit.disabled = true;
+        btnNext.disabled = true;
+
+        await stepPlan[currentStep](false);
+        currentStep++;
+
+        btnInit.disabled = false;
+        btnNext.disabled = (currentStep >= stepPlan.length);
+    }
+
+    async function goBack() {
+        if (currentStep <= 0 || !stepPlan.length) return;
+        const target = currentStep - 1;
+        const btnInit = document.getElementById('btn-init');
+        const btnNext = document.getElementById('btn-next');
+        btnInit.disabled = true;
+        btnNext.disabled = true;
+
+        resetStageForStep0();
+        for (let i = 0; i < target; i++) {
+            await stepPlan[i](true); // instant = 表示だけ即時再現、読み上げなし
+        }
+        currentStep = target;
+
+        if (currentStep === 0) {
+            setStatus(DEFAULT_PROMPT, false);
+        } else {
+            speak(lastStatusText);
+        }
+
+        btnInit.disabled = false;
+        btnNext.disabled = (currentStep >= stepPlan.length);
+    }
+
+    function createItem(unit, group, x, y, index) {
+        const stage = document.getElementById('stage');
+        const el = document.createElement('div');
+        el.className = `item-box box-${unit.toLowerCase()}`;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.transform = `scale(${currentScale})`;
+        el.dataset.group = group;
+        el.dataset.unit = unit;
+        // 足し算：たされる数・たす数とも満タン／引き算：ひかれる数=満タン、ひく数=空
+        const filled = (group === 1) || (appData.op === '+');
+        el.innerHTML = generateMasuIconSVG(unit, filled);
+        stage.appendChild(el);
+        
+        items.push({
+            id: `${group}-${unit}-${index}`,
+            element: el,
+            unit: unit,
+            group: group,
+            index: index
+        });
+    }
+
+    /* ================= ステップ計画の構築 ================= */
+    function buildStepPlan() {
+        stepPlan = [];
+
+        const l1 = appData.l1, dl1 = appData.dl1, l2 = appData.l2, dl2 = appData.dl2, op = appData.op;
+        const opSym = op === '+' ? '＋' : '－';
+        const opWord = op === '+' ? 'たしざん' : 'ひきざん';
+        const dlSum = dl1 + dl2;
+        const needCarry = (op === '+' && dlSum >= 10);
+        const needBorrow = (op === '-' && dl1 < dl2);
+
+        // --- ① ますをならべる ---
+        stepPlan.push(async (instant) => {
+            const stage = document.getElementById('stage');
+            const totalL = l1 + l2;
+            const totalDl = dl1 + dl2 + (op === '-' ? 10 : 0);
+
+            let scaleByL = 1.0;
+            if (totalL > 4) scaleByL = 4.5 / Math.ceil(totalL / 2);
+            if (l1 > 10 || l2 > 10) scaleByL = Math.min(scaleByL, 0.55);
+
+            let scaleByDl = 1.0;
+            if (totalDl > 10) scaleByDl = 0.65;
+            if (totalDl > 18) scaleByDl = 0.48;
+
+            currentScale = Math.min(scaleByL, scaleByDl, 1.0);
+            if (currentScale < 0.42) currentScale = 0.42;
+
+            const stageWidth = stage.offsetWidth;
+            const leftBlockCenterX = stageWidth * 0.25;
+            const rightBlockCenterX = stageWidth * 0.75;
+
+            let gapL = (BASE_SIZE['L'].w + 6) * currentScale;
+            let lineH_L = (BASE_SIZE['L'].h + 6) * currentScale;
+            let gapDl = (BASE_SIZE['dL'].w + 5) * currentScale;
+            let lineH_Dl = (BASE_SIZE['dL'].h + 4) * currentScale;
+
+            let startL1_X = leftBlockCenterX - (Math.min(l1, 5) * gapL) / 2;
+            for (let i = 0; i < l1; i++) {
+                let row = Math.floor(i / 5), col = i % 5;
+                createItem('L', 1, startL1_X + col * gapL, 30 + row * lineH_L, i);
+            }
+
+            let dl1YStart = 30 + Math.ceil(l1 / 5) * lineH_L + 15;
+            let startDl1_X = leftBlockCenterX - (Math.min(dl1, 5) * gapDl) / 2;
+            for (let i = 0; i < dl1; i++) {
+                let row = Math.floor(i / 5), col = i % 5;
+                createItem('dL', 1, startDl1_X + col * gapDl, dl1YStart + row * lineH_Dl, i);
+            }
+
+            let startL2_X = rightBlockCenterX - (Math.min(l2, 5) * gapL) / 2;
+            for (let i = 0; i < l2; i++) {
+                let row = Math.floor(i / 5), col = i % 5;
+                createItem('L', 2, startL2_X + col * gapL, 30 + row * lineH_L, i);
+            }
+
+            let dl2YStart = 30 + Math.ceil(l2 / 5) * lineH_L + 15;
+            let startDl2_X = rightBlockCenterX - (Math.min(dl2, 5) * gapDl) / 2;
+            for (let i = 0; i < dl2; i++) {
+                let row = Math.floor(i / 5), col = i % 5;
+                createItem('dL', 2, startDl2_X + col * gapDl, dl2YStart + row * lineH_Dl, i);
+            }
+
+            setStatus(`1. しきの とおりに「ます」を ならべたよ。 ${l1}L${dl1}dL ${opSym} ${l2}L${dl2}dL の ${opWord}だよ。`, instant);
+            await wait(300, instant);
+        });
+
+        // --- ② Lの部屋・dLの部屋に わける ---
+        stepPlan.push(async (instant) => {
+            document.getElementById('room-divider').style.display = 'block';
+            document.getElementById('label-l').style.display = 'block';
+            document.getElementById('label-dl').style.display = 'block';
+
+            const stageWidth = document.getElementById('stage').offsetWidth;
+            const midX = stageWidth / 2;
+
+            let l1Count = 0, l2Count = 0, dl1Count = 0, dl2Count = 0;
+            let stepX_L = (BASE_SIZE['L'].w + 6) * currentScale;
+            let stepY_L = (BASE_SIZE['L'].h + 4) * currentScale;
+            let stepX_Dl = (BASE_SIZE['dL'].w + 5) * currentScale;
+            let stepY_Dl = (BASE_SIZE['dL'].h + 3) * currentScale;
+            const itemsPerRow = 5;
+
+            items.forEach(item => {
+                if (item.unit === 'L') {
+                    if (item.group === 1) {
+                        let row = Math.floor(l1Count / itemsPerRow), col = l1Count % itemsPerRow;
+                        item.element.style.left = (20 + col * stepX_L) + 'px';
+                        item.element.style.top = (25 + row * stepY_L) + 'px';
+                        l1Count++;
+                    } else {
+                        let row = Math.floor(l2Count / itemsPerRow), col = l2Count % itemsPerRow;
+                        item.element.style.left = (20 + col * stepX_L) + 'px';
+                        item.element.style.top = (245 + row * stepY_L) + 'px';
+                        l2Count++;
+                    }
+                } else {
+                    if (item.group === 1) {
+                        let row = Math.floor(dl1Count / itemsPerRow), col = dl1Count % itemsPerRow;
+                        item.element.style.left = (midX + 20 + col * stepX_Dl) + 'px';
+                        item.element.style.top = (25 + row * stepY_Dl) + 'px';
+                        dl1Count++;
+                    } else {
+                        let row = Math.floor(dl2Count / itemsPerRow), col = dl2Count % itemsPerRow;
+                        item.element.style.left = (midX + 20 + col * stepX_Dl) + 'px';
+                        item.element.style.top = (245 + row * stepY_Dl) + 'px';
+                        dl2Count++;
+                    }
+                }
+            });
+
+            drawFormulaAnnotationSolid();
+            setStatus(`2. Lは Lの部屋へ、dLは dLの部屋へ わけたよ。 Lの部屋：${l1} と ${l2}／dLの部屋：${dl1} と ${dl2}`, instant);
+            await wait(300, instant);
+        });
+
+        // --- ③ dLの部屋を たしかめる（筆算パネルを表示） ---
+        stepPlan.push(async (instant) => {
+            document.getElementById('math-placeholder').style.display = 'none';
+            document.getElementById('column-calculation').style.display = 'block';
+            document.getElementById('calc-carry-row').style.display = "none";
+            setupMathDigits(l1, dl1, l2, dl2, opSym);
+
+            let msg;
+            if (op === '-') {
+                msg = needBorrow
+                    ? `3. dLの部屋を みてみよう。 ${dl1}dL － ${dl2}dL … dLが たりないよ！ 1Lを 10dLに かえて もってこよう。`
+                    : `3. dLの部屋を みてみよう。 ${dl1}dL － ${dl2}dL は、このまま ひけそうだね。`;
+            } else {
+                msg = needCarry
+                    ? `3. dLの部屋を みてみよう。 ${dl1}dL ＋ ${dl2}dL = ${dlSum}dL。10より おおいから、1Lに まとめよう！`
+                    : `3. dLの部屋を みてみよう。 ${dl1}dL ＋ ${dl2}dL = ${dlSum}dL。10より すくないから、このままでOK！`;
+            }
+            setStatus(msg, instant);
+            await wait(500, instant);
+        });
+
+        // --- ④ くりさげ／くりあげ（必要なときだけ挿入） ---
+        if (needBorrow) {
+            const stepNum = stepPlan.length + 1;
+            stepPlan.push(async (instant) => {
+                let lGroup1 = items.filter(i => i.unit === 'L' && i.group === 1);
+                let targetL = lGroup1[lGroup1.length - 1];
+                if (!targetL) { await wait(200, instant); return; }
+
+                brokenLId = targetL.id;
+                const stage = document.getElementById('stage');
+                const midStageX = stage.offsetWidth / 2;
+                targetL.element.style.left = (midStageX - (BASE_SIZE['L'].w * currentScale) - 20) + 'px';
+                targetL.element.style.top = '160px';
+                targetL.element.style.border = '3px solid #ef4444';
+
+                setStatus(`${stepNum}. 1Lを 10こ の dLに ぶんかいして、dLの部屋に はこぶよ！ （1L＝10dL）`, instant);
+                await wait(1000, instant);
+                targetL.element.classList.add('fade-out');
+
+                const overlay = document.getElementById('slash-overlay');
+                const line = document.getElementById('slash-line');
+                const line2 = document.getElementById('slash-line-2');
+                overlay.style.display = "block";
+                crossOutCell('calc-t10', line);
+
+                let t100 = Math.floor(l1 / 10);
+                let t10 = l1 % 10;
+                let hasHundredsDigit = String(l1).length === 2;
+                let borrowedOneDigit;
+                let cascadeBorrow = false;
+
+                if (t10 >= 1) {
+                    borrowedOneDigit = t10 - 1;
+                } else {
+                    cascadeBorrow = hasHundredsDigit && t100 >= 1;
+                    borrowedOneDigit = 9;
+                }
+
+                document.getElementById('calc-borrow-10').innerText = borrowedOneDigit;
+                document.getElementById('calc-borrow-1').innerText = "10";
+
+                if (cascadeBorrow) {
+                    setStatus(`${stepNum}. Lの一の位が0だから、さらに Lの十の位から 1つ かりてくるよ！`, instant);
+                    crossOutCell('calc-t100', line2);
+                    document.getElementById('calc-borrow-100').innerText = t100 - 1;
+                    await wait(800, instant);
+                }
+
+                let startDlX = midStageX + 20;
+                let baseDlY = 160;
+                let stepX_Dl = (BASE_SIZE['dL'].w + 5) * currentScale;
+                let stepY_Dl = (BASE_SIZE['dL'].h + 3) * currentScale;
+
+                for (let i = 0; i < 10; i++) {
+                    const dL = document.createElement('div');
+                    dL.className = `item-box box-dl`;
+                    let row = Math.floor(i / 5), col = i % 5;
+                    dL.style.left = (startDlX + col * stepX_Dl) + 'px';
+                    dL.style.top = (baseDlY + row * stepY_Dl) + 'px';
+                    dL.style.transform = `scale(${currentScale})`;
+                    dL.innerHTML = generateMasuIconSVG('dL', true);
+                    stage.appendChild(dL);
+                    items.push({ id: `borrow-dL-${i}`, element: dL, unit: 'dL', group: 1 });
+                }
+
+                drawFormulaAnnotationSolid();
+                await wait(600, instant);
+            });
+        } else if (needCarry) {
+            const stepNum = stepPlan.length + 1;
+            stepPlan.push(async (instant) => {
+                const stage = document.getElementById('stage');
+                let dlItems = items.filter(i => i.unit === 'dL');
+
+                setStatus(`${stepNum}. dLが 10こ あつまったから、1つの Lに へんしんして Lの部屋へ おひっこし！ （10dL＝1L）`, instant);
+
+                for (let i = 0; i < 10; i++) dlItems[i].element.classList.add('transforming');
+                await wait(1000, instant);
+                for (let i = 0; i < 10; i++) {
+                    dlItems[i].element.classList.remove('transforming');
+                    dlItems[i].element.classList.add('fade-out');
+                }
+
+                const newL = document.createElement('div');
+                newL.className = `item-box box-l`;
+                newL.style.left = (stage.offsetWidth / 2 + 20) + 'px';
+                newL.style.top = '160px';
+                newL.style.transform = `scale(${currentScale})`;
+                newL.innerHTML = generateMasuIconSVG('L', true);
+                stage.appendChild(newL);
+
+                await wait(100, instant);
+                let existingLCount = items.filter(i => i.unit === 'L' && i.group === 1).length;
+                let stepX_L = (BASE_SIZE['L'].w + 6) * currentScale;
+                let stepY_L = (BASE_SIZE['L'].h + 4) * currentScale;
+                let row = Math.floor(existingLCount / 5), col = existingLCount % 5;
+                newL.style.left = (20 + col * stepX_L) + 'px';
+                newL.style.top = (25 + row * stepY_L) + 'px';
+                newL.style.outline = '3px solid #3b82f6';
+                newL.style.outlineOffset = '2px';
+                items.push({ id: 'carry-L', element: newL, unit: 'L', group: 1 });
+
+                const carryLabel = document.createElement('div');
+                carryLabel.innerText = 'くり上がり';
+                carryLabel.style.position = 'absolute';
+                carryLabel.style.left = newL.style.left;
+                carryLabel.style.top = (parseFloat(newL.style.top) - 16 * currentScale) + 'px';
+                carryLabel.style.fontSize = (10 * currentScale) + 'px';
+                carryLabel.style.fontWeight = 'bold';
+                carryLabel.style.color = '#3b82f6';
+                carryLabel.style.whiteSpace = 'nowrap';
+                stage.appendChild(carryLabel);
+
+                await wait(800, instant);
+                newL.style.outline = 'none';
+                carryLabel.remove();
+            });
+        }
+
+        // --- ⑤ dLの けいさん ---
+        {
+            const stepNum = stepPlan.length + 1;
+            stepPlan.push(async (instant) => {
+                if (op === '-') {
+                    const stage = document.getElementById('stage');
+                    let dl1Elements = Array.from(stage.querySelectorAll('.box-dl')).filter(el => parseFloat(el.style.top) < 230 && !el.classList.contains('fade-out'));
+                    let dl2Elements = Array.from(stage.querySelectorAll('.box-dl')).filter(el => parseFloat(el.style.top) >= 230);
+                    let dlPairs = Math.min(dl1Elements.length, dl2Elements.length);
+
+                    const dl1Eff = needBorrow ? dl1 + 10 : dl1;
+                    const finalDl = dl1Eff - dl2;
+                    setStatus(needBorrow
+                        ? `${stepNum}. dLの けいさん： かりてきた 10dLを たして ${dl1Eff}dL。 ${dl1Eff}dL － ${dl2}dL = ${finalDl}dL`
+                        : `${stepNum}. dLの けいさん： ${dl1}dL － ${dl2}dL = ${finalDl}dL`, instant);
+
+                    for (let i = 0; i < dlPairs; i++) {
+                        const a = dl1Elements[dl1Elements.length - 1 - i];
+                        const b = dl2Elements[dl2Elements.length - 1 - i];
+                        if (instant) {
+                            a.classList.add('fade-out');
+                            b.classList.add('fade-out');
+                        } else {
+                            drawLinkAndFade(a, b, 'dL');
+                            await sleep(1200);
+                        }
+                    }
+                } else {
+                    const dlItemsNow = items.filter(i => i.unit === 'dL' && !i.element.classList.contains('fade-out'));
+                    dlItemsNow.forEach(i => i.element.classList.add('transforming'));
+
+                    const finalDl = needCarry ? dlSum - 10 : dlSum;
+                    setStatus(needCarry
+                        ? `${stepNum}. dLの けいさん： ${dl1}dL ＋ ${dl2}dL = ${dlSum}dL。10 とって 1Lに したから、のこりは ${finalDl}dL だよ。`
+                        : `${stepNum}. dLの けいさん： ${dl1}dL ＋ ${dl2}dL = ${finalDl}dL`, instant);
+
+                    await wait(700, instant);
+                    dlItemsNow.forEach(i => i.element.classList.remove('transforming'));
+                }
+            });
+        }
+
+        // --- ⑥ Lの けいさん ---
+        {
+            const stepNum = stepPlan.length + 1;
+            stepPlan.push(async (instant) => {
+                if (op === '-') {
+                    let l1Elems = items.filter(i => i.unit === 'L' && i.group === 1 && i.id !== brokenLId && !i.element.classList.contains('fade-out'));
+                    let l2Elems = items.filter(i => i.unit === 'L' && i.group === 2);
+                    let lPairs = Math.min(l1Elems.length, l2Elems.length);
+
+                    const l1Eff = needBorrow ? l1 - 1 : l1;
+                    const finalL = l1Eff - l2;
+                    setStatus(needBorrow
+                        ? `${stepNum}. Lの けいさん： 1Lを かしたので ${l1}L は ${l1Eff}L。 ${l1Eff}L － ${l2}L = ${finalL}L`
+                        : `${stepNum}. Lの けいさん： ${l1}L － ${l2}L = ${finalL}L`, instant);
+
+                    for (let i = 0; i < lPairs; i++) {
+                        const a = l1Elems[l1Elems.length - 1 - i].element;
+                        const b = l2Elems[l2Elems.length - 1 - i].element;
+                        if (instant) {
+                            a.classList.add('fade-out');
+                            b.classList.add('fade-out');
+                        } else {
+                            drawLinkAndFade(a, b, 'L');
+                            await sleep(1200);
+                        }
+                    }
+                } else {
+                    const lItemsNow = items.filter(i => i.unit === 'L' && !i.element.classList.contains('fade-out'));
+                    lItemsNow.forEach(i => i.element.classList.add('transforming'));
+
+                    const finalL = needCarry ? (l1 + l2 + 1) : (l1 + l2);
+                    setStatus(needCarry
+                        ? `${stepNum}. Lの けいさん： ${l1}L ＋ ${l2}L ＋ くりあがりの 1L = ${finalL}L`
+                        : `${stepNum}. Lの けいさん： ${l1}L ＋ ${l2}L = ${finalL}L`, instant);
+
+                    await wait(700, instant);
+                    lItemsNow.forEach(i => i.element.classList.remove('transforming'));
+                }
+            });
+        }
+
+        // --- ⑦ こたえ ---
+        {
+            const stepNum = stepPlan.length + 1;
+            stepPlan.push(async (instant) => {
+                let val1 = l1 * 10 + dl1, val2 = l2 * 10 + dl2;
+                let resVal = op === '+' ? (val1 + val2) : (val1 - val2);
+
+                if (op === '+' && dlSum >= 10) {
+                    document.getElementById('calc-carry-row').style.display = "flex";
+                    document.getElementById('calc-carry-c2').innerText = "1";
+                }
+
+                let ansL = Math.floor(resVal / 10);
+                let ansDl = resVal % 10;
+
+                let sAnsL = String(ansL);
+                if (ansL === 0 && op === '-') {
+                    document.getElementById('calc-a100').innerHTML = "&nbsp;";
+                    document.getElementById('calc-a10').innerText = "0";
+                } else if (sAnsL.length === 2) {
+                    document.getElementById('calc-a100').innerText = sAnsL[0];
+                    document.getElementById('calc-a10').innerText = sAnsL[1];
+                } else {
+                    document.getElementById('calc-a100').innerHTML = "&nbsp;";
+                    document.getElementById('calc-a10').innerText = sAnsL[0];
+                }
+                document.getElementById('calc-a1').innerText = ansDl;
+
+                document.getElementById('c-res-l').innerText = ansL;
+                document.getElementById('c-res-dl').innerText = ansDl;
+                document.getElementById('c-lbl-res-l').style.visibility = "visible";
+                document.getElementById('c-lbl-res-dl').style.visibility = "visible";
+
+                drawFormulaAnnotationDashed();
+
+                setStatus(`${stepNum}. こたえが でたよ！ ${l1}L${dl1}dL ${opSym} ${l2}L${dl2}dL = ${ansL}L${ansDl}dL`, instant);
+            });
+        }
+    }
+
+    /* ================= 式アノテーション・筆算まわり（既存ロジック） ================= */
+
+    function drawFormulaAnnotationSolid() {
+        const svg = document.getElementById('formula-svg');
+        const container = document.getElementById('formula-container');
+        svg.innerHTML = ""; 
+
+        const cL1 = document.getElementById('c-l1');
+        const cL2 = document.getElementById('c-l2');
+        const cDl1 = document.getElementById('c-dl1');
+        const cDl2 = document.getElementById('c-dl2');
+
+        const rectCont = container.getBoundingClientRect();
+        
+        // --- 1. L同士を結ぶ下側ルート ---
+        let rL1 = cL1.getBoundingClientRect();
+        let rL2 = cL2.getBoundingClientRect();
+        
+        let x_l1 = (rL1.left + rL1.right) / 2 - rectCont.left;
+        let x_l2 = (rL2.left + rL2.right) / 2 - rectCont.left;
+        let y_l_textBottom = rL1.bottom - rectCont.top;
+        let y_l_u_line = y_l_textBottom + 25; 
+
+        let pathL = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathL.setAttribute("d", `M ${x_l1} ${y_l_textBottom + 2} L ${x_l1} ${y_l_u_line} L ${x_l2} ${y_l_u_line} L ${x_l2} ${y_l_textBottom + 2}`);
+        pathL.setAttribute("class", "anno-line anno-l");
+        svg.appendChild(pathL);
+
+        let textL = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textL.setAttribute("id", textL_Id);
+        textL.setAttribute("x", (x_l1 + x_l2) / 2);
+        textL.setAttribute("y", y_l_u_line + 14); 
+        textL.setAttribute("class", "sub-formula-text text-l");
+        
+        let subL_val = appData.dl1 < appData.dl2 && appData.op === '-' ? (appData.l1 - 1) : appData.l1;
+        textL.textContent = `${subL_val} ${appData.op} ${appData.l2} = ${appData.op === '+' ? (subL_val + appData.l2) : (subL_val - appData.l2)}`;
+        svg.appendChild(textL);
+
+
+        // --- 2. dL同士を結ぶ上側ルート ---
+        let rDl1 = cDl1.getBoundingClientRect();
+        let rDl2 = cDl2.getBoundingClientRect();
+        
+        let x_dl1 = (rDl1.left + rDl1.right) / 2 - rectCont.left;
+        let x_dl2 = (rDl2.left + rDl2.right) / 2 - rectCont.left;
+        let y_dl_textTop = rDl1.top - rectCont.top;
+        let y_dl_u_line = y_dl_textTop - 25; 
+
+        let pathDl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathDl.setAttribute("d", `M ${x_dl1} ${y_dl_textTop - 2} L ${x_dl1} ${y_dl_u_line} L ${x_dl2} ${y_dl_u_line} L ${x_dl2} ${y_dl_textTop - 2}`);
+        pathDl.setAttribute("class", "anno-line anno-dl");
+        svg.appendChild(pathDl);
+
+        let textDl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textDl.setAttribute("id", textDl_Id);
+        textDl.setAttribute("x", (x_dl1 + x_dl2) / 2);
+        textDl.setAttribute("y", y_dl_u_line - 14); 
+        textDl.setAttribute("class", "sub-formula-text text-dl");
+        
+        if (appData.op === '-') {
+            if (appData.dl1 < appData.dl2) {
+                textDl.textContent = `10 + ${appData.dl1} - ${appData.dl2} = ${10 + appData.dl1 - appData.dl2}`;
+            } else {
+                textDl.textContent = `${appData.dl1} - ${appData.dl2} = ${appData.dl1 - appData.dl2}`;
+            }
+        } else {
+            textDl.textContent = `${appData.dl1} + ${appData.dl2} = ${appData.dl1 + appData.dl2}`;
+        }
+        svg.appendChild(textDl);
+    }
+
+    // 筆算のマスに斜線を引く（くり下がり表示用の汎用ヘルパー）
+    function crossOutCell(cellId, lineEl) {
+        const cell = document.getElementById(cellId);
+        let cLeft = cell.offsetLeft;
+        let cTop = cell.offsetTop;
+        let cWidth = cell.offsetWidth;
+        let cHeight = cell.offsetHeight;
+        lineEl.setAttribute('x1', cLeft + cWidth * 0.85);
+        lineEl.setAttribute('y1', cTop + cHeight * 0.15);
+        lineEl.setAttribute('x2', cLeft + cWidth * 0.15);
+        lineEl.setAttribute('y2', cTop + cHeight * 0.85);
+    }
+
+    // 【大幅修正】ひかれる数・ひく数の「桁位置」と「単位の部屋（L・dL）」のロジックを完全一致化
+    function setupMathDigits(l1, dl1, l2, dl2, opChar) {
+        document.getElementById('calc-op').innerText = opChar;
+        
+        // --- ひかれる数 (上段) ---
+        let sL1 = String(l1);
+        if (sL1.length === 2) {
+            document.getElementById('calc-t100').innerText = sL1[0]; // Lの十の位（青）
+            document.getElementById('calc-t10').innerText = sL1[1];  // Lの一の位（青）
+        } else {
+            document.getElementById('calc-t100').innerHTML = "&nbsp;";
+            document.getElementById('calc-t10').innerText = sL1[0];  // Lの一の位（青）
+        }
+        document.getElementById('calc-t1').innerText = dl1;          // dLの一の位（赤）
+
+        // --- ひく数 (中段) ---
+        let sL2 = String(l2);
+        if (sL2.length === 2) {
+            document.getElementById('calc-b100').innerText = sL2[0]; // Lの十の位（青）
+            document.getElementById('calc-b10').innerText = sL2[1];  // Lの一の位（青）
+        } else {
+            document.getElementById('calc-b100').innerHTML = "&nbsp;";
+            document.getElementById('calc-b10').innerText = sL2[0];  // Lの一の位（青）
+        }
+        document.getElementById('calc-b1').innerText = dl2;          // dLの一の位（赤）
+
+        // 下段（答え）の初期化
+        document.getElementById('calc-a100').innerHTML = "&nbsp;";
+        document.getElementById('calc-a10').innerHTML = "&nbsp;";
+        document.getElementById('calc-a1').innerHTML = "&nbsp;";
+    }
+
+    function drawLinkAndFade(el1, el2, unit) {
+        const stage = document.getElementById('stage');
+        const line = document.createElement('div');
+        line.className = 'annihilation-line';
+        
+        const w = BASE_SIZE[unit].w;
+        const h = BASE_SIZE[unit].h;
+
+        let x1 = parseFloat(el1.style.left) + (w * currentScale) / 2;
+        let y1 = parseFloat(el1.style.top) + (h * currentScale) / 2;
+        let x2 = parseFloat(el2.style.left) + (w * currentScale) / 2;
+        let y2 = parseFloat(el2.style.top) + (h * currentScale) / 2;
+
+        let distance = Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+        let angle = Math.atan2(y2-y1, x2-x1) * 180 / Math.PI;
+
+        line.style.width = distance + 'px';
+        line.style.left = x1 + 'px';
+        line.style.top = y1 + 'px';
+        line.style.transform = `rotate(${angle}deg)`;
+        stage.appendChild(line);
+
+        setTimeout(() => {
+            el1.classList.add('fade-out');
+            el2.classList.add('fade-out');
+            line.style.opacity = '0';
+        }, 800);
+    }
+
+    // 【修正バグ】破線矢印の根元（起点）を数字1つ分「右にずらして」文字と被らないよう配置
+    function drawFormulaAnnotationDashed() {
+        const svg = document.getElementById('formula-svg');
+        const container = document.getElementById('formula-container');
+
+        let defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+        
+        let markerL = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        markerL.setAttribute("id", "arrow-l");
+        markerL.setAttribute("refX", "6"); markerL.setAttribute("refY", "3");
+        markerL.setAttribute("markerWidth", "6"); markerL.setAttribute("markerHeight", "6");
+        markerL.setAttribute("orient", "auto-start-reverse");
+        let pathMarkerL = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathMarkerL.setAttribute("d", "M 0 0 L 6 3 L 0 6 z"); pathMarkerL.setAttribute("fill", "var(--color-l)");
+        markerL.appendChild(pathMarkerL);
+        defs.appendChild(markerL);
+
+        let markerDl = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        markerDl.setAttribute("id", "arrow-dl");
+        markerDl.setAttribute("refX", "6"); markerDl.setAttribute("refY", "3");
+        markerDl.setAttribute("markerWidth", "6"); markerDl.setAttribute("markerHeight", "6");
+        markerDl.setAttribute("orient", "auto-start-reverse");
+        let pathMarkerDl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathMarkerDl.setAttribute("d", "M 0 0 L 6 3 L 0 6 z"); pathMarkerDl.setAttribute("fill", "var(--color-dl)");
+        markerDl.appendChild(pathMarkerDl);
+        defs.appendChild(markerDl);
+
+        svg.appendChild(defs);
+
+        const cResL = document.getElementById('c-res-l');
+        const cResDl = document.getElementById('c-res-dl');
+
+        const rectCont = container.getBoundingClientRect();
+
+        let tL_El = document.getElementById(textL_Id);
+        let tDl_El = document.getElementById(textDl_Id);
+
+        let rTL = tL_El.getBoundingClientRect();
+        let rTDl = tDl_El.getBoundingClientRect();
+
+        // 【大改善】計算式の右端（イコールの先の答え部分）から、さらに右に「数字1つ分（16px）」ずらした空白位置を起点にする
+        let shiftWidth = 16; 
+        let x_subL_ans = (rTL.right + shiftWidth) - rectCont.left; 
+        let x_subDl_ans = (rTDl.right + shiftWidth) - rectCont.left; 
+
+        // --- Lの破線矢印（下側：L補助計算の答えの右隣 ⇒ 最終解答のLへ） ---
+        let rResL = cResL.getBoundingClientRect();
+        let x_resL = (rResL.left + rResL.right) / 2 - rectCont.left;
+        let y_l_textBottom = rResL.bottom - rectCont.top;
+        let y_l_u_line = (rTL.top + rTL.bottom)/2 - rectCont.top;
+
+        let pathDashedL = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathDashedL.setAttribute("d", `M ${x_subL_ans} ${y_l_u_line} L ${x_resL} ${y_l_u_line} L ${x_resL} ${y_l_textBottom + 4}`);
+        pathDashedL.setAttribute("class", "anno-line anno-l");
+        pathDashedL.setAttribute("stroke-dasharray", "4,4");
+        pathDashedL.setAttribute("marker-end", "url(#arrow-l)");
+        svg.appendChild(pathDashedL);
+
+        // --- dLの破線矢印（上側：dL補助計算の答えの右隣 ⇒ 最終解答のdLへ） ---
+        let rResDl = cResDl.getBoundingClientRect();
+        let x_resDl = (rResDl.left + rResDl.right) / 2 - rectCont.left;
+        let y_dl_textTop = rResDl.top - rectCont.top;
+        let y_dl_u_line = (rTDl.top + rTDl.bottom)/2 - rectCont.top;
+
+        let pathDashedDl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathDashedDl.setAttribute("d", `M ${x_subDl_ans} ${y_dl_u_line} L ${x_resDl} ${y_dl_u_line} L ${x_resDl} ${y_dl_textTop - 4}`);
+        pathDashedDl.setAttribute("class", "anno-line anno-dl");
+        pathDashedDl.setAttribute("stroke-dasharray", "4,4");
+        pathDashedDl.setAttribute("marker-end", "url(#arrow-dl)");
+        svg.appendChild(pathDashedDl);
+    }
+</script>
+</body>
+</html>
