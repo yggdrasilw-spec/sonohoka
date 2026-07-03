@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>三角形の角の和 シミュレーション（SVG改良版）</title>
+  <style>
+    :root {
+      --colorA: #FFB300;
+      --colorB: #039BE5;
+      --colorC: #E91E63;
+      --colorA-light: rgba(255, 179, 0, 0.85);
+      --colorB-light: rgba(3, 155, 229, 0.85);
+      --colorC-light: rgba(233, 30, 99, 0.85);
+      --bg: #f4f7f2;
+      --surface: #ffffff;
+      --text: #2c3e50;
+      --border: #d5dcd6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Helvetica Neue', 'Arial', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #eef2ee;
+      height: 100vh; width: 100vw;
+      display: flex; justify-content: center; align-items: center;
+      overflow: hidden;
+      user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app-container {
+      width: min(100vw, 177.78vh); height: min(56.25vw, 100vh);
+      aspect-ratio: 16 / 9;
+      background: var(--surface); border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 18px; border-bottom: 1.5px solid var(--border);
+      background: #fdfdfd; flex-shrink: 0; gap: 12px;
+    }
+    .app-title { font-size: clamp(0.9rem, 1.3vw, 1.2rem); font-weight: 700; color: #2c3e50; white-space: nowrap; }
+    .character-msg {
+      display: flex; align-items: center; gap: 8px;
+      background: #eef9f1; border: 1.5px solid #5cb85c;
+      border-radius: 8px; padding: 5px 14px;
+      font-size: clamp(0.65rem, 0.9vw, 0.8rem); font-weight: 600; color: #2d6a4f;
+    }
+
+    .svg-area { flex: 1; position: relative; min-height: 0; background: #fdfdfd; }
+    .svg-area svg { width: 100%; height: 100%; display: block; touch-action: none; }
+
+    .bottom-bar {
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 8px 14px; background: #f6f8f5;
+      border-top: 1.5px solid var(--border); flex-wrap: wrap; min-height: 50px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px; padding: 8px 16px;
+      border-radius: 6px; font-size: clamp(0.7rem, 0.95vw, 0.88rem);
+      font-weight: 700; border: none; cursor: pointer; transition: all 0.18s ease;
+      white-space: nowrap; background: #ecf0f1; color: #2c3e50;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: #3498db; color: #fff; }
+    .btn-primary:hover { background: #2980b9; }
+    .btn-cut { background: #e67e22; color: #fff; font-size: clamp(0.8rem, 1.1vw, 1rem); padding: 10px 22px; }
+    .btn-rot { background: #9b59b6; color: #fff; padding: 8px 12px; font-size: 0.85rem; }
+    .btn-auto { background: #27ae60; color: #fff; }
+
+    .toggle-group {
+      display: flex; background: #e0e4e0; border-radius: 6px; padding: 2px;
+      font-weight: 700; font-size: clamp(0.68rem, 0.9vw, 0.82rem);
+    }
+    .toggle-group input { display: none; }
+    .toggle-group label { padding: 7px 14px; cursor: pointer; border-radius: 4px; color: #555; }
+    .toggle-group input:checked + label { background: #2c3e50; color: #fff; }
+
+    .input-group { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600; }
+    .input-group input { width: 48px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: 600; }
+
+    #phase1 { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    #phase2 { display: none; flex-direction: column; flex: 1; min-height: 0; }
+
+    .formula-overlay {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.95); border: 2px solid #e74c3c;
+      border-radius: 10px; padding: 8px 22px; font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+      font-weight: 800; color: #c0392b; pointer-events: none; white-space: nowrap;
+      z-index: 10; box-shadow: 0 4px 12px rgba(231,76,60,0.25); text-align: center;
+    }
+    .part-body { cursor: grab; }
+    .part-body:active { cursor: grabbing; }
+    .rotate-handle { cursor: grab; }
+    .rotate-handle:active { cursor: grabbing; }
+  </style>
+</head>
+<body>
+<div class="app-container" id="appContainer">
+  <div class="app-header">
+    <div class="app-title">📐 三角形の3つの角の大きさの和</div>
+    <div class="character-msg">
+      <span>🍃</span>
+      <span id="guideText">青い丸をドラッグして、三角形の形を変えてみよう！</span>
+    </div>
+  </div>
+
+  <div id="phase1">
+    <div class="svg-area">
+      <svg id="svgPhase1" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid meet">
+        <g id="phase1Group">
+          <polygon id="triPolygon" points="480,90 230,390 730,390" fill="rgba(220,235,245,0.7)" stroke="#5d7b93" stroke-width="2.5"/>
+          <text id="lenAB" x="355" y="250" fill="#7f8c8d" font-size="15" font-weight="600" text-anchor="end">辺AB: 335</text>
+          <text id="lenBC" x="480" y="415" fill="#7f8c8d" font-size="15" font-weight="600" text-anchor="middle">辺BC: 500</text>
+          <text id="lenCA" x="605" y="250" fill="#7f8c8d" font-size="15" font-weight="600" text-anchor="start">辺CA: 335</text>
+          <circle id="handleA" cx="480" cy="90" r="14" fill="#3498db" stroke="#fff" stroke-width="2.5" style="cursor:grab;"/>
+          <circle id="handleB" cx="230" cy="390" r="14" fill="#3498db" stroke="#fff" stroke-width="2.5" style="cursor:grab;"/>
+          <circle id="handleC" cx="730" cy="390" r="14" fill="#3498db" stroke="#fff" stroke-width="2.5" style="cursor:grab;"/>
+          <text id="labelA" x="480" y="76" fill="#2c3e50" font-size="16" font-weight="800" text-anchor="middle" pointer-events="none">A</text>
+          <text id="labelB" x="218" y="408" fill="#2c3e50" font-size="16" font-weight="800" text-anchor="middle" pointer-events="none">B</text>
+          <text id="labelC" x="742" y="408" fill="#2c3e50" font-size="16" font-weight="800" text-anchor="middle" pointer-events="none">C</text>
+        </g>
+      </svg>
+    </div>
+    <div class="bottom-bar">
+      <div class="input-group">
+        <span>辺AB:</span><input type="number" id="inputAB" value="335">
+        <span>辺BC:</span><input type="number" id="inputBC" value="500">
+        <span>辺CA:</span><input type="number" id="inputCA" value="335">
+        <button class="btn btn-primary" id="applySidesBtn">適用</button>
+      </div>
+      <button class="btn btn-cut" id="btnToPhase2">✂️ ハサミで切ってならべるモードへ</button>
+    </div>
+  </div>
+
+  <div id="phase2">
+    <div class="svg-area" style="position:relative;">
+      <div class="formula-overlay" id="formulaOverlay" style="display:none;"></div>
+      <svg id="svgPhase2" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <marker id="arrowHead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <polygon points="0,0 6,3 0,6" fill="#f39c12" />
+          </marker>
+        </defs>
+        <line x1="80" y1="485" x2="880" y2="485" stroke="#95a5a6" stroke-width="3" stroke-dasharray="8,5"/>
+        <circle id="snapTarget" cx="480" cy="485" r="8" fill="#e74c3c" stroke="#fff" stroke-width="2.5"/>
+        <text x="480" y="510" fill="#e74c3c" font-size="14" font-weight="700" text-anchor="middle" pointer-events="none">ここに角を集めよう</text>
+        <g id="partGroupA"></g>
+        <g id="partGroupB"></g>
+        <g id="partGroupC"></g>
+        <g id="labelsGroup"></g>
+      </svg>
+    </div>
+    <div class="bottom-bar" id="phase2Controls">
+      <div class="toggle-group">
+        <input type="radio" id="modeAuto" name="phase2Mode" value="auto">
+        <label for="modeAuto">🤖 自動で集める</label>
+        <input type="radio" id="modeManual" name="phase2Mode" value="manual" checked>
+        <label for="modeManual">🖐️ じぶんで動かす</label>
+      </div>
+      <button class="btn btn-auto" id="btnAutoGather" style="display:none;">▶ あつめる</button>
+      <button class="btn" id="btnAutoReset" style="display:none;">↩ 元に戻す</button>
+      <button class="btn btn-rot" id="btnRotLeft">↩️ 左回転</button>
+      <button class="btn btn-rot" id="btnRotRight">↪️ 右回転</button>
+      <button class="btn" id="btnManualReset">🔄 最初から並べる</button>
+      <button class="btn" id="btnBackToPhase1">🔙 形を変え直す</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const VIEW_W = 960, VIEW_H = 540;
+  const SNAP_TARGET = { x: 480, y: 485 };
+  const SNAP_THRESHOLD = 25;
+  const ARC_RADIUS = 44;
+
+  let points = [ {x:480,y:90}, {x:230,y:390}, {x:730,y:390} ];
+  let currentPhase = 1, phase2Mode = 'manual';
+  let animProgress = 0, isAnimating = false, animDirection = 1, animStartTime = 0;
+  const ANIM_DURATION = 1300;
+  let manualParts = [], autoTargets = [];
+  let draggedHandleIndex = -1, draggedPartIndex = -1, isRotating = false;
+  let lastSelectedPart = 0;
+  let dragStartMouse = {x:0,y:0}, dragStartPart = {tx:0,ty:0,rot:0};
+  let cachedAnglesDeg = [0,0,0], cachedAnglesRad = [0,0,0], cachedSectorAngles = [];
+
+  const phase1Div = document.getElementById('phase1');
+  const phase2Div = document.getElementById('phase2');
+  const svgPhase1 = document.getElementById('svgPhase1');
+  const svgPhase2 = document.getElementById('svgPhase2');
+  const triPolygon = document.getElementById('triPolygon');
+  const lenAB = document.getElementById('lenAB'), lenBC = document.getElementById('lenBC'), lenCA = document.getElementById('lenCA');
+  const handleA = document.getElementById('handleA'), handleB = document.getElementById('handleB'), handleC = document.getElementById('handleC');
+  const labelA = document.getElementById('labelA'), labelB = document.getElementById('labelB'), labelC = document.getElementById('labelC');
+  const partGroupA = document.getElementById('partGroupA'), partGroupB = document.getElementById('partGroupB'), partGroupC = document.getElementById('partGroupC');
+  const labelsGroup = document.getElementById('labelsGroup');
+  const formulaOverlay = document.getElementById('formulaOverlay');
+  const guideText = document.getElementById('guideText');
+
+  function dist(a,b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+  function midpoint(a,b) { return {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
+  function centroid(pts) { return {x:(pts[0].x+pts[1].x+pts[2].x)/3, y:(pts[0].y+pts[1].y+pts[2].y)/3}; }
+  function vecSub(a,b) { return {x:a.x-b.x, y:a.y-b.y}; }
+  function vecAngle(v) { return Math.atan2(v.y, v.x); }
+  function normalizeAngle(a) { while(a<-Math.PI)a+=Math.PI*2; while(a>Math.PI)a-=Math.PI*2; return a; }
+
+  function computeAllAngles() {
+    const A=points[0], B=points[1], C=points[2];
+    const AB=vecSub(B,A), AC=vecSub(C,A), BA=vecSub(A,B), BC=vecSub(C,B), CA=vecSub(A,C), CB=vecSub(B,C);
+    const lAB=dist(A,B), lAC=dist(A,C), lBC=dist(B,C);
+    cachedAnglesRad[0] = Math.acos(Math.max(-1,Math.min(1,(AB.x*AC.x+AB.y*AC.y)/(lAB*lAC))));
+    cachedAnglesRad[1] = Math.acos(Math.max(-1,Math.min(1,(BA.x*BC.x+BA.y*BC.y)/(lAB*lBC))));
+    cachedAnglesRad[2] = Math.acos(Math.max(-1,Math.min(1,(CA.x*CB.x+CA.y*CB.y)/(lAC*lBC))));
+    cachedAnglesDeg = cachedAnglesRad.map(r=>r*180/Math.PI);
+
+    const angAB = vecAngle(AB), angAC = vecAngle(AC), angBA = vecAngle(BA);
+    const angBCv = vecAngle(BC), angCAv = vecAngle(CA), angCB = vecAngle(CB);
+    function calcSector(s,e) { let d=e-s; while(d<-Math.PI)d+=Math.PI*2; while(d>Math.PI)d-=Math.PI*2; return d<0?{start:e,end:s,size:-d}:{start:s,end:e,size:d}; }
+    cachedSectorAngles = [ calcSector(angAB,angAC), calcSector(angBA,angBCv), calcSector(angCAv,angCB) ];
+
+    autoTargets = [];
+    let cum = Math.PI;
+    for(let i=0;i<3;i++) {
+      let sec = cachedSectorAngles[i];
+      let midLocal = sec.start + sec.size/2;
+      let targetMid = cum - sec.size/2;
+      let rotNeeded = normalizeAngle(targetMid - midLocal + Math.PI);
+      autoTargets.push({tx:SNAP_TARGET.x, ty:SNAP_TARGET.y, rot:rotNeeded});
+      cum -= sec.size;
+    }
+  }
+
+  function getPartLocalPolygons() {
+    const A=points[0],B=points[1],C=points[2], G=centroid(points);
+    const M_AB=midpoint(A,B), M_BC=midpoint(B,C), M_CA=midpoint(C,A);
+    return [
+      [{x:0,y:0}, vecSub(M_AB,A), vecSub(G,A), vecSub(M_CA,A)],
+      [{x:0,y:0}, vecSub(M_BC,B), vecSub(G,B), vecSub(M_AB,B)],
+      [{x:0,y:0}, vecSub(M_CA,C), vecSub(G,C), vecSub(M_BC,C)]
+    ];
+  }
+
+  function polyToPointsString(p) { return p.map(pt=>`${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' '); }
+  function createSectorPath(sec, r) {
+    let x1=r*Math.cos(sec.start), y1=r*Math.sin(sec.start), x2=r*Math.cos(sec.end), y2=r*Math.sin(sec.end);
+    let la=sec.size>Math.PI?1:0;
+    return `M 0,0 L ${x1.toFixed(2)},${y1.toFixed(2)} A ${r},${r} 0 ${la},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`;
+  }
+
+  function updatePhase1() {
+    const [A,B,C]=points;
+    triPolygon.setAttribute('points',`${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`);
+    let dAB=Math.round(dist(A,B)), dBC=Math.round(dist(B,C)), dCA=Math.round(dist(C,A));
+    let mAB=midpoint(A,B), mBC=midpoint(B,C), mCA=midpoint(C,A);
+    lenAB.setAttribute('x',mAB.x-8); lenAB.setAttribute('y',mAB.y-10); lenAB.textContent=`辺AB: ${dAB}`;
+    lenBC.setAttribute('x',mBC.x); lenBC.setAttribute('y',mBC.y+18); lenBC.textContent=`辺BC: ${dBC}`;
+    lenCA.setAttribute('x',mCA.x+8); lenCA.setAttribute('y',mCA.y-10); lenCA.textContent=`辺CA: ${dCA}`;
+    handleA.setAttribute('cx',A.x); handleA.setAttribute('cy',A.y);
+    handleB.setAttribute('cx',B.x); handleB.setAttribute('cy',B.y);
+    handleC.setAttribute('cx',C.x); handleC.setAttribute('cy',C.y);
+    labelA.setAttribute('x',A.x); labelA.setAttribute('y',A.y-14);
+    labelB.setAttribute('x',B.x-12); labelB.setAttribute('y',B.y+18);
+    labelC.setAttribute('x',C.x+12); labelC.setAttribute('y',C.y+18);
+    document.getElementById('inputAB').value=dAB;
+    document.getElementById('inputBC').value=dBC;
+    document.getElementById('inputCA').value=dCA;
+  }
+
+  function applySidesFromInput() {
+    let a=parseFloat(document.getElementById('inputBC').value);
+    let b=parseFloat(document.getElementById('inputCA').value);
+    let c=parseFloat(document.getElementById('inputAB').value);
+    if(isNaN(a)||isNaN(b)||isNaN(c)||a+b<=c||b+c<=a||c+a<=b) { alert("⚠️ 三角形が作れない長さです！"); return; }
+    let baseY=390, startX=480-a/2;
+    points[1].x=startX; points[1].y=baseY; points[2].x=startX+a; points[2].y=baseY;
+    let cosB=(a*a+c*c-b*b)/(2*a*c), sinB=Math.sqrt(1-cosB*cosB);
+    points[0].x=points[1].x+c*cosB; points[0].y=points[1].y-c*sinB;
+    computeAllAngles(); updatePhase1();
+  }
+
+  function clearGroup(g) { while(g.firstChild) g.removeChild(g.firstChild); }
+
+  function renderPartGroup(group, localPoly, sec, colorFill, colorStroke, tx, ty, rot, isSnapped, idx, showRotateHandle) {
+    clearGroup(group);
+    group.setAttribute('transform', `translate(${tx.toFixed(2)},${ty.toFixed(2)}) rotate(${(rot*180/Math.PI).toFixed(3)})`);
+    
+    let isSelected = (phase2Mode === 'manual' && draggedPartIndex === idx);
+
+    let poly=document.createElementNS(SVG_NS,'polygon');
+    poly.setAttribute('points', polyToPointsString(localPoly));
+    poly.setAttribute('fill','rgba(240,245,248,0.9)'); 
+    poly.setAttribute('stroke', isSelected ? '#e67e22' : colorStroke);
+    poly.setAttribute('stroke-width', isSelected ? '3' : '2');
+    poly.setAttribute('stroke-linejoin','round');
+    poly.setAttribute('data-part-index',idx);
+    poly.setAttribute('data-role','body');
+    poly.setAttribute('pointer-events', 'auto');
+    poly.classList.add('part-body');
+    if (isSelected) poly.setAttribute('filter', 'url(#glow)');
+    group.appendChild(poly);
+
+    let sector=document.createElementNS(SVG_NS,'path');
+    sector.setAttribute('d', createSectorPath(sec, ARC_RADIUS));
+    sector.setAttribute('fill',colorFill); sector.setAttribute('stroke',colorStroke);
+    sector.setAttribute('stroke-width','1.4'); sector.setAttribute('opacity','0.9');
+    sector.setAttribute('pointer-events', 'none');
+    group.appendChild(sector);
+
+    let dot=document.createElementNS(SVG_NS,'circle');
+    dot.setAttribute('cx','0'); dot.setAttribute('cy','0'); 
+    dot.setAttribute('r', isSnapped ? '8' : '11');
+    dot.setAttribute('fill', isSnapped ? '#e74c3c' : '#f39c12');
+    dot.setAttribute('stroke','#fff'); dot.setAttribute('stroke-width','2.5');
+    dot.setAttribute('data-part-index',idx);
+    dot.setAttribute('data-role','rotate');
+    dot.classList.add('rotate-handle');
+    group.appendChild(dot);
+
+    if (isSelected && isRotating) {
+      let arrowArc = document.createElementNS(SVG_NS,'path');
+      let r = 20;
+      let startAngle = -Math.PI/3;
+      let endAngle = Math.PI/3;
+      let x1 = r * Math.cos(startAngle), y1 = r * Math.sin(startAngle);
+      let x2 = r * Math.cos(endAngle), y2 = r * Math.sin(endAngle);
+      let d = `M ${x1},${y1} A ${r},${r} 0 0,1 ${x2},${y2}`;
+      arrowArc.setAttribute('d', d);
+      arrowArc.setAttribute('fill', 'none');
+      arrowArc.setAttribute('stroke', '#f39c12');
+      arrowArc.setAttribute('stroke-width', '3');
+      arrowArc.setAttribute('marker-start', 'url(#arrowHead)');
+      arrowArc.setAttribute('marker-end', 'url(#arrowHead)');
+      arrowArc.setAttribute('pointer-events', 'none');
+      group.appendChild(arrowArc);
+    }
+  }
+
+  function updateLabels() {
+    clearGroup(labelsGroup);
+    const labels = ['A','B','C'];
+    for(let i=0;i<3;i++) {
+      let mp = (phase2Mode==='auto') ? {tx:points[i].x+(autoTargets[i].tx-points[i].x)*animProgress, ty:points[i].y+(autoTargets[i].ty-points[i].y)*animProgress, rot:autoTargets[i].rot*animProgress, snapped:animProgress>=0.999} : manualParts[i];
+      let wx=mp.tx, wy=mp.ty;
+      let sec = cachedSectorAngles[i];
+      let worldMidAngle = mp.rot + sec.start + sec.size/2;
+
+      let labelDist = 24;
+      let lx = wx + Math.cos(worldMidAngle + Math.PI) * labelDist;
+      let ly = wy + Math.sin(worldMidAngle + Math.PI) * labelDist;
+
+      let labelText=document.createElementNS(SVG_NS,'text');
+      labelText.setAttribute('x', lx.toFixed(1)); labelText.setAttribute('y', ly.toFixed(1));
+      labelText.setAttribute('fill','#2c3e50'); labelText.setAttribute('font-size','14'); labelText.setAttribute('font-weight','800');
+      labelText.setAttribute('text-anchor','middle'); labelText.setAttribute('dominant-baseline','central');
+      labelText.setAttribute('pointer-events', 'none');
+      labelText.textContent=labels[i]; labelsGroup.appendChild(labelText);
+
+      if(mp.snapped) {
+        let textDist = ARC_RADIUS - 16;
+        let angX = wx + Math.cos(worldMidAngle) * textDist;
+        let angY = wy + Math.sin(worldMidAngle) * textDist;
+        let angText=document.createElementNS(SVG_NS,'text');
+        angText.setAttribute('x', angX.toFixed(1)); angText.setAttribute('y', angY.toFixed(1));
+        angText.setAttribute('fill','#c0392b'); angText.setAttribute('font-size','13'); angText.setAttribute('font-weight','900');
+        angText.setAttribute('text-anchor','middle'); angText.setAttribute('dominant-baseline','central');
+        angText.setAttribute('pointer-events', 'none');
+        angText.textContent=`${Math.round(cachedAnglesDeg[i])}°`; labelsGroup.appendChild(angText);
+      }
+    }
+  }
+
+  function updatePhase2() {
+    let localPolys = getPartLocalPolygons();
+    let fills=['var(--colorA-light)','var(--colorB-light)','var(--colorC-light)'];
+    let strokes=['#e6a200','#0288d1','#c2185b'];
+    if(phase2Mode==='auto') {
+      for(let i=0;i<3;i++) {
+        let t=animProgress, target=autoTargets[i];
+        let tx=points[i].x+(target.tx-points[i].x)*t, ty=points[i].y+(target.ty-points[i].y)*t;
+        renderPartGroup([partGroupA,partGroupB,partGroupC][i], localPolys[i], cachedSectorAngles[i], fills[i], strokes[i], tx, ty, target.rot*t, t>=0.999, i, false);
+      }
+    } else {
+      for(let i=0;i<3;i++) {
+        let mp=manualParts[i];
+        renderPartGroup([partGroupA,partGroupB,partGroupC][i], localPolys[i], cachedSectorAngles[i], fills[i], strokes[i], mp.tx, mp.ty, mp.rot, mp.snapped, i, true);
+      }
+    }
+    updateLabels();
+    checkAnswerMatch();
+  }
+
+  function checkAnswerMatch() {
+    let allSnapped = (phase2Mode==='auto' && animProgress>=0.999) || (phase2Mode==='manual' && manualParts.every(p=>p.snapped));
+    if(allSnapped && currentPhase===2) {
+      let [dA,dB,dC]=cachedAnglesDeg.map(d=>Math.round(d));
+      formulaOverlay.style.display='block';
+      formulaOverlay.textContent=`${dA}° + ${dB}° + ${dC}° = 180° ✨ 一直線になったね！`;
+    } else if(currentPhase===2) formulaOverlay.style.display='none';
+  }
+
+  function initManualParts() {
+    manualParts = points.map((pt,i)=>({tx:pt.x, ty:pt.y, rot:0, snapped:false}));
+    lastSelectedPart=0; draggedPartIndex=-1; isRotating=false;
+  }
+
+  function trySnap(idx) {
+    if(phase2Mode!=='manual') return;
+    let mp=manualParts[idx];
+    if(dist({x:mp.tx,y:mp.ty}, SNAP_TARGET) < SNAP_THRESHOLD) { mp.tx=SNAP_TARGET.x; mp.ty=SNAP_TARGET.y; mp.snapped=true; }
+    else mp.snapped=false;
+  }
+
+  function switchToPhase1() {
+    currentPhase=1; phase1Div.style.display='flex'; phase2Div.style.display='none';
+    formulaOverlay.style.display='none'; isAnimating=false; animProgress=0;
+    guideText.textContent='青い丸をドラッグして、三角形の形を変えてみよう！';
+    updatePhase1();
+  }
+
+  function switchToPhase2() {
+    currentPhase=2; phase1Div.style.display='none'; phase2Div.style.display='flex';
+    formulaOverlay.style.display='none'; isAnimating=false; animProgress=0;
+    computeAllAngles(); initManualParts();
+    updatePhase2ModeUI(); updatePhase2();
+  }
+
+  function updatePhase2ModeUI() {
+    if(phase2Mode==='auto') {
+      document.getElementById('btnAutoGather').style.display='inline-flex';
+      document.getElementById('btnAutoReset').style.display='inline-flex';
+      document.getElementById('btnRotLeft').style.display='none';
+      document.getElementById('btnRotRight').style.display='none';
+      document.getElementById('btnManualReset').style.display='none';
+      document.getElementById('modeAuto').checked=true;
+      guideText.textContent='「あつめる」ボタンで自動アニメーション！';
+    } else {
+      document.getElementById('btnAutoGather').style.display='none';
+      document.getElementById('btnAutoReset').style.display='none';
+      document.getElementById('btnRotLeft').style.display='inline-flex';
+      document.getElementById('btnRotRight').style.display='inline-flex';
+      document.getElementById('btnManualReset').style.display='inline-flex';
+      document.getElementById('modeManual').checked=true;
+      guideText.textContent = 'パーツ本体をタップ、パーツ外部をドラッグで移動。頂点の○をタップ、パーツ外部をドラッグで回転。';
+    }
+    animProgress=0; isAnimating=false; initManualParts();
+    formulaOverlay.style.display='none'; updatePhase2();
+  }
+
+  function startAutoAnimation() {
+    if(isAnimating) return;
+    animDirection = animProgress>=0.999 ? -1 : 1;
+    isAnimating=true; animStartTime=performance.now()-(animProgress*ANIM_DURATION);
+    requestAnimationFrame(animLoop);
+  }
+  function resetAutoAnimation() {
+    if(isAnimating&&animDirection===-1) return;
+    if(animProgress<=0.001) return;
+    animDirection=-1; isAnimating=true;
+    animStartTime=performance.now()-((1-animProgress)*ANIM_DURATION);
+    requestAnimationFrame(animLoop);
+  }
+  function animLoop(ts) {
+    if(!isAnimating) return;
+    let elapsed=ts-animStartTime, t=Math.max(0,Math.min(1,elapsed/ANIM_DURATION));
+    if(animDirection===-1) t=1-t;
+    let eased = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+    animProgress=eased; updatePhase2();
+    if((animDirection===1&&t>=1)||(animDirection===-1&&t<=0)) { animProgress=animDirection===1?1:0; updatePhase2(); isAnimating=false; return; }
+    requestAnimationFrame(animLoop);
+  }
+
+  function getSVGCoords(e, svg) {
+    let rect=svg.getBoundingClientRect();
+    let cx=e.touches?e.touches[0].clientX:e.clientX, cy=e.touches?e.touches[0].clientY:e.clientY;
+    return { x:(cx-rect.left)*(VIEW_W/rect.width), y:(cy-rect.top)*(VIEW_H/rect.height) };
+  }
+
+  function addPhase1HandleEvents(handle, index) {
+    handle.addEventListener('mousedown', (e)=>{
+      if(currentPhase!==1) return;
+      draggedHandleIndex=index; dragStartMouse=getSVGCoords(e,svgPhase1);
+      e.preventDefault(); e.stopPropagation();
+    });
+    handle.addEventListener('touchstart', (e)=>{
+      if(currentPhase!==1) return;
+      draggedHandleIndex=index; dragStartMouse=getSVGCoords(e,svgPhase1);
+      e.preventDefault(); e.stopPropagation();
+    }, {passive:false});
+  }
+  addPhase1HandleEvents(handleA,0); addPhase1HandleEvents(handleB,1); addPhase1HandleEvents(handleC,2);
+
+  function phase1Move(e) {
+    if(currentPhase!==1||draggedHandleIndex<0) return;
+    let pos=getSVGCoords(e,svgPhase1);
+    points[draggedHandleIndex].x += pos.x-dragStartMouse.x;
+    points[draggedHandleIndex].y += pos.y-dragStartMouse.y;
+    points[draggedHandleIndex].x = Math.max(30,Math.min(VIEW_W-30,points[draggedHandleIndex].x));
+    points[draggedHandleIndex].y = Math.max(20,Math.min(VIEW_H-60,points[draggedHandleIndex].y));
+    dragStartMouse=pos; computeAllAngles(); updatePhase1();
+    e.preventDefault();
+  }
+  function phase1Up() { draggedHandleIndex=-1; }
+  svgPhase1.addEventListener('mousemove', phase1Move);
+  svgPhase1.addEventListener('touchmove', phase1Move, {passive:false});
+  svgPhase1.addEventListener('mouseup', phase1Up);
+  svgPhase1.addEventListener('mouseleave', phase1Up);
+  svgPhase1.addEventListener('touchend', phase1Up);
+
+  function getPartRole(target) {
+    while(target && target !== svgPhase2) {
+      if(target.dataset && target.dataset.role === 'rotate') return {type:'rotate', idx:parseInt(target.dataset.partIndex)};
+      if(target.dataset && target.dataset.role === 'body') return {type:'body', idx:parseInt(target.dataset.partIndex)};
+      target = target.parentNode;
+    }
+    return null;
+  }
+
+  function phase2Down(e) {
+    if(currentPhase!==2||phase2Mode!=='manual') return;
+    let role = getPartRole(e.target);
+    if(!role) return;
+    let pos = getSVGCoords(e, svgPhase2);
+    if(role.type === 'rotate') {
+      isRotating = true; 
+      draggedPartIndex = role.idx; 
+      lastSelectedPart = role.idx;
+      dragStartMouse = pos; 
+      dragStartPart.rot = manualParts[role.idx].rot;
+      manualParts[role.idx].snapped = false;
+      e.preventDefault(); e.stopPropagation();
+    } else if(role.type === 'body') {
+      isRotating = false; 
+      draggedPartIndex = role.idx; 
+      lastSelectedPart = role.idx;
+      dragStartMouse = pos; 
+      dragStartPart.tx = manualParts[role.idx].tx; 
+      dragStartPart.ty = manualParts[role.idx].ty;
+      manualParts[role.idx].snapped = false;
+      e.preventDefault(); e.stopPropagation();
+    }
+    updatePhase2();
+  }
+
+  function phase2Move(e) {
+    if(currentPhase!==2||phase2Mode!=='manual'||draggedPartIndex<0) return;
+    let pos = getSVGCoords(e, svgPhase2);
+    let mp = manualParts[draggedPartIndex];
+    if(isRotating) {
+      let prevAngle = Math.atan2(dragStartMouse.y - mp.ty, dragStartMouse.x - mp.tx);
+      let curAngle = Math.atan2(pos.y - mp.ty, pos.x - mp.tx);
+      let delta = curAngle - prevAngle;
+      mp.rot = normalizeAngle(dragStartPart.rot + delta);
+    } else {
+      mp.tx = dragStartPart.tx + (pos.x - dragStartMouse.x);
+      mp.ty = dragStartPart.ty + (pos.y - dragStartMouse.y);
+      mp.tx = Math.max(10, Math.min(VIEW_W - 10, mp.tx));
+      mp.ty = Math.max(10, Math.min(VIEW_H - 10, mp.ty));
+    }
+    trySnap(draggedPartIndex);
+    updatePhase2();
+    e.preventDefault();
+  }
+
+  function phase2Up() {
+    if(draggedPartIndex >= 0) {
+      trySnap(draggedPartIndex);
+      updatePhase2();
+    }
+    draggedPartIndex = -1;
+    isRotating = false;
+    updatePhase2();
+  }
+
+  svgPhase2.addEventListener('mousedown', phase2Down);
+  svgPhase2.addEventListener('touchstart', phase2Down, {passive:false});
+  svgPhase2.addEventListener('mousemove', phase2Move);
+  svgPhase2.addEventListener('touchmove', phase2Move, {passive:false});
+  svgPhase2.addEventListener('mouseup', phase2Up);
+  svgPhase2.addEventListener('mouseleave', phase2Up);
+  svgPhase2.addEventListener('touchend', phase2Up);
+  svgPhase2.addEventListener('wheel', (e)=>{
+    if(currentPhase!==2||phase2Mode!=='manual') return;
+    let idx = (draggedPartIndex >= 0) ? draggedPartIndex : lastSelectedPart;
+    if(idx < 0) return; 
+    e.preventDefault();
+    manualParts[idx].rot += e.deltaY > 0 ? 0.08 : -0.08;
+    if(manualParts[idx].snapped) manualParts[idx].snapped = false;
+    updatePhase2();
+  }, {passive:false});
+
+  document.getElementById('btnRotLeft').addEventListener('click', ()=>{
+    let idx = (draggedPartIndex >= 0) ? draggedPartIndex : lastSelectedPart;
+    if(idx < 0) return; 
+    manualParts[idx].rot -= 0.0087; 
+    if(manualParts[idx].snapped) manualParts[idx].snapped = false; 
+    updatePhase2();
+  });
+  document.getElementById('btnRotRight').addEventListener('click', ()=>{
+    let idx = (draggedPartIndex >= 0) ? draggedPartIndex : lastSelectedPart;
+    if(idx < 0) return; 
+    manualParts[idx].rot += 0.0087; 
+    if(manualParts[idx].snapped) manualParts[idx].snapped = false; 
+    updatePhase2();
+  });
+  document.getElementById('btnManualReset').addEventListener('click', ()=>{ initManualParts(); updatePhase2(); });
+  document.getElementById('btnToPhase2').addEventListener('click', switchToPhase2);
+  document.getElementById('btnBackToPhase1').addEventListener('click', switchToPhase1);
+  document.getElementById('btnAutoGather').addEventListener('click', startAutoAnimation);
+  document.getElementById('btnAutoReset').addEventListener('click', resetAutoAnimation);
+  document.getElementById('applySidesBtn').addEventListener('click', applySidesFromInput);
+  document.getElementById('modeAuto').addEventListener('change', ()=>{ phase2Mode='auto'; updatePhase2ModeUI(); });
+  document.getElementById('modeManual').addEventListener('change', ()=>{ phase2Mode='manual'; updatePhase2ModeUI(); });
+
+  window.addEventListener('keydown', (e)=>{
+    if(currentPhase!==2||phase2Mode!=='manual') return;
+    let idx = (draggedPartIndex >= 0) ? draggedPartIndex : lastSelectedPart;
+    if(idx < 0) return;
+    if(e.key === 'ArrowLeft') { manualParts[idx].rot -= 0.1; if(manualParts[idx].snapped) manualParts[idx].snapped = false; updatePhase2(); }
+    if(e.key === 'ArrowRight') { manualParts[idx].rot += 0.1; if(manualParts[idx].snapped) manualParts[idx].snapped = false; updatePhase2(); }
+  });
+
+  computeAllAngles(); updatePhase1(); initManualParts(); updatePhase2ModeUI(); switchToPhase1();
+})();
+</script>
+</body>
+</html>

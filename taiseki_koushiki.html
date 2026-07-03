@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直方体の体積の求め方（アニメーション＆音声サポート完全版）</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f5a623;
+            --bg-color: #f7f9fc;
+            --panel-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #dcdcdc;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1000px;
+            width: 100%;
+            margin-bottom: 20px;
+            background: var(--panel-bg);
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            box-sizing: border-box;
+        }
+
+        .header-title h1 {
+            font-size: 22px;
+            color: #2c3e50;
+            margin: 0 0 5px 0;
+        }
+
+        .header-title p.subtitle {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin: 0;
+        }
+
+        /* 音声ON/OFFボタン（絵文字1文字、ON/OFFでグレーアウト切り替え） */
+        .voice-btn {
+            font-size: 28px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            background-color: #f0f4f8;
+            transition: all 0.2s;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .voice-btn:hover {
+            transform: scale(1.05);
+        }
+        .voice-btn.off {
+            filter: grayscale(100%);
+            opacity: 0.4;
+            background-color: #e0e0e0;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            max-width: 1000px;
+            width: 100%;
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+
+        /* コントロール（左側） */
+        .control-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 340px;
+        }
+
+        .input-group-box {
+            background: #fcfcfc;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .input-group-box h3 {
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            color: #34495e;
+            border-left: 4px solid var(--primary-color);
+            padding-left: 8px;
+        }
+
+        .param-input {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .param-input:last-child {
+            margin-bottom: 0;
+        }
+
+        .param-label {
+            font-weight: bold;
+            font-size: 15px;
+            width: 90px;
+        }
+
+        .counter-btn {
+            background-color: #eee;
+            border: 1px solid #ccc;
+            width: 36px;
+            height: 36px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        .counter-btn:hover { background-color: #ddd; }
+        .counter-btn:active { background-color: #ccc; }
+
+        .num-display {
+            width: 50px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* 解説カード */
+        .explanation-card {
+            border: 2px solid #e2ecf5;
+            background: #fafcfd;
+            padding: 15px;
+            border-radius: 8px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 180px;
+        }
+
+        .step-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #ccc;
+        }
+
+        .step-desc {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        .formula-box {
+            background: #2c3e50;
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 12px;
+            font-family: 'Courier New', Courier, monospace;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .highlight-text {
+            color: #ffde43;
+            font-weight: bold;
+        }
+
+        /* ナビゲーションボタン */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-prev {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .btn-prev:hover:not(:disabled) { background-color: #7f8c8d; }
+
+        .btn-next {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-next:hover:not(:disabled) { background-color: #357abd; }
+
+        .btn:disabled {
+            background-color: #e0e0e0;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* 進捗ドット */
+        .progress-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ddd;
+            transition: background-color 0.3s;
+        }
+
+        .dot.active {
+            background-color: var(--primary-color);
+            transform: scale(1.2);
+        }
+
+        /* キャンバス（右側） */
+        .canvas-panel {
+            flex: 1.2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        canvas {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            max-width: 100%;
+        }
+
+        @media (max-width: 850px) {
+            .app-container {
+                flex-direction: column-reverse;
+            }
+            .control-panel {
+                min-width: 100%;
+            }
+            header {
+                padding: 10px 15px;
+            }
+            .header-title h1 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body onclick="warmupAudio()">
+
+<header>
+    <div class="header-title">
+        <h1>直方体の体積の計算の意味を学ぼう</h1>
+        <p class="subtitle">画面のどこかを押すと音声と音がでるよ！「次へ」でアニメーションが動きます</p>
+    </div>
+    <button id="voiceBtn" class="voice-btn" onclick="toggleVoice(event)">🔊</button>
+</header>
+
+<div class="app-container">
+    <div class="control-panel">
+        <div class="input-group-box">
+            <h3>直方体のサイズ（1〜10cm）</h3>
+            <div class="param-input">
+                <span class="param-label" style="color: #e056fd;">たて (縦)：</span>
+                <div style="display: flex; align-items: center;">
+                    <div class="counter-btn" onclick="changeValue('Tate', -1)">-</div>
+                    <div class="num-display" id="valTate">3</div>
+                    <div class="counter-btn" onclick="changeValue('Tate', 1)">+</div>
+                </div>
+            </div>
+            <div class="param-input">
+                <span class="param-label" style="color: #30336b;">横：</span>
+                <div style="display: flex; align-items: center;">
+                    <div class="counter-btn" onclick="changeValue('Yoko', -1)">-</div>
+                    <div class="num-display" id="valYoko">5</div>
+                    <div class="counter-btn" onclick="changeValue('Yoko', 1)">+</div>
+                </div>
+            </div>
+            <div class="param-input">
+                <span class="param-label" style="color: #22a6b3;">高さ：</span>
+                <div style="display: flex; align-items: center;">
+                    <div class="counter-btn" onclick="changeValue('Takasa', -1)">-</div>
+                    <div class="num-display" id="valTakasa">4</div>
+                    <div class="counter-btn" onclick="changeValue('Takasa', 1)">+</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="explanation-card">
+            <div>
+                <div class="step-title" id="stepTitle">ステップ 1</div>
+                <div class="step-desc" id="stepDesc">解説がここに入ります。</div>
+            </div>
+            <div class="formula-box" id="stepFormula">式 = </div>
+        </div>
+
+        <div>
+            <div class="nav-buttons">
+                <button class="btn btn-prev" id="btnPrev" onclick="moveStep(-1)">戻る</button>
+                <button class="btn btn-next" id="btnNext" onclick="moveStep(1)">次へ進む</button>
+            </div>
+            <div class="progress-dots">
+                <div class="dot" id="dot1"></div>
+                <div class="dot" id="dot2"></div>
+                <div class="dot" id="dot3"></div>
+                <div class="dot" id="dot4"></div>
+                <div class="dot" id="dot5"></div>
+                <div class="dot" id="dot6"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-panel">
+        <canvas id="prismCanvas" width="520" height="440"></canvas>
+    </div>
+</div>
+
+<script>
+    // アプリの状態管理 (全6ステップ)
+    let currentStep = 1;
+    let tate = 3;
+    let yoko = 5;
+    let takasa = 4;
+
+    // 音声とオーディオの状態
+    let isVoiceOn = true;
+    let isAudioWarmedUp = false;
+    let audioCtx = null;
+    let animTimer = null;
+    let animProgress = 0; // アニメーション用カウンタ
+
+    const canvas = document.getElementById('prismCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let scale = 30;
+    let base_x = 0;
+    let base_y = 0;
+
+    window.onload = function() {
+        redrawApp();
+    };
+
+    // 初回再生遅延を防ぐウォームアップ（無音の1音発音とAudioContext初期化）
+    function warmupAudio() {
+        if (isAudioWarmedUp) return;
+        
+        // Web Speech APIのウォームアップ (無音文字のダミー発音)
+        if (window.speechSynthesis) {
+            const u = new SpeechSynthesisUtterance(" ");
+            u.volume = 0;
+            window.speechSynthesis.speak(u);
+        }
+        
+        // Web Audio APIのウォームアップ
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        } catch(e) {
+            console.log("AudioContextを初期化できませんでした。");
+        }
+        
+        isAudioWarmedUp = true;
+        // 初回起動時にステップ1を読み上げる
+        speakCurrentStep();
+    }
+
+    // 音声ON/OFF切り替え
+    function toggleVoice(event) {
+        if(event) event.stopPropagation(); // bodyのonclickを走らせない
+        warmupAudio();
+        
+        isVoiceOn = !isVoiceOn;
+        const btn = document.getElementById('voiceBtn');
+        if (isVoiceOn) {
+            btn.classList.remove('off');
+            playSound('click');
+            speakCurrentStep();
+        } else {
+            btn.classList.add('off');
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        }
+    }
+
+    // Web Audio APIによる効果音生成
+    function playSound(type) {
+        if (!isVoiceOn || !audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        
+        if (type === 'click') {
+            // ピコッ（ボタン操作音）
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.08);
+            osc.start(now); osc.stop(now + 0.08);
+        } else if (type === 'block') {
+            // トッ（ブロック配置音）
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.04);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.04);
+            osc.start(now); osc.stop(now + 0.04);
+        } else if (type === 'success') {
+            // ピロリロリーン（アニメーション完了・ファンファーレ）
+            osc.type = 'sine';
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            notes.forEach((freq, idx) => {
+                osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+            });
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.setValueAtTime(0.08, now + 0.25);
+            gain.gain.linearRampToValueAtTime(0, now + 0.35);
+            osc.start(now); osc.stop(now + 0.35);
+        }
+    }
+
+    // 読み上げ用のテキストゆらぎ（英語読み等）を防ぐひらがな化変換関数（1〜1000対応版）
+    function convertToHiragana(text) {
+        let t = text;
+        // HTMLタグを除去
+        t = t.replace(/<\/?[^>]+(>|$)/g, "");
+        
+        // 単位・記号の置換
+        t = t.replace(/cm³/g, "りっぽうせんちめーとる");
+        t = t.replace(/cm²/g, "へいほうせんちめーとる");
+        t = t.replace(/cm/g, "せんちめーとる");
+        t = t.replace(/×/g, " かける ");
+        t = t.replace(/＝|=/g, " は ");
+        t = t.replace(/＋|\+/g, " たす ");
+        t = t.replace(/？/g, "はてな");
+
+        // 数字を日本語の読みに変換（1〜1000まで対応）
+        t = t.replace(/\d+/g, (match) => {
+            let num = parseInt(match);
+            if (num === 0) return "ぜろ";
+            if (num === 1000) return "せん";
+            
+            const nums = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+            let str = "";
+            
+            // 百の位
+            let h = Math.floor(num / 100);
+            if (h > 0) {
+                if (h === 1) str += "ひゃく";
+                else if (h === 3) str += "さんびゃく";
+                else if (h === 6) str += "ろっぴゃく";
+                else if (h === 8) str += "はっぴゃく";
+                else str += nums[h] + "ひゃく";
+            }
+            num %= 100;
+            
+            // 十の位
+            let d = Math.floor(num / 10);
+            if (d > 0) {
+                if (d === 1) str += "じゅう";
+                else str += nums[d] + "じゅう";
+            }
+            num %= 10;
+            
+            // 一の位
+            if (num > 0) {
+                str += nums[num];
+            }
+            return str;
+        });
+        return t;
+    }
+
+    // 音声の合成と発声
+    function speakText(text) {
+        if (!isVoiceOn || !window.speechSynthesis) return;
+        window.speechSynthesis.cancel(); // 再生中の音声を止める
+        
+        const hiraText = convertToHiragana(text);
+        const utterance = new SpeechSynthesisUtterance(hiraText);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // 数値変更
+    function changeValue(type, delta) {
+        warmupAudio();
+        playSound('click');
+        if (type === 'Tate') tate = Math.max(1, Math.min(10, tate + delta));
+        if (type === 'Yoko') yoko = Math.max(1, Math.min(10, yoko + delta));
+        if (type === 'Takasa') takasa = Math.max(1, Math.min(10, takasa + delta));
+        
+        document.getElementById('valTate').innerText = tate;
+        document.getElementById('valYoko').innerText = yoko;
+        document.getElementById('valTakasa').innerText = takasa;
+        
+        redrawApp();
+        triggerStepAnimation();
+    }
+
+    // ステップ移動
+    function moveStep(delta) {
+        warmupAudio();
+        currentStep = Math.max(1, Math.min(6, currentStep + delta));
+        playSound('click');
+        redrawApp();
+        triggerStepAnimation();
+    }
+
+    // アニメーションのトリガー処理（何も無い状態から1番目〜最終番目へ動く仕様）
+    function triggerStepAnimation() {
+        stopAnimation();
+        
+        if (currentStep === 4) {
+            animProgress = 0; // 0列描画＝何も表示されていない状態からスタート
+            drawCanvas();
+            speakCurrentStep(); // 解説文を読み上げ
+            
+            animTimer = setInterval(() => {
+                animProgress++;
+                if (animProgress > yoko) { // 最終列まで描画しきったら終了
+                    clearInterval(animTimer);
+                    animTimer = null;
+                    playSound('success');
+                } else {
+                    playSound('block');
+                    drawCanvas();
+                }
+            }, 600); // 0.6秒ごとに1列ずつ確実に現れる
+        } else if (currentStep === 5) {
+            animProgress = 0; // 0段描画＝何も表示されていない状態からスタート
+            drawCanvas();
+            speakCurrentStep(); // 解説文を読み上げ
+            
+            animTimer = setInterval(() => {
+                animProgress++;
+                if (animProgress > takasa) { // 最終段まで積みあがったら終了
+                    clearInterval(animTimer);
+                    animTimer = null;
+                    playSound('success');
+                } else {
+                    playSound('block');
+                    drawCanvas();
+                }
+            }, 700); // 0.7秒ごとに1段ずつ積みあがる
+        } else {
+            animProgress = -1;
+            drawCanvas();
+            speakCurrentStep();
+        }
+    }
+
+    function stopAnimation() {
+        if (animTimer) {
+            clearInterval(animTimer);
+            animTimer = null;
+        }
+    }
+
+    function redrawApp() {
+        updateStepUI();
+        adjustScaleAndBase();
+        drawCanvas();
+    }
+
+    // 現在のステップテキストを読み上げる関数
+    function speakCurrentStep() {
+        const descText = document.getElementById('stepDesc').innerText;
+        const formulaText = document.getElementById('stepFormula').innerText;
+        speakText(descText + "。 式は、" + formulaText);
+    }
+
+    // UIテキストとボタン状態の更新
+    function updateStepUI() {
+        const baseCount = tate * yoko;
+        const totalCount = baseCount * takasa;
+        
+        let title = "";
+        let desc = "";
+        let formula = "";
+        
+        switch(currentStep) {
+            case 1:
+                title = "【ステップ 1】 直方体の見取り図（全体の形）";
+                desc = "指定された「たて " + tate + "センチメートル」「横 " + yoko + "センチメートル」「高さ " + takasa + "センチメートル」の直方体の枠組みです。この箱の中に、1cm³のブロックが全部で何個入るか、順番に組み立てて考えてみましょう。";
+                formula = "直方体の体積 ＝ ？ cm³";
+                break;
+            case 2:
+                title = "【ステップ 2】 一番底の「1列目」に並ぶ数（たて）";
+                desc = "まず、一番下の段（1段目）の左端の列にブロックを並べます。たての長さが <strong>" + tate + "cm</strong> なので、ブロックは <strong>" + tate + "個</strong> 並びます。これがすべての基本になる「1列の数」です。";
+                formula = "たての数 ＝ " + tate + " 個";
+                break;
+            case 3:
+                title = "【ステップ 3】 1段目の床（そこめん）全体の数";
+                desc = "「たてに " + tate + "個」並んだ1列が、横に <strong>" + yoko + "列分</strong> 敷き詰められます。これで1段目の床全体が完成します。計算は <strong>" + tate + " × " + yoko + " ＝ " + baseCount + "個</strong> です。";
+                formula = "1段目の数 ＝ " + tate + " × " + yoko + " ＝ " + baseCount + " 個";
+                break;
+            case 4:
+                title = "【ステップ 4】 1列ずつ増えて床ができる様子（アニメーション）";
+                desc = "1段目の床（底）ができる様子を詳しく見てみましょう。何も無い状態から、1列目、2列目、3列目…と横に「たて " + tate + "個」の列が増えていきます。横に <strong>" + yoko + "列</strong> 集まることで、<strong>" + tate + " × " + yoko + " ＝ " + baseCount + "個</strong> になります。";
+                formula = "たて " + tate + "個 × 横 " + yoko + "列 ＝ " + baseCount + " 個";
+                break;
+            case 5:
+                title = "【ステップ 5】 1段ずつ上に積み重なる様子（アニメーション）";
+                desc = "今度は、完成した1段目の床（" + baseCount + "個）が、1段目、2段目、3段目…と高さの数だけ上へ順々に積み上がっていきます。高さが <strong>" + takasa + "cm</strong> なので <strong>" + takasa + "段</strong> 積み重なり、全体の数は <strong>" + baseCount + " × " + takasa + " ＝ " + totalCount + "個</strong> になります。";
+                formula = "1段目の " + baseCount + "個 × 高さ " + takasa + "段 ＝ " + totalCount + " 個";
+                break;
+            case 6:
+                title = "【ステップ 6】 公式との結びつけ（まとめ）";
+                desc = "1cm³のブロックが全部で " + totalCount + "個 あるので、直方体の体積は <span class='highlight-text'>" + totalCount + "cm³</span> になります。この計算は、ブロックを組み立てて数えた順番通り、<span class='highlight-text'>【 たて × 横 × 高さ 】</span> の公式でパッと求めることができます！";
+                formula = "直方体の体積 ＝ " + tate + " × " + yoko + " × " + takasa + " ＝ " + totalCount + " cm³";
+                break;
+        }
+        
+        document.getElementById('stepTitle').innerHTML = title;
+        document.getElementById('stepDesc').innerHTML = desc;
+        document.getElementById('stepFormula').innerHTML = formula;
+        
+        // ボタン制御
+        document.getElementById('btnPrev').disabled = (currentStep === 1);
+        document.getElementById('btnNext').disabled = (currentStep === 6);
+        
+        // 進捗ドットの更新
+        for(let i = 1; i <= 6; i++) {
+            const dot = document.getElementById('dot' + i);
+            if(i === currentStep) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        }
+    }
+
+    // キャンバス調整
+    function adjustScaleAndBase() {
+        const margin = 80;
+        const availableW = canvas.width - margin;
+        const availableH = canvas.height - margin;
+        const wFactor = yoko + tate * 0.5;
+        const hFactor = takasa + tate * 0.4;
+        
+        scale = Math.min(availableW / wFactor, availableH / hFactor);
+        if (scale > 45) scale = 45;
+        if (scale < 20) scale = 20;
+        
+        const totalWidth = yoko * scale + tate * scale * 0.5;
+        const totalHeight = takasa * scale + tate * scale * 0.4;
+        
+        base_x = (canvas.width - totalWidth) / 2;
+        base_y = (canvas.height + totalHeight) / 2;
+    }
+
+    // キャンバスの描画処理
+    function drawCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawNotebookGrid();
+        
+        // 奥(z大)から手前(z=0)へ、下(y=0)から上へ、左から右へ描画
+        for (let z = tate - 1; z >= 0; z--) {
+            for (let y = 0; y < takasa; y++) {
+                for (let x = 0; x < yoko; x++) {
+                    
+                    let shouldDrawBlock = false;
+                    
+                    if (currentStep === 2) {
+                        // ステップ2: 最初の1列 (y=0, x=0 のみ)
+                        if (y === 0 && x === 0) shouldDrawBlock = true;
+                    } else if (currentStep === 3) {
+                        // ステップ3: 1段目の全体 (y=0 のみすべて)
+                        if (y === 0) shouldDrawBlock = true;
+                    } else if (currentStep === 4) {
+                        // ステップ4: 【アニメーション】 1列目〜最終列まで連動
+                        if (y === 0 && x < animProgress) shouldDrawBlock = true;
+                    } else if (currentStep === 5) {
+                        // ステップ5: 【アニメーション】 1段目〜最終段まで連動
+                        if (y < animProgress) shouldDrawBlock = true;
+                    } else if (currentStep === 6) {
+                        // ステップ6: まとめ (すべて描画)
+                        shouldDrawBlock = true;
+                    }
+                    
+                    if (shouldDrawBlock) {
+                        drawSingleCube(x, y, z);
+                    }
+                }
+            }
+        }
+        
+        // 外枠と寸法線の描画
+        drawOuterFrame(currentStep === 1);
+    }
+
+    // ノート風背景
+    function drawNotebookGrid() {
+        ctx.strokeStyle = "#eaf2f8";
+        ctx.lineWidth = 1;
+        const gridSize = 20;
+        for (let x = 0; x < canvas.width; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+    }
+
+    // 立方体1個の描画
+    function drawSingleCube(x, y, z) {
+        let cx = base_x + x * scale + z * scale * 0.5;
+        let cy = base_y - y * scale - z * scale * 0.4;
+        
+        let frontColor = "#d2ecf9";
+        let topColor = "#aed6f1";
+        let rightColor = "#5dade2";
+        
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "#4d5656";
+        
+        // 1. 上面
+        ctx.fillStyle = topColor;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - scale);
+        ctx.lineTo(cx + scale * 0.5, cy - scale - scale * 0.4);
+        ctx.lineTo(cx + scale + scale * 0.5, cy - scale - scale * 0.4);
+        ctx.lineTo(cx + scale, cy - scale);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        
+        // 2. 右側面
+        ctx.fillStyle = rightColor;
+        ctx.beginPath();
+        ctx.moveTo(cx + scale, cy);
+        ctx.lineTo(cx + scale + scale * 0.5, cy - scale * 0.4);
+        ctx.lineTo(cx + scale + scale * 0.5, cy - scale - scale * 0.4);
+        ctx.lineTo(cx + scale, cy - scale);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        
+        // 3. 正面
+        ctx.fillStyle = frontColor;
+        ctx.beginPath();
+        ctx.rect(cx, cy - scale, scale, scale);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+
+    // 見取り図の枠線と矢印テキスト
+    function drawOuterFrame(drawHiddenLines) {
+        let p000 = { x: base_x, y: base_y };
+        let p100 = { x: base_x + yoko * scale, y: base_y };
+        let p010 = { x: base_x, y: base_y - takasa * scale };
+        let p110 = { x: base_x + yoko * scale, y: base_y - takasa * scale };
+        
+        let p001 = { x: base_x + tate * scale * 0.5, y: base_y - tate * scale * 0.4 };
+        let p101 = { x: base_x + yoko * scale + tate * scale * 0.5, y: base_y - tate * scale * 0.4 };
+        let p011 = { x: base_x + tate * scale * 0.5, y: base_y - takasa * scale - tate * scale * 0.4 };
+        let p111 = { x: base_x + yoko * scale + tate * scale * 0.5, y: base_y - takasa * scale - tate * scale * 0.4 };
+        
+        if (drawHiddenLines) {
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = "rgba(120, 120, 120, 0.5)";
+            if (ctx.setLineDash) ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(p001.x, p001.y); ctx.lineTo(p101.x, p101.y);
+            ctx.moveTo(p001.x, p001.y); ctx.lineTo(p011.x, p011.y);
+            ctx.moveTo(p001.x, p001.y); ctx.lineTo(p000.x, p000.y);
+            ctx.stroke();
+            if (ctx.setLineDash) ctx.setLineDash([]);
+        }
+        
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#2c3e50";
+        ctx.beginPath();
+        ctx.moveTo(p000.x, p000.y); ctx.lineTo(p100.x, p100.y);
+        ctx.lineTo(p110.x, p110.y); ctx.lineTo(p010.x, p010.y);
+        ctx.closePath();
+        ctx.moveTo(p010.x, p010.y); ctx.lineTo(p011.x, p011.y);
+        ctx.lineTo(p111.x, p111.y); ctx.lineTo(p110.x, p110.y);
+        ctx.moveTo(p100.x, p100.y); ctx.lineTo(p101.x, p101.y);
+        ctx.lineTo(p111.x, p111.y);
+        ctx.stroke();
+        
+        // 寸法表示
+        ctx.fillStyle = "#2c3e50";
+        ctx.font = "bold 15px sans-serif";
+        
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.fillText("横 " + yoko + " cm", (p000.x + p100.x) / 2, p000.y + 10);
+        drawArrow(p000.x, p000.y + 5, p100.x, p100.y + 5);
+        
+        ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        ctx.fillText("高さ " + takasa + " cm", p000.x - 15, (p000.y + p010.y) / 2);
+        drawArrow(p000.x - 8, p000.y, p010.x - 8, p010.y);
+        
+        ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+        let mx = (p100.x + p101.x) / 2; let my = (p100.y + p101.y) / 2;
+        ctx.fillText("たて " + tate + " cm", mx + 15, my);
+        drawArrow(p100.x + 8, p100.y - 3, p101.x + 8, p101.y - 3);
+    }
+
+    function drawArrow(x1, y1, x2, y2) {
+        ctx.lineWidth = 1; ctx.strokeStyle = "#7f8c8d";
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.beginPath();
+        if (x1 === x2) {
+            ctx.moveTo(x1 - 4, y1); ctx.lineTo(x1 + 4, y1);
+            ctx.moveTo(x2 - 4, y2); ctx.lineTo(x2 + 4, y2);
+        } else if (y1 === y2) {
+            ctx.moveTo(x1, y1 - 4); ctx.lineTo(x1, y1 + 4);
+            ctx.moveTo(x2, y2 - 4); ctx.lineTo(x2, y2 + 4);
+        } else {
+            ctx.moveTo(x1 - 3, y1 + 3); ctx.lineTo(x1 + 3, y1 - 3);
+            ctx.moveTo(x2 - 3, y2 + 3); ctx.lineTo(x2 + 3, y2 - 3);
+        }
+        ctx.stroke();
+    }
+</script>
+
+</body>
+</html>

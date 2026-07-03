@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三角形の合同アプリ</title>
+<style>
+  :root{
+    --bg:#EFF3FA;
+    --panel:#FFFFFF;
+    --ink:#2B2D42;
+    --sub:#6B7089;
+    --line:#2B2D42;
+    --red:#E4572E;
+    --red-soft:#FBD9CD;
+    --blue:#2E86AB;
+    --blue-soft:#CFE6F0;
+    --green:#2E9E6C;
+    --green-soft:#D6F0E3;
+    --amber:#F2A93B;
+    --tab-inactive:#DCE4F2;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"BIZ UDPGothic","Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:20px;
+  }
+  .app{ max-width:1080px; margin:0 auto; }
+  header{ text-align:center; margin-bottom:18px; }
+  header h1{ font-size:26px; margin:0 0 4px; letter-spacing:.02em; }
+  header p{ margin:0; color:var(--sub); font-size:14px; }
+
+  .tabs{
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    margin-bottom:16px;
+  }
+  .tab-btn{
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    border:none; cursor:pointer; padding:10px 16px 8px;
+    background:var(--tab-inactive); border-radius:16px 16px 6px 6px;
+    font-family:inherit; font-size:13px; color:var(--sub);
+    transition:transform .15s ease, background .15s ease, color .15s ease;
+    border-bottom:4px solid transparent;
+  }
+  .tab-btn .avatar{
+    width:38px; height:38px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:#fff; font-weight:bold;
+  }
+  .tab-btn .method{ font-size:11px; opacity:.85; }
+  .tab-btn:hover{ transform:translateY(-2px); }
+  .tab-btn.active{
+    background:var(--panel); color:var(--ink); font-weight:bold;
+    box-shadow:0 4px 14px rgba(43,45,66,.12);
+  }
+  .tab-btn[data-tab="ami"] .avatar{ background:#E4572E; }
+  .tab-btn[data-tab="haruto"] .avatar{ background:#2E86AB; }
+  .tab-btn[data-tab="shiho"] .avatar{ background:#8E6BC1; }
+  .tab-btn[data-tab="kota"] .avatar{ background:#F2A93B; }
+  .tab-btn.active[data-tab="ami"]{ border-bottom-color:#E4572E; }
+  .tab-btn.active[data-tab="haruto"]{ border-bottom-color:#2E86AB; }
+  .tab-btn.active[data-tab="shiho"]{ border-bottom-color:#8E6BC1; }
+  .tab-btn.active[data-tab="kota"]{ border-bottom-color:#F2A93B; }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation:fadeIn .25s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .card{
+    background:var(--panel); border-radius:var(--radius);
+    box-shadow:0 4px 18px rgba(43,45,66,.08);
+    padding:20px 22px;
+    display:grid; grid-template-columns:250px 1fr; gap:20px;
+  }
+  @media (max-width:760px){
+    .card{ grid-template-columns:1fr; }
+  }
+  .card h2{ margin:0 0 4px; font-size:18px; }
+  .card .rule-badge{
+    display:inline-block; font-size:12px; padding:3px 10px; border-radius:20px;
+    margin-bottom:10px; font-weight:bold;
+  }
+  .rule-badge.sas{ background:var(--red-soft); color:#a53c19; }
+  .rule-badge.asa{ background:var(--blue-soft); color:#1c5876; }
+  .rule-badge.sss{ background:#EBE1F7; color:#5c3d95; }
+  .rule-badge.quad{ background:#FCEBCB; color:#95660c; }
+
+  .controls label{ display:block; font-size:13px; color:var(--sub); margin:10px 0 3px; }
+  .controls input[type=number]{
+    width:100%; padding:7px 8px; border:1.5px solid #D6DCEA; border-radius:8px;
+    font-size:14px; font-family:inherit;
+  }
+  .btn{
+    margin-top:14px; width:100%; padding:10px; border:none; border-radius:10px;
+    font-family:inherit; font-size:14px; font-weight:bold; cursor:pointer;
+    background:var(--ink); color:#fff; transition:opacity .15s;
+  }
+  .btn:hover{ opacity:.85; }
+  .btn.secondary{ background:var(--tab-inactive); color:var(--ink); margin-top:8px; }
+  .btn.play{ background:var(--amber); color:#5c3d0a; }
+  .error-msg{ color:#C0392B; font-size:12.5px; margin-top:8px; min-height:16px; }
+  .hint-box{
+    margin-top:14px; padding:10px 12px; background:#F5F7FC; border-radius:10px;
+    font-size:12.5px; color:var(--sub); line-height:1.6;
+  }
+
+  .stage-wrap{ display:flex; flex-direction:column; align-items:center; }
+  svg.stage{
+    width:100%; max-width:560px; height:auto; background:#FCFDFF;
+    border-radius:14px; border:1px solid #E4E9F4; overflow:hidden;
+    touch-action:none;
+  }
+  .status{
+    margin-top:10px; min-height:44px; text-align:center; font-size:14px;
+    color:var(--ink); background:var(--green-soft); border-radius:10px;
+    padding:8px 14px; opacity:0; transform:translateY(4px);
+    transition:opacity .3s, transform .3s;
+  }
+  .status.show{ opacity:1; transform:translateY(0); }
+  .status.info{ background:#EAF0FB; }
+
+  .handle{ cursor:grab; }
+  .handle:active{ cursor:grabbing; }
+
+  text{ font-family:"BIZ UDPGothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif; }
+  .len-label{ font-size:13px; fill:var(--ink); }
+  .len-label.red{ fill:var(--red); font-weight:bold; }
+  .len-label.blue{ fill:var(--blue); font-weight:bold; }
+  .angle-label{ font-size:12px; fill:var(--sub); }
+  .vertex-label{ font-size:15px; font-weight:bold; fill:var(--ink); }
+
+  @keyframes pulse{
+    0%{ r:6; opacity:1; }
+    60%{ r:16; opacity:0; }
+    100%{ r:16; opacity:0; }
+  }
+  .pulse-ring{ animation:pulse 1s ease-out infinite; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🔺 三角形の合同アプリ</h1>
+    <p>三角形は「どこ」が決まれば、形がひとつに決まるのかな？</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="ami">
+      <div class="avatar">あ</div>
+      <div>あみ</div>
+      <div class="method">2辺と間の角</div>
+    </button>
+    <button class="tab-btn" data-tab="haruto">
+      <div class="avatar">は</div>
+      <div>はると</div>
+      <div class="method">1辺と両端の角</div>
+    </button>
+    <button class="tab-btn" data-tab="shiho">
+      <div class="avatar">し</div>
+      <div>しほ</div>
+      <div class="method">3辺の長さ</div>
+    </button>
+    <button class="tab-btn" data-tab="kota">
+      <div class="avatar">こ</div>
+      <div>こうた</div>
+      <div class="method">番外編：四角形</div>
+    </button>
+  </nav>
+
+  <!-- ================= AMI: SAS ================= -->
+  <section class="panel active" id="panel-ami">
+    <div class="card">
+      <div class="controls">
+        <h2>あみさんの方法</h2>
+        <span class="rule-badge sas">2つの辺の長さと、その間の角の大きさ</span>
+        <label>辺 BC の長さ (cm)</label>
+        <input type="number" id="ami-bc" value="6" step="0.1" min="1" max="12">
+        <label>辺 AB の長さ (cm)</label>
+        <input type="number" id="ami-ab" value="5.5" step="0.1" min="1" max="12">
+        <label>角 B の大きさ (度)</label>
+        <input type="number" id="ami-angb" value="35" step="1" min="1" max="170">
+        <button class="btn" id="ami-set">この長さ・角度で作る</button>
+        <button class="btn play" id="ami-play">▶ アニメーション再生</button>
+        <div class="error-msg" id="ami-error"></div>
+        <div class="hint-box">辺BC(黒)と辺AB(赤)を角度0°で重ねてから、指定した角Bまでゆっくり開くよ。開き終わったら、頂点Aと頂点Cを結ぶだけで三角形が完成するのを見てみよう。</div>
+      </div>
+      <div class="stage-wrap">
+        <svg class="stage" id="ami-svg" viewBox="0 0 560 380"></svg>
+        <div class="status" id="ami-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= HARUTO: ASA ================= -->
+  <section class="panel" id="panel-haruto">
+    <div class="card">
+      <div class="controls">
+        <h2>はるとさんの方法</h2>
+        <span class="rule-badge asa">1つの辺の長さと、その両はしの2つの角の大きさ</span>
+        <label>辺 BC の長さ (cm)</label>
+        <input type="number" id="ha-bc" value="6" step="0.1" min="1" max="12">
+        <label>角 B の大きさ (度)</label>
+        <input type="number" id="ha-angb" value="35" step="1" min="1" max="170">
+        <label>角 C の大きさ (度)</label>
+        <input type="number" id="ha-angc" value="65" step="1" min="1" max="170">
+        <button class="btn" id="ha-set">この長さ・角度で作る</button>
+        <button class="btn play" id="ha-play">▶ アニメーション再生</button>
+        <div class="error-msg" id="ha-error"></div>
+        <div class="hint-box">辺BC(黒)を描いたら、辺AB(赤・長い直線)を角度0°から角Bまで開き、続いて辺AC(青・長い直線)を角度0°から角Cまで開くよ。2本の直線がぶつかったところが、本当の頂点Aだよ。</div>
+      </div>
+      <div class="stage-wrap">
+        <svg class="stage" id="ha-svg" viewBox="0 0 560 380"></svg>
+        <div class="status" id="ha-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SHIHO: SSS ================= -->
+  <section class="panel" id="panel-shiho">
+    <div class="card">
+      <div class="controls">
+        <h2>しほさんの方法</h2>
+        <span class="rule-badge sss">3つの辺の長さ</span>
+        <label>辺 AB の長さ (cm)</label>
+        <input type="number" id="sh-ab" value="5.5" step="0.1" min="1" max="12">
+        <label>辺 BC の長さ (cm)</label>
+        <input type="number" id="sh-bc" value="6" step="0.1" min="1" max="12">
+        <label>辺 AC の長さ (cm)</label>
+        <input type="number" id="sh-ac" value="3.5" step="0.1" min="1" max="12">
+        <button class="btn" id="sh-set">この長さで作る</button>
+        <button class="btn secondary" id="sh-reset">🔄 うでの位置をリセット</button>
+        <div class="error-msg" id="sh-error"></div>
+        <div class="hint-box">赤い辺(AB)は頂点Bを中心に、青い辺(AC)は頂点Cを中心に、指でドラッグして回してみよう。それぞれの頂点が動く軌跡（破線の円）が見えるよ。2つの円が交わるところに、赤と青の先っぽを両方持っていけたら…？</div>
+      </div>
+      <div class="stage-wrap">
+        <svg class="stage" id="sh-svg" viewBox="0 0 560 380"></svg>
+        <div class="status" id="sh-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= KOTA: quadrilateral ================= -->
+  <section class="panel" id="panel-kota">
+    <div class="card">
+      <div class="controls">
+        <h2>こうたさんの疑問</h2>
+        <span class="rule-badge quad">四角形は、辺の長さだけで形が決まる？</span>
+        <label>辺 AB の長さ (cm)</label>
+        <input type="number" id="ko-ab" value="5" step="0.1" min="1" max="10">
+        <label>辺 BC の長さ (底辺・固定, cm)</label>
+        <input type="number" id="ko-bc" value="6" step="0.1" min="1" max="10">
+        <label>辺 CD の長さ (cm)</label>
+        <input type="number" id="ko-cd" value="4.5" step="0.1" min="1" max="10">
+        <label>辺 DA の長さ (cm)</label>
+        <input type="number" id="ko-da" value="5.5" step="0.1" min="1" max="10">
+        <button class="btn" id="ko-set">この長さで作る</button>
+        <button class="btn secondary" id="ko-reset">🔄 形をリセット</button>
+        <div class="error-msg" id="ko-error"></div>
+        <div class="hint-box">底辺BCだけ位置を固定しているよ。頂点AかDをドラッグしてみよう。4つの辺の長さはぜんぶ変わらないのに、形はグニャグニャ変わり続けるよ。三角形とはちがうね。</div>
+      </div>
+      <div class="stage-wrap">
+        <svg class="stage" id="ko-svg" viewBox="0 0 560 400"></svg>
+        <div class="status show info" id="ko-status">頂点 A か D をドラッグしてみよう</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ---------------- geometry helpers ---------------- */
+function polar(cx,cy,r,angDeg){
+  const rad = angDeg*Math.PI/180;
+  return { x: cx + r*Math.cos(rad), y: cy - r*Math.sin(rad) };
+}
+function angleOfPoint(cx,cy,px,py){
+  return Math.atan2(-(py-cy), px-cx) * 180/Math.PI;
+}
+function dist(a,b){ return Math.hypot(b.x-a.x, b.y-a.y); }
+function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+function circleIntersect(x1,y1,r1,x2,y2,r2){
+  const dx=x2-x1, dy=y2-y1;
+  const d=Math.hypot(dx,dy);
+  if (d>r1+r2 || d<Math.abs(r1-r2) || d===0) return null;
+  const a=(r1*r1-r2*r2+d*d)/(2*d);
+  const h=Math.sqrt(Math.max(0, r1*r1-a*a));
+  const xm=x1+a*dx/d, ym=y1+a*dy/d;
+  return [
+    { x: xm + h*dy/d, y: ym - h*dx/d },
+    { x: xm - h*dy/d, y: ym + h*dx/d }
+  ];
+}
+function lineIntersect(p1,p2,p3,p4){
+  const a1=p2.y-p1.y, b1=p1.x-p2.x, c1=a1*p1.x+b1*p1.y;
+  const a2=p4.y-p3.y, b2=p3.x-p4.x, c2=a2*p3.x+b2*p3.y;
+  const det=a1*b2-a2*b1;
+  if (Math.abs(det)<1e-9) return null;
+  return { x:(b2*c1-b1*c2)/det, y:(a1*c2-a2*c1)/det };
+}
+function lawOfCosinesAngle(oppSide, sideA, sideB){
+  // angle opposite oppSide, between sideA & sideB
+  let c = (sideA*sideA + sideB*sideB - oppSide*oppSide)/(2*sideA*sideB);
+  c = clamp(c,-1,1);
+  return Math.acos(c)*180/Math.PI;
+}
+function fmt(n){ return (Math.round(n*10)/10).toFixed(1); }
+function fmtDeg(n){ return Math.round(n); }
+function getSvgPoint(svg, evt){
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return {x:0,y:0};
+  const inv = ctm.inverse();
+  const p = pt.matrixTransform(inv);
+  return { x:p.x, y:p.y };
+}
+function easeOutCubic(t){ return 1 - Math.pow(1-t, 3); }
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-"+btn.dataset.tab).classList.add("active");
+  });
+});
+
+/* =====================================================================
+   AMI: SAS animation
+   ===================================================================== */
+(function(){
+  const svg = document.getElementById("ami-svg");
+  const statusEl = document.getElementById("ami-status");
+  const errEl = document.getElementById("ami-error");
+  const BASE_Y = 300, CX = 280;
+  let state = { BC:6, AB:5.5, angB:35, phase:"idle", startT:0, curAngle:0, connectProg:0 };
+
+  function showStatus(msg, cls){
+    statusEl.textContent = msg;
+    statusEl.className = "status show" + (cls?(" "+cls):"");
+  }
+  function hideStatus(){ statusEl.className = "status"; }
+
+  function layout(){
+    const scale = clamp(240/Math.max(state.BC, state.AB), 16, 44);
+    const B = { x: CX - state.BC*scale/2, y: BASE_Y };
+    const C = { x: CX + state.BC*scale/2, y: BASE_Y };
+    return { scale, B, C };
+  }
+
+  function draw(){
+    const {scale,B,C} = layout();
+    const A = polar(B.x, B.y, state.AB*scale, state.curAngle);
+    let html = "";
+    // BC
+    html += `<line x1="${B.x}" y1="${B.y}" x2="${C.x}" y2="${C.y}" stroke="var(--line)" stroke-width="3"/>`;
+    html += `<text class="len-label" x="${(B.x+C.x)/2}" y="${B.y+22}" text-anchor="middle">BC = ${fmt(state.BC)}cm</text>`;
+    // AB
+    html += `<line x1="${B.x}" y1="${B.y}" x2="${A.x}" y2="${A.y}" stroke="var(--red)" stroke-width="3"/>`;
+    const midAB = {x:(B.x+A.x)/2, y:(B.y+A.y)/2};
+    html += `<text class="len-label red" x="${midAB.x-14}" y="${midAB.y-6}">AB=${fmt(state.AB)}</text>`;
+    // angle arc at B
+    if (state.curAngle > 2){
+      const r = 30;
+      const p0 = polar(B.x,B.y,r,0);
+      const p1 = polar(B.x,B.y,r,state.curAngle);
+      const largeArc = state.curAngle>180?1:0;
+      html += `<path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 ${largeArc} 0 ${p1.x} ${p1.y}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+      html += `<text class="angle-label" x="${B.x+40}" y="${B.y-14}">${fmtDeg(state.curAngle)}°</text>`;
+    }
+    // connect AC
+    if (state.phase==="connect" || state.phase==="done"){
+      const len = dist(A,C);
+      html += `<line id="ami-ac-line" x1="${A.x}" y1="${A.y}" x2="${C.x}" y2="${C.y}" stroke="var(--blue)" stroke-width="3"
+        stroke-dasharray="${len}" stroke-dashoffset="${state.phase==="connect"? len*(1-state.connectProg): 0}"/>`;
+      const midAC = {x:(A.x+C.x)/2, y:(A.y+C.y)/2};
+      html += `<text class="len-label blue" x="${midAC.x+8}" y="${midAC.y-4}">AC=${fmt(len/scale)}</text>`;
+    }
+    // vertices
+    html += `<circle cx="${B.x}" cy="${B.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${B.x-18}" y="${B.y+18}">B</text>`;
+    html += `<circle cx="${C.x}" cy="${C.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${C.x+8}" y="${C.y+18}">C</text>`;
+    html += `<circle cx="${A.x}" cy="${A.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${A.x-4}" y="${A.y-10}">A</text>`;
+    if (state.phase==="done"){
+      html += `<circle class="pulse-ring" cx="${A.x}" cy="${A.y}" r="6" fill="none" stroke="var(--green)" stroke-width="2"/>`;
+    }
+    svg.innerHTML = html;
+  }
+
+  function tick(ts){
+    if (state.phase==="arm"){
+      if (!state.startT) state.startT = ts;
+      const t = clamp((ts-state.startT)/1300, 0, 1);
+      state.curAngle = state.angB * easeOutCubic(t);
+      draw();
+      if (t>=1){
+        state.phase="connect"; state.startT=0; state.connectProg=0;
+        requestAnimationFrame(tick);
+        return;
+      }
+      requestAnimationFrame(tick);
+    } else if (state.phase==="connect"){
+      if (!state.startT) state.startT = ts;
+      const t = clamp((ts-state.startT)/700, 0, 1);
+      state.connectProg = easeOutCubic(t);
+      draw();
+      if (t>=1){
+        state.phase="done";
+        const {scale} = layout();
+        const B = layout().B, C = layout().C;
+        const A = polar(B.x,B.y,state.AB*scale,state.angB);
+        const acLen = dist(A,C)/scale;
+        const angleC = lawOfCosinesAngle(state.AB*scale, dist(A,C), dist(C,layout().B)).toFixed(0);
+        // angle at C opposite AB
+        const angC2 = lawOfCosinesAngle(state.AB*scale, dist(A,C), dist(B,C));
+        const angA2 = 180-state.angB-angC2;
+        showStatus(`辺BCと辺AB、その間の角Bが決まったら、辺ACの長さ（約${fmt(acLen)}cm）も角C（約${fmtDeg(angC2)}°）も自動的にひとつに決まったね！`, "");
+        draw();
+        return;
+      }
+      requestAnimationFrame(tick);
+    }
+  }
+
+  function reset(){
+    state.phase="idle"; state.curAngle=0; state.connectProg=0; state.startT=0;
+    hideStatus();
+    draw();
+  }
+
+  document.getElementById("ami-set").addEventListener("click", ()=>{
+    const bc = parseFloat(document.getElementById("ami-bc").value);
+    const ab = parseFloat(document.getElementById("ami-ab").value);
+    const angb = parseFloat(document.getElementById("ami-angb").value);
+    errEl.textContent = "";
+    if (!(bc>0 && ab>0 && angb>0 && angb<180)){
+      errEl.textContent = "正しい数値を入れてね（角度は1〜179度）。";
+      return;
+    }
+    state.BC=bc; state.AB=ab; state.angB=angb;
+    reset();
+  });
+  document.getElementById("ami-play").addEventListener("click", ()=>{
+    state.phase="arm"; state.startT=0; state.curAngle=0;
+    hideStatus();
+    requestAnimationFrame(tick);
+  });
+
+  draw();
+})();
+
+/* =====================================================================
+   HARUTO: ASA animation
+   ===================================================================== */
+(function(){
+  const svg = document.getElementById("ha-svg");
+  const statusEl = document.getElementById("ha-status");
+  const errEl = document.getElementById("ha-error");
+  const BASE_Y = 300, CX = 280;
+  let state = { BC:6, angB:35, angC:65, phase:"idle", startT:0, curB:0, curC:0 };
+  const RAY = 900;
+
+  function showStatus(msg){ statusEl.textContent=msg; statusEl.className="status show"; }
+  function hideStatus(){ statusEl.className="status"; }
+
+  function layout(){
+    const scale = clamp(240/state.BC, 16, 44);
+    const B = { x: CX - state.BC*scale/2, y: BASE_Y };
+    const C = { x: CX + state.BC*scale/2, y: BASE_Y };
+    return { scale, B, C };
+  }
+
+  function draw(){
+    const {scale,B,C} = layout();
+    let html = "";
+    html += `<line x1="${B.x}" y1="${B.y}" x2="${C.x}" y2="${C.y}" stroke="var(--line)" stroke-width="3"/>`;
+    html += `<text class="len-label" x="${(B.x+C.x)/2}" y="${B.y+22}" text-anchor="middle">BC = ${fmt(state.BC)}cm</text>`;
+
+    let Bray=null, Cray=null;
+    if (state.curB>0){
+      Bray = polar(B.x,B.y,RAY,state.curB);
+      html += `<line x1="${B.x}" y1="${B.y}" x2="${Bray.x}" y2="${Bray.y}" stroke="var(--red)" stroke-width="3"/>`;
+      if (state.curB>2){
+        const r=30, p0=polar(B.x,B.y,r,0), p1=polar(B.x,B.y,r,state.curB);
+        html += `<path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 0 ${p1.x} ${p1.y}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+        html += `<text class="angle-label" x="${B.x+38}" y="${B.y-14}">${fmtDeg(state.curB)}°</text>`;
+      }
+    }
+    if (state.curC>0){
+      const ang = 180-state.curC;
+      Cray = polar(C.x,C.y,RAY,ang);
+      html += `<line x1="${C.x}" y1="${C.y}" x2="${Cray.x}" y2="${Cray.y}" stroke="var(--blue)" stroke-width="3"/>`;
+      if (state.curC>2){
+        const r=30, p0=polar(C.x,C.y,r,180), p1=polar(C.x,C.y,r,ang);
+        html += `<path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p1.x} ${p1.y}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+        html += `<text class="angle-label" x="${C.x-58}" y="${C.y-14}">${fmtDeg(state.curC)}°</text>`;
+      }
+    }
+
+    html += `<circle cx="${B.x}" cy="${B.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${B.x-18}" y="${B.y+18}">B</text>`;
+    html += `<circle cx="${C.x}" cy="${C.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${C.x+8}" y="${C.y+18}">C</text>`;
+
+    if (state.phase==="done"){
+      const A = lineIntersect(B,Bray,C,Cray);
+      if (A){
+        html += `<line x1="${B.x}" y1="${B.y}" x2="${A.x}" y2="${A.y}" stroke="var(--red)" stroke-width="3.5"/>`;
+        html += `<line x1="${C.x}" y1="${C.y}" x2="${A.x}" y2="${A.y}" stroke="var(--blue)" stroke-width="3.5"/>`;
+        html += `<circle cx="${A.x}" cy="${A.y}" r="4.5" fill="var(--green)"/>`;
+        html += `<circle class="pulse-ring" cx="${A.x}" cy="${A.y}" r="6" fill="none" stroke="var(--green)" stroke-width="2"/>`;
+        html += `<text class="vertex-label" x="${A.x-4}" y="${A.y-12}">A</text>`;
+        const abLen = dist(A,B)/scale, acLen = dist(A,C)/scale;
+        html += `<text class="len-label red" x="${(B.x+A.x)/2-40}" y="${(B.y+A.y)/2}">AB≈${fmt(abLen)}</text>`;
+        html += `<text class="len-label blue" x="${(C.x+A.x)/2+6}" y="${(C.y+A.y)/2}">AC≈${fmt(acLen)}</text>`;
+      }
+    }
+    svg.innerHTML = html;
+  }
+
+  function tick(ts){
+    if (state.phase==="armB"){
+      if (!state.startT) state.startT=ts;
+      const t = clamp((ts-state.startT)/1200,0,1);
+      state.curB = state.angB*easeOutCubic(t);
+      draw();
+      if (t>=1){ state.phase="armC"; state.startT=0; requestAnimationFrame(tick); return; }
+      requestAnimationFrame(tick);
+    } else if (state.phase==="armC"){
+      if (!state.startT) state.startT=ts;
+      const t = clamp((ts-state.startT)/1200,0,1);
+      state.curC = state.angC*easeOutCubic(t);
+      draw();
+      if (t>=1){
+        state.phase="done";
+        draw();
+        showStatus(`辺BCと、両はしの角B・角Cが決まったら、赤と青の直線がぶつかる点がひとつに決まった！そこが本当の頂点Aだよ。`);
+        return;
+      }
+      requestAnimationFrame(tick);
+    }
+  }
+
+  function reset(){
+    state.phase="idle"; state.curB=0; state.curC=0; state.startT=0;
+    hideStatus(); draw();
+  }
+
+  document.getElementById("ha-set").addEventListener("click", ()=>{
+    const bc = parseFloat(document.getElementById("ha-bc").value);
+    const angb = parseFloat(document.getElementById("ha-angb").value);
+    const angc = parseFloat(document.getElementById("ha-angc").value);
+    errEl.textContent = "";
+    if (!(bc>0 && angb>0 && angc>0 && angb+angc<179)){
+      errEl.textContent = "角Bと角Cの合計は179度より小さくしてね。";
+      return;
+    }
+    state.BC=bc; state.angB=angb; state.angC=angc;
+    reset();
+  });
+  document.getElementById("ha-play").addEventListener("click", ()=>{
+    state.phase="armB"; state.startT=0; state.curB=0; state.curC=0;
+    hideStatus();
+    requestAnimationFrame(tick);
+  });
+
+  draw();
+})();
+
+/* =====================================================================
+   SHIHO: SSS interactive drag
+   ===================================================================== */
+(function(){
+  const svg = document.getElementById("sh-svg");
+  const statusEl = document.getElementById("sh-status");
+  const errEl = document.getElementById("sh-error");
+  const BASE_Y = 300, CX = 280;
+  let state = { AB:5.5, BC:6, AC:3.5, angB:12, angC:168, dragging:null, solved:false };
+
+  function showStatus(msg){ statusEl.textContent=msg; statusEl.className="status show"; }
+  function hideStatus(){ statusEl.className="status"; }
+
+  function layout(){
+    const scale = clamp(230/Math.max(state.AB,state.BC,state.AC), 14, 42);
+    const B = { x: CX - state.BC*scale/2, y: BASE_Y };
+    const C = { x: CX + state.BC*scale/2, y: BASE_Y };
+    return { scale, B, C };
+  }
+
+  function target(){
+    const {scale,B,C} = layout();
+    const inter = circleIntersect(B.x,B.y,state.AB*scale, C.x,C.y,state.AC*scale);
+    if (!inter) return null;
+    return inter[0].y < inter[1].y ? inter[0] : inter[1]; // upper point (smaller y)
+  }
+
+  function draw(){
+    const {scale,B,C} = layout();
+    const tgt = target();
+    let html = "";
+    html += `<line x1="${B.x}" y1="${B.y}" x2="${C.x}" y2="${C.y}" stroke="var(--line)" stroke-width="3"/>`;
+    html += `<text class="len-label" x="${(B.x+C.x)/2}" y="${B.y+22}" text-anchor="middle">BC=${fmt(state.BC)}</text>`;
+
+    if (!tgt){
+      html += `<text x="${CX}" y="150" text-anchor="middle" fill="#C0392B" font-size="13">この3辺の長さでは三角形を作れないよ</text>`;
+      svg.innerHTML = html;
+      return;
+    }
+
+    // loci (dashed circles)
+    html += `<circle cx="${B.x}" cy="${B.y}" r="${state.AB*scale}" fill="none" stroke="var(--red)" stroke-width="1.3" stroke-dasharray="5 5" opacity="0.55"/>`;
+    html += `<circle cx="${C.x}" cy="${C.y}" r="${state.AC*scale}" fill="none" stroke="var(--blue)" stroke-width="1.3" stroke-dasharray="5 5" opacity="0.55"/>`;
+
+    // candidate point hint
+    html += `<circle cx="${tgt.x}" cy="${tgt.y}" r="5" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-dasharray="2 3" opacity="0.6"/>`;
+
+    const armBend = state.solved ? tgt : polar(B.x,B.y,state.AB*scale,state.angB);
+    const armCend = state.solved ? tgt : polar(C.x,C.y,state.AC*scale,state.angC);
+
+    html += `<line x1="${B.x}" y1="${B.y}" x2="${armBend.x}" y2="${armBend.y}" stroke="var(--red)" stroke-width="3.5"/>`;
+    html += `<line x1="${C.x}" y1="${C.y}" x2="${armCend.x}" y2="${armCend.y}" stroke="var(--blue)" stroke-width="3.5"/>`;
+
+    html += `<circle data-handle="B" class="handle" cx="${armBend.x}" cy="${armBend.y}" r="9" fill="var(--red)" opacity="0.85"/>`;
+    html += `<circle data-handle="C" class="handle" cx="${armCend.x}" cy="${armCend.y}" r="9" fill="var(--blue)" opacity="0.85"/>`;
+
+    const midAB={x:(B.x+armBend.x)/2,y:(B.y+armBend.y)/2};
+    const midAC={x:(C.x+armCend.x)/2,y:(C.y+armCend.y)/2};
+    html += `<text class="len-label red" x="${midAB.x-30}" y="${midAB.y}">AB=${fmt(state.AB)}</text>`;
+    html += `<text class="len-label blue" x="${midAC.x+6}" y="${midAC.y}">AC=${fmt(state.AC)}</text>`;
+
+    html += `<circle cx="${B.x}" cy="${B.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${B.x-18}" y="${B.y+18}">B</text>`;
+    html += `<circle cx="${C.x}" cy="${C.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${C.x+8}" y="${C.y+18}">C</text>`;
+
+    if (state.solved){
+      html += `<circle class="pulse-ring" cx="${tgt.x}" cy="${tgt.y}" r="6" fill="none" stroke="var(--green)" stroke-width="2"/>`;
+      html += `<text class="vertex-label" x="${tgt.x-4}" y="${tgt.y-12}">A</text>`;
+    }
+    svg.innerHTML = html;
+    attachHandles();
+  }
+
+  function checkSolved(){
+    const {scale,B,C} = layout();
+    const tgt = target();
+    if (!tgt) return;
+    const armBend = polar(B.x,B.y,state.AB*scale,state.angB);
+    const armCend = polar(C.x,C.y,state.AC*scale,state.angC);
+    const tol = 14;
+    if (dist(armBend,tgt)<tol && dist(armCend,tgt)<tol){
+      state.solved = true;
+      const angA = lawOfCosinesAngle(state.BC*scale, state.AB*scale, state.AC*scale);
+      const angB2 = lawOfCosinesAngle(state.AC*scale, state.AB*scale, state.BC*scale);
+      const angC2 = lawOfCosinesAngle(state.AB*scale, state.AC*scale, state.BC*scale);
+      showStatus(`ぴったり重なった！3辺の長さ(AB,BC,AC)が決まると、角A≈${fmtDeg(angA)}°、角B≈${fmtDeg(angB2)}°、角C≈${fmtDeg(angC2)}°も自動的にひとつに決まるよ。`);
+    } else {
+      state.solved = false;
+      hideStatus();
+    }
+  }
+
+  function attachHandles(){
+    svg.querySelectorAll("[data-handle]").forEach(h=>{
+      h.addEventListener("pointerdown", (e)=>{
+        state.dragging = h.dataset.handle;
+        state.solved = false;
+        hideStatus();
+        e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+      });
+    });
+  }
+
+  svg.addEventListener("pointermove", (e)=>{
+    if (!state.dragging) return;
+    const {scale,B,C} = layout();
+    const p = getSvgPoint(svg,e);
+    if (state.dragging==="B"){
+      let ang = angleOfPoint(B.x,B.y,p.x,p.y);
+      state.angB = clamp(ang, 2, 178);
+    } else {
+      let ang = angleOfPoint(C.x,C.y,p.x,p.y);
+      state.angC = clamp(ang, 2, 178);
+    }
+    draw();
+    checkSolved();
+    draw();
+  });
+  window.addEventListener("pointerup", ()=>{ state.dragging=null; });
+
+  document.getElementById("sh-set").addEventListener("click", ()=>{
+    const ab = parseFloat(document.getElementById("sh-ab").value);
+    const bc = parseFloat(document.getElementById("sh-bc").value);
+    const ac = parseFloat(document.getElementById("sh-ac").value);
+    errEl.textContent = "";
+    if (!(ab>0 && bc>0 && ac>0)){ errEl.textContent="正しい数値を入れてね。"; return; }
+    if (ab+bc<=ac || bc+ac<=ab || ab+ac<=bc){
+      errEl.textContent = "その3辺では三角形が作れないよ（2辺の和が残りの1辺より長くなるようにしてね）。";
+      return;
+    }
+    state.AB=ab; state.BC=bc; state.AC=ac;
+    state.angB=12; state.angC=168; state.solved=false;
+    hideStatus();
+    draw();
+  });
+  document.getElementById("sh-reset").addEventListener("click", ()=>{
+    state.angB=12; state.angC=168; state.solved=false;
+    hideStatus();
+    draw();
+  });
+
+  draw();
+})();
+
+/* =====================================================================
+   KOTA: quadrilateral four-bar linkage
+   ===================================================================== */
+(function(){
+  const svg = document.getElementById("ko-svg");
+  const errEl = document.getElementById("ko-error");
+  const BASE_Y = 300, CX = 280;
+  let state = { AB:5, BC:6, CD:4.5, DA:5.5, A:null, D:null, dragging:null };
+
+  function layout(){
+    const scale = clamp(200/Math.max(state.AB,state.BC,state.CD,state.DA), 14, 40);
+    const B = { x: CX - state.BC*scale/2, y: BASE_Y };
+    const C = { x: CX + state.BC*scale/2, y: BASE_Y };
+    return { scale, B, C };
+  }
+
+  function findInitial(){
+    const {scale,B,C} = layout();
+    const tryAngles = [100,80,120,60,140,45,135,30,150,20,160];
+    for (const ang of tryAngles){
+      const A = polar(B.x,B.y,state.AB*scale,ang);
+      const inter = circleIntersect(A.x,A.y,state.DA*scale, C.x,C.y,state.CD*scale);
+      if (inter){
+        const D = inter[0].y < inter[1].y ? inter[0] : inter[1];
+        return { A, D };
+      }
+    }
+    return null;
+  }
+
+  function reset(){
+    const init = findInitial();
+    if (!init){
+      errEl.textContent = "この4辺の長さでは四角形が作れないよ（1辺が他の3辺の合計より短くなるようにしてね）。";
+      svg.innerHTML = "";
+      return;
+    }
+    errEl.textContent = "";
+    state.A = init.A; state.D = init.D;
+    draw();
+  }
+
+  function draw(){
+    if (!state.A || !state.D) return;
+    const {scale,B,C} = layout();
+    const {A,D} = state;
+    let html = "";
+    const pts = [A,B,C,D];
+    const poly = pts.map(p=>`${p.x},${p.y}`).join(" ");
+    html += `<polygon points="${poly}" fill="#F2A93B" opacity="0.12" stroke="none"/>`;
+
+    function edge(p1,p2,color,label,len){
+      html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${color}" stroke-width="3"/>`;
+      const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+      const dx=p2.x-p1.x, dy=p2.y-p1.y, L=Math.hypot(dx,dy)||1;
+      const nx=-dy/L, ny=dx/L;
+      html += `<text class="len-label" x="${mx+nx*14}" y="${my+ny*14}" text-anchor="middle">${label}=${fmt(len)}</text>`;
+    }
+    edge(A,B,"var(--red)","AB",state.AB);
+    edge(B,C,"var(--line)","BC",state.BC);
+    edge(C,D,"var(--blue)","CD",state.CD);
+    edge(D,A,"#8E6BC1","DA",state.DA);
+
+    html += `<circle cx="${B.x}" cy="${B.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${B.x-18}" y="${B.y+18}">B</text>`;
+    html += `<circle cx="${C.x}" cy="${C.y}" r="4" fill="var(--ink)"/><text class="vertex-label" x="${C.x+8}" y="${C.y+18}">C</text>`;
+    html += `<circle data-handle="A" class="handle" cx="${A.x}" cy="${A.y}" r="10" fill="var(--red)"/><text class="vertex-label" x="${A.x-6}" y="${A.y-14}">A</text>`;
+    html += `<circle data-handle="D" class="handle" cx="${D.x}" cy="${D.y}" r="10" fill="var(--blue)"/><text class="vertex-label" x="${D.x+6}" y="${D.y-14}">D</text>`;
+
+    const angBdeg = angleBetween(A,B,C);
+    html += `<text x="10" y="24" font-size="13" fill="var(--sub)">角B ≈ ${fmtDeg(angBdeg)}°（辺の長さは同じでも、角度はどんどん変わるよ）</text>`;
+
+    svg.innerHTML = html;
+    attachHandles();
+  }
+
+  function angleBetween(P, vertex, Q){
+    const v1 = {x:P.x-vertex.x, y:P.y-vertex.y};
+    const v2 = {x:Q.x-vertex.x, y:Q.y-vertex.y};
+    const dot = v1.x*v2.x+v1.y*v2.y;
+    const m1 = Math.hypot(v1.x,v1.y), m2=Math.hypot(v2.x,v2.y);
+    return Math.acos(clamp(dot/(m1*m2),-1,1))*180/Math.PI;
+  }
+
+  function attachHandles(){
+    svg.querySelectorAll("[data-handle]").forEach(h=>{
+      h.addEventListener("pointerdown",(e)=>{
+        state.dragging = h.dataset.handle;
+        e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+      });
+    });
+  }
+
+  svg.addEventListener("pointermove",(e)=>{
+    if (!state.dragging) return;
+    const {scale,B,C} = layout();
+    const p = getSvgPoint(svg,e);
+    if (state.dragging==="A"){
+      const ang = clamp(angleOfPoint(B.x,B.y,p.x,p.y), 2, 178);
+      const newA = polar(B.x,B.y,state.AB*scale,ang);
+      const inter = circleIntersect(newA.x,newA.y,state.DA*scale, C.x,C.y,state.CD*scale);
+      if (inter){
+        const d0 = dist(inter[0],state.D), d1 = dist(inter[1],state.D);
+        state.D = d0<d1 ? inter[0] : inter[1];
+        state.A = newA;
+        draw();
+      }
+    } else {
+      const ang = clamp(angleOfPoint(C.x,C.y,p.x,p.y), 2, 178);
+      const newD = polar(C.x,C.y,state.CD*scale,ang);
+      const inter = circleIntersect(newD.x,newD.y,state.DA*scale, B.x,B.y,state.AB*scale);
+      if (inter){
+        const d0 = dist(inter[0],state.A), d1 = dist(inter[1],state.A);
+        state.A = d0<d1 ? inter[0] : inter[1];
+        state.D = newD;
+        draw();
+      }
+    }
+  });
+  window.addEventListener("pointerup", ()=>{ state.dragging=null; });
+
+  document.getElementById("ko-set").addEventListener("click", ()=>{
+    const ab=parseFloat(document.getElementById("ko-ab").value);
+    const bc=parseFloat(document.getElementById("ko-bc").value);
+    const cd=parseFloat(document.getElementById("ko-cd").value);
+    const da=parseFloat(document.getElementById("ko-da").value);
+    if (!(ab>0&&bc>0&&cd>0&&da>0)){ errEl.textContent="正しい数値を入れてね。"; return; }
+    const sides=[ab,bc,cd,da], sum=ab+bc+cd+da;
+    if (sides.some(s=> s>= sum-s)){
+      errEl.textContent = "1つの辺が他の3辺の合計以上にならないようにしてね。";
+      return;
+    }
+    state.AB=ab; state.BC=bc; state.CD=cd; state.DA=da;
+    reset();
+  });
+  document.getElementById("ko-reset").addEventListener("click", reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>

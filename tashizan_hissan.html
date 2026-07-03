@@ -527,8 +527,8 @@ function drawHissan(svgEl,state){
   }
 
   // ＋記号（「たす数」＝B の桁数の、いちばん大きい位の1つ左のマスに書く。答えの桁数は関係ない）
-  const leftmostColB=S.bDigits>=3?H2X:(S.bDigits===2?HJX:HIX);
-  const plusX=leftmostColB-HG;
+  const leftmostCol=S.maxDigits>=3?H2X:(S.maxDigits===2?HJX:HIX);
+  const plusX=leftmostCol-HG;
   if(S.showPlus) txt('＋',plusX,HROW2_Y+4,20,'bold','#e67e22');
 
   // 横線（＋記号の下のマスも含めて伸ばす）
@@ -537,7 +537,32 @@ function drawHissan(svgEl,state){
     mk('line',{x1:lx1,y1:HLINE_Y,x2:168,y2:HLINE_Y,stroke:'#333','stroke-width':2.5},svgEl);
   }
 
-  // ハイライト
+  // 各位の計算中：その位の列全体を破線の色枠で囲む
+  // グリッド境界: 0,38,76,114,152 — A行上端=38, こたえ行下端=152, くり上がり行上端=0
+  {
+    const m=2,gBot=Math.ceil(HROW3_Y/HG)*HG; // こたえ行の下端グリッド線 = 152
+    // 一の位：ピンク（くり上がり行なし → A行上端から3マス）
+    if(S.hlColIchi){
+      const gTop=Math.floor(HROW1_Y/HG)*HG; // = 38
+      const cx=HIX,cw=HG;
+      mk('rect',{x:cx-cw/2+m,y:gTop+m,width:cw-m*2,height:gBot-gTop-m*2,
+        fill:'none',stroke:'#e91e63','stroke-width':2,'stroke-dasharray':'5,3',rx:4},svgEl);
+    }
+    // 十の位：黄色（くり上がり補助数字があれば上端=0の4マス、なければ38の3マス）
+    if(S.hlColJuu){
+      const gTop=S.showCarryJ?Math.floor(HCARRY_Y/HG)*HG:Math.floor(HROW1_Y/HG)*HG;
+      const cx=HJX,cw=HG;
+      mk('rect',{x:cx-cw/2+m,y:gTop+m,width:cw-m*2,height:gBot-gTop-m*2,
+        fill:'none',stroke:'#d4ac0d','stroke-width':2,'stroke-dasharray':'5,3',rx:4},svgEl);
+    }
+    // 百の位：水色（同様）
+    if(S.hlColHyaku&&(S.has3||S.has4)){
+      const gTop=S.showCarryH?Math.floor(HCARRY_Y/HG)*HG:Math.floor(HROW1_Y/HG)*HG;
+      const cx=H2X,cw=HG;
+      mk('rect',{x:cx-cw/2+m,y:gTop+m,width:cw-m*2,height:gBot-gTop-m*2,
+        fill:'none',stroke:'#2980b9','stroke-width':2,'stroke-dasharray':'5,3',rx:4},svgEl);
+    }
+  }
   if(S.hlIchi){hl(HIX-18,HROW1_Y-32,38,38,'#fce4ec');hl(HIX-18,HROW2_Y-32,38,38,'#fce4ec');}
   if(S.hlJuu){
     hl(HJX-18,HROW1_Y-32,38,38,'#fff9cc');hl(HJX-18,HROW2_Y-32,38,38,'#fff9cc');
@@ -798,9 +823,11 @@ function buildSteps(){
   // has4: 千の位の列が必要（答えが4桁、つまり1000以上）
   const has4=(ans>=1000);
 
-  const bDigits=numB>=100?3:(numB>=10?2:1); // ＋記号は「たす数（B）」の桁数だけで位置を決める（答えの桁数は関係ない）
+  const aDigits=numA>=100?3:(numA>=10?2:1);
+  const bDigits=numB>=100?3:(numB>=10?2:1);
+  const maxDigits=Math.max(aDigits,bDigits); // ＋記号は「たす数・たされる数のうち多い方の桁数」で位置を決める
   const hBase={
-    aS:0,aH,aJ,aI,bS:0,bH,bJ,bI,bDigits,
+    aS:0,aH,aJ,aI,bS:0,bH,bJ,bI,maxDigits,
     iSum,jRaw,hRaw, // くり上がり前の「2桁になってしまう」生の合計（くり上がり説明の表示用）
     iAns,jAns,hAns,sAns,has3,has4,
     showAS:false,showAH:false,showAJ:false,showAI:false,
@@ -810,7 +837,7 @@ function buildSteps(){
     carryJPop:false,carryHPop:false, // trueの間だけpop-inアニメを再生（くり上がり直後の1ステップのみ）
     showAnsI:false,showAnsJ:false,showAnsH:false,showAnsS:false,
     showAnsITemp:false,showAnsJTemp:false,showAnsHTemp:false, // くり上がり前：答え欄に2桁の生の合計を表示する
-    hlIchi:false,hlJuu:false,hlHyaku:false,ansBox:false
+    hlIchi:false,hlJuu:false,hlHyaku:false,hlColIchi:false,hlColJuu:false,hlColHyaku:false,ansBox:false
   };
 
   const tBase={
@@ -940,7 +967,7 @@ function buildSteps(){
       +`<span class="ic">${aI} ＋ ${bI} ＝ ${iSum}</span><br>`
       +(hasCarryI?`10より おおきいので <span class="cc">くり上がり</span> があります。`
                :`答えの いちのくらいは <span class="ic">${iAns}</span> です。`);
-    p.h.hlIchi=true;
+    p.h.hlIchi=true;p.h.hlColIchi=true;
     if(hasCarryI)p.h.showAnsITemp=true; else p.h.showAnsI=true;
     p.t.ichiA={count:aI,alpha:.25,hl:null};
     p.t.ichiB={count:bI,alpha:.25,hl:null};
@@ -970,7 +997,7 @@ function buildSteps(){
       +`その たばを <span class="jc">じゅうのくらい</span> に くり上げます。<br>`
       +`のこり <span class="ic">${iAns}こ</span> が いちのくらいの こたえです。`;
     p.h.showAnsITemp=false;p.h.showAnsI=true;
-    p.h.showCarryJ=true;p.h.hlIchi=true;
+    p.h.showCarryJ=true;p.h.hlIchi=true;p.h.hlColIchi=true;
     p.h.carryJPop=true; // この「くり上げる」ステップでだけポップ演出
     p.hissanSplit={raw:iSum,colX:HIX,destX:HJX,destY:HCARRY_Y,idSuffix:'I'};
     p.t.ichiAns={count:iAns,alpha:1,hl:null};
@@ -988,7 +1015,7 @@ function buildSteps(){
       +(hasCarryI?`くり上がった <span class="cc">1</span> と <span class="jc">${aJ} ＋ ${bJ}</span> で<br>`:'')
       +`<span class="jc">${hasCarryI?'1＋':''}${aJ} ＋ ${bJ} ＝ ${jRaw}</span>`
       +(hasCarryJ?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
-    p.h.hlIchi=false;p.h.hlJuu=true;
+    p.h.hlIchi=false;p.h.hlJuu=true;p.h.hlColIchi=false;p.h.hlColJuu=true;
     if(hasCarryJ&&has3)p.h.showAnsJTemp=true; else p.h.showAnsJ=true;
     p.h.carryJPop=false; // ここから先は静的表示（ポップ演出は再生しない）
     p.t.juuA={count:aJ,alpha:.25,hl:null};
@@ -1019,7 +1046,7 @@ function buildSteps(){
       +`その タイルを <span class="hc">ひゃくのくらい</span> に くり上げます。<br>`
       +`のこり <span class="jc">${jAns}本</span> が じゅうのくらいの こたえです。`;
     p.h.showAnsJTemp=false;p.h.showAnsJ=true;
-    p.h.showCarryH=true;p.h.hlJuu=true;p.h.showAnsJ=true;
+    p.h.showCarryH=true;p.h.hlJuu=true;p.h.showAnsJ=true;p.h.hlColJuu=true;
     p.h.carryHPop=true; // この「くり上げる」ステップでだけポップ演出
     p.hissanSplit={raw:jRaw,colX:HJX,destX:H2X,destY:HCARRY_Y,idSuffix:'J'};
     p.t.juuAns={count:jAns,alpha:1,hl:null};
@@ -1038,7 +1065,7 @@ function buildSteps(){
       +(hasCarryJ?`くり上がった <span class="cc">1</span> と <span class="hc">${aH} ＋ ${bH}</span> で<br>`:'')
       +`<span class="hc">${hasCarryJ?'1＋':''}${aH} ＋ ${bH} ＝ ${totalH}</span>`
       +(hasCarryH?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
-    p.h.hlJuu=false;p.h.hlHyaku=true;
+    p.h.hlJuu=false;p.h.hlHyaku=true;p.h.hlColJuu=false;p.h.hlColHyaku=true;
     if(hasCarryH&&has4)p.h.showAnsHTemp=true; else p.h.showAnsH=true;
     p.h.carryHPop=false; // 十→百のポップ演出はここで終了（数字「1」自体は表示し続ける）
     p.t.hyakuA={count:aH,alpha:.25,hl:null};
@@ -1069,7 +1096,7 @@ function buildSteps(){
       +`その たばを <span class="sc">せんのくらい</span> に くり上げます。<br>`
       +`のこり <span class="hc">${hAns}まい</span> が ひゃくのくらいの こたえです。`;
     p.h.showAnsHTemp=false;p.h.showAnsH=true;
-    p.h.showAnsS=true;p.h.hlHyaku=true;
+    p.h.showAnsS=true;p.h.hlHyaku=true;p.h.hlColHyaku=true;
     // 千の位は他の桁のような「小さい赤字のくり上がり」ではなく、そのまま答えの数字になる
     p.hissanSplit={raw:hRaw,colX:H2X,destX:HSX,destY:HROW3_Y,destFontSize:34,destColor:'#1a7f37',idSuffix:'H'};
     p.t.hyakuAns={count:hAns,alpha:1,hl:null};
@@ -1582,9 +1609,17 @@ function runAnim(animType,prevState,nextState,onDone){
     const stickGs=allSrc.map((p,i)=>{
       const g=mk('g',{},layer);
       const isC=(hasCarryI&&i===0);
-      drawStick(g,p.x,p.y,U,1,isC?'#e74c3c':SC);
+      drawStick(g,p.x,p.y,U,1,isC?'#e74c3c':SC); // 移動するタイル自体は濃い色のまま
       return g;
     });
+    // くり上がり棒がヘッダー上から離れた瞬間に、残像（mark-layer）を半透明に切り替える
+    if(hasCarryI){
+      const ml=document.getElementById('mark-layer');ml.innerHTML='';
+      const pos=aboveHdr('hdr-juu');
+      const JH=10*U+9*U*.15,bx=pos.x-U/2,by=pos.y-JH/2;
+      const g=mk('g',{opacity:.35},ml);
+      for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},g);}
+    }
     tween(600,t=>{
       stickGs.forEach((g,i)=>{
         const tx=allSrc[i].x+(dstAll[i].x-allSrc[i].x)*t;
@@ -1683,9 +1718,29 @@ function runAnim(animType,prevState,nextState,onDone){
     const hGs=allSrc.map((p,i)=>{
       const g=mk('g',{},layer);
       const isC=(hasCarryJ&&i===0);
-      drawHyakuScaled(g,p.x,p.y,su,1,isC?'#e74c3c':SC);
+      drawHyakuScaled(g,p.x,p.y,su,1,isC?'#e74c3c':SC); // 移動するタイル自体は濃い色のまま
       return g;
     });
+    // くり上がりタイルがヘッダー上から離れた瞬間に、残像（mark-layer）を半透明に切り替える。
+    // このとき mark-layer を全クリアすると、すでに表示中の十の位くり上がり残像も消えてしまうため、
+    // prevState の markJ が表示中であれば一緒に描き直す。
+    if(hasCarryJ){
+      const ml=document.getElementById('mark-layer');ml.innerHTML='';
+      // 十の位のくり上がり残像を先に再描画（消えないようにする）。棒と赤枠の両方を描く。
+      if(prevState.markJ&&prevState.markJ.show){
+        const posJ=aboveHdr('hdr-juu');
+        const JH=10*U+9*U*.15,bxJ=posJ.x-U/2,byJ=posJ.y-JH/2;
+        const gJ=mk('g',{opacity:prevState.markJ.alpha},ml);
+        for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bxJ,y:byJ+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},gJ);}
+        mk('rect',{x:bxJ-1,y:byJ-1,width:U+2,height:JH+2,fill:'none',stroke:'#e74c3c','stroke-width':2,rx:1},gJ);
+      }
+      // 次に百の位のくり上がり残像を描く
+      const pos=aboveHdr('hdr-hyaku');
+      const HW=vbW('svg-hyaku-ans'),HH_SVG=vbH('svg-hyaku-ans');
+      const su2=U*Math.min((HW-8)/HYAKU_SIDE,(HH_SVG-8)/HYAKU_SIDE,1);
+      const g=mk('g',{},ml);
+      drawHyakuScaled(g,pos.x,pos.y,su2,.35,'#e74c3c');
+    }
     tween(620,t=>{
       hGs.forEach((g,i)=>{
         const tx=allSrc[i].x+(dstAll[i].x-allSrc[i].x)*t;
