@@ -111,8 +111,13 @@
   <div id="phase1">
     <div class="svg-area">
       <svg id="svgPhase1" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <clipPath id="triClipPath"><polygon id="triClipPoly" points="480,90 230,390 730,390"/></clipPath>
+        </defs>
         <g id="phase1Group">
           <polygon id="triPolygon" points="480,90 230,390 730,390" fill="rgba(220,235,245,0.7)" stroke="#5d7b93" stroke-width="2.5"/>
+          <g id="vertexColorGroup" clip-path="url(#triClipPath)"></g>
+          <g id="tornLinesGroup"></g>
           <text id="lenAB" x="355" y="250" fill="#7f8c8d" font-size="15" font-weight="600" text-anchor="end">辺AB: 335</text>
           <text id="lenBC" x="480" y="415" fill="#7f8c8d" font-size="15" font-weight="600" text-anchor="middle">辺BC: 500</text>
           <text id="lenCA" x="605" y="250" fill="#7f8c8d" font-size="15" font-weight="600" text-anchor="start">辺CA: 335</text>
@@ -132,7 +137,7 @@
         <span>辺CA:</span><input type="number" id="inputCA" value="335">
         <button class="btn btn-primary" id="applySidesBtn">適用</button>
       </div>
-      <button class="btn btn-cut" id="btnToPhase2">✂️ ハサミで切ってならべるモードへ</button>
+      <button class="btn btn-cut" id="btnToPhase2">🖐️ ちぎってならべるモードへ</button>
     </div>
   </div>
 
@@ -202,6 +207,9 @@
   const svgPhase1 = document.getElementById('svgPhase1');
   const svgPhase2 = document.getElementById('svgPhase2');
   const triPolygon = document.getElementById('triPolygon');
+  const triClipPoly = document.getElementById('triClipPoly');
+  const vertexColorGroup = document.getElementById('vertexColorGroup');
+  const tornLinesGroup = document.getElementById('tornLinesGroup');
   const lenAB = document.getElementById('lenAB'), lenBC = document.getElementById('lenBC'), lenCA = document.getElementById('lenCA');
   const handleA = document.getElementById('handleA'), handleB = document.getElementById('handleB'), handleC = document.getElementById('handleC');
   const labelA = document.getElementById('labelA'), labelB = document.getElementById('labelB'), labelC = document.getElementById('labelC');
@@ -216,6 +224,37 @@
   function vecSub(a,b) { return {x:a.x-b.x, y:a.y-b.y}; }
   function vecAngle(v) { return Math.atan2(v.y, v.x); }
   function normalizeAngle(a) { while(a<-Math.PI)a+=Math.PI*2; while(a>Math.PI)a-=Math.PI*2; return a; }
+
+  // --- ちぎり紙風のギザギザ境界線の生成 ---
+  function generateTornProfile() {
+    const segments = 5 + Math.floor(Math.random()*3); // 5〜7分割
+    let profile = [];
+    for (let i=1;i<segments;i++) {
+      let t = i/segments + (Math.random()-0.5)*(0.5/segments);
+      t = Math.max(0.06, Math.min(0.94, t));
+      let offsetRatio = (Math.random()-0.5) * 0.24;
+      if (Math.random() < 0.3) offsetRatio *= 1.5; // たまに大きめのギザギザ
+      profile.push({t, offsetRatio});
+    }
+    profile.sort((a,b)=>a.t-b.t);
+    return profile;
+  }
+  // 3本の内部の「ちぎり線」用プロファイル（一度だけ生成し、形が変わっても同じ手触りを保つ）
+  const tornProfiles = [generateTornProfile(), generateTornProfile(), generateTornProfile()];
+
+  function buildTornEdge(start, end, profile) {
+    const dx=end.x-start.x, dy=end.y-start.y;
+    const len=Math.hypot(dx,dy) || 1;
+    const nx=-dy/len, ny=dx/len;
+    const pts=[{x:start.x, y:start.y}];
+    for (const p of profile) {
+      const bx=start.x+dx*p.t, by=start.y+dy*p.t;
+      const off=len*p.offsetRatio;
+      pts.push({x:bx+nx*off, y:by+ny*off});
+    }
+    pts.push({x:end.x, y:end.y});
+    return pts;
+  }
 
   function computeAllAngles() {
     const A=points[0], B=points[1], C=points[2];
@@ -246,11 +285,26 @@
   function getPartLocalPolygons() {
     const A=points[0],B=points[1],C=points[2], G=centroid(points);
     const M_AB=midpoint(A,B), M_BC=midpoint(B,C), M_CA=midpoint(C,A);
-    return [
-      [{x:0,y:0}, vecSub(M_AB,A), vecSub(G,A), vecSub(M_CA,A)],
-      [{x:0,y:0}, vecSub(M_BC,B), vecSub(G,B), vecSub(M_AB,B)],
-      [{x:0,y:0}, vecSub(M_CA,C), vecSub(G,C), vecSub(M_BC,C)]
-    ];
+
+    // 3本のちぎり線（それぞれ 中点 → 重心 の向きが基準）
+    const edgeAB_G = buildTornEdge(M_AB, G, tornProfiles[0]);
+    const edgeBC_G = buildTornEdge(M_BC, G, tornProfiles[1]);
+    const edgeCA_G = buildTornEdge(M_CA, G, tornProfiles[2]);
+
+    function toLocal(pts, origin) { return pts.map(p=>vecSub(p,origin)); }
+    function rev(pts) { return pts.slice().reverse(); }
+
+    const partA = [{x:0,y:0}]
+      .concat(toLocal(edgeAB_G, A))
+      .concat(toLocal(rev(edgeCA_G), A).slice(1));
+    const partB = [{x:0,y:0}]
+      .concat(toLocal(edgeBC_G, B))
+      .concat(toLocal(rev(edgeAB_G), B).slice(1));
+    const partC = [{x:0,y:0}]
+      .concat(toLocal(edgeCA_G, C))
+      .concat(toLocal(rev(edgeBC_G), C).slice(1));
+
+    return [partA, partB, partC];
   }
 
   function polyToPointsString(p) { return p.map(pt=>`${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' '); }
@@ -260,9 +314,53 @@
     return `M 0,0 L ${x1.toFixed(2)},${y1.toFixed(2)} A ${r},${r} 0 ${la},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`;
   }
 
+  function renderVertexColorHints() {
+    clearGroup(vertexColorGroup);
+    const [A,B,C]=points;
+    const verts=[A,B,C];
+    const fills=['var(--colorA-light)','var(--colorB-light)','var(--colorC-light)'];
+    const R = 62;
+    for (let i=0;i<3;i++) {
+      let sec = cachedSectorAngles[i];
+      let path=document.createElementNS(SVG_NS,'path');
+      path.setAttribute('d', createSectorPath(sec, R));
+      path.setAttribute('transform', `translate(${verts[i].x.toFixed(2)},${verts[i].y.toFixed(2)})`);
+      path.setAttribute('fill', fills[i]);
+      path.setAttribute('opacity','0.85');
+      path.setAttribute('pointer-events','none');
+      vertexColorGroup.appendChild(path);
+    }
+  }
+
+  function renderTornLines() {
+    clearGroup(tornLinesGroup);
+    const A=points[0], B=points[1], C=points[2], G=centroid(points);
+    const M_AB=midpoint(A,B), M_BC=midpoint(B,C), M_CA=midpoint(C,A);
+    const edges = [
+      buildTornEdge(M_AB, G, tornProfiles[0]),
+      buildTornEdge(M_BC, G, tornProfiles[1]),
+      buildTornEdge(M_CA, G, tornProfiles[2])
+    ];
+    edges.forEach(pts=>{
+      let poly=document.createElementNS(SVG_NS,'polyline');
+      poly.setAttribute('points', pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '));
+      poly.setAttribute('fill','none');
+      poly.setAttribute('stroke','#3a3a3a');
+      poly.setAttribute('stroke-width','2.4');
+      poly.setAttribute('stroke-linecap','round');
+      poly.setAttribute('stroke-linejoin','round');
+      poly.setAttribute('opacity','0.8');
+      poly.setAttribute('pointer-events','none');
+      tornLinesGroup.appendChild(poly);
+    });
+  }
+
   function updatePhase1() {
     const [A,B,C]=points;
     triPolygon.setAttribute('points',`${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`);
+    triClipPoly.setAttribute('points',`${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`);
+    renderVertexColorHints();
+    clearGroup(tornLinesGroup); // 自由に形を変えるモードでは、ちぎり線（ギザギザ）を非表示にする
     let dAB=Math.round(dist(A,B)), dBC=Math.round(dist(B,C)), dCA=Math.round(dist(C,A));
     let mAB=midpoint(A,B), mBC=midpoint(B,C), mCA=midpoint(C,A);
     lenAB.setAttribute('x',mAB.x-8); lenAB.setAttribute('y',mAB.y-10); lenAB.textContent=`辺AB: ${dAB}`;
