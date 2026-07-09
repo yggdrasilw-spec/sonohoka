@@ -137,6 +137,12 @@
         <span>辺CA:</span><input type="number" id="inputCA" value="335">
         <button class="btn btn-primary" id="applySidesBtn">適用</button>
       </div>
+      <div class="toggle-group" id="cutModeToggle">
+        <input type="radio" id="cutModeTear" name="cutMode" value="tear" checked>
+        <label for="cutModeTear">🖐️ ちぎる</label>
+        <input type="radio" id="cutModeScissors" name="cutMode" value="scissors">
+        <label for="cutModeScissors">✂️ はさみ</label>
+      </div>
       <button class="btn btn-cut" id="btnToPhase2">🖐️ ちぎってならべるモードへ</button>
     </div>
   </div>
@@ -194,6 +200,7 @@
 
   let points = [ {x:480,y:90}, {x:230,y:390}, {x:730,y:390} ];
   let currentPhase = 1, phase2Mode = 'manual';
+  let cutMode = 'tear'; // 'tear'（ちぎる＝ギザギザ）| 'scissors'（はさみ＝直線）
   let animProgress = 0, isAnimating = false, animDirection = 1, animStartTime = 0;
   const ANIM_DURATION = 1300;
   let manualParts = [], autoTargets = [];
@@ -286,7 +293,15 @@
     const A=points[0],B=points[1],C=points[2], G=centroid(points);
     const M_AB=midpoint(A,B), M_BC=midpoint(B,C), M_CA=midpoint(C,A);
 
-    // 3本のちぎり線（それぞれ 中点 → 重心 の向きが基準）
+    if (cutMode === 'scissors') {
+      // ハサミモード：中点→重心を直線でカット（細長い三角形でも形が崩れない）
+      const partA = [{x:0,y:0}, vecSub(M_AB,A), vecSub(G,A), vecSub(M_CA,A)];
+      const partB = [{x:0,y:0}, vecSub(M_BC,B), vecSub(G,B), vecSub(M_AB,B)];
+      const partC = [{x:0,y:0}, vecSub(M_CA,C), vecSub(G,C), vecSub(M_BC,C)];
+      return [partA, partB, partC];
+    }
+
+    // ちぎるモード：3本のちぎり線（それぞれ 中点 → 重心 の向きが基準）
     const edgeAB_G = buildTornEdge(M_AB, G, tornProfiles[0]);
     const edgeBC_G = buildTornEdge(M_BC, G, tornProfiles[1]);
     const edgeCA_G = buildTornEdge(M_CA, G, tornProfiles[2]);
@@ -722,6 +737,17 @@
   document.getElementById('modeAuto').addEventListener('change', ()=>{ phase2Mode='auto'; updatePhase2ModeUI(); });
   document.getElementById('modeManual').addEventListener('change', ()=>{ phase2Mode='manual'; updatePhase2ModeUI(); });
 
+  function updateCutModeUI() {
+    const btn = document.getElementById('btnToPhase2');
+    if (cutMode === 'scissors') {
+      btn.textContent = '✂️ ハサミで切ってならべるモードへ';
+    } else {
+      btn.textContent = '🖐️ ちぎってならべるモードへ';
+    }
+  }
+  document.getElementById('cutModeTear').addEventListener('change', ()=>{ cutMode='tear'; updateCutModeUI(); });
+  document.getElementById('cutModeScissors').addEventListener('change', ()=>{ cutMode='scissors'; updateCutModeUI(); });
+
   window.addEventListener('keydown', (e)=>{
     if(currentPhase!==2||phase2Mode!=='manual') return;
     let idx = (draggedPartIndex >= 0) ? draggedPartIndex : lastSelectedPart;
@@ -730,7 +756,7 @@
     if(e.key === 'ArrowRight') { manualParts[idx].rot += 0.1; if(manualParts[idx].snapped) manualParts[idx].snapped = false; updatePhase2(); }
   });
 
-  computeAllAngles(); updatePhase1(); initManualParts(); updatePhase2ModeUI(); switchToPhase1();
+  computeAllAngles(); updatePhase1(); initManualParts(); updatePhase2ModeUI(); updateCutModeUI(); switchToPhase1();
 })();
 </script>
 </body>
