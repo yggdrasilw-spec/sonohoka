@@ -92,6 +92,17 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 #anim-layer{position:absolute;top:0;left:0;width:100%;height:100%;
   pointer-events:none;overflow:visible;z-index:100;}
 
+/* 一の位に繰り下げた「10の塊」の半透明な痕跡表示用レイヤー。
+   anim-layerと違い、ステップを進めても内容をクリアしない永続レイヤーとして扱う
+   （paintTiles()がステップの状態に応じて毎回描き直す）。*/
+#bridge10-layer{position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;overflow:visible;z-index:90;}
+
+/* 百の位から十の位へくり下げた「10本の10」の半透明な痕跡表示用レイヤー。
+   bridge10-layerと同じ考え方の永続レイヤー。 */
+#bridge100-layer{position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;overflow:visible;z-index:90;}
+
 .right-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-width:190px;}
 .hissan-box{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);
   padding:10px 14px 14px;}
@@ -170,8 +181,8 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   </div>
   <div class="bridge-toggle">
     <label>くり下がりの 計算方法：</label>
-    <button class="method-btn active" id="btn-bridge" onclick="setMethod('bridge')">ブリッジ方式（10からひく）</button>
-    <button class="method-btn" id="btn-direct" onclick="setMethod('direct')">そのままひく方式</button>
+    <button class="method-btn" id="btn-normal" onclick="setMethod('normal')">通常</button>
+    <button class="method-btn active" id="btn-bridge" onclick="setMethod('bridge')">ブリッジ計算</button>
   </div>
 </div>
 
@@ -189,7 +200,7 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
           <th class="th-label"></th>
           <th class="th-hyaku" id="hdr-hyaku">ひゃくのくらい</th>
           <th class="th-juu"   id="hdr-juu">じゅうのくらい</th>
-          <th class="th-ichi">いちのくらい</th>
+          <th class="th-ichi" id="hdr-ichi">いちのくらい</th>
         </tr>
       </thead>
       <tbody>
@@ -216,6 +227,8 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
         </tr>
       </tbody>
     </table>
+    <svg id="bridge10-layer"></svg>
+    <svg id="bridge100-layer"></svg>
     <svg id="anim-layer"></svg>
   </div>
 
@@ -249,6 +262,73 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 const NS='http://www.w3.org/2000/svg';
 const U=5.5;
 const FC='#f5c542', SC='#c8960a', SC5='#7a5500';
+// 百の位タイルを、縦横どちらにも少しずつずらして斜めに並べる際の間隔。
+// 静的表示(renderHyakus)・出現アニメ(appear-hyaku)・くり下げアニメ(borrow-h-to-j系)・
+// 対消滅アニメ(annihilate-hyaku)のすべてで、この値と並べ方の計算式を統一して使うことで、
+// アニメ前後の表示位置のずれを防ぐ。枠が広がってもタイル自体の大きさは変えたくないため、
+// タイルの縮尺だけは常にHYAKU_TILE_REF_H基準で計算する（枠の高さ自体はupdateLayoutで動的に広げる）。
+const HYAKU_STEP_X=24, HYAKU_STEP_Y=20, HYAKU_TILE_REF_H=86;
+// 1列目(1〜5枚目)の最大枚数。6枚目以降は2列目として右にHYAKU_ROW2_OFFSET_TILES枚分ずらして開始する。
+const HYAKU_ROW1_MAX=5;
+const HYAKU_ROW2_OFFSET_TILES=2;
+
+// 百の位タイルの「相対」配置(まだ中心寄せしていない生の座標)を計算する。
+// ・1〜5枚目(i<HYAKU_ROW1_MAX)は「5枚のときの配置」に固定する。
+//   総数(total)が6枚以上に増えても、row1Totalは常に5になるため1〜5枚目の位置は動かない
+//   （総数が5枚以下の間は row1Total===total となり、これまでの中央寄せ配置と完全に一致する）。
+// ・6枚目以降(i>=HYAKU_ROW1_MAX)は、1枚目(index 0)と同じ高さ・そこからHYAKU_ROW2_OFFSET_TILES枚分
+//   右の位置を起点(2列目)とし、そこから同じ斜めの間隔(HYAKU_STEP_X/Y)でずらしながら並べる。
+function hyakuRawPos(i,total,su){
+  const side2=10*su+9*su*.15;
+  const row1Total=Math.min(total,HYAKU_ROW1_MAX);
+  if(i<HYAKU_ROW1_MAX){
+    const off=i-(row1Total-1)/2;
+    return{x:off*HYAKU_STEP_X, y:-off*HYAKU_STEP_Y};
+  }
+  const off0=0-(row1Total-1)/2; // 1枚目(index0)の位置。total>5のときrow1Totalは常に5固定
+  const x0=off0*HYAKU_STEP_X, y0=-off0*HYAKU_STEP_Y;
+  const rowStartX=x0+HYAKU_ROW2_OFFSET_TILES*side2, rowStartY=y0;
+  const j=i-HYAKU_ROW1_MAX;
+  return{x:rowStartX+j*HYAKU_STEP_X, y:rowStartY-j*HYAKU_STEP_Y};
+}
+// total枚を配置したときの、生座標(hyakuRawPos)でのバウンディングボックス
+// (=全タイルを囲む青い破線の矩形と同じ範囲)を求める。
+function hyakuBBox(total,su){
+  const side2=10*su+9*su*.15;
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(let i=0;i<total;i++){
+    const p=hyakuRawPos(i,total,su);
+    minX=Math.min(minX,p.x-side2/2);maxX=Math.max(maxX,p.x+side2/2);
+    minY=Math.min(minY,p.y-side2/2);maxY=Math.max(maxY,p.y+side2/2);
+  }
+  return{minX,maxX,minY,maxY};
+}
+// 百の位タイルの配置を計算する共通関数。
+// 全タイルのバウンディングボックス(hyakuBBox、＝青い破線で囲む範囲そのもの)の中心が
+// 枠の中心(W/2,H/2)にちょうど来るように、生座標(hyakuRawPos)をシフトして返す。
+// これにより、6枚目以降が増えて右に伸びても、見た目全体が常に枠内で中央寄せされる。
+// renderHyakus(静止表示)・出現アニメ・くり下げアニメ・対消滅アニメの全てで必ずこの関数を
+// 使うことで、アニメ前後の表示位置のズレを防ぐ。
+function hyakuTilePos(i,total,W,H,su){
+  const bbox=hyakuBBox(total,su);
+  const shiftX=W/2-(bbox.minX+bbox.maxX)/2;
+  const shiftY=H/2-(bbox.minY+bbox.maxY)/2;
+  const p=hyakuRawPos(i,total,su);
+  return{cx:p.x+shiftX, cy:p.y+shiftY};
+}
+// 枠の幅に依存しない、高さ基準の百タイル縮尺(su)。updateLayoutで枠サイズを
+// 決める際、まだsvgの幅が確定していない段階でも使えるようにするための基準値。
+function hyakuRefSu(){
+  const side=10*U+9*U*.15;
+  return U*(HYAKU_TILE_REF_H-8)/side;
+}
+// total枚のタイルを配置したときに必要な、バウンディングボックスの幅・高さを返す。
+// updateLayoutでの枠の自動サイズ計算に使う（中心寄せされるので、この幅・高さの枠を
+// 用意すればちょうど全タイルが収まる）。
+function hyakuFootprint(total,su){
+  const bbox=hyakuBBox(total,su);
+  return{width:bbox.maxX-bbox.minX, height:bbox.maxY-bbox.minY};
+}
 
 function mk(tag,a,parent){
   const e=document.createElementNS(NS,tag);
@@ -309,23 +389,28 @@ function drawSenScaled(parent,cx,cy,u,alpha,strokeColor){
 }
 
 // ===== 一の位：個別ブロック =====
-function drawIchi(parent,count,svgW,svgH,alpha,hColor){
-  if(!count)return[];
-  const u=U,gap=u*.18,S=u+gap,bGap=u*.7,BH=5*u+4*gap;
-  const full=Math.floor(count/5),rem=count%5,nBlocks=full+(rem?1:0);
-  const cols=nBlocks<=2?1:2,colPitch=u+10;
-  const totW=cols*u+(cols-1)*(colPitch-u);
-  const sx=svgW/2-totW/2+u/2;
+function drawIchi(parent,count,svgW,svgH,alpha,hColor,ghostCount){
+  ghostCount=ghostCount||0;
+  const total=count+ghostCount;
+  if(!total)return[];
+  const u=U,gap=u*.18,S=u+gap,rGap=u*.7,BW=5*u+4*gap;
+  // 5個を横一列に並べ、6個目以降は下の行に積む（対消滅アニメで見やすい横並び）
+  const nRows=Math.ceil(total/5);
+  const totH=nRows*u+(nRows-1)*rGap;
+  const sy=svgH/2-totH/2+u/2;
   const pos=[];let drawn=0;
-  for(let b=0;b<nBlocks&&drawn<count;b++){
-    const col=b%cols,brow=Math.floor(b/cols);
-    const inB=(b===nBlocks-1&&rem)?rem:5;
-    const cx=sx+col*colPitch,botY=svgH-6;
-    const blockBotY=botY-brow*(BH+bGap);
-    for(let i=0;i<inB&&drawn<count;i++){
-      const cy=blockBotY-i*S;
+  for(let r=0;r<nRows&&drawn<total;r++){
+    const inRow=(r===nRows-1)?(total-drawn):5;
+    // 各行は中央寄せ（5個未満の行は中央に詰める）
+    const rowW=inRow*u+(inRow-1)*gap;
+    const sx=svgW/2-rowW/2+u/2;
+    const cy=sy+r*(u+rGap);
+    for(let i=0;i<inRow&&drawn<total;i++){
+      const cx=sx+i*S;
+      const isGhost=drawn>=count;
+      const a=isGhost?.45:alpha;
       mk('rect',{x:cx-u/2,y:cy-u/2,width:u,height:u,fill:FC,
-        stroke:alpha<.5?'#aaa':SC,'stroke-width':1,rx:.6,opacity:alpha},parent);
+        stroke:isGhost?'#8a8a8a':SC,'stroke-width':1,'stroke-dasharray':isGhost?'2,1.5':'0',rx:.6,opacity:a},parent);
       pos.push({cx,cy});drawn++;
     }
   }
@@ -341,15 +426,24 @@ function drawIchi(parent,count,svgW,svgH,alpha,hColor){
 
 // ===== render系（SVGに静的描画）=====
 // 棒(十の位)
-function renderSticks(svgEl,count,alpha,hColor,strokeColor){
-  svgEl.innerHTML='';if(!count)return[];
+function renderSticks(svgEl,count,alpha,hColor,strokeColor,ghostCount){
+  svgEl.innerHTML='';
+  ghostCount=ghostCount||0;
+  const total=count+ghostCount;
+  if(!total)return[];
   const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
   const stW=U+1,gap=5,centers=[];
-  const totW=count*stW+(count-1)*gap;
+  const totW=total*stW+(total-1)*gap;
   const sx=(W-totW)/2+stW/2;
-  for(let i=0;i<count;i++){
+  for(let i=0;i<total;i++){
+    const isGhost=i>=count;
     const g=mk('g',{},svgEl);
-    drawStick(g,sx+i*(stW+gap),H/2,U,alpha??1,strokeColor||SC);
+    drawStick(g,sx+i*(stW+gap),H/2,U,isGhost?.45:(alpha??1),strokeColor||SC);
+    if(isGhost){
+      const G=U*.15,TH=10*U+9*G;
+      mk('rect',{x:sx+i*(stW+gap)-U/2-2,y:H/2-TH/2-2,width:U+4,height:TH+4,
+        fill:'none',stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'3,2',rx:2},svgEl);
+    }
     centers.push({cx:sx+i*(stW+gap),cy:H/2});
   }
   if(hColor){
@@ -361,21 +455,38 @@ function renderSticks(svgEl,count,alpha,hColor,strokeColor){
 }
 
 // 百タイル
-function renderHyakus(svgEl,count,alpha,hColor,strokeColor){
-  svgEl.innerHTML='';if(!count)return[];
+function renderHyakus(svgEl,count,alpha,hColor,strokeColor,ghostCount){
+  svgEl.innerHTML='';
+  ghostCount=ghostCount||0;
+  const total=count+ghostCount;
+  if(!total)return[];
   const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
   const u=U,G=u*.15,side=10*u+9*G;
-  const sc=Math.min((W-8)/side,(H-8)/side);
-  const su=u*sc,step=2.5,centers=[];
-  for(let i=0;i<count;i++){
-    const cx=W/2+(i-(count-1)/2)*step,cy=H/2-(i-(count-1)/2)*step;
+  // タイル自体の縮尺は、枠の高さ(H)ではなく常に基準の高さ(HYAKU_TILE_REF_H)で計算する。
+  // こうしておくことで、枚数が増えて枠(H)が縦に広がっても、タイル1枚1枚の大きさは変わらない。
+  const sc=Math.min((W-8)/side,(HYAKU_TILE_REF_H-8)/side);
+  const su=u*sc,centers=[];
+  for(let i=0;i<total;i++){
+    const isGhost=i>=count;
+    const{cx,cy}=hyakuTilePos(i,total,W,H,su);
     const g=mk('g',{},svgEl);
-    drawHyakuScaled(g,cx,cy,su,alpha??1,strokeColor||SC);
+    drawHyakuScaled(g,cx,cy,su,isGhost?.45:(alpha??1),strokeColor||SC);
+    if(isGhost){
+      const side2=10*su+9*su*.15;
+      mk('rect',{x:cx-side2/2-2,y:cy-side2/2-2,width:side2+4,height:side2+4,
+        fill:'none',stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'3,2',rx:2},svgEl);
+    }
     centers.push({cx,cy});
   }
   if(hColor){
+    // 全タイルが収まるバウンディングボックスを求めて囲む(1枚分しか囲めていなかったバグの修正)
     const side2=10*su+9*su*.15,m=4;
-    mk('rect',{x:W/2-side2/2-m,y:H/2-side2/2-m,width:side2+m*2,height:side2+m*2,
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    centers.forEach(({cx,cy})=>{
+      minX=Math.min(minX,cx-side2/2);maxX=Math.max(maxX,cx+side2/2);
+      minY=Math.min(minY,cy-side2/2);maxY=Math.max(maxY,cy+side2/2);
+    });
+    mk('rect',{x:minX-m,y:minY-m,width:(maxX-minX)+m*2,height:(maxY-minY)+m*2,
       fill:'none',stroke:hColor,'stroke-width':2.5,'stroke-dasharray':'5,3',rx:4},svgEl);
   }
   return centers;
@@ -405,10 +516,11 @@ function renderSens(svgEl,count,alpha,hColor,strokeColor){
 }
 
 // 一の位
-function renderIchi(svgEl,count,alpha,hColor){
-  svgEl.innerHTML='';if(!count)return[];
+function renderIchi(svgEl,count,alpha,hColor,ghostCount){
+  svgEl.innerHTML='';
+  if(!count && !ghostCount)return[];
   const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
-  return drawIchi(svgEl,count,W,H,alpha??1,hColor);
+  return drawIchi(svgEl,count,W,H,alpha??1,hColor,ghostCount);
 }
 
 // ============================================================
@@ -454,7 +566,7 @@ function drawHissan(svgEl,state){
     if(S.borrowFromH){
       txt(S.aH,H2X,HROW1_Y,34,'bold','#bbb');
       mk('line',{x1:H2X-15,y1:HROW1_Y-22,x2:H2X+15,y2:HROW1_Y+8,stroke:'#e35d3a','stroke-width':2},svgEl);
-      const ct=mk('text',{x:H2X+15,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+      const ct=mk('text',{x:H2X,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
       ct.textContent=S.hAfterBorrow;
       if(S.borrowHPop)ct.setAttribute('class','pop-in');
     } else {
@@ -462,30 +574,82 @@ function drawHissan(svgEl,state){
     }
   }
   if(S.showAJ){
-    if(S.borrowFromJ){
-      const baseVal = S.jDisplayOverride!==null ? S.jDisplayOverride : S.aJ;
-      txt(baseVal,HJX,HROW1_Y,34,'bold','#bbb');
+    if(S.borrowFromJ && S.jDisplayOverride!==null){
+      // カスケードで十の位が0→10になった後、さらに一の位へ1かり下げる場合。
+      // 実際の筆算の補助計算に合わせ、黒字の0（ひかれる数）は書き換えずそのまま残し、
+      // かり下げ後に書いた赤字の「10」に斜線を引いて、そのさらに上に
+      // 一の位へ貸した後の値（9等）を赤字で書く。
+      txt(S.aJ,HJX,HROW1_Y,34,'bold','#bbb');
       mk('line',{x1:HJX-15,y1:HROW1_Y-22,x2:HJX+15,y2:HROW1_Y+8,stroke:'#e35d3a','stroke-width':2},svgEl);
-      const ct=mk('text',{x:HJX+15,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+      const ct10=mk('text',{x:HJX,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+      ct10.textContent=S.jDisplayOverride;
+      mk('line',{x1:HJX-12,y1:HROW1_Y-36,x2:HJX+12,y2:HROW1_Y-14,stroke:'#e35d3a','stroke-width':1.6},svgEl);
+      const ct=mk('text',{x:HJX,y:HBORROW_Y,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+      ct.textContent=S.jAfterBorrow;
+      if(S.borrowJPop)ct.setAttribute('class','pop-in');
+    } else if(S.borrowFromJ){
+      // カスケードなしの通常の一回借り：従来通り。
+      txt(S.aJ,HJX,HROW1_Y,34,'bold','#bbb');
+      mk('line',{x1:HJX-15,y1:HROW1_Y-22,x2:HJX+15,y2:HROW1_Y+8,stroke:'#e35d3a','stroke-width':2},svgEl);
+      const ct=mk('text',{x:HJX,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
       ct.textContent=S.jAfterBorrow;
       if(S.borrowJPop)ct.setAttribute('class','pop-in');
     } else if(S.jDisplayOverride!==null){
       // カスケード中間状態：十の位が0→9になった見た目（borrowFromHのときの小さい数字表示）
       txt(S.aJ,HJX,HROW1_Y,34,'bold','#bbb');
       mk('line',{x1:HJX-15,y1:HROW1_Y-22,x2:HJX+15,y2:HROW1_Y+8,stroke:'#e35d3a','stroke-width':2},svgEl);
-      const ct=mk('text',{x:HJX+15,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+      const ct=mk('text',{x:HJX,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
       ct.textContent=S.jDisplayOverride;
     } else {
       txt(S.aJ,HJX,HROW1_Y,34,'bold','#222');
     }
   }
+  // 十の位の補助計算：百の位からさらに借りてきた「10」を、
+  // かり下げ後の小さい赤字数字のさらに上に赤字で表示する。
+  if(S.showBridge100){
+    const ct=mk('text',{x:HJX,y:HBORROW_Y,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+    ct.textContent='10';
+    if(S.bridge100Pop)ct.setAttribute('class','pop-in');
+  }
   if(S.showAI) txt(S.aI,HIX,HROW1_Y,34,'bold','#222');
-  // ブリッジの「10」表示（一の位の上、くり下げてきた直後）
+  // ブリッジの「10」表示（一の位の数字の真上、くり下げてきた直後）
   if(S.showBridge10){
-    const ct=mk('text',{x:HIX+18,y:HBORROW_Y,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+    const ct=mk('text',{x:HIX,y:HBORROW_Y,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
     ct.textContent='10';
     if(S.bridge10Pop)ct.setAttribute('class','pop-in');
   }
+
+  // ============================================================
+  // ブリッジ計算（真のブリッジ）の書き込み：「10」と「ひく数」を結ぶコの字線、
+  // ひかれる数の横に書く補助計算の答え、「＋」記号。一の位(HIX)・十の位(HJX)共通。
+  // ============================================================
+  const BRG_COLOR='#00897b';
+  function drawBridgeNotation(colX,S_line,S_linePop,S_ans,S_ansPop,ansVal,S_plus,S_plusPop){
+    const lx0=colX+13, lx1=colX+22;
+    const ly0=HBORROW_Y-9, ly1=HROW2_Y-6;
+    const annoY=HROW1_Y-18;
+    if(S_line){
+      const g=mk('g',{},svgEl);
+      // 「10」→右→下→左、で コの字 を作り、ひく数の右側まで戻す
+      mk('path',{d:`M ${lx0} ${ly0} L ${lx1} ${ly0} L ${lx1} ${ly1} L ${lx0} ${ly1}`,
+        fill:'none',stroke:BRG_COLOR,'stroke-width':1.6},g);
+      if(S_linePop)g.setAttribute('class','pop-in');
+    }
+    if(S_ans){
+      const ct=mk('text',{x:colX+27,y:annoY,'font-size':14,'font-weight':'bold',
+        fill:BRG_COLOR,'text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+      ct.textContent=ansVal;
+      if(S_ansPop)ct.setAttribute('class','pop-in');
+    }
+    if(S_plus){
+      const pt=mk('text',{x:colX+13,y:annoY,'font-size':13,'font-weight':'bold',
+        fill:BRG_COLOR,'text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+      pt.textContent='＋';
+      if(S_plusPop)pt.setAttribute('class','pop-in');
+    }
+  }
+  drawBridgeNotation(HIX,S.showBridgeLineI,S.bridgeLineIPop,S.showBridgeAnsI,S.bridgeAnsIPop,S.bridgeAnsIVal,S.showBridgePlusI,S.bridgePlusIPop);
+  drawBridgeNotation(HJX,S.showBridgeLineJ,S.bridgeLineJPop,S.showBridgeAnsJ,S.bridgeAnsJPop,S.bridgeAnsJVal,S.showBridgePlusJ,S.bridgePlusJPop);
 
   // 数字B行（ひく数）
   if(S.showBH&&S.has3) txt(S.bH,H2X,HROW2_Y,34,'bold','#222');
@@ -514,6 +678,11 @@ function cancelAnim(){if(animId){cancelAnimationFrame(animId);animId=null;}}
 function vbW(id){
   const svg=document.getElementById(id);
   return parseFloat(svg.getAttribute('viewBox').split(' ')[2]);
+}
+// SVG要素の現在のviewBox高さを取得（百の位のように縦方向も動的に広がる列で使用）
+function vbH(id){
+  const svg=document.getElementById(id);
+  return parseFloat(svg.getAttribute('viewBox').split(' ')[3]);
 }
 
 function tween(ms,onFrame,onDone){
@@ -556,10 +725,42 @@ function aboveHdr(id){
 }
 
 // ============================================================
+// くり下げ「ブリッジ」共通レイアウト
+// ------------------------------------------------------------
+// 波及的繰り下がり(borrow-h-to-j-cascade)は、借りてきた10本をタイトル位置
+// (hdr-juu)中心・通常サイズでsvg-juu-aにそのまま描画している。この2関数は、
+// 十の位「通常時」のbridge100-layerと、一の位のbridge10-layerの両方を、
+// 同じ「タイトル位置中心・通常サイズ」ロジックに揃えるための共通座標計算。
+// ============================================================
+// 棒10本(百→十のブリッジ)：renderSticksと同じ間隔計算で、hc中心に横一列。
+function bridgeStickPositions(total,hc){
+  const stW=U+1,gap=5;
+  const totW=total*stW+(total-1)*gap;
+  const sx=hc.x-totW/2+stW/2;
+  return Array.from({length:total},(_,i)=>({x:sx+i*(stW+gap),y:hc.y}));
+}
+// タイル10個(十→一のブリッジ)：drawIchiと同じ「5個ずつ2段」の並べ方で、hc中心に配置。
+function bridgeIchiPositions(total,hc){
+  const u=U,gap=u*.18,S=u+gap,rGap=u*.7;
+  const nRows=Math.ceil(total/5);
+  const totH=nRows*u+(nRows-1)*rGap;
+  const sy=hc.y-totH/2+u/2;
+  const pos=[];let drawn=0;
+  for(let r=0;r<nRows&&drawn<total;r++){
+    const inRow=(r===nRows-1)?(total-drawn):5;
+    const rowW=inRow*u+(inRow-1)*gap;
+    const sx=hc.x-rowW/2+u/2;
+    const cy=sy+r*(u+rGap);
+    for(let i=0;i<inRow&&drawn<total;i++){pos.push({x:sx+i*S,y:cy});drawn++;}
+  }
+  return pos;
+}
+
+// ============================================================
 // アプリ状態
 // ============================================================
 let numA=47,numB=18,stepIdx=0,steps=[],animBusy=false;
-let calcMethod='bridge'; // 'bridge'(10からひく) or 'direct'(そのままひく)
+let calcMethod='bridge'; // 'bridge'(ブリッジ計算：筆算に書き込む) or 'normal'(通常のくり下がり計算)
 function cloneState(s){return JSON.parse(JSON.stringify(s));}
 
 // ============================================================
@@ -615,17 +816,44 @@ function buildSteps(){
     jDisplayOverride:null, // カスケードで十の位がまだ「中間値(9等)」のときに表示する値
     borrowHPop:false,borrowJPop:false,
     showBridge10:false,bridge10Pop:false,
+    // 百の位から十の位へ「かり下げた後の十の位」がさらに繰り下がる場合に、
+    // 十の位の斜線つき小さい赤字数字のさらに上へ表示する「10」の赤字表示。
+    showBridge100:false,bridge100Pop:false,
+    // ブリッジ計算（真のブリッジ）：一の位の「10」と「7」を結ぶコの字線、
+    // ひかれる数の横に書く補助計算の答え、「＋」記号。
+    showBridgeLineI:false,bridgeLineIPop:false,
+    showBridgeAnsI:false,bridgeAnsIPop:false,bridgeAnsIVal:0,
+    showBridgePlusI:false,bridgePlusIPop:false,
+    // 同様に、十の位（百の位からのくり下がり）用。
+    showBridgeLineJ:false,bridgeLineJPop:false,
+    showBridgeAnsJ:false,bridgeAnsJPop:false,bridgeAnsJVal:0,
+    showBridgePlusJ:false,bridgePlusJPop:false,
     showAnsI:false,showAnsJ:false,showAnsH:false,
     hlIchi:false,hlJuu:false,hlHyaku:false,ansBox:false
   };
 
   const tBase={
-    hyakuA:{count:0,alpha:1,hl:null}, juuA:{count:0,alpha:1,hl:null}, ichiA:{count:0,alpha:1,hl:null},
-    hyakuB:{count:0,alpha:1,hl:null}, juuB:{count:0,alpha:1,hl:null}, ichiB:{count:0,alpha:1,hl:null},
-    hyakuAns:{count:0,alpha:1,hl:null}, juuAns:{count:0,alpha:1,hl:null}, ichiAns:{count:0,alpha:1,hl:null},
+    hyakuA:{count:0,alpha:1,hl:null,ghost:0}, juuA:{count:0,alpha:1,hl:null,ghost:0}, ichiA:{count:0,alpha:1,hl:null,ghost:0},
+    hyakuB:{count:0,alpha:1,hl:null,ghost:0}, juuB:{count:0,alpha:1,hl:null,ghost:0}, ichiB:{count:0,alpha:1,hl:null,ghost:0},
+    hyakuAns:{count:0,alpha:1,hl:null,ghost:0}, juuAns:{count:0,alpha:1,hl:null,ghost:0}, ichiAns:{count:0,alpha:1,hl:null,ghost:0},
     showAnsRow:false,
     // 対消滅エフェクト用：今まさに消えるペアの個数（A側・B側それぞれ何個が消滅対象か）
-    annihilateIchi:0, annihilateJuu:0, annihilateHyaku:0
+    annihilateIchi:0, annihilateJuu:0, annihilateHyaku:0,
+    // 一の位へ繰り下げた「10の塊」の半透明痕跡。show=trueの間、bridge10-layerに
+    // count個は通常表示、残り(10-count)個は半透明ghostとして常に描画され続ける。
+    // アニメーション終了後もステップを跨いで(cloneStateで)引き継がれるため、
+    // 計算の最後まで痕跡が消えない。
+    bridgeTen:{show:false,count:0},
+    // 百の位から十の位へ追加でくり下げた「10本の10」の半透明な痕跡。
+    // bridgeTenと同じ考え方で、bridge100-layer（永続レイヤー）に描画される。
+    // count個は通常表示、残り(10-count)個は半透明ghostとして描画され続ける。
+    bridgeHyaku:{show:false,count:0},
+    // 百の位から十の位へカスケードでくり下げて「10本の10」になった時、
+    // その表示位置をひかれる数の通常位置ではなく、じゅうのくらいの
+    // タイトルテキストの高さまでY軸方向で上げるためのフラグ。
+    // 一度trueになったら、その問題の残りのステップでは常にtrueのまま
+    // （cloneStateで引き継がれる）で、ひっ算の補助数字の表示位置と対応させる。
+    juuRaised:false
   };
 
   const list=[];
@@ -741,9 +969,9 @@ function buildSteps(){
     p.desc=`<span class="ic">いちのくらい</span>を けいさんします。<br>`
       +`<span class="ic">${aI} － ${bI} ＝ ${iAns}</span>`;
     p.h.hlIchi=true;p.h.showAnsI=true;
-    p.t.ichiA={count:aI,alpha:1,hl:null};
-    p.t.ichiB={count:bI,alpha:1,hl:null};
-    p.t.ichiAns={count:iAns,alpha:1,hl:null};
+    p.t.ichiA={count:0,alpha:1,hl:null,ghost:aI};
+    p.t.ichiB={count:0,alpha:1,hl:null,ghost:bI};
+    p.t.ichiAns={count:iAns,alpha:1,hl:null,ghost:0};
     p.t.showAnsRow=true;
     p.t.annihilateIchi=bI;
     p.anim='annihilate-ichi';
@@ -770,8 +998,9 @@ function buildSteps(){
           +`いちのくらいに かす ことが できません。<br>`
           +`さきに <span class="hc">ひゃくのくらい</span>から <span class="jc">じゅうのくらい</span>へ <span class="cc">1</span> かり下げます。`;
         p.h.borrowFromH=true;p.h.borrowHPop=true;p.h.hlHyaku=true;
-        p.t.hyakuA={count:aH-1,alpha:1,hl:null};
-        p.t.juuA={count:jBeforeLendToI,alpha:1,hl:'#e74c3c'};
+        p.t.hyakuA={count:aH-1,alpha:1,hl:null,ghost:1};
+        p.t.juuA={count:jBeforeLendToI,alpha:1,hl:'#e74c3c',ghost:0};
+        p.t.juuRaised=true; // 10本の10になった瞬間から、表示をじゅうのくらいのタイトル位置まで上げる
         p.anim='borrow-h-to-j-cascade';
         list.push(p);
       }
@@ -783,7 +1012,7 @@ function buildSteps(){
           +`じゅうのくらいは <span class="jc">${jBeforeLendToI}本</span> に なりました。`;
         p.h.borrowHPop=false;
         p.h.jDisplayOverride=jBeforeLendToI;
-        p.t.juuA={count:jBeforeLendToI,alpha:1,hl:null};
+        p.t.juuA={count:jBeforeLendToI,alpha:1,hl:null,ghost:0};
         p.anim=null;
         list.push(p);
       }
@@ -796,6 +1025,7 @@ function buildSteps(){
         +`<span class="cc">1本</span> を いちのくらいに かり下げます。<br>`
         +`じゅうのくらいは のこり <span class="jc">${jAfterBorrowI}</span> になります。`;
       p.h.borrowFromJ=true;p.h.borrowJPop=true;p.h.hlJuu=true;
+      p.t.juuA={count:jAfterBorrowI,alpha:1,hl:null,ghost:1};
       p.anim='borrow-j-to-i';
       list.push(p);
     }
@@ -807,64 +1037,84 @@ function buildSteps(){
         +`バラバラに して <span class="cc">10こ</span> にします。`;
       p.h.borrowJPop=false;
       p.h.showBridge10=true;p.h.bridge10Pop=true;
+      p.t.bridgeTen={show:true,count:10};
       p.anim='unbundle-10';
       list.push(p);
     }
+    const tenMinusB=10-bI;
     if(calcMethod==='bridge'){
-      // ブリッジ方式：10-bIを先に計算
+      // ブリッジ計算：筆算に「コの字線」「＋の答え」「＋記号」を順番に書き込む
+      // (1) 10と7を線でむすぶ
       {
         const p=prev();
-        const tenMinusB=10-bI;
-        p.title=`ブリッジ計算：10－${bI}＝${tenMinusB}`;
+        p.title=`ブリッジ：10と${bI}を線でむすぶ`;
         p.desc=`<span class="rc">ブリッジ計算</span>を します。<br>`
-          +`さきに <span class="cc">10 － ${bI} ＝ ${tenMinusB}</span> を けいさんします。`;
+          +`かり下げた <span class="cc">10</span> と、ひく数の <span class="ic">${bI}</span> を 線で むすびます。<br>`
+          +`10－${bI}は…`;
         p.h.bridge10Pop=false;
         p.h.hlIchi=true;
-        p.t.ichiB={count:bI,alpha:1,hl:null};
+        p.h.showBridgeLineI=true;p.h.bridgeLineIPop=true;
+        p.anim=null;
+        list.push(p);
+      }
+      // (2) 10-7の答えを、ひかれる数の横に書く
+      {
+        const p=prev();
+        p.h.bridgeLineIPop=false;
+        p.title=`10－${bI}＝${tenMinusB}`;
+        p.desc=`<span class="cc">10 － ${bI} ＝ ${tenMinusB}</span><br>`
+          +`${aI}の よこに <span class="rc">${tenMinusB}</span> と 書きます。`;
+        p.h.showBridgeAnsI=true;p.h.bridgeAnsIPop=true;p.h.bridgeAnsIVal=tenMinusB;
+        p.t.ichiB={count:0,alpha:1,hl:null,ghost:bI};
         p.t.annihilateIchi=bI; // 10この方(borrowed)とbI個が対消滅
+        p.t.bridgeTen={show:true,count:tenMinusB}; // bI個が使用済み(ghost)、残りtenMinusB個はまだ通常表示
         p.anim='annihilate-bridge10';
         list.push(p);
       }
-      // 残りに元の7を足す
+      // (3) ＋の記号を書く
       {
         const p=prev();
-        const tenMinusB=10-bI;
-        p.title=`のこり ${tenMinusB} に ${aI} を たす：${tenMinusB}＋${aI}＝${iAns}`;
-        p.desc=`ブリッジ計算の のこり <span class="cc">${tenMinusB}</span> に、<br>`
-          +`もともとあった <span class="ic">${aI}</span> を たします。<br>`
-          +`<span class="ic">${tenMinusB} ＋ ${aI} ＝ ${iAns}</span>`;
+        p.h.bridgeAnsIPop=false;
+        p.title=`${aI}と${tenMinusB}を たしざんに`;
+        p.desc=`${aI}と <span class="rc">${tenMinusB}</span> の あいだに <span class="rc">＋</span> を 書きます。<br>`
+          +`${aI}＋${tenMinusB}は…`;
+        p.h.showBridgePlusI=true;p.h.bridgePlusIPop=true;
+        p.anim=null;
+        list.push(p);
+      }
+      // (4) 答えが決まる
+      {
+        const p=prev();
+        p.h.bridgePlusIPop=false;
+        p.title=`${aI}＋${tenMinusB}＝${iAns}`;
+        p.desc=`<span class="ic">${aI} ＋ ${tenMinusB} ＝ ${iAns}</span><br>`
+          +`いちのくらいの こたえは <span class="ic">${iAns}</span> です。`;
         p.h.showAnsI=true;
         p.t.ichiAns={count:iAns,alpha:1,hl:null};
+        p.t.ichiA={count:0,alpha:1,hl:null,ghost:aI};
         p.t.showAnsRow=true;
+        p.t.bridgeTen={show:true,count:0}; // 残りも答えへ移動済み→10個すべてghost
         p.anim='bridge-add-remainder';
         list.push(p);
       }
     } else {
-      // そのままひく方式：(10+aI) - bI をまとめて対消滅
-      {
-        const p=prev();
-        const sum=10+aI;
-        p.title=`じゅうのくらいの けいさん：${sum}－${bI}＝${iAns}`;
-        p.desc=`かり下げた <span class="cc">10</span>こ と、もとの <span class="ic">${aI}</span>こ を あわせて<br>`
-          +`<span class="ic">${sum}こ</span>。そこから <span class="ic">${bI}</span> を ひきます。<br>`
-          +`<span class="ic">${sum} － ${bI} ＝ ${iAns}</span>`;
-        p.h.bridge10Pop=false;
-        p.h.hlIchi=true;
-        p.t.ichiB={count:bI,alpha:1,hl:null};
-        p.t.annihilateIchi=bI;
-        p.anim='annihilate-direct10';
-        list.push(p);
-      }
-      {
-        const p=prev();
-        p.title=`いちのくらいの こたえ：${iAns}`;
-        p.desc=`いちのくらいの こたえは <span class="ic">${iAns}</span> です。`;
-        p.h.showAnsI=true;
-        p.t.ichiAns={count:iAns,alpha:1,hl:null};
-        p.t.showAnsRow=true;
-        p.anim=null;
-        list.push(p);
-      }
+      // 通常：教科書的な言い回しで1ステップ（じゅうのくらいと同じ形式・計算の順序はブリッジと同じ）
+      const p=prev();
+      const sum=10+aI;
+      p.title=`いちのくらいの けいさん：${sum}－${bI}＝${iAns}`;
+      p.desc=`かり下げた 1こ（10こぶん）と、もとの <span class="ic">${aI}こ</span> を あわせて<br>`
+        +`<span class="ic">${sum}こ</span>。そこから <span class="ic">${bI}</span> を ひきます。<br>`
+        +`<span class="ic">${sum} － ${bI} ＝ ${iAns}</span>`;
+      p.h.bridge10Pop=false;
+      p.h.hlIchi=true;p.h.showAnsI=true;
+      p.t.ichiA={count:0,alpha:1,hl:null,ghost:aI};
+      p.t.ichiB={count:0,alpha:1,hl:null,ghost:bI};
+      p.t.ichiAns={count:iAns,alpha:1,hl:null,ghost:0};
+      p.t.showAnsRow=true;
+      p.t.annihilateIchi=bI;
+      p.t.bridgeTen={show:true,count:0};
+      p.anim='annihilate-bridge10-borrowed';
+      list.push(p);
     }
   }
 
@@ -879,10 +1129,12 @@ function buildSteps(){
       +`<span class="jc">${jAfterBorrowI} － ${bJ} ＝ ${jAns}</span>`;
     p.h.hlIchi=false;p.h.hlJuu=true;p.h.showAnsJ=true;
     p.h.borrowJPop=false;
-    p.t.juuA={count:jAfterBorrowI,alpha:1,hl:null};
-    p.t.juuB={count:bJ,alpha:1,hl:null};
-    p.t.juuAns={count:jAns,alpha:1,hl:null};
-    p.t.annihilateJuu = has3 ? bJ : bJ; // 十の位の対消滅数
+    // 十の位のA行は、もとの本数(aJ、カスケード時はjBeforeLendToI)から最終的にjAnsまで減る。
+    // 累積のghost数 = もとの本数 - jAns。
+    p.t.juuA={count:0,alpha:1,hl:null,ghost:jBeforeLendToI};
+    p.t.juuB={count:0,alpha:1,hl:null,ghost:bJ};
+    p.t.juuAns={count:jAns,alpha:1,hl:null,ghost:0};
+    p.t.annihilateJuu = bJ; // 十の位の対消滅数
     p.anim='annihilate-juu';
     list.push(p);
   } else {
@@ -904,10 +1156,70 @@ function buildSteps(){
         +`<span class="cc">1まい</span> を じゅうのくらいに かり下げます。<br>`
         +`ひゃくのくらいは のこり <span class="hc">${hAfterBorrowJ}</span> になります。`;
       p.h.borrowFromH=true;p.h.borrowHPop=true;p.h.hlHyaku=true;
+      p.h.showBridge100=true;p.h.bridge100Pop=true;
+      p.t.hyakuA={count:hAfterBorrowJ,alpha:1,hl:null,ghost:1};
+      p.t.bridgeHyaku={show:true,count:10};
       p.anim='borrow-h-to-j';
       list.push(p);
     }
-    {
+    if(calcMethod==='bridge'){
+      const tenMinusBJ=10-bJ;
+      // (1) 10とbJを線でむすぶ
+      {
+        const p=prev();
+        p.title=`ブリッジ：10と${bJ}を線でむすぶ`;
+        p.desc=`<span class="rc">ブリッジ計算</span>を します。<br>`
+          +`かり下げた <span class="cc">10</span> と、ひく数の <span class="jc">${bJ}</span> を 線で むすびます。<br>`
+          +`10－${bJ}は…`;
+        p.h.borrowHPop=false;p.h.bridge100Pop=false;
+        p.h.hlHyaku=false;p.h.hlJuu=true;
+        p.h.showBridgeLineJ=true;p.h.bridgeLineJPop=true;
+        p.anim=null;
+        list.push(p);
+      }
+      // (2) 10-bJの答えを、じゅうのくらいの横に書く
+      {
+        const p=prev();
+        p.h.bridgeLineJPop=false;
+        p.title=`10－${bJ}＝${tenMinusBJ}`;
+        p.desc=`<span class="cc">10 － ${bJ} ＝ ${tenMinusBJ}</span><br>`
+          +`${jAfterBorrowI}の よこに <span class="rc">${tenMinusBJ}</span> と 書きます。`;
+        p.h.showBridgeAnsJ=true;p.h.bridgeAnsJPop=true;p.h.bridgeAnsJVal=tenMinusBJ;
+        p.t.juuB={count:0,alpha:1,hl:null,ghost:bJ};
+        p.t.annihilateJuu=bJ; // 借りた10この方(borrowed)とbJ個が対消滅
+        p.t.bridgeHyaku={show:true,count:tenMinusBJ}; // bJ個が使用済み(ghost)、残りtenMinusBJ個はまだ通常表示
+        p.anim='annihilate-bridge100';
+        list.push(p);
+      }
+      // (3) ＋の記号を書く
+      {
+        const p=prev();
+        p.h.bridgeAnsJPop=false;
+        p.title=`${jAfterBorrowI}と${tenMinusBJ}を たしざんに`;
+        p.desc=`${jAfterBorrowI}と <span class="rc">${tenMinusBJ}</span> の あいだに <span class="rc">＋</span> を 書きます。<br>`
+          +`${jAfterBorrowI}＋${tenMinusBJ}は…`;
+        p.h.showBridgePlusJ=true;p.h.bridgePlusJPop=true;
+        p.anim=null;
+        list.push(p);
+      }
+      // (4) 答えが決まる
+      {
+        const p=prev();
+        p.h.bridgePlusJPop=false;
+        p.title=`${jAfterBorrowI}＋${tenMinusBJ}＝${jAns}`;
+        p.desc=`<span class="jc">${jAfterBorrowI} ＋ ${tenMinusBJ} ＝ ${jAns}</span><br>`
+          +`じゅうのくらいの こたえは <span class="jc">${jAns}</span> です。`;
+        p.h.showAnsJ=true;
+        p.t.juuA={count:0,alpha:1,hl:null,ghost:jBeforeLendToI};
+        p.t.juuB={count:0,alpha:1,hl:null,ghost:bJ};
+        p.t.juuAns={count:jAns,alpha:1,hl:null,ghost:0};
+        p.t.annihilateJuu=bJ;
+        p.t.bridgeHyaku={show:true,count:0}; // 残りも答えへ移動済み→10個すべてghost
+        p.anim='bridge-add-remainder-juu';
+        list.push(p);
+      }
+    } else {
+      // 通常：教科書的な言い回しで1ステップ（計算の順序はブリッジと同じ）
       const p=prev();
       const sum=10+jAfterBorrowI;
       p.title=`じゅうのくらいの けいさん：${sum}－${bJ}＝${jAns}`;
@@ -915,9 +1227,17 @@ function buildSteps(){
         +`<span class="jc">${sum}本</span>。そこから <span class="jc">${bJ}</span> を ひきます。<br>`
         +`<span class="jc">${sum} － ${bJ} ＝ ${jAns}</span>`;
       p.h.borrowHPop=false;
+      p.h.bridge100Pop=false;
       p.h.hlHyaku=false;p.h.hlJuu=true;p.h.showAnsJ=true;
-      p.t.juuB={count:bJ,alpha:1,hl:null};
+      // 修正: ここでは百の位から借りた「10本の10」は含めない。
+      // その10本はbridge100-layer（ヘッダー上の永続レイヤー）に既に半透明表示されて
+      // いるため、juuAのghostにも含めてしまうと十の位A列に二重表示されてしまう。
+      // juuA列自体が保持するghostは、もともとA列にあった本数(jBeforeLendToI)のみ。
+      p.t.juuA={count:0,alpha:1,hl:null,ghost:jBeforeLendToI};
+      p.t.juuB={count:0,alpha:1,hl:null,ghost:bJ};
+      p.t.juuAns={count:jAns,alpha:1,hl:null,ghost:0};
       p.t.annihilateJuu=bJ;
+      p.t.bridgeHyaku={show:true,count:0};
       p.anim='annihilate-juu-borrowed';
       list.push(p);
     }
@@ -933,9 +1253,10 @@ function buildSteps(){
       +(needBorrowJ?`かり下げた あとの <span class="hc">${hAfterBorrowJ}</span> から<br>`:'')
       +`<span class="hc">${hAfterBorrowJ} － ${bH} ＝ ${hAns}</span>`;
     p.h.hlJuu=false;p.h.hlHyaku=true;p.h.showAnsH=true;
-    p.t.hyakuA={count:hAfterBorrowJ,alpha:1,hl:null};
-    p.t.hyakuB={count:bH,alpha:1,hl:null};
-    p.t.hyakuAns={count:hAns,alpha:1,hl:null};
+    const hExistingGhost=(needCascadeForI||needBorrowJ)?1:0;
+    p.t.hyakuA={count:0,alpha:1,hl:null,ghost:hAfterBorrowJ+hExistingGhost};
+    p.t.hyakuB={count:0,alpha:1,hl:null,ghost:bH};
+    p.t.hyakuAns={count:hAns,alpha:1,hl:null,ghost:0};
     p.t.annihilateHyaku=bH;
     p.anim='annihilate-hyaku';
     list.push(p);
@@ -962,26 +1283,108 @@ function buildSteps(){
 // ============================================================
 // タイル描画
 // ============================================================
+// 十の位のA行(svg-juu-a)を、カスケードでくり下げた「10本の10」の表示のあいだだけ、
+// じゅうのくらいのタイトルテキストの高さまでY軸方向で上に上げる。
+// 一の位の実装（bridge10-layerで一の位の上に表示する仕組み）と同じ考え方だが、
+// こちらはsvg-juu-a自体をCSS transformで押し上げるだけなので、
+// 他のアニメーション（borrow-j-to-iやannihilate-juu等）がsvg-juu-aの
+// getBoundingClientRect()を使って座標計算をしても、常に正しい（上がった）
+// 位置を自動的に参照できる。
+function updateJuuRaisedTransform(ts){
+  const svgJA=document.getElementById('svg-juu-a');
+  svgJA.style.transform=''; // まず解除して「元の位置」を測れるようにする
+  if(!ts.juuRaised)return;
+  const hdrRect=document.getElementById('hdr-juu').getBoundingClientRect();
+  const curRect=svgJA.getBoundingClientRect();
+  const dy=(hdrRect.top+hdrRect.height/2)-(curRect.top+curRect.height/2);
+  svgJA.style.transform=`translateY(${dy}px)`;
+}
+
 function paintTiles(ts){
-  renderHyakus(document.getElementById('svg-hyaku-a'), ts.hyakuA.count,ts.hyakuA.alpha,ts.hyakuA.hl);
-  renderSticks(document.getElementById('svg-juu-a'),   ts.juuA.count,  ts.juuA.alpha,  ts.juuA.hl);
-  renderIchi  (document.getElementById('svg-ichi-a'),  ts.ichiA.count, ts.ichiA.alpha, ts.ichiA.hl);
-  renderHyakus(document.getElementById('svg-hyaku-b'), ts.hyakuB.count,ts.hyakuB.alpha,ts.hyakuB.hl);
-  renderSticks(document.getElementById('svg-juu-b'),   ts.juuB.count,  ts.juuB.alpha,  ts.juuB.hl);
-  renderIchi  (document.getElementById('svg-ichi-b'),  ts.ichiB.count, ts.ichiB.alpha, ts.ichiB.hl);
+  renderHyakus(document.getElementById('svg-hyaku-a'), ts.hyakuA.count,ts.hyakuA.alpha,ts.hyakuA.hl,null,ts.hyakuA.ghost);
+  renderSticks(document.getElementById('svg-juu-a'),   ts.juuA.count,  ts.juuA.alpha,  ts.juuA.hl,null,ts.juuA.ghost);
+  updateJuuRaisedTransform(ts);
+  renderIchi  (document.getElementById('svg-ichi-a'),  ts.ichiA.count, ts.ichiA.alpha, ts.ichiA.hl,ts.ichiA.ghost);
+  renderHyakus(document.getElementById('svg-hyaku-b'), ts.hyakuB.count,ts.hyakuB.alpha,ts.hyakuB.hl,null,ts.hyakuB.ghost);
+  renderSticks(document.getElementById('svg-juu-b'),   ts.juuB.count,  ts.juuB.alpha,  ts.juuB.hl,null,ts.juuB.ghost);
+  renderIchi  (document.getElementById('svg-ichi-b'),  ts.ichiB.count, ts.ichiB.alpha, ts.ichiB.hl,ts.ichiB.ghost);
 
   const rowAns=document.getElementById('row-ans');
   if(ts.showAnsRow){
     rowAns.style.display='table-row';
-    renderHyakus(document.getElementById('svg-hyaku-ans'), ts.hyakuAns.count,ts.hyakuAns.alpha,ts.hyakuAns.hl);
-    renderSticks(document.getElementById('svg-juu-ans'),   ts.juuAns.count,  ts.juuAns.alpha,  ts.juuAns.hl);
-    renderIchi  (document.getElementById('svg-ichi-ans'),  ts.ichiAns.count, ts.ichiAns.alpha, ts.ichiAns.hl);
+    renderHyakus(document.getElementById('svg-hyaku-ans'), ts.hyakuAns.count,ts.hyakuAns.alpha,ts.hyakuAns.hl,null,ts.hyakuAns.ghost);
+    renderSticks(document.getElementById('svg-juu-ans'),   ts.juuAns.count,  ts.juuAns.alpha,  ts.juuAns.hl,null,ts.juuAns.ghost);
+    renderIchi  (document.getElementById('svg-ichi-ans'),  ts.ichiAns.count, ts.ichiAns.alpha, ts.ichiAns.hl,ts.ichiAns.ghost);
   } else {
     rowAns.style.display='none';
+    // 答え行が非表示のときは、中のSVGも必ず空にしておく。
+    // ここでクリアしておかないと、以前の問題や以前のステップで
+    // 十の位・百の位の答え欄に描かれたタイルがDOMに残ったままになり、
+    // 後続の対消滅アニメーション（annihilate-ichi等）内で答え行を
+    // 一時的にtable-rowへ切り替える瞬間に、そのタイルが一瞬だけ
+    // 見えてしまう（現在の答えとは無関係な、古い個数のタイルが
+    // ちらつくバグの原因になっていた）。
+    document.getElementById('svg-hyaku-ans').innerHTML='';
+    document.getElementById('svg-juu-ans').innerHTML='';
+    document.getElementById('svg-ichi-ans').innerHTML='';
   }
 
   // is-empty: 答え行のそのセルにタイルがまだ無いときだけ斜線予告枠を表示
-  document.getElementById('col-hyaku-ans').classList.toggle('is-empty', !ts.hyakuAns.count);
+  document.getElementById('col-hyaku-ans').classList.toggle('is-empty', !ts.hyakuAns.count && !ts.hyakuAns.ghost);
+
+  renderBridgeTen(ts);
+  renderBridgeHyaku(ts);
+}
+
+// 一の位へ繰り下げた「10の塊」の半透明痕跡を、bridge10-layer（永続レイヤー）に描画する。
+// anim-layerと違ってステップ移動時にクリアされないため、この関数がステップごとに
+// 呼ばれることで、ts.bridgeTenの状態に応じて常に最新の見た目に描き直される。
+// count個は通常表示（まだ使われていない分）、残り(10-count)個は半透明ghost（使用済み分）。
+function renderBridgeTen(ts){
+  const bl=document.getElementById('bridge10-layer');
+  bl.innerHTML='';
+  const bt=ts.bridgeTen;
+  if(!bt||!bt.show)return;
+  const tileArea=document.getElementById('tile-area');
+  const tileRect=tileArea.getBoundingClientRect();
+  if(!tileRect.width)return; // レイアウト未確定（非表示など）の場合は描かない
+  // 波及的繰り下がりの十の位と同じロジック：いちのくらいのタイトル位置(hdr-ichi)
+  // を中心に、通常サイズのタイルで表示する。
+  const hc=hdrCenter('hdr-ichi');
+  const u=U;
+  bridgeIchiPositions(10,hc).forEach((p,i)=>{
+    const isGhost=i>=bt.count;
+    const attrs={x:p.x-u/2,y:p.y-u/2,width:u,height:u,fill:FC,
+      stroke:isGhost?'#8a8a8a':SC,'stroke-width':1,rx:.6,opacity:isGhost?.45:1};
+    if(isGhost)attrs['stroke-dasharray']='2,1.5';
+    mk('rect',attrs,bl);
+  });
+}
+
+// 百の位から十の位へくり下げた「10本の10」の半透明な痕跡を、bridge100-layer（永続レイヤー）に描画する。
+// じゅうのくらいのタイトル位置(hdr-juu)を中心に、小さい棒タイル10本を横に並べて表示する。
+// count個は通常表示（まだ使われていない分）、残り(10-count)個は半透明ghost（使用済み分）。
+function renderBridgeHyaku(ts){
+  const bl=document.getElementById('bridge100-layer');
+  bl.innerHTML='';
+  const bh=ts.bridgeHyaku;
+  if(!bh||!bh.show)return;
+  const tileArea=document.getElementById('tile-area');
+  const tileRect=tileArea.getBoundingClientRect();
+  if(!tileRect.width)return; // レイアウト未確定（非表示など）の場合は描かない
+  // 波及的繰り下がり(borrow-h-to-j-cascade)と同じロジック：じゅうのくらいの
+  // タイトル位置(hdr-juu)を中心に、通常サイズの棒で表示する。
+  const hc=hdrCenter('hdr-juu');
+  const G2=U*.15,stickH=10*U+9*G2;
+  bridgeStickPositions(10,hc).forEach((p,i)=>{
+    const isGhost=i>=bh.count;
+    const g=mk('g',{},bl);
+    drawStick(g,p.x,p.y,U,isGhost?.45:1,isGhost?'#8a8a8a':'#e35d3a');
+    if(isGhost){
+      mk('rect',{x:p.x-U/2-1,y:p.y-stickH/2-1,width:U+2,height:stickH+2,
+        fill:'none',stroke:'#8a8a8a','stroke-width':.8,'stroke-dasharray':'2,1.5',rx:1},bl);
+    }
+  });
 }
 
 // ============================================================
@@ -1005,10 +1408,10 @@ function runAnim(animType,prevState,nextState,onDone){
   const hAfterBorrowJ=has3?(aH-((needCascadeForI||needBorrowJ)?1:0)):0;
   const hAns=has3?(hAfterBorrowJ-bH):0;
 
-  // 百タイル描画スケール（hyakuセル用：動的に広がった幅に対応）
-  const HW=vbW('svg-hyaku-a'),HH_SVG=86;
+  // 百タイル描画スケール（hyakuセル用：動的に広がった幅に対応。縮尺は常にHYAKU_TILE_REF_H基準）
+  const HW=vbW('svg-hyaku-a');
   const u=U,G=u*.15,side=10*u+9*G;
-  const su=u*Math.min((HW-8)/side,(HH_SVG-8)/side);
+  const su=u*Math.min((HW-8)/side,(HYAKU_TILE_REF_H-8)/side);
 
   // --- appear-hyaku-a / b ---
   if(animType==='appear-hyaku-a'||animType==='appear-hyaku-b'){
@@ -1016,10 +1419,10 @@ function runAnim(animType,prevState,nextState,onDone){
     const count=animType==='appear-hyaku-a'?aH:bH;
     const svgEl=document.getElementById(id);
     svgEl.innerHTML='';
-    const W=vbW(id),H=86,step=2.5;let si=0;
+    const W=vbW(id),H=vbH(id);let si=0;
     (function next(){
       if(si>=count){onDone();return;}
-      const cx=W/2+(si-(count-1)/2)*step,cy=H/2;
+      const{cx,cy}=hyakuTilePos(si,count,W,H,su);
       const g=mk('g',{opacity:0},svgEl);
       drawHyakuScaled(g,cx,cy,su,1,SC);
       tween(280,t=>g.setAttribute('opacity',t),()=>{si++;next();});
@@ -1077,125 +1480,193 @@ function runAnim(animType,prevState,nextState,onDone){
   // ============================================================
   function runAnnihilation(opts){
     const {svgA, svgB, countA, countB, getPositions, drawUnit, unitSize, onAllDone} = opts;
+    const existingGhostA = opts.existingGhostA || 0; // 借用などで既にA側に残っているghost数
     // A側・B側それぞれの「消える対象」の座標を取得（末尾countB個を対象とする）
-    const allPosA = getPositions(svgA, countA);
+    // A側の座標はcountA+existingGhostA個の配置で計算する（ghost分も含めた全体レイアウト）。
+    // countAのみで計算すると、existingGhostA分を追加した際に中心座標がずれてしまうため。
+    const allPosAFull = getPositions(svgA, countA + existingGhostA);
+    const allPosA = allPosAFull.slice(0, countA);
     const allPosB = getPositions(svgB, countB);
     const targetA = allPosA.slice(Math.max(0,countA-countB)); // A側の後ろからcountB個
     const remainA = countA - countB;
 
-    const lA = targetA.map(p=>svgToLayer(svgA,p.cx,p.cy));
-    const lB = allPosB.map(p=>svgToLayer(svgB,p.cx,p.cy));
+    function drawUnitAt(parent,x,y,a){
+      a=a??1;
+      const isGhost=a<.5;
+      if(drawUnit==='ichi'){
+        mk('rect',{x:x-unitSize/2,y:y-unitSize/2,width:unitSize,height:unitSize,fill:FC,stroke:isGhost?'#aaa':SC,'stroke-width':1,rx:.6,opacity:a},parent);
+      } else if(drawUnit==='juu'){
+        drawStick(parent,x,y,unitSize,a,SC);
+        if(isGhost){
+          // renderSticksのghost枠と同じ計算式で囲み枠を追加し、表現を統一する
+          const G=unitSize*.15,TH=10*unitSize+9*G;
+          mk('rect',{x:x-unitSize/2-2,y:y-TH/2-2,width:unitSize+4,height:TH+4,
+            fill:'none',stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'3,2',rx:2},parent);
+        }
+      } else {
+        drawHyakuScaled(parent,x,y,unitSize,a,SC);
+        if(isGhost){
+          // renderHyakusのghost枠と同じ計算式で囲み枠を追加し、表現を統一する
+          const side2=10*unitSize+9*unitSize*.15;
+          mk('rect',{x:x-side2/2-2,y:y-side2/2-2,width:side2+4,height:side2+4,
+            fill:'none',stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'3,2',rx:2},parent);
+        }
+      }
+    }
 
-    // A側・B側のオリジナル要素は薄くする（これから対消滅させる対象を強調するため）。
-    // 対消滅させる分(targetA/lB)は別途layer上に濃い色で重ねて描き直すので、
-    // 元のSVGはここで薄く描いておく。
-    svgA.innerHTML=''; drawUnit==='ichi' ? renderIchi(svgA,countA,.3,null) : (drawUnit==='juu'?renderSticks(svgA,countA,.3,null):renderHyakus(svgA,countA,.3,null));
-    svgB.innerHTML=''; drawUnit==='ichi' ? renderIchi(svgB,countB,.3,null) : (drawUnit==='juu'?renderSticks(svgB,countB,.3,null):renderHyakus(svgB,countB,.3,null));
+    // A側・B側は、まだ何も結ばれていない間は通常表示(濃い色)のまま。
+    // 個々のタイルを<g>要素として描き、後で「そのペアの番が来た瞬間」に
+    // 個別に隠せるようにしておく。
+    // A側にはexistingGhostA分(借用などで既に半透明になっている分)も最初から表示しておく。
+    // これを省くと、アニメーション開始の瞬間だけ既存ghostが消えて見える矛盾が生じる。
+    svgA.innerHTML='';
+    const allPosAWithGhost = getPositions(svgA, countA + existingGhostA);
+    const elA=allPosAWithGhost.map((p,i)=>{
+      const g=mk('g',{},svgA);
+      const isExistingGhost = i >= countA; // 末尾existingGhostA個が既存ghost分
+      drawUnitAt(g,p.cx,p.cy,isExistingGhost?.45:1);
+      return g;
+    }).slice(0,countA); // 対消滅ロジックで使うのはcountA個分のみ(既存ghost分はelAに含めない)
+    svgB.innerHTML='';
+    const elB=allPosB.map(p=>{
+      const g=mk('g',{},svgB);
+      drawUnitAt(g,p.cx,p.cy,1);
+      return g;
+    });
+
+    const lA=targetA.map(p=>svgToLayer(svgA,p.cx,p.cy));
+    const lB=allPosB.map(p=>svgToLayer(svgB,p.cx,p.cy));
+    const elTargetA=elA.slice(Math.max(0,countA-countB)); // targetAに対応するDOM要素
 
     layer.innerHTML='';
     const n=Math.min(lA.length,lB.length);
     if(n===0){ if(onAllDone) onAllDone(); onDone(); return; }
 
-    // 消える対象のタイルを、最初から濃い色でlayer上に描いておく（薄いA/Bと視覚的に区別する）
-    const preGlowA=[], preGlowB=[];
-    lA.forEach(p=>{
-      const g=mk('g',{},layer);
-      drawUnit==='ichi' ? mk('rect',{x:p.x-unitSize/2,y:p.y-unitSize/2,width:unitSize,height:unitSize,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g)
-        : drawUnit==='juu' ? drawStick(g,p.x,p.y,U,1,SC)
-        : drawHyakuScaled(g,p.x,p.y,su,1,SC);
-      preGlowA.push(g);
-    });
-    lB.forEach(p=>{
-      const g=mk('g',{},layer);
-      drawUnit==='ichi' ? mk('rect',{x:p.x-unitSize/2,y:p.y-unitSize/2,width:unitSize,height:unitSize,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g)
-        : drawUnit==='juu' ? drawStick(g,p.x,p.y,U,1,SC)
-        : drawHyakuScaled(g,p.x,p.y,su,1,SC);
-      preGlowB.push(g);
-    });
+    // 「右から」結ばれるように、配列の末尾（＝最後に描かれたタイル。
+    // 一の位が6〜9個等で2行に折り返す場合は最終行の右端）から逆順に処理する。
+    // 以前はx座標で毎回ソートしていたが、A側とB側で行の折り返し位置
+    // （5個ずつ等）が食い違う場合に、見た目の順番が右から1つずつに
+    // ならないことがあったため、座標に依存しないインデックス逆順に統一する。
+    const order=Array.from({length:n},(_,i)=>n-1-i);
 
-    // 各ペアに「下から上に伸びる線」を描く
-    const lines=[];
-    for(let i=0;i<n;i++){
+    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
+    const destX=tileRect.width-20, destY=20; // tile-area内の右上付近の固定点（全ペア共通の移動先）
+
+    const STAGGER=230; // 1ペアあたりの開始ディレイ（線アニメ220msより長くして重なりを避ける）
+    let doneCount=0;
+
+    function runPair(i){
       const a=lA[i], b=lB[i];
-      // 線はB(下にあるもの)からA(上にあるもの)へ伸びるイメージ。
-      // どちらが上かはレイアウト依存だが、ここではB→Aの方向に伸ばす。
+      const realA=elTargetA[i], realB=elB[i];
+      const posA=targetA[i], posB=allPosB[i]; // svgA/svgB内のローカル座標(描き直し用)
       const line=mk('line',{x1:b.x,y1:b.y,x2:b.x,y2:b.y,stroke:'#ff7043','stroke-width':2.5,'stroke-linecap':'round'},layer);
-      lines.push({line,a,b});
-    }
-
-    // フェーズ1: 線が伸びる（下から上へ）
-    tween(400, t=>{
-      lines.forEach(({line,a,b})=>{
-        const cx=b.x+(a.x-b.x)*t;
-        const cy=b.y+(a.y-b.y)*t;
+      // フェーズ1: 線がB→Aへ伸びる（この間、本体タイルはまだ通常表示のまま）
+      tween(220, t=>{
+        const cx=b.x+(a.x-b.x)*t, cy=b.y+(a.y-b.y)*t;
         line.setAttribute('x2',cx); line.setAttribute('y2',cy);
-      });
-    }, ()=>{
-      // フェーズ2: つながった瞬間グロウ（先に描いたpreGlowA/Bをそのままグロウさせる）
-      preGlowA.forEach(g=>g.setAttribute('class','glow-pop'));
-      preGlowB.forEach(g=>g.setAttribute('class','glow-pop'));
-      const glowEls=[];
-      lines.forEach((_,i)=>{
-        glowEls.push(preGlowA[i],preGlowB[i]);
-      });
-      setTimeout(()=>{
-        // フェーズ3: ペアごと右上へ移動しながらフェードアウト（線も含む）
-        const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-        const destX=tileRect.width+40, destY=-40;
-        tween(550, t=>{
-          lines.forEach(({line,a,b},i)=>{
-            const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t*0.3;
-            const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t*0.3;
-            glowEls[i*2].setAttribute('transform',`translate(${dxA},${dyA})`);
-            glowEls[i*2].setAttribute('opacity',1-t);
-            glowEls[i*2+1].setAttribute('transform',`translate(${dxB},${dyB})`);
-            glowEls[i*2+1].setAttribute('opacity',1-t);
-            line.setAttribute('opacity',1-t);
+      }, ()=>{
+        // フェーズ2: つながった瞬間グロウ（本体タイルに直接光らせる。まだ半透明にはしない）
+        realA.setAttribute('class','glow-pop');
+        realB.setAttribute('class','glow-pop');
+        setTimeout(()=>{
+          // フェーズ3: 移動開始の瞬間に、
+          // 1) 元の場所(realA/realB)はその場で半透明のghostに変えて残す
+          // 2) 別に濃い色の分身をlayerに出して右上へ移動・フェードアウトさせる
+          const GHOST_A=.45;
+          realA.innerHTML=''; drawUnitAt(realA,posA.cx,posA.cy,GHOST_A);
+          realB.innerHTML=''; drawUnitAt(realB,posB.cx,posB.cy,GHOST_A);
+          realA.removeAttribute('class'); realB.removeAttribute('class');
+          const gA=mk('g',{},layer); drawUnitAt(gA,a.x,a.y,1);
+          const gB=mk('g',{},layer); drawUnitAt(gB,b.x,b.y,1);
+          tween(550, t=>{
+            const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t;
+            const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t;
+            gA.setAttribute('transform',`translate(${dxA},${dyA})`);
+            gB.setAttribute('transform',`translate(${dxB},${dyB})`);
+            // 濃い色の分身は移動しながら最後にフェードアウトして消える。
+            const op=1-t;
+            gA.setAttribute('opacity',op);
+            gB.setAttribute('opacity',op);
+            line.setAttribute('opacity',op);
             line.setAttribute('x1',b.x+dxB); line.setAttribute('y1',b.y+dyB);
             line.setAttribute('x2',a.x+dxA); line.setAttribute('y2',a.y+dyA);
+          }, ()=>{
+            line.remove(); gA.remove(); gB.remove();
+            doneCount++;
+            if(doneCount>=n) afterAllPairs();
+          });
+        }, 250); // グロウを少し見せてから移動開始
+      });
+    }
+
+    // 「右から」の順序で、1組ずつSTAGGERだけディレイをかけて開始する
+    order.forEach((i,k)=>setTimeout(()=>runPair(i), k*STAGGER));
+
+    function afterAllPairs(){
+      // 全ペア完了：対消滅したタイルは、元の位置に半透明のghostとして残す。
+      // A側：消えた分(countB個)+既存ghost分をghostとして、残った分(remainA個)は通常表示。
+      svgA.innerHTML='';
+      if(drawUnit==='ichi') renderIchi(svgA,remainA,1,null,countB+existingGhostA);
+      else if(drawUnit==='juu') renderSticks(svgA,remainA,1,null,null,countB+existingGhostA);
+      else renderHyakus(svgA,remainA,1,null,null,countB+existingGhostA);
+      // B側：全部消えたので、countB個まるごとghostとして残す。
+      svgB.innerHTML='';
+      if(drawUnit==='ichi') renderIchi(svgB,0,1,null,countB);
+      else if(drawUnit==='juu') renderSticks(svgB,0,1,null,null,countB);
+      else renderHyakus(svgB,0,1,null,null,countB);
+
+      // フェーズ4: 残ったA側のタイル(通常表示分)が結果欄へ移動。
+      // 移動後、A側の元の位置にはremainA個分もghostとして残し続ける
+      // （= A側は最終的に「countB個ghost + remainA個ghost」が薄く残る）。
+      if(remainA===0){
+        if(onAllDone) onAllDone();
+        onDone();
+        return;
+      }
+      const ansEl = opts.svgAns;
+      document.getElementById('row-ans').style.display='table-row';
+      ansEl.innerHTML='';
+
+      // 移動元（現在svgA内に見えているremainA個の配置）と
+      // 移動先（答え欄内でのremainA個の配置）をあらかじめ求めておく。
+      // allPosAは「remainA個の実表示 + countB個ghost」を描いた際と同じ
+      // 全体レイアウト（countA個ぶん）で計算済みなので、先頭remainA個が
+      // そのまま現在の見た目上の位置と一致する。
+      const fromPosA=allPosA.slice(0,remainA);
+      const toPosAns=getPositions(ansEl,remainA);
+      const fromL=fromPosA.map(p=>svgToLayer(svgA,p.cx,p.cy));
+      const toL=toPosAns.map(p=>svgToLayer(ansEl,p.cx,p.cy));
+
+      // 結果をひと呼吸見せてから、実際に答え欄へ移動するアニメーションを行う。
+      setTimeout(()=>{
+        // 移動開始と同時に、元の位置(svgA)は全てghost化して残す
+        svgA.innerHTML='';
+        if(drawUnit==='ichi') renderIchi(svgA,0,1,null,countA+existingGhostA);
+        else if(drawUnit==='juu') renderSticks(svgA,0,1,null,null,countA+existingGhostA);
+        else renderHyakus(svgA,0,1,null,null,countA+existingGhostA);
+
+        // 濃い色の分身をanim-layerに出し、A側の元位置→答え欄へ実際に移動させる
+        const movers=fromL.map(f=>{
+          const g=mk('g',{},layer);
+          drawUnitAt(g,f.x,f.y,1);
+          return g;
+        });
+        tween(500, t=>{
+          movers.forEach((g,i)=>{
+            const dx=(toL[i].x-fromL[i].x)*t, dy=(toL[i].y-fromL[i].y)*t;
+            g.setAttribute('transform',`translate(${dx},${dy})`);
           });
         }, ()=>{
-          layer.innerHTML='';
-          // フェーズ4: 残ったA側のタイルが結果欄へ移動
-          const remainPos = allPosA.slice(0, remainA);
-          if(remainPos.length===0){
-            svgA.innerHTML='';
-            if(onAllDone) onAllDone();
-            onDone();
-            return;
-          }
-          const lRemain = remainPos.map(p=>svgToLayer(svgA,p.cx,p.cy));
-          svgA.innerHTML='';
-          const ansEl = opts.svgAns;
-          const ansPositions = getPositions(ansEl, remainA);
-          const lDest = ansPositions.map(p=>svgToLayer(ansEl,p.cx,p.cy));
-          document.getElementById('row-ans').style.display='table-row';
+          movers.forEach(g=>g.remove());
           ansEl.innerHTML='';
-          const gs=lRemain.map(p=>{
-            const g=mk('g',{},layer);
-            drawUnit==='ichi' ? mk('rect',{x:p.x-unitSize/2,y:p.y-unitSize/2,width:unitSize,height:unitSize,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g)
-              : drawUnit==='juu' ? drawStick(g,p.x,p.y,U,1,SC)
-              : drawHyakuScaled(g,p.x,p.y,su,1,SC);
-            return g;
-          });
-          tween(500, t=>{
-            gs.forEach((g,i)=>{
-              const dest=lDest[i]||lDest[lDest.length-1];
-              const tx=lRemain[i].x+(dest.x-lRemain[i].x)*t;
-              const ty=lRemain[i].y+(dest.y-lRemain[i].y)*t;
-              g.setAttribute('transform',`translate(${tx-lRemain[i].x},${ty-lRemain[i].y})`);
-            });
-          }, ()=>{
-            layer.innerHTML='';
-            drawUnit==='ichi' ? renderIchi(ansEl,remainA,1,null)
-              : drawUnit==='juu' ? renderSticks(ansEl,remainA,1,null)
-              : renderHyakus(ansEl,remainA,1,null);
-            if(onAllDone) onAllDone();
-            onDone();
-          });
+          if(drawUnit==='ichi') renderIchi(ansEl,remainA,1,null);
+          else if(drawUnit==='juu') renderSticks(ansEl,remainA,1,null);
+          else renderHyakus(ansEl,remainA,1,null);
+          if(onAllDone) onAllDone();
+          onDone();
         });
-      }, 350); // グロウを少し見せてから移動開始
-    });
+      }, 350);
+    }
   }
 
   // --- annihilate-ichi: 繰り下がり不要の一の位の対消滅 ---
@@ -1219,18 +1690,18 @@ function runAnim(animType,prevState,nextState,onDone){
   if(animType==='borrow-j-to-i'){
     const svgJA=document.getElementById('svg-juu-a');
     const W=vbW('svg-juu-a'),H=86,stW=U+1,gap=5;
-    const baseCount=jBeforeLendToI; // カスケード済みなら9等、通常はaJそのもの
+    const baseCount=jBeforeLendToI; // カスケード済みなら10等、通常はaJそのもの
     const totW=baseCount*stW+(baseCount-1)*gap, sx=(W-totW)/2+stW/2;
     // 最後の1本（一番右）を借りる対象とする
     const srcLocal={cx:sx+(baseCount-1)*(stW+gap), cy:H/2};
     const src=svgToLayer(svgJA,srcLocal.cx,srcLocal.cy);
-    // 移動先：一の位の上(ヘッダーの下、一の位エリアの上端あたり)
-    const svgIA=document.getElementById('svg-ichi-a');
-    const destRect=svgIA.getBoundingClientRect();
-    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const dest={x:destRect.left-tileRect.left+destRect.width/2, y:destRect.top-tileRect.top-10};
+    // 移動先：いちのくらいのタイトル位置(hdr-ichi)中心。
+    // 波及的繰り下がりの十の位(hdr-juu基準)と同じロジックに統一する。
+    const dest=hdrCenter('hdr-ichi');
 
-    renderSticks(svgJA,baseCount-1,1,null); // 残りの本数だけ先に薄く描いておく(借りた1本は別途layerで動かす)
+    // 残りの本数は通常表示、借りた1本は元の位置に半透明の痕跡として描く（renderSticksのghost機能を利用）
+    renderSticks(svgJA,baseCount-1,1,null,null,1);
+
     const g=mk('g',{},layer);
     drawStick(g,src.x,src.y,U,1,'#e74c3c');
     tween(500,t=>{
@@ -1238,7 +1709,8 @@ function runAnim(animType,prevState,nextState,onDone){
       g.setAttribute('transform',`translate(${tx-src.x},${ty-src.y})`);
     },()=>{
       layer.innerHTML='';
-      // ヘッダー下に半透明で残す（次のunbundle-10で使う）
+      // 移動先(一の位の上)にも半透明で残す（次のunbundle-10で使う）。
+      // 移動元(十の位)の半透明の痕跡はsvgJA内にそのまま残り続ける(renderSticksのghostで描画済み)。
       const g2=mk('g',{opacity:.4},layer);
       drawStick(g2,dest.x,dest.y,U,1,'#e74c3c');
       onDone();
@@ -1249,15 +1721,17 @@ function runAnim(animType,prevState,nextState,onDone){
   // --- borrow-h-to-j-cascade: 百の位タイル1枚が十の位へ降りて10本の棒に展開される（十の位が0の時のカスケード借用）---
   if(animType==='borrow-h-to-j-cascade'){
     const svgHA=document.getElementById('svg-hyaku-a');
-    const W=vbW('svg-hyaku-a'),H=86,step=2.5;
-    const srcLocal={cx:W/2+((aH-1)-(aH-1)/2)*step, cy:H/2};
+    const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a');
+    // renderHyakusと同じ並べ方(hyakuTilePos)で、最後の1枚(index aH-1, total aH)の位置を求める
+    const srcLocal=hyakuTilePos(aH-1,aH,W,H,su);
     const src=svgToLayer(svgHA,srcLocal.cx,srcLocal.cy);
     const svgJA=document.getElementById('svg-juu-a');
-    const destRect=svgJA.getBoundingClientRect();
-    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const dest={x:destRect.left-tileRect.left+destRect.width/2, y:destRect.top-tileRect.top+H/2};
+    // 着地位置は「ひかれる数」の通常位置ではなく、じゅうのくらいのタイトル位置(hdr-juu)中心にする。
+    // こうしておくことで、アニメーション終了直後にupdateJuuRaisedTransform()が
+    // svg-juu-aを押し上げても、見た目がジャンプしない。
+    const dest=hdrCenter('hdr-juu');
 
-    renderHyakus(svgHA,aH-1,1,null);
+    renderHyakus(svgHA,aH-1,1,null,null,1);
     svgJA.innerHTML=''; // 十の位はもともと0本なので空のまま
     const g=mk('g',{},layer);
     drawHyakuScaled(g,src.x,src.y,su,1,'#e74c3c');
@@ -1274,29 +1748,41 @@ function runAnim(animType,prevState,nextState,onDone){
     return;
   }
 
-  // --- borrow-h-to-j: 百の位から十の位へタイル1枚をくり下げる ---
+  // --- borrow-h-to-j: 百の位から十の位へタイル1枚をくり下げ、その場で10本の棒にバラバラになる ---
   if(animType==='borrow-h-to-j'){
+    // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge100-layer)側の
+    // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
+    document.getElementById('bridge100-layer').innerHTML='';
     const svgHA=document.getElementById('svg-hyaku-a');
-    const W=vbW('svg-hyaku-a'),H=86,step=2.5;
-    const srcLocal={cx:W/2+((aH-1)-(aH-1)/2)*step, cy:H/2};
+    const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a');
+    const srcLocal=hyakuTilePos(aH-1,aH,W,H,su);
     const src=svgToLayer(svgHA,srcLocal.cx,srcLocal.cy);
-    const svgJA=document.getElementById('svg-juu-a');
-    const destRect=svgJA.getBoundingClientRect();
+    const hdrRect=document.getElementById('hdr-juu').getBoundingClientRect();
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const dest={x:destRect.left-tileRect.left+destRect.width/2, y:destRect.top-tileRect.top-10};
+    // 着地位置は「ひかれる数」の通常位置ではなく、じゅうのくらいのタイトル位置(hdr-juu)中心にする。
+    // 波及的繰り下がり(borrow-h-to-j-cascade)と同じ着地ロジック。
+    const dest=hdrCenter('hdr-juu');
 
-    renderHyakus(svgHA,aH-1,1,null);
+    renderHyakus(svgHA,aH-1,1,null,null,1);
     const g=mk('g',{},layer);
     drawHyakuScaled(g,src.x,src.y,su,1,'#e74c3c');
     tween(500,t=>{
       const tx=src.x+(dest.x-src.x)*t, ty=src.y+(dest.y-src.y)*t;
-      const sc=1-t*0.3;
       g.setAttribute('transform',`translate(${tx-src.x},${ty-src.y})`);
     },()=>{
       layer.innerHTML='';
-      const g2=mk('g',{opacity:.4},layer);
-      drawHyakuScaled(g2,dest.x,dest.y,su,1,'#e74c3c');
-      onDone();
+      // 着地した1枚(100)が「10本の10」にバラバラになる演出：フルサイズの棒10本をフェードインさせる
+      // (波及的繰り下がりでsvg-juu-aに直接描かれる棒と同じ大きさ・並べ方に統一)
+      const g2=mk('g',{opacity:0},layer);
+      bridgeStickPositions(10,dest).forEach(p=>{
+        drawStick(g2,p.x,p.y,U,1,'#e74c3c');
+      });
+      tween(350,t=>g2.setAttribute('opacity',t),()=>{
+        // このあとonDone()経由でpaintTiles()が呼ばれ、bridge100-layer（永続レイヤー）に
+        // 同じ10本の棒が描き直されるので、anim-layer側の仮描画は消しておく
+        layer.innerHTML='';
+        onDone();
+      });
     });
     return;
   }
@@ -1305,114 +1791,292 @@ function runAnim(animType,prevState,nextState,onDone){
   if(animType==='unbundle-10'){
     // layer上の半透明グレーの棒(borrow-j-to-iで残したもの)を、一の位エリアに10個のブロックとして展開する
     layer.innerHTML='';
+    // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge10-layer)側の
+    // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
+    document.getElementById('bridge10-layer').innerHTML='';
     const svgIA=document.getElementById('svg-ichi-a');
     const W=110,H=86;
     renderIchi(svgIA,aI,1,null); // 元の一の位はそのまま
-    // 10個を一の位の上(ヘッダー直下)に小さく展開して表示（borrowed-10として別領域に置く）
-    const destRect=svgIA.getBoundingClientRect();
-    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const cx=destRect.left-tileRect.left+destRect.width/2;
-    const cy=destRect.top-tileRect.top-10;
+    // 10個を、いちのくらいのタイトル位置(hdr-ichi)中心に通常サイズで展開して表示
+    // (十の位の波及的繰り下がりと同じ「タイトル位置中心・フルサイズ」ロジック)
+    const hc=hdrCenter('hdr-ichi');
     const g=mk('g',{opacity:0},layer);
-    // 10個を横一列に小さく並べる
-    const sz=U*0.85, gap2=2;
-    const totW=10*sz+9*gap2;
-    const sx=cx-totW/2+sz/2;
-    for(let i=0;i<10;i++){
-      mk('rect',{x:sx+i*(sz+gap2)-sz/2,y:cy-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},g);
-    }
-    tween(350,t=>g.setAttribute('opacity',t),()=>{ onDone(); });
+    bridgeIchiPositions(10,hc).forEach(p=>{
+      mk('rect',{x:p.x-U/2,y:p.y-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g);
+    });
+    tween(350,t=>g.setAttribute('opacity',t),()=>{
+      // このあとonDone()経由でpaintTiles()が呼ばれ、bridge10-layer（永続レイヤー）に
+      // 同じ10個のブロックが描き直されるので、anim-layer側の仮描画は消しておく
+      // （残しておくと二重に重なって見えてしまう）。
+      layer.innerHTML='';
+      onDone();
+    });
     return;
   }
 
   // --- annihilate-bridge10 / annihilate-direct10: 借りてきた10個とBの一の位を対消滅 ---
   if(animType==='annihilate-bridge10'||animType==='annihilate-direct10'){
+    // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge10-layer)側の
+    // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
+    document.getElementById('bridge10-layer').innerHTML='';
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIB=document.getElementById('svg-ichi-b');
     const svgIAns=document.getElementById('svg-ichi-ans');
     const W=110,H=86;
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const aRect=svgIA.getBoundingClientRect();
-    const cx=aRect.left-tileRect.left+aRect.width/2;
-    const cyTop=aRect.top-tileRect.top-10;
-    // 借りてきた10個の座標（unbundle-10で表示した位置と同じ計算）
-    const sz=U*0.85, gap2=2;
-    const totW=10*sz+9*gap2;
-    const sx=cx-totW/2+sz/2;
-    const pos10=Array.from({length:10},(_,i)=>({x:sx+i*(sz+gap2),y:cyTop}));
+    // 借りてきた10個の座標（unbundle-10・renderBridgeTenと同じ計算＝いちのくらいヘッダー中心）
+    const hc=hdrCenter('hdr-ichi');
+    const sz=U;
+    const pos10=bridgeIchiPositions(10,hc);
 
     // Bのアニメ用座標
     const posB=drawIchi(mk('svg',{width:0,height:0}),bI,W,H,1,null).map(p=>svgToLayer(svgIB,p.cx,p.cy));
 
-    renderIchi(svgIB,bI,1,null);
-    layer.innerHTML='';
     const n=Math.min(10,posB.length);
-    const lines=[];
-    for(let i=0;i<n;i++){
-      const a=pos10[i], b=posB[i];
-      const line=mk('line',{x1:b.x,y1:b.y,x2:b.x,y2:b.y,stroke:'#ff7043','stroke-width':2.5,'stroke-linecap':'round'},layer);
-      lines.push({line,a,b});
-    }
-    // 借りてきた10個を描画
-    const tenGroup=mk('g',{},layer);
-    pos10.forEach(p=>mk('rect',{x:p.x-sz/2,y:p.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},tenGroup));
+    const remainTen=10-n; // ブリッジ計算の残り(10-bI)。pos10の先頭remainTen個が「残る側」。
+    // 対消滅に使う10個側はpos10の末尾n個（右側）。Bの一の位もx降順（右から）で結ぶ。
+    const usedTen=pos10.slice(remainTen);
+    const bOrder=Array.from({length:n},(_,i)=>i).sort((i,j)=>posB[j].x-posB[i].x);
 
-    tween(400,t=>{
-      lines.forEach(({line,a,b})=>{
+    layer.innerHTML='';
+    // 借りてきた10個は、まだ何も結ばれていない間は通常表示(濃い色)のまま。
+    // 個々を<g>要素として描き、ペアの番が来た瞬間に個別に隠せるようにする。
+    const elTen=pos10.map(p=>{
+      const g=mk('g',{},layer);
+      mk('rect',{x:p.x-sz/2,y:p.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},g);
+      return g;
+    });
+    const elUsedTen=elTen.slice(remainTen);
+    // Bの一の位も同様に、個別の<g>要素として通常表示で描く。
+    svgIB.innerHTML='';
+    const posBLocal=drawIchi(mk('svg',{width:0,height:0}),bI,W,H,1,null);
+    const elBReal=posBLocal.map(p=>{
+      const g=mk('g',{},svgIB);
+      mk('rect',{x:p.cx-U/2,y:p.cy-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g);
+      return g;
+    });
+
+    const destX=tileRect.width-20, destY=20; // runAnnihilationと同じ「右上の固定点」に統一
+    const STAGGER=230; // 線アニメ220msより長くして重なりを避ける
+    let doneCount=0;
+
+    function runPair(i){
+      const a=usedTen[i], b=posB[bOrder[i]];
+      const bLocal=posBLocal[bOrder[i]]; // svgIB内のローカル座標(realBへの描画に使う)
+      const realA=elUsedTen[i], realB=elBReal[bOrder[i]];
+      const line=mk('line',{x1:b.x,y1:b.y,x2:b.x,y2:b.y,stroke:'#ff7043','stroke-width':2.5,'stroke-linecap':'round'},layer);
+      tween(220,t=>{
         const cx2=b.x+(a.x-b.x)*t, cy2=b.y+(a.y-b.y)*t;
         line.setAttribute('x2',cx2); line.setAttribute('y2',cy2);
+      },()=>{
+        // つながった瞬間グロウ（本体タイルに直接光らせる。まだ半透明にはしない）
+        realA.setAttribute('class','glow-pop');
+        realB.setAttribute('class','glow-pop');
+        setTimeout(()=>{
+          // 移動開始の瞬間に、
+          // 1) 元の場所(realA/realB)はその場で半透明のghostに変えて残す
+          // 2) 別に濃い色の分身をlayerに出して右上へ移動・フェードアウトさせる
+          const GHOST_A=.45;
+          realA.innerHTML='';
+          mk('rect',{x:a.x-sz/2,y:a.y-sz/2,width:sz,height:sz,fill:FC,stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'2,1.5',rx:.5,opacity:GHOST_A},realA);
+          realB.innerHTML='';
+          mk('rect',{x:bLocal.cx-U/2,y:bLocal.cy-U/2,width:U,height:U,fill:FC,stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'2,1.5',rx:.6,opacity:GHOST_A},realB);
+          realA.removeAttribute('class'); realB.removeAttribute('class');
+          const ga=mk('g',{},layer);
+          mk('rect',{x:a.x-sz/2,y:a.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},ga);
+          const gb=mk('g',{},layer);
+          mk('rect',{x:b.x-U/2,y:b.y-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},gb);
+          tween(550,t=>{
+            const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t;
+            const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t;
+            ga.setAttribute('transform',`translate(${dxA},${dyA})`);
+            gb.setAttribute('transform',`translate(${dxB},${dyB})`);
+            // 濃い色の分身は移動しながら最後にフェードアウトして消える。
+            const op=1-t;
+            ga.setAttribute('opacity',op);
+            gb.setAttribute('opacity',op);
+            line.setAttribute('opacity',op);
+            line.setAttribute('x1',b.x+dxB); line.setAttribute('y1',b.y+dyB);
+            line.setAttribute('x2',a.x+dxA); line.setAttribute('y2',a.y+dyA);
+          },()=>{
+            line.remove(); ga.remove(); gb.remove();
+            doneCount++;
+            if(doneCount>=n) afterAllPairs();
+          });
+        },250);
       });
-    },()=>{
-      const glowEls=[];
-      lines.forEach(({a,b})=>{
-        const ga=mk('g',{class:'glow-pop'},layer);
-        mk('rect',{x:a.x-sz/2,y:a.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},ga);
-        const gb=mk('g',{class:'glow-pop'},layer);
-        mk('rect',{x:b.x-U/2,y:b.y-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},gb);
-        glowEls.push(ga,gb);
+    }
+    // 「右から」の順序（usedTen/bOrderは既に右から並んでいる）で、1組ずつディレイをかけて開始
+    for(let i=0;i<n;i++) setTimeout(()=>runPair(i), i*STAGGER);
+
+    function afterAllPairs(){
+      layer.innerHTML='';
+      // Bの一の位はghostとして痕跡を残す（paintTilesでも同じghost指定をしているが、
+      // ここで描いておくことでonDone直前の見た目も正しくなる）
+      renderIchi(svgIB,0,1,null,bI);
+      // 借りてきた10個（remainTen個は通常表示、残りはghost）は、このあとonDone()経由で
+      // paintTiles()が呼ばれた際にts.bridgeTenの状態からbridge10-layer（永続レイヤー）に
+      // 描き直されるので、ここでanim-layerに仮描画する必要はない。
+      onDone();
+    }
+    return;
+  }
+
+  // --- annihilate-bridge10-borrowed: いちのくらいでくり下げた後の対消滅（通常計算・1ステップ版）---
+  // じゅうのくらいから借りてきて、いちのくらいの上(bridge10-layer)にすでに表示されている
+  // 「10こ」を、そのまま対消滅の実体として使う（新たにA列へ10こを描き直さない）。
+  // annihilate-juu-borrowedの一の位版。「10-b」と「残り+a」を分けず、対消滅→答えへの移動を
+  // 1つのアニメーション（＝1ステップ）にまとめている点がannihilate-bridge10と異なる。
+  if(animType==='annihilate-bridge10-borrowed'){
+    document.getElementById('bridge10-layer').innerHTML='';
+    const svgIA=document.getElementById('svg-ichi-a');
+    const svgIB=document.getElementById('svg-ichi-b');
+    const svgIAns=document.getElementById('svg-ichi-ans');
+    const W=110,H=86;
+
+    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
+    // 借りてきた10個の座標（unbundle-10・renderBridgeTenと同じ計算＝いちのくらいヘッダー中心）
+    const hc=hdrCenter('hdr-ichi');
+    const sz=U;
+    const pos10=bridgeIchiPositions(10,hc);
+
+    // Bの一の位(bI個)の座標
+    const posBLocal=drawIchi(mk('svg',{width:0,height:0}),bI,W,H,1,null);
+    const posB=posBLocal.map(p=>svgToLayer(svgIB,p.cx,p.cy));
+
+    const n=Math.min(10,bI);
+    const remainTen=10-n; // 借りてきた10個のうち、まだ使われず残る個数
+    const usedTen=pos10.slice(remainTen); // 対消滅に使う側(右＝末尾n個)
+    const bOrder=Array.from({length:n},(_,i)=>i).sort((i,j)=>posB[j].x-posB[i].x);
+
+    layer.innerHTML='';
+    // 借りてきた10個を、個別の<g>要素としてlayerに描く（一の位の上の実体をそのまま動かす）
+    const elTen=pos10.map(p=>{
+      const g=mk('g',{},layer);
+      mk('rect',{x:p.x-sz/2,y:p.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},g);
+      return g;
+    });
+    const elUsedTen=elTen.slice(remainTen);
+    // Bの一の位も、個別の<g>要素として通常表示で描く
+    svgIB.innerHTML='';
+    const elBReal=posBLocal.map(p=>{
+      const g=mk('g',{},svgIB);
+      mk('rect',{x:p.cx-U/2,y:p.cy-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g);
+      return g;
+    });
+
+    const destX=tileRect.width-20, destY=20;
+    const STAGGER=230;
+    let doneCount=0;
+
+    function runPair(i){
+      const a=usedTen[i], b=posB[bOrder[i]];
+      const bLocal=posBLocal[bOrder[i]];
+      const realA=elUsedTen[i], realB=elBReal[bOrder[i]];
+      const line=mk('line',{x1:b.x,y1:b.y,x2:b.x,y2:b.y,stroke:'#ff7043','stroke-width':2.5,'stroke-linecap':'round'},layer);
+      tween(220,t=>{
+        const cx2=b.x+(a.x-b.x)*t, cy2=b.y+(a.y-b.y)*t;
+        line.setAttribute('x2',cx2); line.setAttribute('y2',cy2);
+      },()=>{
+        realA.setAttribute('class','glow-pop');
+        realB.setAttribute('class','glow-pop');
+        setTimeout(()=>{
+          const GHOST_A=.45;
+          realA.innerHTML='';
+          mk('rect',{x:a.x-sz/2,y:a.y-sz/2,width:sz,height:sz,fill:FC,stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'2,1.5',rx:.5,opacity:GHOST_A},realA);
+          realB.innerHTML='';
+          mk('rect',{x:bLocal.cx-U/2,y:bLocal.cy-U/2,width:U,height:U,fill:FC,stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'2,1.5',rx:.6,opacity:GHOST_A},realB);
+          realA.removeAttribute('class'); realB.removeAttribute('class');
+          const ga=mk('g',{},layer);
+          mk('rect',{x:a.x-sz/2,y:a.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},ga);
+          const gb=mk('g',{},layer);
+          mk('rect',{x:b.x-U/2,y:b.y-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},gb);
+          tween(550,t=>{
+            const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t;
+            const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t;
+            ga.setAttribute('transform',`translate(${dxA},${dyA})`);
+            gb.setAttribute('transform',`translate(${dxB},${dyB})`);
+            const op=1-t;
+            ga.setAttribute('opacity',op);
+            gb.setAttribute('opacity',op);
+            line.setAttribute('opacity',op);
+            line.setAttribute('x1',b.x+dxB); line.setAttribute('y1',b.y+dyB);
+            line.setAttribute('x2',a.x+dxA); line.setAttribute('y2',a.y+dyA);
+          },()=>{
+            line.remove(); ga.remove(); gb.remove();
+            doneCount++;
+            if(doneCount>=n) afterAllPairs();
+          });
+        },250);
       });
+    }
+    // 「右から」の順序（usedTen/bOrderは既に右から並んでいる）で、1組ずつディレイをかけて開始
+    for(let i=0;i<n;i++) setTimeout(()=>runPair(i), i*STAGGER);
+
+    function afterAllPairs(){
+      layer.innerHTML='';
+      // 「10こ」の半透明痕跡は、この後の答え欄への移動アニメーション中も
+      // 消えずに残り続けてほしいので、ここでbridge10-layer（永続レイヤー）に
+      // 最終状態(count:0=10個すべてghost)を先に描いておく。
+      renderBridgeTen(nextState);
+      // Bの一の位はghostとして痕跡を残す
+      renderIchi(svgIB,0,1,null,bI);
+
+      // 残った借用分(remainTen個)＋もとから一の位にあった分(aI個)を、
+      // まとめて答え欄(iAns個)へ移動する。
+      document.getElementById('row-ans').style.display='table-row';
+      const iAns2=remainTen+aI;
+      const posAns=drawIchi(mk('svg',{width:0,height:0}),iAns2,W,94,1,null);
+      const lDestAll=posAns.map(p=>svgToLayer(svgIAns,p.cx,p.cy));
+
+      // 移動開始時に、元の位置(A列/一の位の上)は全てghost化して残しておく
+      svgIA.innerHTML='';
+      renderIchi(svgIA,0,1,null,aI);
+
+      const remainSrc=pos10.slice(0,remainTen); // 既にlayer座標
+      const posA=drawIchi(mk('svg',{width:0,height:0}),aI,W,H,1,null).map(p=>svgToLayer(svgIA,p.cx,p.cy));
+      const allSrc=[...remainSrc,...posA];
+      const remainGroup=remainSrc.map(p=>{const g=mk('g',{},layer);mk('rect',{x:p.x-sz/2,y:p.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},g);return g;});
+      const aGroup=posA.map(p=>{const g=mk('g',{},layer);mk('rect',{x:p.x-U/2,y:p.y-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g);return g;});
+      const allG=[...remainGroup,...aGroup];
+
+      svgIAns.innerHTML='';
       setTimeout(()=>{
-        const remainTen=10-n; // ブリッジ計算の残り(10-bI)
         tween(550,t=>{
-          const destX=tileRect.width+40, destY=-40;
-          lines.forEach(({line,a,b},i)=>{
-            const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t*0.3;
-            const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t*0.3;
-            glowEls[i*2].setAttribute('transform',`translate(${dxA},${dyA})`);
-            glowEls[i*2].setAttribute('opacity',1-t);
-            glowEls[i*2+1].setAttribute('transform',`translate(${dxB},${dyB})`);
-            glowEls[i*2+1].setAttribute('opacity',1-t);
-            line.setAttribute('opacity',1-t);
+          allG.forEach((g,i)=>{
+            const dest=lDestAll[i]||lDestAll[lDestAll.length-1];
+            const dx=(dest.x-allSrc[i].x)*t, dy=(dest.y-allSrc[i].y)*t;
+            g.setAttribute('transform',`translate(${dx},${dy})`);
           });
         },()=>{
           layer.innerHTML='';
-          svgIB.innerHTML='';
-          // 残った(10-bI)個を、借りてきた場所にそのまま小さく残す
-          const remainGroup=mk('g',{},layer);
-          for(let i=0;i<remainTen;i++){
-            mk('rect',{x:pos10[i].x-sz/2,y:pos10[i].y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},remainGroup);
-          }
+          renderIchi(svgIAns,iAns2,1,null);
           onDone();
         });
       },350);
-    });
+    }
     return;
   }
 
   // --- bridge-add-remainder: ブリッジ計算の残りに元のAの一の位を足す ---
   if(animType==='bridge-add-remainder'){
+    // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge10-layer)側の
+    // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
+    document.getElementById('bridge10-layer').innerHTML='';
     const tenMinusB=10-bI;
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIAns=document.getElementById('svg-ichi-ans');
     const W=110,H=86,HA=94;
-    const aRect=svgIA.getBoundingClientRect();
+    // 答え欄(row-ans)の表示・座標計算は、必ずsvgIAnsのレイアウトが確定してから行う。
+    // ここで先に表示しておかないと、getBoundingClientRectが幅0の不正な値を返し、
+    // 移動先座標が誤って算出されてしまう。
+    document.getElementById('row-ans').style.display='table-row';
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const cx=aRect.left-tileRect.left+aRect.width/2;
-    const cyTop=aRect.top-tileRect.top-10;
-    const sz=U*0.85, gap2=2;
-    const totW=10*sz+9*gap2;
-    const sx=cx-totW/2+sz/2;
-    const posRemain=Array.from({length:tenMinusB},(_,i)=>({x:sx+i*(sz+gap2),y:cyTop}));
+    // 借りてきた10個の座標（unbundle-10・renderBridgeTenと同じ計算＝いちのくらいヘッダー中心）
+    const hc=hdrCenter('hdr-ichi');
+    const sz=U;
+    const pos10Full=bridgeIchiPositions(10,hc);
+    const posRemain=pos10Full.slice(0,tenMinusB);
 
     // 元のAの一の位(aI個)の座標
     const posA=drawIchi(mk('svg',{width:0,height:0}),aI,W,H,1,null).map(p=>svgToLayer(svgIA,p.cx,p.cy));
@@ -1422,9 +2086,19 @@ function runAnim(animType,prevState,nextState,onDone){
     const lDestAll=posAns.map(p=>svgToLayer(svgIAns,p.cx,p.cy));
 
     layer.innerHTML='';
-    document.getElementById('row-ans').style.display='table-row';
     svgIAns.innerHTML='';
     svgIA.innerHTML='';
+
+    // 移動開始時に、元の位置へ半透明のghostを残しておく。
+    // 1) 元のAの一の位(aI個)
+    renderIchi(svgIA,0,1,null,aI);
+    // 2) 借用エリア全体(10個)のうち、対消滅で既に使われた分(usedTen=bI個、先頭remainTen個より後ろ)は
+    //    前ステップから引き続きghostとして表示し続ける。これから動く残りtenMinusB個もここでは
+    //    まずghostとして仮表示しておき、移動アニメーション側で濃い分身を重ねて動かす。
+    const remainGhostGroup=mk('g',{},layer);
+    for(let i=0;i<10;i++){
+      mk('rect',{x:pos10Full[i].x-sz/2,y:pos10Full[i].y-sz/2,width:sz,height:sz,fill:FC,stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'2,1.5',rx:.5,opacity:.45},remainGhostGroup);
+    }
 
     const remainGroup=posRemain.map(p=>{const g=mk('g',{},layer);mk('rect',{x:p.x-sz/2,y:p.y-sz/2,width:sz,height:sz,fill:FC,stroke:SC,'stroke-width':1,rx:.5},g);return g;});
     const aGroup=posA.map(p=>{const g=mk('g',{},layer);mk('rect',{x:p.x-U/2,y:p.y-U/2,width:U,height:U,fill:FC,stroke:SC,'stroke-width':1,rx:.6},g);return g;});
@@ -1442,6 +2116,9 @@ function runAnim(animType,prevState,nextState,onDone){
     },()=>{
       layer.innerHTML='';
       renderIchi(svgIAns,iAns,1,null);
+      // 借用エリア全体(10個)は、このあとonDone()経由でpaintTiles()が呼ばれた際に
+      // ts.bridgeTen(count:0=すべてghost)の状態からbridge10-layer（永続レイヤー）へ
+      // 描き直されるので、ここでanim-layerに仮描画する必要はない。
       onDone();
     });
     return;
@@ -1454,6 +2131,7 @@ function runAnim(animType,prevState,nextState,onDone){
       svgB: document.getElementById('svg-juu-b'),
       svgAns: document.getElementById('svg-juu-ans'),
       countA: jAfterBorrowI, countB: bJ,
+      existingGhostA: needBorrowI ? 1 : 0, // 一の位へ1本貸した痕跡（あれば）
       drawUnit:'juu', unitSize:U,
       getPositions:(svgEl,count)=>{
         if(!count) return [];
@@ -1466,23 +2144,330 @@ function runAnim(animType,prevState,nextState,onDone){
     return;
   }
 
-  // --- annihilate-juu-borrowed: 十の位でくり下げた後の対消滅 ---
-  if(animType==='annihilate-juu-borrowed'){
-    const sum=10+jAfterBorrowI;
-    runAnnihilation({
-      svgA: document.getElementById('svg-juu-a'),
-      svgB: document.getElementById('svg-juu-b'),
-      svgAns: document.getElementById('svg-juu-ans'),
-      countA: sum, countB: bJ,
-      drawUnit:'juu', unitSize:U,
-      getPositions:(svgEl,count)=>{
-        if(!count) return [];
-        const W=vbW('svg-juu-a'),H=svgEl===document.getElementById('svg-juu-ans')?94:86;
-        const stW=U+1,gap=5;
-        const totW=Math.min(count,19)*stW+(Math.min(count,19)-1)*gap, sx=(W-totW)/2+stW/2;
-        return Array.from({length:count},(_,i)=>({cx:sx+Math.min(i,18)*(stW+gap),cy:H/2}));
-      }
+  // --- annihilate-bridge100: ひゃくのくらいから借りた「10このじゅう」とBの十の位を対消滅 ---
+  // （ブリッジ計算の引き算部分のみ。answer行への移動はbridge-add-remainder-juuで行う）
+  if(animType==='annihilate-bridge100'){
+    // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge100-layer)側の
+    // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
+    document.getElementById('bridge100-layer').innerHTML='';
+    const svgJB=document.getElementById('svg-juu-b');
+    const W=vbW('svg-juu-a');
+
+    function juuPosBridge(count,W2,H2){
+      if(!count) return [];
+      const stW=U+1,gap=5;
+      const totW=count*stW+(count-1)*gap, sx=(W2-totW)/2+stW/2;
+      return Array.from({length:count},(_,i)=>({cx:sx+i*(stW+gap),cy:H2/2}));
+    }
+
+    // 借りてきた「10本の10」の座標（renderBridgeHyakuと同じ計算＝じゅうのくらいヘッダー中心）
+    const hc=hdrCenter('hdr-juu');
+    const su2=U;
+    const pos10=bridgeStickPositions(10,hc);
+
+    // Bの十の位(bJ本)の座標
+    const posBLocal=juuPosBridge(bJ,W,86);
+    const posB=posBLocal.map(p=>svgToLayer(svgJB,p.cx,p.cy));
+
+    const n=Math.min(10,bJ);
+    const remainTen=10-n; // 借りてきた10本のうち、まだ使われず残る本数
+    const usedTen=pos10.slice(remainTen); // 対消滅に使う側(右＝末尾n本)
+    const bOrder=Array.from({length:n},(_,i)=>i).sort((i,j)=>posB[j].x-posB[i].x);
+
+    layer.innerHTML='';
+    // 借りてきた10本を、個別の<g>要素としてlayerに描く(ヘッダー上の実体をそのまま動かす)
+    const elTen=pos10.map(p=>{
+      const g=mk('g',{},layer);
+      drawStick(g,p.x,p.y,su2,1,'#e35d3a');
+      return g;
     });
+    const elUsedTen=elTen.slice(remainTen);
+    // Bの十の位も、個別の<g>要素として通常表示で描く
+    svgJB.innerHTML='';
+    const elBReal=posBLocal.map(p=>{
+      const g=mk('g',{},svgJB);
+      drawStick(g,p.cx,p.cy,U,1,SC);
+      return g;
+    });
+
+    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
+    const destX=tileRect.width-20, destY=20;
+    const STAGGER=230;
+    let doneCount=0;
+
+    function runPair(i){
+      const a=usedTen[i], b=posB[bOrder[i]];
+      const bLocal=posBLocal[bOrder[i]];
+      const realA=elUsedTen[i], realB=elBReal[bOrder[i]];
+      const line=mk('line',{x1:b.x,y1:b.y,x2:b.x,y2:b.y,stroke:'#ff7043','stroke-width':2.5,'stroke-linecap':'round'},layer);
+      tween(220,t=>{
+        const cx2=b.x+(a.x-b.x)*t, cy2=b.y+(a.y-b.y)*t;
+        line.setAttribute('x2',cx2); line.setAttribute('y2',cy2);
+      },()=>{
+        realA.setAttribute('class','glow-pop');
+        realB.setAttribute('class','glow-pop');
+        setTimeout(()=>{
+          const GHOST_A=.45;
+          realA.innerHTML=''; drawStick(realA,a.x,a.y,su2,GHOST_A,'#8a8a8a');
+          realB.innerHTML=''; drawStick(realB,bLocal.cx,bLocal.cy,U,GHOST_A,'#8a8a8a');
+          realA.removeAttribute('class'); realB.removeAttribute('class');
+          const ga=mk('g',{},layer); drawStick(ga,a.x,a.y,su2,1,'#e35d3a');
+          const gb=mk('g',{},layer); drawStick(gb,b.x,b.y,U,1,SC);
+          tween(550,t=>{
+            const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t;
+            const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t;
+            ga.setAttribute('transform',`translate(${dxA},${dyA})`);
+            gb.setAttribute('transform',`translate(${dxB},${dyB})`);
+            const op=1-t;
+            ga.setAttribute('opacity',op);
+            gb.setAttribute('opacity',op);
+            line.setAttribute('opacity',op);
+            line.setAttribute('x1',b.x+dxB); line.setAttribute('y1',b.y+dyB);
+            line.setAttribute('x2',a.x+dxA); line.setAttribute('y2',a.y+dyA);
+          },()=>{
+            line.remove(); ga.remove(); gb.remove();
+            doneCount++;
+            if(doneCount>=n) afterAllPairs();
+          });
+        },250);
+      });
+    }
+    // 「右から」の順序（usedTen/bOrderは既に右から並んでいる）で、1組ずつディレイをかけて開始
+    for(let i=0;i<n;i++) setTimeout(()=>runPair(i), i*STAGGER);
+
+    function afterAllPairs(){
+      layer.innerHTML='';
+      // Bの十の位はghostとして痕跡を残す（paintTilesでも同じghost指定をしているが、
+      // ここで描いておくことでonDone直前の見た目も正しくなる）
+      renderSticks(svgJB,0,1,null,null,bJ);
+      // 借りてきた10本（remainTen本は通常表示、残りはghost）は、このあとonDone()経由で
+      // paintTiles()が呼ばれた際にts.bridgeHyakuの状態からbridge100-layer（永続レイヤー）に
+      // 描き直されるので、ここでanim-layerに仮描画する必要はない。
+      onDone();
+    }
+    return;
+  }
+
+  // --- bridge-add-remainder-juu: ブリッジ計算の残りに元のじゅうのくらいを足す ---
+  if(animType==='bridge-add-remainder-juu'){
+    // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge100-layer)側の
+    // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
+    document.getElementById('bridge100-layer').innerHTML='';
+    const tenMinusBJ=10-bJ;
+    const svgJA=document.getElementById('svg-juu-a');
+    const svgJAns=document.getElementById('svg-juu-ans');
+    const existingGhostA = needBorrowI ? 1 : 0;
+    const W=vbW('svg-juu-a');
+
+    function juuPosBridge(count,W2,H2){
+      if(!count) return [];
+      const stW=U+1,gap=5;
+      const totW=count*stW+(count-1)*gap, sx=(W2-totW)/2+stW/2;
+      return Array.from({length:count},(_,i)=>({cx:sx+i*(stW+gap),cy:H2/2}));
+    }
+
+    // 答え欄(row-ans)の表示・座標計算は、必ずsvgJAnsのレイアウトが確定してから行う。
+    document.getElementById('row-ans').style.display='table-row';
+
+    // 借りてきた「10本の10」のうち、まだ使われず残っているremainTen本の座標
+    // （renderBridgeHyakuと同じ計算＝じゅうのくらいヘッダー中心）
+    const hc=hdrCenter('hdr-juu');
+    const su2=U;
+    const remainTen=tenMinusBJ;
+    const pos10Full=bridgeStickPositions(10,hc);
+    const posRemain=pos10Full.slice(0,remainTen);
+
+    // すでに(繰り下げ前から)十の位A列に表示されている棒(jAfterBorrowI本、+既存ghost分)の座標
+    const posAExistingFull=juuPosBridge(jAfterBorrowI+existingGhostA,W,86);
+    const posAExistingActive=posAExistingFull.slice(0,jAfterBorrowI);
+    const posAExistingLayer=posAExistingActive.map(p=>svgToLayer(svgJA,p.cx,p.cy));
+
+    layer.innerHTML='';
+    svgJAns.innerHTML='';
+    svgJA.innerHTML='';
+
+    // 移動開始時に、元の位置に半透明のghostを残しておく。
+    // 1) 借用エリア全体(10本)：前ステップで既にbJ本はghost化済みなので、10本まとめてghost基準を描く
+    const G2=su2*.15,stickH=10*su2+9*G2;
+    for(let i=0;i<10;i++){
+      const p=pos10Full[i];
+      drawStick(layer,p.x,p.y,su2,.45,'#8a8a8a');
+      mk('rect',{x:p.x-su2/2-1,y:p.y-stickH/2-1,width:su2+2,height:stickH+2,
+        fill:'none',stroke:'#8a8a8a','stroke-width':.8,'stroke-dasharray':'2,1.5',rx:1},layer);
+    }
+    // 2) もとの十の位A列(jAfterBorrowI本、+既存ghost分)
+    renderSticks(svgJA,0,1,null,null,jAfterBorrowI+existingGhostA);
+
+    const remainGroup=posRemain.map(p=>{const g=mk('g',{},layer);drawStick(g,p.x,p.y,su2,1,'#e35d3a');return g;});
+    const aGroup=posAExistingLayer.map(p=>{const g=mk('g',{},layer);drawStick(g,p.x,p.y,U,1,SC);return g;});
+
+    const allSrc=[...posRemain,...posAExistingLayer];
+    const allG=[...remainGroup,...aGroup];
+
+    // 答え欄の目標座標
+    const jAns2=remainTen+jAfterBorrowI;
+    const posAns=juuPosBridge(jAns2,W,94);
+    const lDestAll=posAns.map(p=>svgToLayer(svgJAns,p.cx,p.cy));
+
+    setTimeout(()=>{
+      tween(550,t=>{
+        allG.forEach((g,i)=>{
+          const dest=lDestAll[i]||lDestAll[lDestAll.length-1];
+          const dx=(dest.x-allSrc[i].x)*t, dy=(dest.y-allSrc[i].y)*t;
+          g.setAttribute('transform',`translate(${dx},${dy})`);
+        });
+      },()=>{
+        layer.innerHTML='';
+        renderSticks(svgJAns,jAns2,1,null);
+        // 借用エリア全体(10本)は、このあとonDone()経由でpaintTiles()が呼ばれた際に
+        // ts.bridgeHyaku(count:0=すべてghost)の状態からbridge100-layer（永続レイヤー）へ
+        // 描き直されるので、ここでanim-layerに仮描画する必要はない。
+        onDone();
+      });
+    },350);
+    return;
+  }
+
+  // --- annihilate-juu-borrowed: 十の位でくり下げた後の対消滅 ---
+  // ひゃくのくらいから借りてきて、ヘッダー上(bridge100-layer)にすでに表示されている
+  // 「10本の10」を、そのまま対消滅の実体として使う（新たにA列へ10本を描き直さない）。
+  if(animType==='annihilate-juu-borrowed'){
+    document.getElementById('bridge100-layer').innerHTML='';
+    const svgJA=document.getElementById('svg-juu-a');
+    const svgJB=document.getElementById('svg-juu-b');
+    const svgJAns=document.getElementById('svg-juu-ans');
+    const existingGhostA = needBorrowI ? 1 : 0;
+
+    function juuPos(count,W2,H2){
+      if(!count) return [];
+      const stW=U+1,gap=5;
+      const totW=count*stW+(count-1)*gap, sx=(W2-totW)/2+stW/2;
+      return Array.from({length:count},(_,i)=>({cx:sx+i*(stW+gap),cy:H2/2}));
+    }
+    const W=vbW('svg-juu-a');
+
+    // 借りてきた「10本の10」の座標（renderBridgeHyakuと同じ計算＝じゅうのくらいヘッダー中心）
+    const hc=hdrCenter('hdr-juu');
+    const su2=U;
+    const pos10=bridgeStickPositions(10,hc);
+
+    // Bの十の位(bJ本)の座標
+    const posBLocal=juuPos(bJ,W,86);
+    const posB=posBLocal.map(p=>svgToLayer(svgJB,p.cx,p.cy));
+
+    // すでに(繰り下げ前から)十の位A列に表示されている棒(jAfterBorrowI本、+既存ghost分)の座標
+    const posAExistingFull=juuPos(jAfterBorrowI+existingGhostA,W,86);
+    const posAExistingActive=posAExistingFull.slice(0,jAfterBorrowI);
+    const posAExistingLayer=posAExistingActive.map(p=>svgToLayer(svgJA,p.cx,p.cy));
+
+    const n=Math.min(10,bJ);
+    const remainTen=10-n; // 借りてきた10本のうち、まだ使われず残る本数
+    const usedTen=pos10.slice(remainTen); // 対消滅に使う側(右＝末尾n本)
+    const bOrder=Array.from({length:n},(_,i)=>i).sort((i,j)=>posB[j].x-posB[i].x);
+
+    layer.innerHTML='';
+    // 借りてきた10本を、個別の<g>要素としてlayerに描く(ヘッダー上の実体をそのまま動かす)
+    const elTen=pos10.map(p=>{
+      const g=mk('g',{},layer);
+      drawStick(g,p.x,p.y,su2,1,'#e35d3a');
+      return g;
+    });
+    const elUsedTen=elTen.slice(remainTen);
+    // Bの十の位も、個別の<g>要素として通常表示で描く
+    svgJB.innerHTML='';
+    const elBReal=posBLocal.map(p=>{
+      const g=mk('g',{},svgJB);
+      drawStick(g,p.cx,p.cy,U,1,SC);
+      return g;
+    });
+
+    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
+    const destX=tileRect.width-20, destY=20;
+    const STAGGER=230;
+    let doneCount=0;
+
+    function runPair(i){
+      const a=usedTen[i], b=posB[bOrder[i]];
+      const bLocal=posBLocal[bOrder[i]];
+      const realA=elUsedTen[i], realB=elBReal[bOrder[i]];
+      const line=mk('line',{x1:b.x,y1:b.y,x2:b.x,y2:b.y,stroke:'#ff7043','stroke-width':2.5,'stroke-linecap':'round'},layer);
+      tween(220,t=>{
+        const cx2=b.x+(a.x-b.x)*t, cy2=b.y+(a.y-b.y)*t;
+        line.setAttribute('x2',cx2); line.setAttribute('y2',cy2);
+      },()=>{
+        realA.setAttribute('class','glow-pop');
+        realB.setAttribute('class','glow-pop');
+        setTimeout(()=>{
+          const GHOST_A=.45;
+          realA.innerHTML=''; drawStick(realA,a.x,a.y,su2,GHOST_A,'#8a8a8a');
+          realB.innerHTML=''; drawStick(realB,bLocal.cx,bLocal.cy,U,GHOST_A,'#8a8a8a');
+          realA.removeAttribute('class'); realB.removeAttribute('class');
+          const ga=mk('g',{},layer); drawStick(ga,a.x,a.y,su2,1,'#e35d3a');
+          const gb=mk('g',{},layer); drawStick(gb,b.x,b.y,U,1,SC);
+          tween(550,t=>{
+            const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t;
+            const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t;
+            ga.setAttribute('transform',`translate(${dxA},${dyA})`);
+            gb.setAttribute('transform',`translate(${dxB},${dyB})`);
+            const op=1-t;
+            ga.setAttribute('opacity',op);
+            gb.setAttribute('opacity',op);
+            line.setAttribute('opacity',op);
+            line.setAttribute('x1',b.x+dxB); line.setAttribute('y1',b.y+dyB);
+            line.setAttribute('x2',a.x+dxA); line.setAttribute('y2',a.y+dyA);
+          },()=>{
+            line.remove(); ga.remove(); gb.remove();
+            doneCount++;
+            if(doneCount>=n) afterAllPairs();
+          });
+        },250);
+      });
+    }
+    for(let i=0;i<n;i++) setTimeout(()=>runPair(i), i*STAGGER);
+
+    function afterAllPairs(){
+      layer.innerHTML='';
+      // 「10本の10」の半透明痕跡は、この後の答え欄への移動アニメーション中も
+      // 消えずに残り続けてほしいので、ここでbridge100-layer（永続レイヤー）に
+      // 最終状態(count:0=10本すべてghost)を先に描いておく。こうしておけば、
+      // このあとlayer側で移動アニメーションを行っている間も痕跡が途切れず、
+      // onDone()後のpaintTilesでも同じ見た目のまま引き継がれる。
+      renderBridgeHyaku(nextState);
+      // Bの十の位はghostとして痕跡を残す
+      renderSticks(svgJB,0,1,null,null,bJ);
+
+      // 残った借用分(remainTen本)＋もとから十の位にあった分(jAfterBorrowI本)を、
+      // まとめて答え欄(jAns本)へ移動する。
+      document.getElementById('row-ans').style.display='table-row';
+      const jAns2=remainTen+jAfterBorrowI;
+      const posAns=juuPos(jAns2,W,94);
+      const lDestAll=posAns.map(p=>svgToLayer(svgJAns,p.cx,p.cy));
+
+      // 移動開始時に、元の位置(A列/ヘッダー上)は全てghost化して残しておく
+      svgJA.innerHTML='';
+      renderSticks(svgJA,0,1,null,null,jAfterBorrowI+existingGhostA);
+
+      const remainSrc=pos10.slice(0,remainTen); // 既にlayer座標
+      const allSrc=[...remainSrc,...posAExistingLayer];
+      const remainGroup=remainSrc.map(p=>{const g=mk('g',{},layer);drawStick(g,p.x,p.y,su2,1,SC);return g;});
+      const aGroup=posAExistingLayer.map(p=>{const g=mk('g',{},layer);drawStick(g,p.x,p.y,U,1,SC);return g;});
+      const allG=[...remainGroup,...aGroup];
+
+      svgJAns.innerHTML='';
+      setTimeout(()=>{
+        tween(550,t=>{
+          allG.forEach((g,i)=>{
+            const dest=lDestAll[i]||lDestAll[lDestAll.length-1];
+            const dx=(dest.x-allSrc[i].x)*t, dy=(dest.y-allSrc[i].y)*t;
+            g.setAttribute('transform',`translate(${dx},${dy})`);
+          });
+        },()=>{
+          layer.innerHTML='';
+          renderSticks(svgJAns,jAns2,1,null);
+          onDone();
+        });
+      },350);
+    }
     return;
   }
 
@@ -1493,11 +2478,12 @@ function runAnim(animType,prevState,nextState,onDone){
       svgB: document.getElementById('svg-hyaku-b'),
       svgAns: document.getElementById('svg-hyaku-ans'),
       countA: hAfterBorrowJ, countB: bH,
+      existingGhostA: (needCascadeForI||needBorrowJ) ? 1 : 0,
       drawUnit:'hyaku', unitSize:su,
       getPositions:(svgEl,count)=>{
         if(!count) return [];
-        const W=vbW('svg-hyaku-a'),H=svgEl===document.getElementById('svg-hyaku-ans')?94:86,step=2.5;
-        return Array.from({length:count},(_,i)=>({cx:W/2+(i-(count-1)/2)*step,cy:H/2}));
+        const W=vbW('svg-hyaku-a'),H=parseInt(svgEl.getAttribute('height'))||86;
+        return Array.from({length:count},(_,i)=>hyakuTilePos(i,count,W,H,su));
       }
     });
     return;
@@ -1545,17 +2531,30 @@ function updateLayout(){
     svg.setAttribute('viewBox',`0 0 ${juuWidth} ${vbH}`);
   });
 
-  // ---- 百の位の幅：A行の枚数が多い場合に少し広げる ----
+  // ---- 百の位の幅・高さ：A行の枚数が多い場合に大きく広げる ----
+  // hyakuTilePos(実際のタイル配置の共通関数)が返す座標から、全タイルがちょうど
+  // 収まるのに必要な左右・上下の広がり(hyakuFootprint)を逆算し、それに合わせて
+  // 枠の幅・高さを自動的に広げる（タイル自体の大きさはHYAKU_TILE_REF_H基準で一定）。
   const maxHyakuCount=Math.max(aH,1);
-  const hyakuNeedW=124+Math.max(0,(maxHyakuCount-1))*3;
+  const hyakuFp=hyakuFootprint(maxHyakuCount,hyakuRefSu());
+  const hyakuNeedW=hyakuFp.width+16; // 左右の余白
   const hyakuWidth=Math.max(124,Math.round(hyakuNeedW));
+  const hyakuNeedH=hyakuFp.height+8; // 上下の余白
+  const hyakuHeight=Math.max(86,Math.round(hyakuNeedH));
+  const hyakuHeightAns=hyakuHeight+8; // 答え行はもともと86→94のように+8高くする慣例に合わせる
   document.getElementById('colgrp-hyaku').style.width=hyakuWidth+'px';
-  ['svg-hyaku-a','svg-hyaku-b','svg-hyaku-ans'].forEach(id=>{
+  ['svg-hyaku-a','svg-hyaku-b'].forEach(id=>{
     const svg=document.getElementById(id);
     svg.setAttribute('width',hyakuWidth);
-    const vbH=svg.getAttribute('viewBox').split(' ')[3];
-    svg.setAttribute('viewBox',`0 0 ${hyakuWidth} ${vbH}`);
+    svg.setAttribute('height',hyakuHeight);
+    svg.setAttribute('viewBox',`0 0 ${hyakuWidth} ${hyakuHeight}`);
   });
+  {
+    const svg=document.getElementById('svg-hyaku-ans');
+    svg.setAttribute('width',hyakuWidth);
+    svg.setAttribute('height',hyakuHeightAns);
+    svg.setAttribute('viewBox',`0 0 ${hyakuWidth} ${hyakuHeightAns}`);
+  }
 
   // ---- is-empty トグル：答え行のそのセルにタイルが無いときだけ斜線予告枠を表示 ----
   document.getElementById('col-hyaku-ans').classList.add('is-empty');
@@ -1620,7 +2619,7 @@ function setMethod(m){
   if(animBusy)return;
   calcMethod=m;
   document.getElementById('btn-bridge').classList.toggle('active',m==='bridge');
-  document.getElementById('btn-direct').classList.toggle('active',m==='direct');
+  document.getElementById('btn-normal').classList.toggle('active',m==='normal');
   cancelAnim();
   document.getElementById('anim-layer').innerHTML='';
   stepIdx=0;
