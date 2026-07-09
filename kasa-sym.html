@@ -18,6 +18,28 @@
         }
         h1 { font-size: 22px; margin-bottom: 20px; font-weight: 700; color: #444; }
 
+        /* ヘッダー・設定ボタン */
+        .header-row { position: relative; display: flex; align-items: center; justify-content: center; }
+        .settings-btn {
+            position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+            width: 36px; height: 36px; border: none; border-radius: 10px;
+            background: #f1f5f9; color: #64748b; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+        }
+        .settings-btn:hover { background: #e2e8f0; }
+        .settings-panel {
+            position: absolute; right: 0; top: 44px; z-index: 50;
+            background: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 1px solid #e2e8f0; padding: 14px 16px; text-align: left; min-width: 230px;
+        }
+        .settings-panel-title { font-size: 13px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; }
+        .settings-option {
+            display: flex; align-items: center; gap: 8px; padding: 7px 4px;
+            font-size: 14px; font-weight: 600; color: #333; cursor: pointer; border-radius: 8px;
+        }
+        .settings-option:hover { background: #f5f7fa; }
+        .settings-option input { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+
         /* モード切り替え */
         .shape-toggle {
             display: inline-flex; background: #f1f5f9; border-radius: 14px;
@@ -84,8 +106,15 @@
 
         .masu-wrapper {
             display: flex; flex-direction: column; align-items: center;
-            animation: fadeIn 0.3s cubic-bezier(0.16,1,0.3,1);
             transition: width 0.3s;
+        }
+        /* ポップモード：ますが増減するたびに弾むように出現 */
+        body.anim-pop .masu-wrapper {
+            animation: fadeIn 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        /* なめらかモード：構造が変わる時（ます自体の増減）だけ軽くフェード */
+        body.anim-smooth .masu-wrapper {
+            animation: fadeInSimple 0.25s ease;
         }
         svg { width: 100%; height: auto; }
         .masu-label {
@@ -93,9 +122,14 @@
             background: #f1f5f9; padding: 3px 8px; border-radius: 20px;
             white-space: nowrap;
         }
+        .liquid-group { transition: opacity 0.2s ease; }
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.88) translateY(8px); }
             to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes fadeInSimple {
+            from { opacity: 0; }
+            to   { opacity: 1; }
         }
 
         /* ── シリンジモード専用レイアウト ── */
@@ -178,7 +212,21 @@
 </head>
 <body>
 <div class="container">
-    <h1>体積シミュレーター</h1>
+    <div class="header-row">
+        <h1>体積シミュレーター</h1>
+        <button class="settings-btn" id="settings-btn" onclick="toggleSettingsPanel(event)" title="表示設定">⚙️</button>
+        <div class="settings-panel" id="settings-panel" style="display:none;">
+            <div class="settings-panel-title">水位が変わるときのアニメーション</div>
+            <label class="settings-option">
+                <input type="radio" name="anim-mode" value="pop" onchange="setAnimMode('pop')">
+                ポップ（ふわっと出現）
+            </label>
+            <label class="settings-option">
+                <input type="radio" name="anim-mode" value="smooth" onchange="setAnimMode('smooth')">
+                なめらか（水面が連続的に上下）
+            </label>
+        </div>
+    </div>
 
     <div class="shape-toggle">
         <button class="shape-btn active" id="btn-cylinder" onclick="setShape('cylinder')">🧪 1Lます（円筒形）</button>
@@ -259,6 +307,39 @@
     let totalML = 0;
     let currentShape = 'cylinder';
     let masuIdCounter = 0;
+
+    // ── 水位アニメーションのモード ('pop' or 'smooth') ──
+    let animMode = 'pop';
+    try {
+        const saved = localStorage.getItem('kasa-anim-mode');
+        if (saved === 'pop' || saved === 'smooth') animMode = saved;
+    } catch (e) { /* localStorage不可でも無視 */ }
+
+    function applyAnimModeClass() {
+        document.body.classList.toggle('anim-pop', animMode === 'pop');
+        document.body.classList.toggle('anim-smooth', animMode === 'smooth');
+        const radio = document.querySelector(`input[name="anim-mode"][value="${animMode}"]`);
+        if (radio) radio.checked = true;
+    }
+
+    function setAnimMode(mode) {
+        animMode = mode;
+        try { localStorage.setItem('kasa-anim-mode', mode); } catch (e) {}
+        applyAnimModeClass();
+    }
+
+    function toggleSettingsPanel(e) {
+        if (e) e.stopPropagation();
+        const panel = document.getElementById('settings-panel');
+        panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
+    }
+    document.addEventListener('click', (e) => {
+        const panel = document.getElementById('settings-panel');
+        const btn = document.getElementById('settings-btn');
+        if (panel && panel.style.display === 'block' && !panel.contains(e.target) && e.target !== btn) {
+            panel.style.display = 'none';
+        }
+    });
 
     // シリンジモード
     let syringeMode = false;
@@ -665,22 +746,31 @@
         return 32;
     }
 
+    // 円筒の液面パーツ（dLから各図形のジオメトリを計算）── 差分更新でも使う共通ロジック
+    function cylinderLiquidGeom(dL) {
+        const y = 180 + (10 - Math.max(0, dL)) * 60;
+        return {
+            y,
+            bodyD: `M 50,${y} A 250,55 0 0,0 550,${y} L 550,800 A 250,55 0 0,1 50,800 Z`,
+            hiD:   `M 50,${y} A 250,55 0 0,0 550,${y}`
+        };
+    }
+
     function generateCylinderSVG(dL, labelText, width) {
         // dL: 0〜10 (整数) → 通常  /  0.0〜10.0 (小数) → mLモード
         masuIdCounter++;
         const lid = `lt-${masuIdCounter}`;
         const sid = `st-${masuIdCounter}`;
-        let liquid = '';
-        if (dL > 0) {
-            const y = 180 + (10 - dL) * 60;
-            liquid = `
-                <path d="M 50,${y} A 250,55 0 0,0 550,${y} L 550,800 A 250,55 0 0,1 50,800 Z" fill="#1ca7ff"/>
-                <ellipse cx="300" cy="${y}" rx="250" ry="55" fill="#1ca7ff"/>
-                <ellipse cx="300" cy="${y}" rx="250" ry="55" fill="none" stroke="#7cd2ff" stroke-width="6"/>
-                <path d="M 50,${y} A 250,55 0 0,0 550,${y}" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`;
-        }
+        const g = cylinderLiquidGeom(dL);
+        const liquid = `
+            <g class="liquid-group" style="opacity:${dL > 0 ? 1 : 0}">
+                <path class="liquid-body" d="${g.bodyD}" fill="#1ca7ff"/>
+                <ellipse class="liquid-top-fill" cx="300" cy="${g.y}" rx="250" ry="55" fill="#1ca7ff"/>
+                <ellipse class="liquid-top-stroke" cx="300" cy="${g.y}" rx="250" ry="55" fill="none" stroke="#7cd2ff" stroke-width="6"/>
+                <path class="liquid-top-highlight" d="${g.hiD}" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+            </g>`;
         return `
-            <div class="masu-wrapper" style="width:${width}px">
+            <div class="masu-wrapper" style="width:${width}px" data-shape="cylinder">
                 <svg viewBox="0 0 600 900" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <path id="${lid}" d="M 50,0 A 250,55 0 0,0 150,44"/>
@@ -707,20 +797,27 @@
             </div>`;
     }
 
-    function generateCubeSVG(dL, labelText, width) {
+    // 立方体の液面パーツ（dLから各多角形の頂点を計算）── 差分更新でも使う共通ロジック
+    function cubeLiquidGeom(dL) {
         const c = 400 - dL * 20;
         const s = 350 - dL * 20;
-        const lp = `200 ${c}, 50 ${s}, 50 350, 200 400`;
-        const rp = `200 ${c}, 350 ${s}, 350 350, 200 400`;
-        const tp = `200 ${c}, 350 ${s}, 200 ${300 - dL * 20}, 50 ${s}`;
-        const liquid = dL > 0 ? `
-        <g opacity="0.6">
-            <polygon points="${lp}" fill="#81d4fa"/>
-            <polygon points="${rp}" fill="#4fc3f7"/>
-            <polygon points="${tp}" fill="#b3e5fc"/>
-        </g>` : '';
+        return {
+            lp: `200 ${c}, 50 ${s}, 50 350, 200 400`,
+            rp: `200 ${c}, 350 ${s}, 350 350, 200 400`,
+            tp: `200 ${c}, 350 ${s}, 200 ${300 - dL * 20}, 50 ${s}`
+        };
+    }
+
+    function generateCubeSVG(dL, labelText, width) {
+        const g = cubeLiquidGeom(dL);
+        const liquid = `
+        <g class="liquid-group" style="opacity:${dL > 0 ? 0.6 : 0}">
+            <polygon class="liquid-left" points="${g.lp}" fill="#81d4fa"/>
+            <polygon class="liquid-right" points="${g.rp}" fill="#4fc3f7"/>
+            <polygon class="liquid-top" points="${g.tp}" fill="#b3e5fc"/>
+        </g>`;
         return `
-            <div class="masu-wrapper" style="width:${width}px">
+            <div class="masu-wrapper" style="width:${width}px" data-shape="cube">
                 <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
                     ${liquid}
                     <g stroke="#ccc" stroke-width="0.5">
@@ -736,6 +833,119 @@
                 </svg>
                 <div class="masu-label">${labelText}</div>
             </div>`;
+    }
+
+    // ── 液面の差分アニメーション（なめらかモード用） ──────
+    function applyLiquid(shape, group, dL) {
+        if (shape === 'cylinder') {
+            group.style.opacity = dL > 0.001 ? '1' : '0';
+            const g = cylinderLiquidGeom(dL);
+            group.querySelector('.liquid-body').setAttribute('d', g.bodyD);
+            group.querySelector('.liquid-top-fill').setAttribute('cy', g.y);
+            group.querySelector('.liquid-top-stroke').setAttribute('cy', g.y);
+            group.querySelector('.liquid-top-highlight').setAttribute('d', g.hiD);
+        } else if (shape === 'cube') {
+            group.style.opacity = dL > 0.001 ? '0.6' : '0';
+            const g = cubeLiquidGeom(dL);
+            group.querySelector('.liquid-left').setAttribute('points', g.lp);
+            group.querySelector('.liquid-right').setAttribute('points', g.rp);
+            group.querySelector('.liquid-top').setAttribute('points', g.tp);
+        }
+    }
+
+    function animateLiquid(wrapper, fromDL, toDL) {
+        const shape = wrapper.dataset.shape;
+        const group = wrapper.querySelector('.liquid-group');
+        if (!group) return;
+        if (wrapper._liquidAnimId) cancelAnimationFrame(wrapper._liquidAnimId);
+        const start = performance.now();
+        const duration = 300;
+        function step(now) {
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3); // ease-out
+            const dL = fromDL + (toDL - fromDL) * eased;
+            applyLiquid(shape, group, dL);
+            wrapper._currentDL = dL;
+            if (t < 1) {
+                wrapper._liquidAnimId = requestAnimationFrame(step);
+            } else {
+                wrapper._liquidAnimId = null;
+                wrapper._currentDL = toDL;
+            }
+        }
+        wrapper._liquidAnimId = requestAnimationFrame(step);
+    }
+
+    // 1つのコンテナ（複数のますを並べる div）を、必要なら差分更新・必要なら丸ごと再構築する
+    // key: コンテナの「種類」を表す識別子（形が変わったら丸ごと再構築するための目印）
+    function renderMasuGroup(container, items, genFn, width, key) {
+        if (!container) return;
+        const prevItems = container._masuItems;
+        const sameKey = container._masuKey === key;
+        const canUpdateInPlace =
+            animMode === 'smooth' &&
+            sameKey &&
+            prevItems &&
+            prevItems.length === items.length &&
+            container.children.length === items.length;
+
+        if (canUpdateInPlace) {
+            const wrappers = Array.from(container.children);
+            wrappers.forEach((wrapper, i) => {
+                const labelEl = wrapper.querySelector('.masu-label');
+                if (labelEl) labelEl.textContent = items[i].label;
+                const fromDL = wrapper._currentDL !== undefined ? wrapper._currentDL : prevItems[i].dL;
+                const toDL = items[i].dL;
+                if (Math.abs(fromDL - toDL) > 0.0001) {
+                    animateLiquid(wrapper, fromDL, toDL);
+                } else {
+                    wrapper._currentDL = toDL;
+                }
+            });
+        } else {
+            container.innerHTML = items.map(it => genFn(it.dL, it.label, width)).join('');
+            Array.from(container.children).forEach((wrapper, i) => {
+                wrapper._currentDL = items[i].dL;
+            });
+        }
+        container._masuKey = key;
+        container._masuItems = items.map(it => ({ dL: it.dL, label: it.label }));
+    }
+
+    // area配下に .masu-grid コンテナを1つ確保する（あれば使い回す）
+    function ensureGridContainer(area) {
+        let container = area.querySelector(':scope > .masu-grid');
+        if (!container) {
+            area.innerHTML = `<div class="masu-grid"></div>`;
+            container = area.querySelector('.masu-grid');
+        }
+        return container;
+    }
+
+    // 併存モード用の骨組み（Lゾーン・dLゾーン）を確保する
+    function ensureComboSkeleton(area, hasDlSection) {
+        let root = area.querySelector(':scope > .combo-grid');
+        const currentHasDl = !!(root && root.querySelector('.combo-section-dl'));
+        if (!root || currentHasDl !== hasDlSection) {
+            area.innerHTML = `
+                <div class="combo-grid">
+                    <div class="combo-section">
+                        <div class="combo-section-label" id="combo-l-label"></div>
+                        <div class="combo-inner" id="combo-l-inner"></div>
+                    </div>
+                    ${hasDlSection ? `
+                    <div class="combo-section combo-section-dl">
+                        <div class="combo-section-label" id="combo-dl-label"></div>
+                        <div class="combo-inner" id="combo-dl-inner"></div>
+                    </div>` : ''}
+                </div>`;
+        }
+        return {
+            lLabel:  area.querySelector('#combo-l-label'),
+            lInner:  area.querySelector('#combo-l-inner'),
+            dlLabel: area.querySelector('#combo-dl-label'),
+            dlInner: area.querySelector('#combo-dl-inner')
+        };
     }
 
     // ── ます描画メイン ───────────────────────────────
@@ -775,10 +985,8 @@
 
             const w = masuWidth(items.length);
             const cubeW = Math.round(w * 1.5); // 立方体は横広
-            const html = items.map(it =>
-                gen(it.dL, it.label, shape === 'cube' ? cubeW : w)
-            ).join('');
-            area.innerHTML = `<div class="masu-grid">${html}</div>`;
+            const container = ensureGridContainer(area);
+            renderMasuGroup(container, items, gen, shape === 'cube' ? cubeW : w, shape);
 
         } else if (shape === 'dl' || shape === 'combo') {
             // 1dLます幅 = 1Lます幅 / 2.154
@@ -800,16 +1008,15 @@
                 const lW = masuWidth(count);
                 const dW = Math.round(lW / 2.154);
 
-                let html = '';
+                let items = [];
                 if (totalDLCount === 0 && !hasRem) {
-                    html = generateCylinderSVG(0, '0 mL', dW);
+                    items.push({ dL: 0, label: '0 mL' });
                 } else {
-                    for (let i = 0; i < totalDLCount; i++)
-                        html += generateCylinderSVG(10, '1 dL', dW);
-                    if (hasRem)
-                        html += generateCylinderSVG(remML / 100 * 10, `${remML} mL`, dW);
+                    for (let i = 0; i < totalDLCount; i++) items.push({ dL: 10, label: '1 dL' });
+                    if (hasRem) items.push({ dL: remML / 100 * 10, label: `${remML} mL` });
                 }
-                area.innerHTML = `<div class="masu-grid">${html}</div>`;
+                const container = ensureGridContainer(area);
+                renderMasuGroup(container, items, generateCylinderSVG, dW, 'dl');
 
             } else {
                 // 併存モード: 1Lます（円筒満水）+ 余り1dLます
@@ -833,30 +1040,26 @@
                 const lW  = masuWidth(lCount);
                 const dlW = Math.round(masuWidth(Math.max(1, dlCount)) / 2.154);
 
-                // 1Lゾーン
-                let lHtml = '';
-                for (let i = 0; i < fullL; i++) lHtml += generateCylinderSVG(10, '1 L (満水)', lW);
-                if (fullL === 0) lHtml += generateCylinderSVG(0, '0 L (空)', lW);
+                // 1Lゾーンのアイテム
+                let lItems = [];
+                for (let i = 0; i < fullL; i++) lItems.push({ dL: 10, label: '1 L (満水)' });
+                if (fullL === 0) lItems.push({ dL: 0, label: '0 L (空)' });
 
-                // 1dLゾーン
-                let dlHtml = '';
-                for (let i = 0; i < remDL; i++) dlHtml += generateCylinderSVG(10, '1 dL', dlW);
-                if (hasRemMl) dlHtml += generateCylinderSVG(remMlInDl / 100 * 10, `${remMlInDl} mL`, dlW);
+                // 1dLゾーンのアイテム
+                let dlItems = [];
+                for (let i = 0; i < remDL; i++) dlItems.push({ dL: 10, label: '1 dL' });
+                if (hasRemMl) dlItems.push({ dL: remMlInDl / 100 * 10, label: `${remMlInDl} mL` });
 
-                const dlSection = (hasRemDl || hasRemMl) ? `
-                    <div class="combo-section">
-                        <div class="combo-section-label">+ ${remDL} dL${hasRemMl ? ' ' + remMlInDl + ' mL' : ''}</div>
-                        <div class="combo-inner">${dlHtml}</div>
-                    </div>` : '';
+                const showDlSection = hasRemDl || hasRemMl;
+                const skel = ensureComboSkeleton(area, showDlSection);
 
-                area.innerHTML = `
-                    <div class="combo-grid">
-                        <div class="combo-section">
-                            <div class="combo-section-label">${fullL} L</div>
-                            <div class="combo-inner">${lHtml}</div>
-                        </div>
-                        ${dlSection}
-                    </div>`;
+                skel.lLabel.textContent = `${fullL} L`;
+                renderMasuGroup(skel.lInner, lItems, generateCylinderSVG, lW, 'combo-l');
+
+                if (showDlSection) {
+                    skel.dlLabel.textContent = `+ ${remDL} dL${hasRemMl ? ' ' + remMlInDl + ' mL' : ''}`;
+                    renderMasuGroup(skel.dlInner, dlItems, generateCylinderSVG, dlW, 'combo-dl');
+                }
             }
         }
 
@@ -986,6 +1189,7 @@
     }
 
     // 初期描画
+    applyAnimModeClass();
     applyModeLayout();
     updateLiveSyringe();
     renderInputUI();
