@@ -35,11 +35,33 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 .mode-btn.active{background:#8e44ad;color:#fff;border-color:#6c3483;}
 .mode-btn:hover:not(.active){background:#f3e8fb;border-color:#8e44ad;}
 
-.main-area{display:flex;gap:12px;padding:12px;max-width:1280px;margin:0 auto;align-items:flex-start;}
+/* ==========================================================
+   レイアウト固定幅の根拠（16:9ディスプレイに全枠が収まるよう、
+   起こりうる最大サイズから逆算した「初期表示位置」）
+   ---------------------------------------------------------
+   ・たし算は各数が最大999までのため、百の位タイルは最大19枚
+     （9＋9＋くり上がり1）、十の位も同様に最大19本になりうる。
+   ・hyakuFootprint(19)   → 幅 約529px（updateLayoutが+8した後の値）
+   ・stickLayout(19).totW → 幅 約263px（updateLayoutが+16した後の値）
+   ・タイル表の内訳：ラベル28 + 千110 + 百529 + 十263 + 一110 = 1040px
+   ・1040pxが「タイル表示枠が取りうる最大幅」。左右10pxずつの
+     余白を足して1080pxをタイル枠の固定幅とする。
+   ・右側パネル（ひっ算＋説明文）は320px固定（ひっ算svgの最大幅280px＋
+     左右パディング14px×2で収まる）。
+   ・全体幅 = 1080(タイル) + 16(gap) + 320(右パネル) + 12×2(main-areaの左右padding)
+            = 1440px　→　1440×810は正確に16:9の比率。
+   これにより百の位の数がどれだけ大きくなっても、タイル枠は右パネルの
+   手前でちょうど収まり、ひっ算・説明文の枠と重ならない。
+   ========================================================== */
+.main-area{display:flex;gap:16px;padding:12px;max-width:1440px;margin:0 auto;
+  align-items:flex-start;overflow-x:auto;}
 
 /* ===== タイル図エリア：<table>で列位置を保証 ===== */
-.tile-area{flex:1;display:flex;justify-content:center;background:#fff;border-radius:12px;
-  box-shadow:0 4px 14px rgba(0,0,0,.08);position:relative;overflow:visible;min-width:300px;}
+/* 幅1080pxで固定（flex:1で伸縮させない）。百の位が最大枚数(19枚)に
+   なってもタイル表(最大1040px)がこの枠内に収まる想定値。 */
+.tile-area{flex:0 0 1080px;width:1080px;display:flex;justify-content:center;background:#fff;
+  border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);position:relative;overflow:visible;
+  margin-top:40px;}
 
 #tile-table{border-collapse:collapse;table-layout:fixed;border-radius:12px;overflow:hidden;}
 
@@ -89,7 +111,9 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 #mark-layer{position:absolute;top:0;left:0;width:100%;height:100%;
   pointer-events:none;overflow:visible;z-index:90;}
 
-.right-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-width:260px;}
+/* 320px固定（タイル枠側と同じく、main-areaの伸縮に巻き込まれて
+   タイル枠と重ならないよう flex:1 をやめて固定幅にした） */
+.right-panel{flex:0 0 320px;width:320px;display:flex;flex-direction:column;gap:10px;}
 .hissan-box{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);
   padding:10px 14px 14px;}
 .hissan-title{font-size:12px;font-weight:bold;color:#666;margin-bottom:4px;text-align:center;}
@@ -136,8 +160,9 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 .pop-in{animation:popIn .4s cubic-bezier(.34,1.56,.64,1) forwards;}
 
 @media(max-width:640px){
-  .main-area{flex-direction:column;}
+  .main-area{flex-direction:column;overflow-x:visible;}
   .tile-area{flex:none;width:100%;}
+  .right-panel{flex:none;width:100%;}
 }
 </style>
 </head>
@@ -354,8 +379,53 @@ function renderSticks(svgEl,count,alpha,hColor,strokeColor){
   return centers;
 }
 
-// ひゃくタイルを重ねて並べるときの「ずらす距離」（x軸・y軸とも）。視認性のため通常の2倍にしてある。
-const HYAKU_STEP=5, HYAKU_SIDE=10*U+9*U*.15;
+// ひゃくタイルを重ねて並べるときの「ずらす距離」（x軸・y軸）。ひき算アプリと同じ量にして視認性を確保する。
+const HYAKU_STEP_X=24, HYAKU_STEP_Y=20, HYAKU_SIDE=10*U+9*U*.15;
+// 1行あたりの最大枚数。6枚目以降は次の行として右にHYAKU_ROW2_OFFSET_TILES枚分ずらして開始する（ひき算アプリと同じロジック）。
+// 足し算は答えの繰り上がり前で最大19枚まで表示しうるため、5枚を超えるたびに行を分けて「横には伸ばすが、縦には伸ばしすぎない」ようにする。
+const HYAKU_ROW1_MAX=5;
+const HYAKU_ROW2_OFFSET_TILES=2;
+
+// 百の位タイルの「相対」配置(まだ中心寄せしていない生の座標)を計算する。ひき算アプリのhyakuRawPosを拡張したロジック。
+// ・5枚ごとに1行とし、各行は「5枚のときの配置」に固定する（すでに埋まった行は後から枚数が増えても動かない）。
+// ・最後の（まだ埋まっていない）行だけは、その行の枚数に応じて中央寄せする。
+// ・2行目以降は、1行目と同じ高さ範囲のまま、HYAKU_ROW2_OFFSET_TILES枚分ずつ右にずらして重ねる
+//   （縦方向の広がりを1行分に抑えつつ、横方向にはひき算アプリと同じ間隔で伸ばす）。
+function hyakuRawPos(i,total,su){
+  const side2=10*su+9*su*.15;
+  const rowIdx=Math.floor(i/HYAKU_ROW1_MAX);
+  const rowStart=rowIdx*HYAKU_ROW1_MAX;
+  const rowLen=Math.min(HYAKU_ROW1_MAX,total-rowStart);
+  const withinIdx=i-rowStart;
+  const off=withinIdx-(rowLen-1)/2;
+  const x=off*HYAKU_STEP_X+rowIdx*HYAKU_ROW2_OFFSET_TILES*side2;
+  const y=-off*HYAKU_STEP_Y;
+  return{x,y};
+}
+// total枚を配置したときの、生座標(hyakuRawPos)でのバウンディングボックス
+function hyakuBBox(total,su){
+  const side2=10*su+9*su*.15;
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(let i=0;i<total;i++){
+    const p=hyakuRawPos(i,total,su);
+    minX=Math.min(minX,p.x-side2/2);maxX=Math.max(maxX,p.x+side2/2);
+    minY=Math.min(minY,p.y-side2/2);maxY=Math.max(maxY,p.y+side2/2);
+  }
+  return{minX,maxX,minY,maxY};
+}
+// 百の位タイルの配置を計算する共通関数。バウンディングボックスの中心を枠の中心(W/2,H/2)に合わせる。
+function hyakuTilePos(i,total,W,H,su){
+  const bbox=hyakuBBox(total,su);
+  const shiftX=W/2-(bbox.minX+bbox.maxX)/2;
+  const shiftY=H/2-(bbox.minY+bbox.maxY)/2;
+  const p=hyakuRawPos(i,total,su);
+  return{cx:p.x+shiftX, cy:p.y+shiftY};
+}
+// total枚のタイルを配置したときに必要な、バウンディングボックスの幅・高さを返す（枠の自動サイズ計算用）。
+function hyakuFootprint(total,su){
+  const bbox=hyakuBBox(total,su);
+  return{width:bbox.maxX-bbox.minX, height:bbox.maxY-bbox.minY};
+}
 
 // 百タイル
 function renderHyakus(svgEl,count,alpha,hColor,strokeColor){
@@ -363,17 +433,22 @@ function renderHyakus(svgEl,count,alpha,hColor,strokeColor){
   const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
   const u=U,G=u*.15,side=HYAKU_SIDE;
   const sc=Math.min((W-8)/side,(H-8)/side,1);
-  const su=u*sc,step=HYAKU_STEP*sc,centers=[];
+  const su=u*sc,centers=[];
   for(let i=0;i<count;i++){
-    const cx=W/2+(i-(count-1)/2)*step,cy=H/2-(i-(count-1)/2)*step;
+    const{cx,cy}=hyakuTilePos(i,count,W,H,su);
     const g=mk('g',{},svgEl);
     drawHyakuScaled(g,cx,cy,su,alpha??1,strokeColor||SC);
     centers.push({cx,cy});
   }
   if(hColor){
-    // タイルは斜め方向にstepずつ重ねて並ぶので、囲み枠は「1枚分の大きさ＋(枚数-1)分の広がり」が必要
-    const tileSide=10*su+9*su*.15,spread=(count-1)*step,boxSide=tileSide+spread,m=4;
-    mk('rect',{x:W/2-boxSide/2-m,y:H/2-boxSide/2-m,width:boxSide+m*2,height:boxSide+m*2,
+    // 全タイルが収まるバウンディングボックスを求めて囲む
+    const side2=10*su+9*su*.15,m=4;
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    centers.forEach(({cx,cy})=>{
+      minX=Math.min(minX,cx-side2/2);maxX=Math.max(maxX,cx+side2/2);
+      minY=Math.min(minY,cy-side2/2);maxY=Math.max(maxY,cy+side2/2);
+    });
+    mk('rect',{x:minX-m,y:minY-m,width:(maxX-minX)+m*2,height:(maxY-minY)+m*2,
       fill:'none',stroke:hColor,'stroke-width':2.5,'stroke-dasharray':'5,3',rx:4},svgEl);
   }
   return centers;
@@ -1440,10 +1515,10 @@ function runAnim(animType,prevState,nextState,onDone){
     // renderHyakusと完全に同じ式で位置・縮尺を計算する（最初の出現位置と最終位置を一致させる）
     const W=vbW(id),H=vbH(id),side=HYAKU_SIDE;
     const sc=Math.min((W-8)/side,(H-8)/side,1);
-    const suA=U*sc,step=HYAKU_STEP*sc;let si=0;
+    const suA=U*sc;let si=0;
     (function next(){
       if(si>=count){onDone();return;}
-      const cx=W/2+(si-(count-1)/2)*step,cy=H/2-(si-(count-1)/2)*step;
+      const{cx,cy}=hyakuTilePos(si,count,W,H,suA);
       const g=mk('g',{opacity:0},svgEl);
       drawHyakuScaled(g,cx,cy,suA,1,SC);
       tween(280,t=>g.setAttribute('opacity',t),()=>{si++;next();});
@@ -1701,17 +1776,17 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgHA=document.getElementById('svg-hyaku-a');
     const svgHB=document.getElementById('svg-hyaku-b');
     const svgHAns=document.getElementById('svg-hyaku-ans');
-    const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a'),HB=vbH('svg-hyaku-b'),HA=vbH('svg-hyaku-ans'),step=2.5;
+    const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a'),HB=vbH('svg-hyaku-b'),HA=vbH('svg-hyaku-ans');
     // carry百タイルの出発位置：ヘッダー真上
     const carryAbove=aboveHdr('hdr-hyaku');
     const carrySrc=hasCarryJ?[carryAbove]:[];
     const srcA=Array.from({length:aH},(_,i)=>{
-      const cx=W/2+(i-(aH-1)/2)*step,cy=H/2;return svgToLayer(svgHA,cx,cy);});
+      const p=hyakuTilePos(i,aH,W,H,su);return svgToLayer(svgHA,p.cx,p.cy);});
     const srcB=Array.from({length:bH},(_,i)=>{
-      const cx=W/2+(i-(bH-1)/2)*step,cy=HB/2;return svgToLayer(svgHB,cx,cy);});
+      const p=hyakuTilePos(i,bH,W,HB,su);return svgToLayer(svgHB,p.cx,p.cy);});
     const hTotal=hRaw;
     const dstAll=Array.from({length:hTotal},(_,i)=>{
-      const cx=W/2+(i-(hTotal-1)/2)*step,cy=HA/2;return svgToLayer(svgHAns,cx,cy);});
+      const p=hyakuTilePos(i,hTotal,W,HA,su);return svgToLayer(svgHAns,p.cx,p.cy);});
     const allSrc=[...carrySrc,...srcA,...srcB];
     renderHyakus(svgHA,aH,.25);renderHyakus(svgHB,bH,.25);
     svgHAns.innerHTML='';layer.innerHTML='';
@@ -1758,8 +1833,10 @@ function runAnim(animType,prevState,nextState,onDone){
   // --- carry-h: 百→千くり上がり ---
   if(animType==='carry-h'){
     const svgHAns=document.getElementById('svg-hyaku-ans');
-    const W=vbW('svg-hyaku-ans'),HA=vbH('svg-hyaku-ans'),step=2.5;
-    const allPos=Array.from({length:hRaw},(_,i)=>({x:W/2+(i-(hRaw-1)/2)*step,y:HA/2}));
+    const W=vbW('svg-hyaku-ans'),HA=vbH('svg-hyaku-ans');
+    // 現行の百タイル配置（斜めにずらし、5枚ごとに列を作る並び方）と同じ座標を使う。
+    // 以前は横一列の仮の座標(stepずらし)を使っていたため、くり上がり時だけ並びが崩れて見えていた。
+    const allPos=Array.from({length:hRaw},(_,i)=>{const p=hyakuTilePos(i,hRaw,W,HA,su);return{x:p.cx,y:p.cy};});
     const pos10=allPos.slice(0,10);
     const posR=allPos.slice(10);
     const src10=pos10.map(p=>svgToLayer(svgHAns,p.x,p.y));
@@ -1767,19 +1844,25 @@ function runAnim(animType,prevState,nextState,onDone){
     const srcCx=src10.reduce((s,p)=>s+p.x,0)/10;
     const srcCy=src10.reduce((s,p)=>s+p.y,0)/10;
 
-    // 点線で「10枚のかたまり」だけを囲む。残り（hAns枚）は通常表示のまま動かさない。
-    // タイル1枚の実際の大きさ(TW=10ユニット分)を基準にする（su*4だと小さすぎてタイルが枠から飛び出す）
-    const TW0=10*su+9*su*.15;
-    const xs=src10.map(p=>p.x),m=4;
-    const bx0=Math.min(...xs)-TW0/2-m, by0=srcCy-TW0/2-m;
-    const bw0=Math.max(...xs)-Math.min(...xs)+TW0+m*2, bh0=TW0+m*2;
-    const dash=mk('rect',{x:bx0,y:by0,width:bw0,height:bh0,fill:'none',stroke:'#e74c3c','stroke-width':2,'stroke-dasharray':'5,4',rx:4,opacity:0},layer);
+    // 「10枚のかたまり（斜め5枚＋5枚の2列）」だけを六角形の点線で囲む。残り（hAns枚）は通常表示のまま動かさない。
+    // 矩形で囲むと斜めに並ぶ他のタイルに重なってしまうため、1・5・6・10枚目のタイル四隅を結んだ六角形にする。
+    const TW0=10*su+9*su*.15,hw=TW0/2,m=6;
+    const p1=src10[0],p5=src10[4],p6=src10[5],p10=src10[9];
+    const hexPts=[
+      [p1.x-hw-m, p1.y+hw+m],   // ①1枚目の左下
+      [p6.x+hw+m, p6.y+hw+m],   // ②6枚目の右下
+      [p10.x+hw+m,p10.y+hw+m],  // ③10枚目の右下
+      [p10.x+hw+m,p10.y-hw-m],  // ④10枚目の右上
+      [p5.x-hw-m, p5.y-hw-m],   // ⑤5枚目の左上
+      [p1.x-hw-m, p1.y-hw-m],   // ⑥1枚目の左上
+    ];
+    const dash=mk('polygon',{points:hexPts.map(p=>p.join(',')).join(' '),fill:'none',stroke:'#2980b9','stroke-width':2,'stroke-dasharray':'5,4',opacity:0},layer);
     tween(220,t=>dash.setAttribute('opacity',t),()=>{
       setTimeout(()=>{
         // 囲んだ10枚を元の場所から外し、残りだけ通常表示で描き直す
         svgHAns.innerHTML='';
         posR.forEach(p=>{const g=mk('g',{},svgHAns);drawHyakuScaled(g,p.x,p.y,su,1,SC);});
-        // phase1: 点線で囲んだ部分（10枚＋枠）だけを中心に縮小する
+        // phase1: 点線で囲んだ部分（10枚＋六角形の枠）だけを中心に縮小する
         const gs=src10.map(p=>{const g=mk('g',{},layer);drawHyakuScaled(g,p.x,p.y,su,1,SC);return g;});
         tween(320,t=>{
           gs.forEach((g,i)=>{
@@ -1788,9 +1871,8 @@ function runAnim(animType,prevState,nextState,onDone){
             const dx=cx-src10[i].x, dy=cy-src10[i].y;
             g.setAttribute('transform',`translate(${dx},${dy}) translate(${src10[i].x},${src10[i].y}) scale(${sc}) translate(${-src10[i].x},${-src10[i].y})`);
           });
-          const bw=bw0*(1-.85*t), bh=bh0*(1-.85*t);
-          dash.setAttribute('x',srcCx-bw/2);dash.setAttribute('y',srcCy-bh/2);
-          dash.setAttribute('width',bw);dash.setAttribute('height',bh);
+          const hsc=1-.85*t;
+          dash.setAttribute('transform',`translate(${srcCx},${srcCy}) scale(${hsc}) translate(${-srcCx},${-srcCy})`);
           dash.setAttribute('opacity',1-t);
         },()=>{
           // phase2: せんタイルに変形しつつ真上へ飛ぶ
@@ -1909,14 +1991,14 @@ function updateLayout(){
     // ---- 十の位の幅：この問題で表示しうる最大の棒の本数から逆算（5本ごとの間隔も含む）----
     const juuNeedW=stickLayout(maxJuuCount).totW+16; // 余白
     juuWidth=Math.max(124,Math.round(juuNeedW));
-    // ---- 百の位：タイルの重なりをずらす距離(HYAKU_STEP)をx・y方向とも基準にして、
-    //      枚数が多いときに幅・高さの両方を広げ、すべてのタイルが必ず収まるようにする ----
-    const hyakuNeedSize=n=>n<=0?0:HYAKU_SIDE+(n-1)*HYAKU_STEP;
-    hyakuWidth=Math.max(124,Math.round(hyakuNeedSize(maxHyakuCount)+16));
+    // ---- 百の位：タイルの配置(hyakuRawPos/hyakuTilePosと同じ式)から必要な幅・高さを逆算し、
+    //      枚数が多いときに6枚目以降の2列目分も含めてすべてのタイルが必ず収まるようにする ----
+    const hyakuFp=n=>hyakuFootprint(n,U);
+    hyakuWidth=Math.max(124,Math.round(hyakuFp(maxHyakuCount).width+8));
     hyakuHeights={
-      'svg-hyaku-a':  Math.max(86,Math.round(hyakuNeedSize(aH)+16)),
-      'svg-hyaku-b':  Math.max(86,Math.round(hyakuNeedSize(bH)+16)),
-      'svg-hyaku-ans':Math.max(94,Math.round(hyakuNeedSize(hRaw)+16)),
+      'svg-hyaku-a':  Math.max(86,Math.round(hyakuFp(aH).height+8)),
+      'svg-hyaku-b':  Math.max(86,Math.round(hyakuFp(bH).height+8)),
+      'svg-hyaku-ans':Math.max(94,Math.round(hyakuFp(hRaw).height+8)),
     };
   }
 
