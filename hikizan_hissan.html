@@ -36,6 +36,14 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   border-radius:14px;background:#fff;cursor:pointer;transition:all .2s;
   font-family:'Noto Sans JP',sans-serif;}
 .method-btn.active{background:#7f3fbf;color:#fff;border-color:#6a2fa0;}
+.mode-row{display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding-left:10px;
+  border-left:1px dashed #ccc;}
+.mode-row-label{font-size:11px;color:#888;font-weight:bold;}
+.mode-btn{padding:3px 12px;font-size:11px;font-weight:bold;border:1.5px solid #ccc;
+  border-radius:14px;background:#fff;cursor:pointer;transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;}
+.mode-btn.active{background:#8e44ad;color:#fff;border-color:#6c3483;}
+.mode-btn:hover:not(.active){background:#f3e8fb;border-color:#8e44ad;}
 .err-msg{color:#e74c3c;font-size:12px;font-weight:bold;text-align:center;margin-top:4px;display:none;}
 
 .main-area{display:flex;gap:12px;padding:12px;max-width:980px;margin:0 auto;align-items:flex-start;}
@@ -80,14 +88,6 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 /* 列の縦の仕切り線（border-rightをセル単位で。theadとtbodyの両方に同じ値を指定）*/
 #tile-table th.th-hyaku,#tile-table td.td-hyaku{border-right:2px solid #85c1e9;}
 #tile-table th.th-juu,  #tile-table td.td-juu  {border-right:2px solid #f0d800;}
-
-/* 答え行で、まだその位にタイルが無い（くり上がり前）ときだけ薄い斜線の予告枠を重ねる */
-#tile-table td.is-empty{
-  background-image:repeating-linear-gradient(
-    45deg, transparent, transparent 6px,
-    rgba(0,0,0,.05) 6px, rgba(0,0,0,.05) 12px
-  );
-}
 
 #anim-layer{position:absolute;top:0;left:0;width:100%;height:100%;
   pointer-events:none;overflow:visible;z-index:100;}
@@ -135,6 +135,10 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 .nav-btn.next{background:linear-gradient(135deg,#4a9eff,#2d7dd2);color:#fff;}
 .nav-btn.next:hover{transform:translateY(-1px);box-shadow:0 5px 12px rgba(74,158,255,.35);}
 .nav-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+.voice-btn{font-size:22px;line-height:1;border:none;background:none;cursor:pointer;
+  padding:6px 10px;border-radius:50%;transition:all .2s;filter:none;opacity:1;}
+.voice-btn:hover{background:#f0f0f0;}
+.voice-btn.off{filter:grayscale(1);opacity:.45;}
 .step-indicator{font-size:13px;color:#888;font-weight:bold;min-width:80px;text-align:center;}
 
 @keyframes popIn{
@@ -183,6 +187,11 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
     <label>くり下がりの 計算方法：</label>
     <button class="method-btn" id="btn-normal" onclick="setMethod('normal')">通常</button>
     <button class="method-btn active" id="btn-bridge" onclick="setMethod('bridge')">ブリッジ計算</button>
+    <span class="mode-row">
+      <span class="mode-row-label">図のひょうじ：</span>
+      <button class="mode-btn active" id="mode-btn-tile" onclick="setDisplayMode('tile')">🟨 タイル</button>
+      <button class="mode-btn" id="mode-btn-card" onclick="setDisplayMode('card')">🔢 カード</button>
+    </span>
   </div>
 </div>
 
@@ -221,7 +230,7 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
         <!-- 答え行 -->
         <tr class="tile-result-row" id="row-ans" style="display:none;">
           <td class="td-label equals">＝</td>
-          <td class="td-hyaku is-empty" id="col-hyaku-ans"><svg id="svg-hyaku-ans" width="124" height="94" viewBox="0 0 124 94"></svg></td>
+          <td class="td-hyaku" id="col-hyaku-ans"><svg id="svg-hyaku-ans" width="124" height="94" viewBox="0 0 124 94"></svg></td>
           <td class="td-juu">                                  <svg id="svg-juu-ans"   width="124" height="94" viewBox="0 0 124 94"></svg></td>
           <td class="td-ichi">                                 <svg id="svg-ichi-ans"  width="110" height="94" viewBox="0 0 110 94"></svg></td>
         </tr>
@@ -253,6 +262,7 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   <button class="nav-btn prev" id="btn-prev" onclick="goStep(-1)">◀ もどる</button>
   <span class="step-indicator" id="step-ind">1 / 1</span>
   <button class="nav-btn next" id="btn-next" onclick="goStep(1)">すすむ ▶</button>
+  <button class="voice-btn" id="btn-voice" onclick="toggleVoice()" title="読み上げON/OFF">🔊</button>
 </div>
 
 <script>
@@ -425,6 +435,25 @@ function drawIchi(parent,count,svgW,svgH,alpha,hColor,ghostCount){
 }
 
 // ===== render系（SVGに静的描画）=====
+// じゅうの棒を「5本・すきま・5本」とグルーピングして並べたときのx座標(先頭からの相対オフセット)を返す。
+// renderSticksと、くり下げアニメーション側（複数箇所）で同じ式を使うことで、見た目の食い違いを防ぐ。
+const STICK_W=U+1, STICK_GAP=5, STICK_GROUP_GAP=16;
+function stickLayout(count){
+  const xs=[0];
+  for(let i=1;i<count;i++){
+    const g=(i%5===0)?STICK_GROUP_GAP:STICK_GAP;
+    xs.push(xs[i-1]+STICK_W+g);
+  }
+  const totW=count>0?(xs[xs.length-1]+STICK_W):0;
+  return{xs,totW};
+}
+// count本の棒を、幅W・高さHの枠内に中心寄せして並べたときの中心座標配列（{cx,cy}）を返す。
+function stickCenters(count,W,H){
+  if(!count)return[];
+  const{xs,totW}=stickLayout(count);
+  const sx=(W-totW)/2+STICK_W/2;
+  return xs.map(x=>({cx:sx+x,cy:H/2}));
+}
 // 棒(十の位)
 function renderSticks(svgEl,count,alpha,hColor,strokeColor,ghostCount){
   svgEl.innerHTML='';
@@ -432,21 +461,19 @@ function renderSticks(svgEl,count,alpha,hColor,strokeColor,ghostCount){
   const total=count+ghostCount;
   if(!total)return[];
   const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
-  const stW=U+1,gap=5,centers=[];
-  const totW=total*stW+(total-1)*gap;
-  const sx=(W-totW)/2+stW/2;
+  const centers=stickCenters(total,W,H);
   for(let i=0;i<total;i++){
     const isGhost=i>=count;
     const g=mk('g',{},svgEl);
-    drawStick(g,sx+i*(stW+gap),H/2,U,isGhost?.45:(alpha??1),strokeColor||SC);
+    drawStick(g,centers[i].cx,centers[i].cy,U,isGhost?.45:(alpha??1),strokeColor||SC);
     if(isGhost){
       const G=U*.15,TH=10*U+9*G;
-      mk('rect',{x:sx+i*(stW+gap)-U/2-2,y:H/2-TH/2-2,width:U+4,height:TH+4,
+      mk('rect',{x:centers[i].cx-U/2-2,y:H/2-TH/2-2,width:U+4,height:TH+4,
         fill:'none',stroke:'#8a8a8a','stroke-width':1,'stroke-dasharray':'3,2',rx:2},svgEl);
     }
-    centers.push({cx:sx+i*(stW+gap),cy:H/2});
   }
   if(hColor){
+    const{totW}=stickLayout(total);
     const G=U*.15,TH=10*U+9*G,m=4;
     mk('rect',{x:(W-totW)/2-m,y:H/2-TH/2-m,width:totW+m*2,height:TH+m*2,
       fill:'none',stroke:hColor,'stroke-width':2.5,'stroke-dasharray':'5,3',rx:4},svgEl);
@@ -524,15 +551,241 @@ function renderIchi(svgEl,count,alpha,hColor,ghostCount){
 }
 
 // ============================================================
+// カード方式（タイルの代わりに「1」「10」「100」と書かれた数字カードで表す）
+// 並べ方は、タイル方式の一の位(drawIchi)にならい「5枚を横一列、6枚目からは
+// 下の段」という横長のレイアウトに統一する。くり下げてきた「10」のかたまりの
+// 表示（bridge10-layer／bridge100-layer）も同じ並べ方にそろえる。
+// ============================================================
+let DISPLAY_MODE='tile'; // 'tile'：実物タイル／'card'：数字カード
+
+const CARD_CFG={
+  ichi : {label:'1',   w:34,h:26,fs:13,bg:'#fce4ec',stroke:'#e91e63',tc:'#880e4f'},
+  juu  : {label:'10',  w:34,h:26,fs:13,bg:'#fff9cc',stroke:'#d4ac0d',tc:'#6b5700'},
+  hyaku: {label:'100', w:34,h:26,fs:12,bg:'#cce8f4',stroke:'#2980b9',tc:'#1a5276'}
+};
+
+// カード1枚を描く（中心座標cx,cy基準。drawStick/drawHyakuScaled等と座標系をそろえる）
+function drawCardSingle(parent,cx,cy,place,scale,alpha,strokeColor,isGhost){
+  const cfg=CARD_CFG[place];
+  scale=scale??1;alpha=alpha??1;
+  const w=cfg.w*scale,h=cfg.h*scale;
+  mk('rect',{x:cx-w/2,y:cy-h/2,width:w,height:h,fill:cfg.bg,
+    stroke:strokeColor||(isGhost?'#8a8a8a':cfg.stroke),'stroke-width':1.6*scale,
+    'stroke-dasharray':isGhost?(2.4*scale)+','+(1.8*scale):'0',
+    rx:3*scale,opacity:alpha},parent);
+  mk('text',{x:cx,y:cy+cfg.fs*scale*.36,'text-anchor':'middle',
+    'font-size':cfg.fs*scale,'font-weight':'bold',fill:cfg.tc,
+    'font-family':"'Noto Sans JP',sans-serif",opacity:alpha},parent).textContent=cfg.label;
+}
+
+// count+ghostCount枚を「5枚ずつ横一列・あふれたら次の段」で並べ、box(svgW,svgH)に
+// 収まるように必要ならスケールを縮小する。中心座標配列（scale込み）を返す（描画はしない）。
+function cardBoxPositions(count,ghostCount,place,svgW,svgH){
+  ghostCount=ghostCount||0;
+  const total=count+ghostCount;
+  if(!total)return{pos:[],scale:1};
+  const cfg=CARD_CFG[place];
+  const gapX=6,rGap=8,margin=6;
+  const nRows=Math.ceil(total/5);
+  let maxRowW=0;
+  for(let r=0;r<nRows;r++){
+    const inRow=(r===nRows-1)?(total-r*5):5;
+    maxRowW=Math.max(maxRowW,inRow*cfg.w+(inRow-1)*gapX);
+  }
+  const needH=nRows*cfg.h+(nRows-1)*rGap;
+  let scale=1;
+  if(maxRowW>svgW-margin*2)scale=Math.min(scale,(svgW-margin*2)/maxRowW);
+  if(needH>svgH-margin*2)scale=Math.min(scale,(svgH-margin*2)/needH);
+  scale=Math.max(scale,.4); // 縮小しすぎて数字が読めなくなるのを防ぐ下限
+  const w=cfg.w*scale,h=cfg.h*scale,gx=gapX*scale,gy=rGap*scale;
+  const totH=nRows*h+(nRows-1)*gy;
+  const sy=svgH/2-totH/2+h/2;
+  const pos=[];let drawn=0;
+  for(let r=0;r<nRows&&drawn<total;r++){
+    const inRow=Math.min(5,total-drawn);
+    const rowW=inRow*w+(inRow-1)*gx;
+    const sx=svgW/2-rowW/2+w/2;
+    const cy=sy+r*(h+gy);
+    for(let i=0;i<inRow&&drawn<total;i++){pos.push({cx:sx+i*(w+gx),cy,scale});drawn++;}
+  }
+  return{pos,scale};
+}
+
+// セル(svg-xxx-a/b/ans)へのカード描画。renderSticks/renderHyakus/renderIchiと同じ使い方ができるようにする。
+function renderCardGeneric(svgEl,count,place,alpha,hColor,ghostCount){
+  svgEl.innerHTML='';
+  ghostCount=ghostCount||0;
+  const total=count+ghostCount;
+  if(!total)return[];
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
+  const{pos}=cardBoxPositions(count,ghostCount,place,W,H);
+  pos.forEach((p,i)=>{
+    const isGhost=i>=count;
+    drawCardSingle(svgEl,p.cx,p.cy,place,p.scale,isGhost?.45:(alpha??1),null,isGhost);
+  });
+  const visible=pos.slice(0,count);
+  if(hColor&&visible.length){
+    const cfg=CARD_CFG[place],sc=visible[0].scale,m=5;
+    const xs=visible.map(p=>p.cx),ys=visible.map(p=>p.cy);
+    mk('rect',{x:Math.min(...xs)-cfg.w*sc/2-m,y:Math.min(...ys)-cfg.h*sc/2-m,
+      width:Math.max(...xs)-Math.min(...xs)+cfg.w*sc+m*2,
+      height:Math.max(...ys)-Math.min(...ys)+cfg.h*sc+m*2,
+      fill:'none',stroke:hColor,'stroke-width':2.5,'stroke-dasharray':'5,3',rx:4},svgEl);
+  }
+  return visible.map(p=>({cx:p.cx,cy:p.cy}));
+}
+// タイル版render系（renderHyakus/renderSticks/renderIchi）と引数の並びをそろえた別名
+function renderHyakusCard(svgEl,count,alpha,hColor,strokeColor,ghostCount){return renderCardGeneric(svgEl,count,'hyaku',alpha,hColor,ghostCount);}
+function renderSticksCard(svgEl,count,alpha,hColor,strokeColor,ghostCount){return renderCardGeneric(svgEl,count,'juu',alpha,hColor,ghostCount);}
+function renderIchiCard(svgEl,count,alpha,hColor,ghostCount){return renderCardGeneric(svgEl,count,'ichi',alpha,hColor,ghostCount);}
+
+// bridge10-layer／bridge100-layer用：box幅に収める必要がなく、中心(hc)まわりに
+// 自然な大きさで「5枚ずつ横一列」に並べる（tile版のbridgeIchiPositions/bridgeStickPositionsに対応）。
+function bridgeCardPositions(total,hc,place){
+  const cfg=CARD_CFG[place];
+  const gapX=6,rGap=8;
+  const nRows=Math.ceil(total/5);
+  const totH=nRows*cfg.h+(nRows-1)*rGap;
+  const sy=hc.y-totH/2+cfg.h/2;
+  const pos=[];let drawn=0;
+  for(let r=0;r<nRows&&drawn<total;r++){
+    const inRow=(r===nRows-1)?(total-drawn):5;
+    const rowW=inRow*cfg.w+(inRow-1)*gapX;
+    const sx=hc.x-rowW/2+cfg.w/2;
+    const cy=sy+r*(cfg.h+rGap);
+    for(let i=0;i<inRow&&drawn<total;i++){pos.push({x:sx+i*(cfg.w+gapX),y:cy});drawn++;}
+  }
+  return pos;
+}
+
+// カード方式のとき、列の幅／高さを何枚分確保すればよいかを逆算するためのヘルパー
+// （updateLayoutから呼ばれる。桁数が増えても同じ式で対応できる）。
+function cardNeedWidth(maxCount,place){
+  const cfg=CARD_CFG[place];
+  const perRow=Math.min(5,Math.max(1,maxCount));
+  return perRow*cfg.w+(perRow-1)*6+16;
+}
+function cardNeedHeight(maxCount,place){
+  const cfg=CARD_CFG[place];
+  const nRows=Math.max(1,Math.ceil(maxCount/5));
+  return nRows*cfg.h+(nRows-1)*8+16;
+}
+
+// ============================================================
+// カード方式のアニメーション共通ヘルパー
+// タイル方式が「1個ずつ動く・対消滅する」といった専用アニメーションを
+// 位ごとに持っているのと同じ考え方を、カードでも共通化して再現する。
+// ============================================================
+
+// place一律のrender呼び出し（タイル版renderIchi/renderSticks/renderHyakusの
+// カード版をまとめて同じ引数の並びで呼べるようにする）。
+function renderCardPlace(place,svgEl,count,alpha,hColor,ghostCount){
+  if(place==='ichi')return renderIchiCard(svgEl,count,alpha,hColor,ghostCount);
+  if(place==='juu')return renderSticksCard(svgEl,count,alpha,hColor,null,ghostCount);
+  return renderHyakusCard(svgEl,count,alpha,hColor,null,ghostCount);
+}
+// タイル/カード両対応のplace一律render（対消滅エンジンrunAnnihilationから使う）。
+function renderPlace(place,svgEl,count,alpha,hColor,ghostCount){
+  if(DISPLAY_MODE==='card')return renderCardPlace(place,svgEl,count,alpha,hColor,ghostCount);
+  if(place==='ichi')return renderIchi(svgEl,count,alpha,hColor,ghostCount);
+  if(place==='juu')return renderSticks(svgEl,count,alpha,hColor,null,ghostCount);
+  return renderHyakus(svgEl,count,alpha,hColor,null,ghostCount);
+}
+// svgEl内にcount枚のカードを並べたときの中心座標配列を返す（cardBoxPositionsのラッパー）。
+// 対消滅エンジン(runAnnihilation)のgetPositionsにそのまま渡せる形にする。
+function cardGetPositions(place){
+  return (svgEl,count)=>{
+    if(!count)return[];
+    const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]);
+    const H=parseInt(svgEl.getAttribute('height'))||86;
+    const{pos}=cardBoxPositions(count,0,place,W,H);
+    return pos.map(p=>({cx:p.cx,cy:p.cy}));
+  };
+}
+// カード1枚をsrc→dest（どちらもtile-area基準のlayer座標）へ移動させる。
+function cardFly(destLayer,src,dest,place,color,duration,onDone){
+  const g=mk('g',{},destLayer);
+  drawCardSingle(g,src.x,src.y,place,1,1,color||null,false);
+  tween(duration||500,t=>{
+    const tx=src.x+(dest.x-src.x)*t, ty=src.y+(dest.y-src.y)*t;
+    g.setAttribute('transform',`translate(${tx-src.x},${ty-src.y})`);
+  },()=>{g.remove();onDone&&onDone();});
+}
+// 複数枚のカードをsrcs[]→dests[]へ同時に移動させる（対応数が合わない場合は最後のdestを使い回す）。
+function cardFlyMany(destLayer,srcs,dests,place,color,duration,onDone){
+  if(!srcs.length){onDone&&onDone();return;}
+  const gs=srcs.map(p=>{const g=mk('g',{},destLayer);drawCardSingle(g,p.x,p.y,place,1,1,color||null,false);return g;});
+  tween(duration||550,t=>{
+    gs.forEach((g,i)=>{
+      const dest=dests[i]||dests[dests.length-1];
+      const dx=(dest.x-srcs[i].x)*t, dy=(dest.y-srcs[i].y)*t;
+      g.setAttribute('transform',`translate(${dx},${dy})`);
+    });
+  },()=>{gs.forEach(g=>g.remove());onDone&&onDone();});
+}
+// カード版の対消滅（1組ずつ：線でむすぶ→光る→濃い分身が右上へ飛んで消える／元の場所は半透明ghostに）。
+// タイル方式のrunAnnihilation内のrunPairと同じ演出をカードに合わせて再現する。
+function cardAnnihilatePairs(opts){
+  const {posA,posB,realA,realB,place,color,onAllDone}=opts;
+  const layer=document.getElementById('anim-layer');
+  const n=Math.min(posA.length,posB.length);
+  if(n===0){onAllDone&&onAllDone();return;}
+  const tileRect=document.getElementById('tile-area').getBoundingClientRect();
+  const destX=tileRect.width-20, destY=20;
+  const STAGGER=230;
+  let doneCount=0;
+  function runPair(i){
+    const a=posA[i], b=posB[i];
+    const ra=realA[i], rb=realB[i];
+    const line=mk('line',{x1:b.x,y1:b.y,x2:b.x,y2:b.y,stroke:'#ff7043','stroke-width':2.5,'stroke-linecap':'round'},layer);
+    tween(220,t=>{
+      const cx=b.x+(a.x-b.x)*t, cy=b.y+(a.y-b.y)*t;
+      line.setAttribute('x2',cx); line.setAttribute('y2',cy);
+    },()=>{
+      ra.setAttribute('class','glow-pop'); rb.setAttribute('class','glow-pop');
+      setTimeout(()=>{
+        ra.innerHTML=''; drawCardSingle(ra,a.x,a.y,place,1,.45,null,true);
+        rb.innerHTML=''; drawCardSingle(rb,b.x,b.y,place,1,.45,null,true);
+        ra.removeAttribute('class'); rb.removeAttribute('class');
+        const ga=mk('g',{},layer); drawCardSingle(ga,a.x,a.y,place,1,1,color||null,false);
+        const gb=mk('g',{},layer); drawCardSingle(gb,b.x,b.y,place,1,1,null,false);
+        tween(550,t=>{
+          const dxA=(destX-a.x)*t, dyA=(destY-a.y)*t;
+          const dxB=(destX-b.x)*t, dyB=(destY-b.y)*t;
+          ga.setAttribute('transform',`translate(${dxA},${dyA})`);
+          gb.setAttribute('transform',`translate(${dxB},${dyB})`);
+          const op=1-t;
+          ga.setAttribute('opacity',op); gb.setAttribute('opacity',op); line.setAttribute('opacity',op);
+          line.setAttribute('x1',b.x+dxB); line.setAttribute('y1',b.y+dyB);
+          line.setAttribute('x2',a.x+dxA); line.setAttribute('y2',a.y+dyA);
+        },()=>{
+          line.remove(); ga.remove(); gb.remove();
+          doneCount++;
+          if(doneCount>=n) onAllDone&&onAllDone();
+        });
+      },250);
+    });
+  }
+  for(let i=0;i<n;i++) setTimeout(()=>runPair(i), i*STAGGER);
+}
+
+// ============================================================
 // 筆算SVG描画（ひき算版）  viewBox="0 0 210 230"
 // 位置: 千=35, 百=73, 十=111, 一=149
 // ============================================================
 const HSX=35,H2X=73,HJX=111,HIX=149;
-const HBORROW_Y=26,HROW1_Y=70,HROW2_Y=110,HLINE_Y=128,HROW3_Y=166;
+const HG=38; // ノートのマス目1個分の大きさ（数字1つ・記号1つがちょうど1マスに収まる。列の間隔と同じ38pxにしている）
+const HBORROW_Y=26,HROW1_Y=70,HROW2_Y=108,HLINE_Y=114,HROW3_Y=146;
 
 function drawHissan(svgEl,state){
   svgEl.innerHTML='';
   const S=state;
+
+  // ノートのマス目（薄いグレーの格子）を背景に敷く。
+  // 1マス＝1つの数字・記号の大きさ(HG)にして、数字の列（H2X,HJX,HIXなど）とぴったり重なるようにする。
+  const VBW=210,VBH=230,gx0=HSX-HG/2; // gx0：いちばん左の列(HSX)がマスの中心になるように原点をずらす
+  for(let gx=gx0;gx<=VBW;gx+=HG)mk('line',{x1:gx,y1:0,x2:gx,y2:VBH,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
+  for(let gy=0;gy<=VBH;gy+=HG)mk('line',{x1:0,y1:gy,x2:VBW,y2:gy,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
 
   function txt(content,x,y,fs,fw,color,cls){
     const t=mk('text',{x,y,'font-size':fs||34,'font-weight':fw||'bold',
@@ -545,15 +798,15 @@ function drawHissan(svgEl,state){
     mk('rect',{x,y,width:w,height:h,rx:5,fill:color,opacity:a||.18},svgEl);
   }
 
-  // 横線
+  // － 記号（ひく数の、いちばん大きい位の1つ左のマスに書く。addition app の＋記号と同じルール）
+  const leftmostCol=S.has3?H2X:HJX;
+  const minusX=leftmostCol-HG;
+  if(S.showMinus) txt('－',minusX,HROW2_Y-6,20,'bold','#e35d3a');
+
+  // 横線（－記号の下のマスも含めて、グリッド線に重ねて伸ばす）
   if(S.showLine){
-    const lx1=S.has3?54:92;
+    const lx1=minusX-HG/2;
     mk('line',{x1:lx1,y1:HLINE_Y,x2:168,y2:HLINE_Y,stroke:'#333','stroke-width':2.5},svgEl);
-  }
-  // － 記号
-  if(S.showMinus){
-    const px=S.has3?50:70;
-    txt('－',px,HROW2_Y+4,20,'bold','#e35d3a');
   }
 
   // ハイライト
@@ -575,9 +828,9 @@ function drawHissan(svgEl,state){
   }
   if(S.showAJ){
     if(S.borrowFromJ && S.jDisplayOverride!==null){
-      // カスケードで十の位が0→10になった後、さらに一の位へ1かり下げる場合。
+      // カスケードで十の位が0→10になった後、さらに一の位へ1くり下げる場合。
       // 実際の筆算の補助計算に合わせ、黒字の0（ひかれる数）は書き換えずそのまま残し、
-      // かり下げ後に書いた赤字の「10」に斜線を引いて、そのさらに上に
+      // くり下げ後に書いた赤字の「10」に斜線を引いて、そのさらに上に
       // 一の位へ貸した後の値（9等）を赤字で書く。
       txt(S.aJ,HJX,HROW1_Y,34,'bold','#bbb');
       mk('line',{x1:HJX-15,y1:HROW1_Y-22,x2:HJX+15,y2:HROW1_Y+8,stroke:'#e35d3a','stroke-width':2},svgEl);
@@ -605,7 +858,7 @@ function drawHissan(svgEl,state){
     }
   }
   // 十の位の補助計算：百の位からさらに借りてきた「10」を、
-  // かり下げ後の小さい赤字数字のさらに上に赤字で表示する。
+  // くり下げ後の小さい赤字数字のさらに上に赤字で表示する。
   if(S.showBridge100){
     const ct=mk('text',{x:HJX,y:HBORROW_Y,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
     ct.textContent='10';
@@ -651,8 +904,9 @@ function drawHissan(svgEl,state){
   drawBridgeNotation(HIX,S.showBridgeLineI,S.bridgeLineIPop,S.showBridgeAnsI,S.bridgeAnsIPop,S.bridgeAnsIVal,S.showBridgePlusI,S.bridgePlusIPop);
   drawBridgeNotation(HJX,S.showBridgeLineJ,S.bridgeLineJPop,S.showBridgeAnsJ,S.bridgeAnsJPop,S.bridgeAnsJVal,S.showBridgePlusJ,S.bridgePlusJPop);
 
-  // 数字B行（ひく数）
-  if(S.showBH&&S.has3) txt(S.bH,H2X,HROW2_Y,34,'bold','#222');
+  // 数字B行（ひく数）。ひく数に百の位が無いとき(bH=0)は何も書かない
+  // （空欄のままにする＝「147－018」のように0を書いてしまうのを防ぐ）。
+  if(S.showBH&&S.has3&&S.bH>0) txt(S.bH,H2X,HROW2_Y,34,'bold','#222');
   if(S.showBJ) txt(S.bJ,HJX,HROW2_Y,34,'bold','#222');
   if(S.showBI) txt(S.bI,HIX,HROW2_Y,34,'bold','#222');
 
@@ -661,10 +915,10 @@ function drawHissan(svgEl,state){
   if(S.showAnsJ) txt(S.jAns,HJX,HROW3_Y,34,'bold','#1a7f37');
   if(S.showAnsH&&S.has3) txt(S.hAns,H2X,HROW3_Y,34,'bold','#1a7f37');
 
-  // 完成枠
+  // 完成枠（答えの行のマスにぴったり重ねる）
   if(S.ansBox){
     const bx=S.has3?54:92;
-    mk('rect',{x:bx,y:HROW3_Y-34,width:168-bx+4,height:44,
+    mk('rect',{x:bx+1,y:HLINE_Y+1,width:168-bx-2,height:HG-2,
       fill:'none',stroke:'#1a7f37','stroke-width':2.5,rx:6},svgEl);
   }
 }
@@ -734,10 +988,9 @@ function aboveHdr(id){
 // ============================================================
 // 棒10本(百→十のブリッジ)：renderSticksと同じ間隔計算で、hc中心に横一列。
 function bridgeStickPositions(total,hc){
-  const stW=U+1,gap=5;
-  const totW=total*stW+(total-1)*gap;
-  const sx=hc.x-totW/2+stW/2;
-  return Array.from({length:total},(_,i)=>({x:sx+i*(stW+gap),y:hc.y}));
+  const{xs,totW}=stickLayout(total);
+  const sx=hc.x-totW/2+STICK_W/2;
+  return xs.map(x=>({x:sx+x,y:hc.y}));
 }
 // タイル10個(十→一のブリッジ)：drawIchiと同じ「5個ずつ2段」の並べ方で、hc中心に配置。
 function bridgeIchiPositions(total,hc){
@@ -762,6 +1015,99 @@ function bridgeIchiPositions(total,hc){
 let numA=47,numB=18,stepIdx=0,steps=[],animBusy=false;
 let calcMethod='bridge'; // 'bridge'(ブリッジ計算：筆算に書き込む) or 'normal'(通常のくり下がり計算)
 function cloneState(s){return JSON.parse(JSON.stringify(s));}
+
+// ============================================================
+// 音声読み上げ（すべての数字・演算記号を日本語の読みに変換してから話す）
+// ============================================================
+let voiceOn=true,ttsWarmedUp=false,currentUtter=null;
+
+// 0〜9999の整数を日本語の読み（ひらがな）に変換する
+function numToYomi(n){
+  n=Math.round(n);
+  if(n===0)return'ぜろ';
+  if(n<0)return'まいなす '+numToYomi(-n);
+  const ichiMap=['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+  const juuMap  =['','じゅう','にじゅう','さんじゅう','よんじゅう','ごじゅう','ろくじゅう','ななじゅう','はちじゅう','きゅうじゅう'];
+  const hyakuMap=['','ひゃく','にひゃく','さんびゃく','よんひゃく','ごひゃく','ろっぴゃく','ななひゃく','はっぴゃく','きゅうひゃく'];
+  const senMap  =['','せん','にせん','さんぜん','よんせん','ごせん','ろくせん','ななせん','はっせん','きゅうせん'];
+  const sen=Math.floor(n/1000)%10, hyaku=Math.floor(n/100)%10, juu=Math.floor(n/10)%10, ichi=n%10;
+  let s='';
+  s+=senMap[sen];
+  s+=hyakuMap[hyaku];
+  s+=juuMap[juu];
+  s+=ichiMap[ichi];
+  return s;
+}
+
+// 助数詞つきの数（0〜10）を、正しい読み（音の変化込み）に変換する
+const HON_MAP=['ぜろほん','いっぽん','にほん','さんぼん','よんほん','ごほん','ろっぽん','ななほん','はっぽん','きゅうほん','じゅっぽん'];
+const KO_MAP =['ぜろこ','いっこ','にこ','さんこ','よんこ','ごこ','ろっこ','ななこ','はっこ','きゅうこ','じゅっこ'];
+const MAI_MAP=['ぜろまい','いちまい','にまい','さんまい','よんまい','ごまい','ろくまい','ななまい','はちまい','きゅうまい','じゅうまい'];
+
+// HTML（タグ・数字・演算記号入り）を読み上げ用の日本語テキストに変換する
+function toSpeechText(html){
+  let s=String(html);
+  s=s.replace(/<br\s*\/?>/gi,'。');     // 改行は「、」のように一拍おく
+  s=s.replace(/<[^>]+>/g,'');           // 残りのタグは除去
+  // 読み間違えやすい言葉は先に決まった読みへ置き換える（数字変換より前に処理する）
+  s=s.replace(/1つ/g,'ひとつ');
+  // 助数詞（本／こ／まい）がつく数字は、音の変化（いっぽん・じゅっこ等）を考慮して先に変換する
+  s=s.replace(/(\d+)本/g,(m,d)=>HON_MAP[parseInt(d,10)]??(numToYomi(parseInt(d,10))+'ほん'));
+  s=s.replace(/(\d+)こ/g,(m,d)=>KO_MAP[parseInt(d,10)]??(numToYomi(parseInt(d,10))+'こ'));
+  s=s.replace(/(\d+)まい/g,(m,d)=>MAI_MAP[parseInt(d,10)]??(numToYomi(parseInt(d,10))+'まい'));
+  s=s.replace(/くり上/g,'くりあ');
+  s=s.replace(/くり下/g,'くりさ');       // 「くり下げ」を「くりさげ」と正しく読ませる
+  s=s.replace(/入らない/g,'はいらない');
+  s=s.replace(/＋|\+/g,' たす ');
+  s=s.replace(/－|-/g,' ひく ');
+  s=s.replace(/×/g,' かける ');
+  s=s.replace(/÷/g,' わる ');
+  s=s.replace(/＝|=/g,' は ');
+  s=s.replace(/▶|◀/g,'');
+  s=s.replace(/\d+/g,m=>numToYomi(parseInt(m,10))); // 残りの数字をすべて日本語の読みに変換
+  s=s.replace(/\s+/g,' ').trim();
+  return s;
+}
+
+// 無音のウォームアップ発話（一部のブラウザは最初の発話が無視されることがあるため、
+// 起動直後（や音声ON直後）に1音だけ無音で読み上げてエンジンを起こしておく）
+function warmupTTS(){
+  if(ttsWarmedUp)return;
+  if(!('speechSynthesis'in window))return;
+  try{
+    const u=new SpeechSynthesisUtterance('ん');
+    u.lang='ja-JP';u.volume=0;
+    window.speechSynthesis.speak(u);
+    ttsWarmedUp=true;
+  }catch(e){/* 読み上げ非対応環境では無視 */}
+}
+
+function speakText(text){
+  if(!voiceOn)return;
+  if(!('speechSynthesis'in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='ja-JP';u.rate=.95;u.pitch=1.05;
+    currentUtter=u;
+    window.speechSynthesis.speak(u);
+  }catch(e){/* 読み上げ非対応環境では無視 */}
+}
+
+function speakStep(descHtml){
+  speakText(toSpeechText(descHtml));
+}
+
+function toggleVoice(){
+  voiceOn=!voiceOn;
+  const btn=document.getElementById('btn-voice');
+  btn.classList.toggle('off',!voiceOn);
+  if(voiceOn){
+    warmupTTS();
+  } else if('speechSynthesis'in window){
+    window.speechSynthesis.cancel();
+  }
+}
 
 // ============================================================
 // ステップ定義
@@ -816,7 +1162,7 @@ function buildSteps(){
     jDisplayOverride:null, // カスケードで十の位がまだ「中間値(9等)」のときに表示する値
     borrowHPop:false,borrowJPop:false,
     showBridge10:false,bridge10Pop:false,
-    // 百の位から十の位へ「かり下げた後の十の位」がさらに繰り下がる場合に、
+    // 百の位から十の位へ「くり下げた後の十の位」がさらに繰り下がる場合に、
     // 十の位の斜線つき小さい赤字数字のさらに上へ表示する「10」の赤字表示。
     showBridge100:false,bridge100Pop:false,
     // ブリッジ計算（真のブリッジ）：一の位の「10」と「7」を結ぶコの字線、
@@ -913,8 +1259,9 @@ function buildSteps(){
     list.push(p);
   }
 
-  // 百の位B（3桁のとき）
-  if(has3){
+  // 百の位B（ひく数も3桁のときだけ。ひく数が2桁以下なら百の位は空白のままにする＝
+  // 147－18のような問題で「147－018」のように0を書いてしまうのを防ぐ）
+  if(has3 && bH>0){
     const p=prev();
     p.title=`<span class="hc">${bH}</span> を書く（ひゃくのくらい）`;
     p.desc=`ひく数の <span class="hc">ひゃくのくらい</span> の <span class="hc">${bH}</span> を書きます。`;
@@ -984,7 +1331,7 @@ function buildSteps(){
       p.title=`${aI}から${bI}は ひけない…`;
       p.desc=`<span class="ic">いちのくらい</span>を 見てみましょう。<br>`
         +`<span class="ic">${aI}</span> から <span class="ic">${bI}</span> は ひけません。<br>`
-        +`<span class="jc">じゅうのくらい</span>から <span class="cc">1</span> かり下げます。`;
+        +`<span class="jc">じゅうのくらい</span>から <span class="cc">1</span> くり下げます。`;
       p.h.hlIchi=true;
       p.anim=null;
       list.push(p);
@@ -993,10 +1340,10 @@ function buildSteps(){
     if(needCascadeForI){
       {
         const p=prev();
-        p.title=`じゅうのくらいは ${aJ}… ひゃくのくらいから かり下げる`;
+        p.title=`じゅうのくらいは ${aJ}… ひゃくのくらいから くり下げる`;
         p.desc=`<span class="jc">じゅうのくらい</span>は <span class="jc">${aJ}</span>なので、<br>`
           +`いちのくらいに かす ことが できません。<br>`
-          +`さきに <span class="hc">ひゃくのくらい</span>から <span class="jc">じゅうのくらい</span>へ <span class="cc">1</span> かり下げます。`;
+          +`さきに <span class="hc">ひゃくのくらい</span>から <span class="jc">じゅうのくらい</span>へ <span class="cc">1</span> くり下げます。`;
         p.h.borrowFromH=true;p.h.borrowHPop=true;p.h.hlHyaku=true;
         p.t.hyakuA={count:aH-1,alpha:1,hl:null,ghost:1};
         p.t.juuA={count:jBeforeLendToI,alpha:1,hl:'#e74c3c',ghost:0};
@@ -1007,7 +1354,7 @@ function buildSteps(){
       {
         const p=prev();
         p.title=`じゅうのくらいは ${jBeforeLendToI} に なった`;
-        p.desc=`ひゃくのくらいから かり下げた <span class="cc">1まい</span>（10本ぶん）と、<br>`
+        p.desc=`ひゃくのくらいから くり下げた <span class="cc">1まい</span>（10本ぶん）と、<br>`
           +`もとの <span class="jc">${aJ}本</span> を あわせて、<br>`
           +`じゅうのくらいは <span class="jc">${jBeforeLendToI}本</span> に なりました。`;
         p.h.borrowHPop=false;
@@ -1020,9 +1367,9 @@ function buildSteps(){
     // ステップ2: 十の位から1借りる（くり下げ線・上の小さい数字）
     {
       const p=prev();
-      p.title=`じゅうのくらいから 1 かり下げる`;
+      p.title=`じゅうのくらいから 1 くり下げる`;
       p.desc=`<span class="jc">じゅうのくらい</span>の <span class="jc">${jBeforeLendToI}</span>本 のうち、<br>`
-        +`<span class="cc">1本</span> を いちのくらいに かり下げます。<br>`
+        +`<span class="cc">1本</span> を いちのくらいに くり下げます。<br>`
         +`じゅうのくらいは のこり <span class="jc">${jAfterBorrowI}</span> になります。`;
       p.h.borrowFromJ=true;p.h.borrowJPop=true;p.h.hlJuu=true;
       p.t.juuA={count:jAfterBorrowI,alpha:1,hl:null,ghost:1};
@@ -1032,8 +1379,8 @@ function buildSteps(){
     // ステップ3: 借りた棒が10個に分解される（ブリッジの「10」表示）
     {
       const p=prev();
-      p.title='かり下げた 1本が 10こに なる';
-      p.desc=`かり下げた <span class="cc">1本</span>（10の たば）を、<br>`
+      p.title='くり下げた 1本が 10こに なる';
+      p.desc=`くり下げた <span class="cc">1本</span>（10の たば）を、<br>`
         +`バラバラに して <span class="cc">10こ</span> にします。`;
       p.h.borrowJPop=false;
       p.h.showBridge10=true;p.h.bridge10Pop=true;
@@ -1049,7 +1396,7 @@ function buildSteps(){
         const p=prev();
         p.title=`ブリッジ：10と${bI}を線でむすぶ`;
         p.desc=`<span class="rc">ブリッジ計算</span>を します。<br>`
-          +`かり下げた <span class="cc">10</span> と、ひく数の <span class="ic">${bI}</span> を 線で むすびます。<br>`
+          +`くり下げた <span class="cc">10</span> と、ひく数の <span class="ic">${bI}</span> を 線で むすびます。<br>`
           +`10－${bI}は…`;
         p.h.bridge10Pop=false;
         p.h.hlIchi=true;
@@ -1102,7 +1449,7 @@ function buildSteps(){
       const p=prev();
       const sum=10+aI;
       p.title=`いちのくらいの けいさん：${sum}－${bI}＝${iAns}`;
-      p.desc=`かり下げた 1こ（10こぶん）と、もとの <span class="ic">${aI}こ</span> を あわせて<br>`
+      p.desc=`くり下げた 1こ（10こぶん）と、もとの <span class="ic">${aI}こ</span> を あわせて<br>`
         +`<span class="ic">${sum}こ</span>。そこから <span class="ic">${bI}</span> を ひきます。<br>`
         +`<span class="ic">${sum} － ${bI} ＝ ${iAns}</span>`;
       p.h.bridge10Pop=false;
@@ -1125,7 +1472,7 @@ function buildSteps(){
     const p=prev();
     p.title=`じゅうのくらいの けいさん：${jAfterBorrowI}－${bJ}＝${jAns}`;
     p.desc=`<span class="jc">じゅうのくらい</span>を けいさんします。<br>`
-      +(needBorrowI?`かり下げた あとの <span class="jc">${jAfterBorrowI}</span> から<br>`:'')
+      +(needBorrowI?`くり下げた あとの <span class="jc">${jAfterBorrowI}</span> から<br>`:'')
       +`<span class="jc">${jAfterBorrowI} － ${bJ} ＝ ${jAns}</span>`;
     p.h.hlIchi=false;p.h.hlJuu=true;p.h.showAnsJ=true;
     p.h.borrowJPop=false;
@@ -1144,22 +1491,32 @@ function buildSteps(){
       p.title=`${jAfterBorrowI}から${bJ}は ひけない…`;
       p.desc=`<span class="jc">じゅうのくらい</span>を 見てみましょう。<br>`
         +`<span class="jc">${jAfterBorrowI}</span> から <span class="jc">${bJ}</span> は ひけません。<br>`
-        +`<span class="hc">ひゃくのくらい</span>から <span class="cc">1</span> かり下げます。`;
+        +`<span class="hc">ひゃくのくらい</span>から <span class="cc">1</span> くり下げます。`;
       p.h.hlIchi=false;p.h.hlJuu=true;
       p.anim=null;
       list.push(p);
     }
     {
       const p=prev();
-      p.title=`ひゃくのくらいから 1 かり下げる`;
+      p.title=`ひゃくのくらいから 1 くり下げる`;
       p.desc=`<span class="hc">ひゃくのくらい</span>の <span class="hc">${aH}まい</span> のうち、<br>`
-        +`<span class="cc">1まい</span> を じゅうのくらいに かり下げます。<br>`
+        +`<span class="cc">1まい</span> を じゅうのくらいに くり下げます。<br>`
         +`ひゃくのくらいは のこり <span class="hc">${hAfterBorrowJ}</span> になります。`;
       p.h.borrowFromH=true;p.h.borrowHPop=true;p.h.hlHyaku=true;
-      p.h.showBridge100=true;p.h.bridge100Pop=true;
       p.t.hyakuA={count:hAfterBorrowJ,alpha:1,hl:null,ghost:1};
+      p.anim='borrow-h-to-j-move';
+      list.push(p);
+    }
+    // ステップ：くり下げた1まい(100)が10本の棒にバラバラになる（一の位のunbundle-10と対応する処理）
+    {
+      const p=prev();
+      p.title='くり下げた 1まいが 10本に なる';
+      p.desc=`くり下げた <span class="cc">1まい</span>（100のたば）を、<br>`
+        +`バラバラに して <span class="cc">10本</span> にします。`;
+      p.h.borrowHPop=false;
+      p.h.showBridge100=true;p.h.bridge100Pop=true;
       p.t.bridgeHyaku={show:true,count:10};
-      p.anim='borrow-h-to-j';
+      p.anim='unbundle-100-to-j';
       list.push(p);
     }
     if(calcMethod==='bridge'){
@@ -1169,7 +1526,7 @@ function buildSteps(){
         const p=prev();
         p.title=`ブリッジ：10と${bJ}を線でむすぶ`;
         p.desc=`<span class="rc">ブリッジ計算</span>を します。<br>`
-          +`かり下げた <span class="cc">10</span> と、ひく数の <span class="jc">${bJ}</span> を 線で むすびます。<br>`
+          +`くり下げた <span class="cc">10</span> と、ひく数の <span class="jc">${bJ}</span> を 線で むすびます。<br>`
           +`10－${bJ}は…`;
         p.h.borrowHPop=false;p.h.bridge100Pop=false;
         p.h.hlHyaku=false;p.h.hlJuu=true;
@@ -1223,7 +1580,7 @@ function buildSteps(){
       const p=prev();
       const sum=10+jAfterBorrowI;
       p.title=`じゅうのくらいの けいさん：${sum}－${bJ}＝${jAns}`;
-      p.desc=`かり下げた 1まい（10本ぶん）と、もとの <span class="jc">${jAfterBorrowI}本</span> を あわせて<br>`
+      p.desc=`くり下げた 1まい（10本ぶん）と、もとの <span class="jc">${jAfterBorrowI}本</span> を あわせて<br>`
         +`<span class="jc">${sum}本</span>。そこから <span class="jc">${bJ}</span> を ひきます。<br>`
         +`<span class="jc">${sum} － ${bJ} ＝ ${jAns}</span>`;
       p.h.borrowHPop=false;
@@ -1248,10 +1605,18 @@ function buildSteps(){
   // ============================================================
   if(has3){
     const p=prev();
-    p.title=`ひゃくのくらいの けいさん：${hAfterBorrowJ}－${bH}＝${hAns}`;
-    p.desc=`<span class="hc">ひゃくのくらい</span>を けいさんします。<br>`
-      +(needBorrowJ?`かり下げた あとの <span class="hc">${hAfterBorrowJ}</span> から<br>`:'')
-      +`<span class="hc">${hAfterBorrowJ} － ${bH} ＝ ${hAns}</span>`;
+    if(bH>0){
+      p.title=`ひゃくのくらいの けいさん：${hAfterBorrowJ}－${bH}＝${hAns}`;
+      p.desc=`<span class="hc">ひゃくのくらい</span>を けいさんします。<br>`
+        +(needBorrowJ?`くり下げた あとの <span class="hc">${hAfterBorrowJ}</span> から<br>`:'')
+        +`<span class="hc">${hAfterBorrowJ} － ${bH} ＝ ${hAns}</span>`;
+    } else {
+      // ひく数に百の位が無い場合：0を引く計算は書かず、そのまま書き下ろす言い回しにする
+      p.title=`ひゃくのくらいの こたえ：${hAns}`;
+      p.desc=`<span class="hc">ひゃくのくらい</span>には ひく数がありません。<br>`
+        +(needBorrowJ?`くり下げた あとの <span class="hc">${hAfterBorrowJ}</span> を そのまま `:`${hAfterBorrowJ} を そのまま `)
+        +`こたえに 書きます。<br><span class="hc">こたえ：${hAns}</span>`;
+    }
     p.h.hlJuu=false;p.h.hlHyaku=true;p.h.showAnsH=true;
     const hExistingGhost=(needCascadeForI||needBorrowJ)?1:0;
     p.t.hyakuA={count:0,alpha:1,hl:null,ghost:hAfterBorrowJ+hExistingGhost};
@@ -1301,20 +1666,24 @@ function updateJuuRaisedTransform(ts){
 }
 
 function paintTiles(ts){
-  renderHyakus(document.getElementById('svg-hyaku-a'), ts.hyakuA.count,ts.hyakuA.alpha,ts.hyakuA.hl,null,ts.hyakuA.ghost);
-  renderSticks(document.getElementById('svg-juu-a'),   ts.juuA.count,  ts.juuA.alpha,  ts.juuA.hl,null,ts.juuA.ghost);
+  const rHyaku=DISPLAY_MODE==='card'?renderHyakusCard:renderHyakus;
+  const rJuu  =DISPLAY_MODE==='card'?renderSticksCard:renderSticks;
+  const rIchi =DISPLAY_MODE==='card'?renderIchiCard  :renderIchi;
+
+  rHyaku(document.getElementById('svg-hyaku-a'), ts.hyakuA.count,ts.hyakuA.alpha,ts.hyakuA.hl,null,ts.hyakuA.ghost);
+  rJuu  (document.getElementById('svg-juu-a'),   ts.juuA.count,  ts.juuA.alpha,  ts.juuA.hl,null,ts.juuA.ghost);
   updateJuuRaisedTransform(ts);
-  renderIchi  (document.getElementById('svg-ichi-a'),  ts.ichiA.count, ts.ichiA.alpha, ts.ichiA.hl,ts.ichiA.ghost);
-  renderHyakus(document.getElementById('svg-hyaku-b'), ts.hyakuB.count,ts.hyakuB.alpha,ts.hyakuB.hl,null,ts.hyakuB.ghost);
-  renderSticks(document.getElementById('svg-juu-b'),   ts.juuB.count,  ts.juuB.alpha,  ts.juuB.hl,null,ts.juuB.ghost);
-  renderIchi  (document.getElementById('svg-ichi-b'),  ts.ichiB.count, ts.ichiB.alpha, ts.ichiB.hl,ts.ichiB.ghost);
+  rIchi (document.getElementById('svg-ichi-a'),  ts.ichiA.count, ts.ichiA.alpha, ts.ichiA.hl,ts.ichiA.ghost);
+  rHyaku(document.getElementById('svg-hyaku-b'), ts.hyakuB.count,ts.hyakuB.alpha,ts.hyakuB.hl,null,ts.hyakuB.ghost);
+  rJuu  (document.getElementById('svg-juu-b'),   ts.juuB.count,  ts.juuB.alpha,  ts.juuB.hl,null,ts.juuB.ghost);
+  rIchi (document.getElementById('svg-ichi-b'),  ts.ichiB.count, ts.ichiB.alpha, ts.ichiB.hl,ts.ichiB.ghost);
 
   const rowAns=document.getElementById('row-ans');
   if(ts.showAnsRow){
     rowAns.style.display='table-row';
-    renderHyakus(document.getElementById('svg-hyaku-ans'), ts.hyakuAns.count,ts.hyakuAns.alpha,ts.hyakuAns.hl,null,ts.hyakuAns.ghost);
-    renderSticks(document.getElementById('svg-juu-ans'),   ts.juuAns.count,  ts.juuAns.alpha,  ts.juuAns.hl,null,ts.juuAns.ghost);
-    renderIchi  (document.getElementById('svg-ichi-ans'),  ts.ichiAns.count, ts.ichiAns.alpha, ts.ichiAns.hl,ts.ichiAns.ghost);
+    rHyaku(document.getElementById('svg-hyaku-ans'), ts.hyakuAns.count,ts.hyakuAns.alpha,ts.hyakuAns.hl,null,ts.hyakuAns.ghost);
+    rJuu  (document.getElementById('svg-juu-ans'),   ts.juuAns.count,  ts.juuAns.alpha,  ts.juuAns.hl,null,ts.juuAns.ghost);
+    rIchi (document.getElementById('svg-ichi-ans'),  ts.ichiAns.count, ts.ichiAns.alpha, ts.ichiAns.hl,ts.ichiAns.ghost);
   } else {
     rowAns.style.display='none';
     // 答え行が非表示のときは、中のSVGも必ず空にしておく。
@@ -1328,9 +1697,6 @@ function paintTiles(ts){
     document.getElementById('svg-juu-ans').innerHTML='';
     document.getElementById('svg-ichi-ans').innerHTML='';
   }
-
-  // is-empty: 答え行のそのセルにタイルがまだ無いときだけ斜線予告枠を表示
-  document.getElementById('col-hyaku-ans').classList.toggle('is-empty', !ts.hyakuAns.count && !ts.hyakuAns.ghost);
 
   renderBridgeTen(ts);
   renderBridgeHyaku(ts);
@@ -1351,6 +1717,13 @@ function renderBridgeTen(ts){
   // 波及的繰り下がりの十の位と同じロジック：いちのくらいのタイトル位置(hdr-ichi)
   // を中心に、通常サイズのタイルで表示する。
   const hc=hdrCenter('hdr-ichi');
+  if(DISPLAY_MODE==='card'){
+    bridgeCardPositions(10,hc,'ichi').forEach((p,i)=>{
+      const isGhost=i>=bt.count;
+      drawCardSingle(bl,p.x,p.y,'ichi',1,isGhost?.45:1,null,isGhost);
+    });
+    return;
+  }
   const u=U;
   bridgeIchiPositions(10,hc).forEach((p,i)=>{
     const isGhost=i>=bt.count;
@@ -1375,6 +1748,13 @@ function renderBridgeHyaku(ts){
   // 波及的繰り下がり(borrow-h-to-j-cascade)と同じロジック：じゅうのくらいの
   // タイトル位置(hdr-juu)を中心に、通常サイズの棒で表示する。
   const hc=hdrCenter('hdr-juu');
+  if(DISPLAY_MODE==='card'){
+    bridgeCardPositions(10,hc,'juu').forEach((p,i)=>{
+      const isGhost=i>=bh.count;
+      drawCardSingle(bl,p.x,p.y,'juu',1,isGhost?.45:1,isGhost?null:'#e35d3a',isGhost);
+    });
+    return;
+  }
   const G2=U*.15,stickH=10*U+9*G2;
   bridgeStickPositions(10,hc).forEach((p,i)=>{
     const isGhost=i>=bh.count;
@@ -1390,6 +1770,22 @@ function renderBridgeHyaku(ts){
 // ============================================================
 // アニメーション本体
 // ============================================================
+// カード方式のときの汎用トランジション。
+// タイル方式は「1個ずつ動く・対消滅する」といった位ごとの専用アニメーションを
+// 多数もつが、カード方式ではすべてのステップで共通のシンプルなクロスフェードに
+// 統一する（＝どのステップでも同じ見た目で確実に動く。個々の飛行アニメーションは
+// 今回は実装していない）。
+function runCardTransition(nextState,onDone){
+  const tileArea=document.getElementById('tile-area');
+  tileArea.style.transition='opacity .16s ease';
+  tileArea.style.opacity='.25';
+  setTimeout(()=>{
+    paintTiles(nextState);
+    tileArea.style.opacity='1';
+    setTimeout(()=>{tileArea.style.transition='';onDone();},180);
+  },160);
+}
+
 function runAnim(animType,prevState,nextState,onDone){
   const layer=document.getElementById('anim-layer');
   layer.innerHTML='';
@@ -1419,6 +1815,19 @@ function runAnim(animType,prevState,nextState,onDone){
     const count=animType==='appear-hyaku-a'?aH:bH;
     const svgEl=document.getElementById(id);
     svgEl.innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const W=vbW(id),H=vbH(id);
+      const{pos}=cardBoxPositions(count,0,'hyaku',W,H);
+      let si=0;
+      (function next(){
+        if(si>=count){onDone();return;}
+        const p=pos[si];
+        const g=mk('g',{opacity:0},svgEl);
+        drawCardSingle(g,p.cx,p.cy,'hyaku',p.scale,1,null,false);
+        tween(280,t=>g.setAttribute('opacity',t),()=>{si++;next();});
+      })();
+      return;
+    }
     const W=vbW(id),H=vbH(id);let si=0;
     (function next(){
       if(si>=count){onDone();return;}
@@ -1436,12 +1845,25 @@ function runAnim(animType,prevState,nextState,onDone){
     const count=animType==='appear-juu-a'?aJ:bJ;
     const svgEl=document.getElementById(id);
     svgEl.innerHTML='';
-    const W=vbW(id),H=86,stW=U+1,gap=5;
-    const totW=count*stW+(count-1)*gap,sx=(W-totW)/2+stW/2;
+    if(DISPLAY_MODE==='card'){
+      const W=vbW(id),H=vbH(id);
+      const{pos}=cardBoxPositions(count,0,'juu',W,H);
+      let si=0;
+      (function next(){
+        if(si>=count){onDone();return;}
+        const p=pos[si];
+        const g=mk('g',{opacity:0},svgEl);
+        drawCardSingle(g,p.cx,p.cy,'juu',p.scale,1,null,false);
+        tween(220,t=>g.setAttribute('opacity',t),()=>{si++;next();});
+      })();
+      return;
+    }
+    const W=vbW(id),H=86;
+    const centers=stickCenters(count,W,H);
     let si=0;
     (function next(){
       if(si>=count){onDone();return;}
-      const cx=sx+si*(stW+gap),cy=H/2;
+      const{cx,cy}=centers[si];
       const g=mk('g',{opacity:0},svgEl);
       drawStick(g,cx,cy,U,1);
       tween(200,t=>g.setAttribute('opacity',t),()=>{si++;next();});
@@ -1455,6 +1877,19 @@ function runAnim(animType,prevState,nextState,onDone){
     const count=animType==='appear-ichi-a'?aI:bI;
     const svgEl=document.getElementById(id);
     svgEl.innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const W=vbW(id),H=vbH(id);
+      const{pos}=cardBoxPositions(count,0,'ichi',W,H);
+      let si=0;
+      (function next(){
+        if(si>=count){onDone();return;}
+        const p=pos[si];
+        const g=mk('g',{opacity:0},svgEl);
+        drawCardSingle(g,p.cx,p.cy,'ichi',p.scale,1,null,false);
+        tween(140,t=>g.setAttribute('opacity',t),()=>{si++;next();});
+      })();
+      return;
+    }
     const W=110,H=86;
     const tmp=mk('svg',{width:0,height:0,style:'position:absolute;visibility:hidden'});
     document.body.appendChild(tmp);
@@ -1493,6 +1928,10 @@ function runAnim(animType,prevState,nextState,onDone){
     function drawUnitAt(parent,x,y,a){
       a=a??1;
       const isGhost=a<.5;
+      if(DISPLAY_MODE==='card'){
+        drawCardSingle(parent,x,y,drawUnit,1,a,null,isGhost);
+        return;
+      }
       if(drawUnit==='ichi'){
         mk('rect',{x:x-unitSize/2,y:y-unitSize/2,width:unitSize,height:unitSize,fill:FC,stroke:isGhost?'#aaa':SC,'stroke-width':1,rx:.6,opacity:a},parent);
       } else if(drawUnit==='juu'){
@@ -1606,14 +2045,10 @@ function runAnim(animType,prevState,nextState,onDone){
       // 全ペア完了：対消滅したタイルは、元の位置に半透明のghostとして残す。
       // A側：消えた分(countB個)+既存ghost分をghostとして、残った分(remainA個)は通常表示。
       svgA.innerHTML='';
-      if(drawUnit==='ichi') renderIchi(svgA,remainA,1,null,countB+existingGhostA);
-      else if(drawUnit==='juu') renderSticks(svgA,remainA,1,null,null,countB+existingGhostA);
-      else renderHyakus(svgA,remainA,1,null,null,countB+existingGhostA);
+      renderPlace(drawUnit,svgA,remainA,1,null,countB+existingGhostA);
       // B側：全部消えたので、countB個まるごとghostとして残す。
       svgB.innerHTML='';
-      if(drawUnit==='ichi') renderIchi(svgB,0,1,null,countB);
-      else if(drawUnit==='juu') renderSticks(svgB,0,1,null,null,countB);
-      else renderHyakus(svgB,0,1,null,null,countB);
+      renderPlace(drawUnit,svgB,0,1,null,countB);
 
       // フェーズ4: 残ったA側のタイル(通常表示分)が結果欄へ移動。
       // 移動後、A側の元の位置にはremainA個分もghostとして残し続ける
@@ -1641,9 +2076,7 @@ function runAnim(animType,prevState,nextState,onDone){
       setTimeout(()=>{
         // 移動開始と同時に、元の位置(svgA)は全てghost化して残す
         svgA.innerHTML='';
-        if(drawUnit==='ichi') renderIchi(svgA,0,1,null,countA+existingGhostA);
-        else if(drawUnit==='juu') renderSticks(svgA,0,1,null,null,countA+existingGhostA);
-        else renderHyakus(svgA,0,1,null,null,countA+existingGhostA);
+        renderPlace(drawUnit,svgA,0,1,null,countA+existingGhostA);
 
         // 濃い色の分身をanim-layerに出し、A側の元位置→答え欄へ実際に移動させる
         const movers=fromL.map(f=>{
@@ -1659,9 +2092,7 @@ function runAnim(animType,prevState,nextState,onDone){
         }, ()=>{
           movers.forEach(g=>g.remove());
           ansEl.innerHTML='';
-          if(drawUnit==='ichi') renderIchi(ansEl,remainA,1,null);
-          else if(drawUnit==='juu') renderSticks(ansEl,remainA,1,null);
-          else renderHyakus(ansEl,remainA,1,null);
+          renderPlace(drawUnit,ansEl,remainA,1,null,0);
           if(onAllDone) onAllDone();
           onDone();
         });
@@ -1678,6 +2109,7 @@ function runAnim(animType,prevState,nextState,onDone){
       countA: aI, countB: bI,
       drawUnit:'ichi', unitSize:U,
       getPositions:(svgEl,count)=>{
+        if(DISPLAY_MODE==='card') return cardGetPositions('ichi')(svgEl,count);
         const W=110,H=svgEl===document.getElementById('svg-ichi-ans')?94:86;
         const tmp=mk('svg',{width:0,height:0});
         return drawIchi(tmp,count,W,H,1,null);
@@ -1688,12 +2120,28 @@ function runAnim(animType,prevState,nextState,onDone){
 
   // --- borrow-j-to-i: 十の位から一の位へ棒1本をくり下げる ---
   if(animType==='borrow-j-to-i'){
+    if(DISPLAY_MODE==='card'){
+      const svgJA=document.getElementById('svg-juu-a');
+      const W=vbW('svg-juu-a'),H=vbH('svg-juu-a');
+      const baseCount=jBeforeLendToI;
+      const{pos}=cardBoxPositions(baseCount,0,'juu',W,H);
+      const srcLocal=pos[baseCount-1]; // 最後の1枚（一番右）を借りる対象とする
+      const src=svgToLayer(svgJA,srcLocal.cx,srcLocal.cy);
+      const dest=hdrCenter('hdr-ichi');
+      renderCardPlace('juu',svgJA,baseCount-1,1,null,1);
+      cardFly(layer,src,dest,'juu','#e74c3c',500,()=>{
+        layer.innerHTML='';
+        const g2=mk('g',{opacity:.4},layer);
+        drawCardSingle(g2,dest.x,dest.y,'juu',1,1,'#e74c3c',false);
+        onDone();
+      });
+      return;
+    }
     const svgJA=document.getElementById('svg-juu-a');
-    const W=vbW('svg-juu-a'),H=86,stW=U+1,gap=5;
+    const W=vbW('svg-juu-a'),H=86;
     const baseCount=jBeforeLendToI; // カスケード済みなら10等、通常はaJそのもの
-    const totW=baseCount*stW+(baseCount-1)*gap, sx=(W-totW)/2+stW/2;
     // 最後の1本（一番右）を借りる対象とする
-    const srcLocal={cx:sx+(baseCount-1)*(stW+gap), cy:H/2};
+    const srcLocal=stickCenters(baseCount,W,H)[baseCount-1];
     const src=svgToLayer(svgJA,srcLocal.cx,srcLocal.cy);
     // 移動先：いちのくらいのタイトル位置(hdr-ichi)中心。
     // 波及的繰り下がりの十の位(hdr-juu基準)と同じロジックに統一する。
@@ -1720,6 +2168,23 @@ function runAnim(animType,prevState,nextState,onDone){
 
   // --- borrow-h-to-j-cascade: 百の位タイル1枚が十の位へ降りて10本の棒に展開される（十の位が0の時のカスケード借用）---
   if(animType==='borrow-h-to-j-cascade'){
+    if(DISPLAY_MODE==='card'){
+      const svgHA=document.getElementById('svg-hyaku-a');
+      const svgJA=document.getElementById('svg-juu-a');
+      const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a');
+      const{pos}=cardBoxPositions(aH,0,'hyaku',W,H);
+      const srcLocal=pos[aH-1];
+      const src=svgToLayer(svgHA,srcLocal.cx,srcLocal.cy);
+      const dest=hdrCenter('hdr-juu');
+      renderCardPlace('hyaku',svgHA,aH-1,1,null,1);
+      svgJA.innerHTML='';
+      cardFly(layer,src,dest,'hyaku','#e74c3c',500,()=>{
+        layer.innerHTML='';
+        renderCardPlace('juu',svgJA,jBeforeLendToI,1,'#e74c3c',0);
+        onDone();
+      });
+      return;
+    }
     const svgHA=document.getElementById('svg-hyaku-a');
     const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a');
     // renderHyakusと同じ並べ方(hyakuTilePos)で、最後の1枚(index aH-1, total aH)の位置を求める
@@ -1748,17 +2213,36 @@ function runAnim(animType,prevState,nextState,onDone){
     return;
   }
 
-  // --- borrow-h-to-j: 百の位から十の位へタイル1枚をくり下げ、その場で10本の棒にバラバラになる ---
-  if(animType==='borrow-h-to-j'){
+  // --- borrow-h-to-j-move: 百の位から十の位へタイル1枚をくり下げる（この時点ではまだバラバラにしない） ---
+  // 十の位から一の位への「borrow-j-to-i」と対応する処理：くり下げた1枚を
+  // じゅうのくらいのタイトル位置(hdr-juu)まで運び、そこに半透明の100タイルとして
+  // 着地させるところまでを1ステップとする。バラバラにする演出は次のunbundle-100-to-jで行う。
+  if(animType==='borrow-h-to-j-move'){
     // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge100-layer)側の
     // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
     document.getElementById('bridge100-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const svgHA=document.getElementById('svg-hyaku-a');
+      const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a');
+      const{pos}=cardBoxPositions(aH,0,'hyaku',W,H);
+      const srcLocal=pos[aH-1];
+      const src=svgToLayer(svgHA,srcLocal.cx,srcLocal.cy);
+      const dest=hdrCenter('hdr-juu');
+      renderCardPlace('hyaku',svgHA,aH-1,1,null,1);
+      cardFly(layer,src,dest,'hyaku','#e74c3c',500,()=>{
+        layer.innerHTML='';
+        // borrow-j-to-iと同じく、移動先(じゅうのくらいのタイトル上)にも
+        // 半透明の100タイルとして残す（次のunbundle-100-to-jで使う）。
+        const g2=mk('g',{opacity:.4},layer);
+        drawCardSingle(g2,dest.x,dest.y,'hyaku',1,1,'#e74c3c',false);
+        onDone();
+      });
+      return;
+    }
     const svgHA=document.getElementById('svg-hyaku-a');
     const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a');
     const srcLocal=hyakuTilePos(aH-1,aH,W,H,su);
     const src=svgToLayer(svgHA,srcLocal.cx,srcLocal.cy);
-    const hdrRect=document.getElementById('hdr-juu').getBoundingClientRect();
-    const tileRect=document.getElementById('tile-area').getBoundingClientRect();
     // 着地位置は「ひかれる数」の通常位置ではなく、じゅうのくらいのタイトル位置(hdr-juu)中心にする。
     // 波及的繰り下がり(borrow-h-to-j-cascade)と同じ着地ロジック。
     const dest=hdrCenter('hdr-juu');
@@ -1771,18 +2255,47 @@ function runAnim(animType,prevState,nextState,onDone){
       g.setAttribute('transform',`translate(${tx-src.x},${ty-src.y})`);
     },()=>{
       layer.innerHTML='';
-      // 着地した1枚(100)が「10本の10」にバラバラになる演出：フルサイズの棒10本をフェードインさせる
-      // (波及的繰り下がりでsvg-juu-aに直接描かれる棒と同じ大きさ・並べ方に統一)
-      const g2=mk('g',{opacity:0},layer);
-      bridgeStickPositions(10,dest).forEach(p=>{
-        drawStick(g2,p.x,p.y,U,1,'#e74c3c');
+      // borrow-j-to-iと同じく、移動先(じゅうのくらいのタイトル上)にも
+      // 半透明の100タイルとして残す（次のunbundle-100-to-jで使う）。
+      const g2=mk('g',{opacity:.4},layer);
+      drawHyakuScaled(g2,dest.x,dest.y,su,1,'#e74c3c');
+      onDone();
+    });
+    return;
+  }
+
+  // --- unbundle-100-to-j: くり下げた1枚(100)が10本の棒にバラバラになる ---
+  // 一の位の「unbundle-10」と対応する処理。
+  if(animType==='unbundle-100-to-j'){
+    // layer上の半透明の100タイル(borrow-h-to-j-moveで残したもの)を消して、
+    // じゅうのくらいのタイトル位置に10本の棒として展開する
+    layer.innerHTML='';
+    // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge100-layer)側の
+    // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
+    document.getElementById('bridge100-layer').innerHTML='';
+    const dest=hdrCenter('hdr-juu');
+    if(DISPLAY_MODE==='card'){
+      const g=mk('g',{opacity:0},layer);
+      bridgeCardPositions(10,dest,'juu').forEach(p=>{
+        drawCardSingle(g,p.x,p.y,'juu',1,1,'#e35d3a',false);
       });
-      tween(350,t=>g2.setAttribute('opacity',t),()=>{
-        // このあとonDone()経由でpaintTiles()が呼ばれ、bridge100-layer（永続レイヤー）に
-        // 同じ10本の棒が描き直されるので、anim-layer側の仮描画は消しておく
+      tween(350,t=>g.setAttribute('opacity',t),()=>{
         layer.innerHTML='';
         onDone();
       });
+      return;
+    }
+    // 10本を、じゅうのくらいのタイトル位置(hdr-juu)中心にフルサイズで展開して表示
+    // (波及的繰り下がりでsvg-juu-aに直接描かれる棒と同じ大きさ・並べ方に統一)
+    const g=mk('g',{opacity:0},layer);
+    bridgeStickPositions(10,dest).forEach(p=>{
+      drawStick(g,p.x,p.y,U,1,'#e35d3a');
+    });
+    tween(350,t=>g.setAttribute('opacity',t),()=>{
+      // このあとonDone()経由でpaintTiles()が呼ばれ、bridge100-layer（永続レイヤー）に
+      // 同じ10本の棒が描き直されるので、anim-layer側の仮描画は消しておく
+      layer.innerHTML='';
+      onDone();
     });
     return;
   }
@@ -1794,6 +2307,20 @@ function runAnim(animType,prevState,nextState,onDone){
     // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge10-layer)側の
     // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
     document.getElementById('bridge10-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const svgIA=document.getElementById('svg-ichi-a');
+      renderCardPlace('ichi',svgIA,aI,1,null,0);
+      const hc=hdrCenter('hdr-ichi');
+      const g=mk('g',{opacity:0},layer);
+      bridgeCardPositions(10,hc,'ichi').forEach(p=>{
+        drawCardSingle(g,p.x,p.y,'ichi',1,1,null,false);
+      });
+      tween(350,t=>g.setAttribute('opacity',t),()=>{
+        layer.innerHTML='';
+        onDone();
+      });
+      return;
+    }
     const svgIA=document.getElementById('svg-ichi-a');
     const W=110,H=86;
     renderIchi(svgIA,aI,1,null); // 元の一の位はそのまま
@@ -1819,6 +2346,34 @@ function runAnim(animType,prevState,nextState,onDone){
     // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge10-layer)側の
     // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
     document.getElementById('bridge10-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const svgIB=document.getElementById('svg-ichi-b');
+      const hc=hdrCenter('hdr-ichi');
+      const pos10=bridgeCardPositions(10,hc,'ichi');
+      const n=Math.min(10,bI);
+      const remainTen=10-n;
+      const usedTen=pos10.slice(remainTen);
+      const WB=vbW('svg-ichi-b'),HB=vbH('svg-ichi-b');
+      const{pos:posBLocal}=cardBoxPositions(bI,0,'ichi',WB,HB);
+      const posB=posBLocal.map(p=>svgToLayer(svgIB,p.cx,p.cy));
+
+      layer.innerHTML='';
+      const elTen=pos10.map(p=>{const g=mk('g',{},layer);drawCardSingle(g,p.x,p.y,'ichi',1,1,null,false);return g;});
+      const elUsedTen=elTen.slice(remainTen);
+      svgIB.innerHTML='';
+      const elBReal=posBLocal.map(p=>{const g=mk('g',{},svgIB);drawCardSingle(g,p.cx,p.cy,'ichi',1,1,null,false);return g;});
+
+      cardAnnihilatePairs({
+        posA:usedTen, posB, realA:elUsedTen, realB:elBReal,
+        place:'ichi', color:null,
+        onAllDone:()=>{
+          layer.innerHTML='';
+          renderCardPlace('ichi',svgIB,0,1,null,bI);
+          onDone();
+        }
+      });
+      return;
+    }
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIB=document.getElementById('svg-ichi-b');
     const svgIAns=document.getElementById('svg-ichi-ans');
@@ -1929,6 +2484,60 @@ function runAnim(animType,prevState,nextState,onDone){
   // 1つのアニメーション（＝1ステップ）にまとめている点がannihilate-bridge10と異なる。
   if(animType==='annihilate-bridge10-borrowed'){
     document.getElementById('bridge10-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const svgIA=document.getElementById('svg-ichi-a');
+      const svgIB=document.getElementById('svg-ichi-b');
+      const svgIAns=document.getElementById('svg-ichi-ans');
+      const hc=hdrCenter('hdr-ichi');
+      const pos10=bridgeCardPositions(10,hc,'ichi');
+      const WB=vbW('svg-ichi-b'),HB=vbH('svg-ichi-b');
+      const{pos:posBLocal}=cardBoxPositions(bI,0,'ichi',WB,HB);
+      const posB=posBLocal.map(p=>svgToLayer(svgIB,p.cx,p.cy));
+      const n=Math.min(10,bI);
+      const remainTen=10-n;
+      const usedTen=pos10.slice(remainTen);
+
+      layer.innerHTML='';
+      const elTen=pos10.map(p=>{const g=mk('g',{},layer);drawCardSingle(g,p.x,p.y,'ichi',1,1,null,false);return g;});
+      const elUsedTen=elTen.slice(remainTen);
+      svgIB.innerHTML='';
+      const elBReal=posBLocal.map(p=>{const g=mk('g',{},svgIB);drawCardSingle(g,p.cx,p.cy,'ichi',1,1,null,false);return g;});
+
+      cardAnnihilatePairs({
+        posA:usedTen, posB, realA:elUsedTen, realB:elBReal,
+        place:'ichi', color:null,
+        onAllDone:()=>{
+          layer.innerHTML='';
+          renderBridgeTen(nextState);
+          renderCardPlace('ichi',svgIB,0,1,null,bI);
+
+          document.getElementById('row-ans').style.display='table-row';
+          const iAns2=remainTen+aI;
+          const WAns=vbW('svg-ichi-ans'),HAns=vbH('svg-ichi-ans');
+          const{pos:posAnsLocal}=cardBoxPositions(iAns2,0,'ichi',WAns,HAns);
+          const lDestAll=posAnsLocal.map(p=>svgToLayer(svgIAns,p.cx,p.cy));
+
+          svgIA.innerHTML='';
+          renderCardPlace('ichi',svgIA,0,1,null,aI);
+
+          const remainSrc=pos10.slice(0,remainTen);
+          const WA=vbW('svg-ichi-a'),HA=vbH('svg-ichi-a');
+          const{pos:posALocal}=cardBoxPositions(aI,0,'ichi',WA,HA);
+          const posASrc=posALocal.map(p=>svgToLayer(svgIA,p.cx,p.cy));
+          const allSrc=[...remainSrc,...posASrc];
+
+          svgIAns.innerHTML='';
+          setTimeout(()=>{
+            cardFlyMany(layer,allSrc,lDestAll,'ichi',null,550,()=>{
+              layer.innerHTML='';
+              renderCardPlace('ichi',svgIAns,iAns2,1,null,0);
+              onDone();
+            });
+          },350);
+        }
+      });
+      return;
+    }
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIB=document.getElementById('svg-ichi-b');
     const svgIAns=document.getElementById('svg-ichi-ans');
@@ -2063,6 +2672,36 @@ function runAnim(animType,prevState,nextState,onDone){
     // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge10-layer)側の
     // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
     document.getElementById('bridge10-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const tenMinusB=10-bI;
+      const svgIA=document.getElementById('svg-ichi-a');
+      const svgIAns=document.getElementById('svg-ichi-ans');
+      document.getElementById('row-ans').style.display='table-row';
+      const hc=hdrCenter('hdr-ichi');
+      const pos10Full=bridgeCardPositions(10,hc,'ichi');
+      const posRemain=pos10Full.slice(0,tenMinusB);
+      const WA=vbW('svg-ichi-a'),HA=vbH('svg-ichi-a');
+      const{pos:posALocal}=cardBoxPositions(aI,0,'ichi',WA,HA);
+      const posA=posALocal.map(p=>svgToLayer(svgIA,p.cx,p.cy));
+      const WAns=vbW('svg-ichi-ans'),HAns=vbH('svg-ichi-ans');
+      const{pos:posAnsLocal}=cardBoxPositions(iAns,0,'ichi',WAns,HAns);
+      const lDestAll=posAnsLocal.map(p=>svgToLayer(svgIAns,p.cx,p.cy));
+
+      layer.innerHTML='';
+      svgIAns.innerHTML='';
+      svgIA.innerHTML='';
+      renderCardPlace('ichi',svgIA,0,1,null,aI);
+      for(let i=0;i<10;i++){
+        drawCardSingle(layer,pos10Full[i].x,pos10Full[i].y,'ichi',1,.45,null,true);
+      }
+      const allSrc=[...posRemain,...posA];
+      cardFlyMany(layer,allSrc,lDestAll,'ichi',null,550,()=>{
+        layer.innerHTML='';
+        renderCardPlace('ichi',svgIAns,iAns,1,null,0);
+        onDone();
+      });
+      return;
+    }
     const tenMinusB=10-bI;
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIAns=document.getElementById('svg-ichi-ans');
@@ -2135,10 +2774,9 @@ function runAnim(animType,prevState,nextState,onDone){
       drawUnit:'juu', unitSize:U,
       getPositions:(svgEl,count)=>{
         if(!count) return [];
+        if(DISPLAY_MODE==='card') return cardGetPositions('juu')(svgEl,count);
         const W=vbW('svg-juu-a'),H=svgEl===document.getElementById('svg-juu-ans')?94:86;
-        const stW=U+1,gap=5;
-        const totW=count*stW+(count-1)*gap, sx=(W-totW)/2+stW/2;
-        return Array.from({length:count},(_,i)=>({cx:sx+i*(stW+gap),cy:H/2}));
+        return stickCenters(count,W,H);
       }
     });
     return;
@@ -2150,14 +2788,39 @@ function runAnim(animType,prevState,nextState,onDone){
     // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge100-layer)側の
     // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
     document.getElementById('bridge100-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const svgJB=document.getElementById('svg-juu-b');
+      const hc=hdrCenter('hdr-juu');
+      const pos10=bridgeCardPositions(10,hc,'juu');
+      const WB=vbW('svg-juu-b'),HB=vbH('svg-juu-b');
+      const{pos:posBLocal}=cardBoxPositions(bJ,0,'juu',WB,HB);
+      const posB=posBLocal.map(p=>svgToLayer(svgJB,p.cx,p.cy));
+      const n=Math.min(10,bJ);
+      const remainTen=10-n;
+      const usedTen=pos10.slice(remainTen);
+
+      layer.innerHTML='';
+      const elTen=pos10.map(p=>{const g=mk('g',{},layer);drawCardSingle(g,p.x,p.y,'juu',1,1,'#e35d3a',false);return g;});
+      const elUsedTen=elTen.slice(remainTen);
+      svgJB.innerHTML='';
+      const elBReal=posBLocal.map(p=>{const g=mk('g',{},svgJB);drawCardSingle(g,p.cx,p.cy,'juu',1,1,null,false);return g;});
+
+      cardAnnihilatePairs({
+        posA:usedTen, posB, realA:elUsedTen, realB:elBReal,
+        place:'juu', color:'#e35d3a',
+        onAllDone:()=>{
+          layer.innerHTML='';
+          renderCardPlace('juu',svgJB,0,1,null,bJ);
+          onDone();
+        }
+      });
+      return;
+    }
     const svgJB=document.getElementById('svg-juu-b');
     const W=vbW('svg-juu-a');
 
     function juuPosBridge(count,W2,H2){
-      if(!count) return [];
-      const stW=U+1,gap=5;
-      const totW=count*stW+(count-1)*gap, sx=(W2-totW)/2+stW/2;
-      return Array.from({length:count},(_,i)=>({cx:sx+i*(stW+gap),cy:H2/2}));
+      return stickCenters(count,W2,H2);
     }
 
     // 借りてきた「10本の10」の座標（renderBridgeHyakuと同じ計算＝じゅうのくらいヘッダー中心）
@@ -2253,6 +2916,44 @@ function runAnim(animType,prevState,nextState,onDone){
     // この間は「動いている実物」をanim-layerで見せるため、永続レイヤー(bridge100-layer)側の
     // 静止した重複表示を一時的に消しておく（onDone後のpaintTilesで正しい状態に描き直される）。
     document.getElementById('bridge100-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const tenMinusBJ=10-bJ;
+      const svgJA=document.getElementById('svg-juu-a');
+      const svgJAns=document.getElementById('svg-juu-ans');
+      const existingGhostA=needBorrowI?1:0;
+      document.getElementById('row-ans').style.display='table-row';
+      const hc=hdrCenter('hdr-juu');
+      const remainTen=tenMinusBJ;
+      const pos10Full=bridgeCardPositions(10,hc,'juu');
+      const posRemain=pos10Full.slice(0,remainTen);
+      const WA=vbW('svg-juu-a'),HA=vbH('svg-juu-a');
+      const{pos:posAExistingFull}=cardBoxPositions(jAfterBorrowI+existingGhostA,0,'juu',WA,HA);
+      const posAExistingActive=posAExistingFull.slice(0,jAfterBorrowI);
+      const posAExistingLayer=posAExistingActive.map(p=>svgToLayer(svgJA,p.cx,p.cy));
+
+      layer.innerHTML='';
+      svgJAns.innerHTML='';
+      svgJA.innerHTML='';
+      for(let i=0;i<10;i++){
+        drawCardSingle(layer,pos10Full[i].x,pos10Full[i].y,'juu',1,.45,null,true);
+      }
+      renderCardPlace('juu',svgJA,0,1,null,jAfterBorrowI+existingGhostA);
+
+      const allSrc=[...posRemain,...posAExistingLayer];
+      const jAns2=remainTen+jAfterBorrowI;
+      const WAns=vbW('svg-juu-ans'),HAns=vbH('svg-juu-ans');
+      const{pos:posAnsLocal}=cardBoxPositions(jAns2,0,'juu',WAns,HAns);
+      const lDestAll=posAnsLocal.map(p=>svgToLayer(svgJAns,p.cx,p.cy));
+
+      setTimeout(()=>{
+        cardFlyMany(layer,allSrc,lDestAll,'juu',null,550,()=>{
+          layer.innerHTML='';
+          renderCardPlace('juu',svgJAns,jAns2,1,null,0);
+          onDone();
+        });
+      },350);
+      return;
+    }
     const tenMinusBJ=10-bJ;
     const svgJA=document.getElementById('svg-juu-a');
     const svgJAns=document.getElementById('svg-juu-ans');
@@ -2260,10 +2961,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const W=vbW('svg-juu-a');
 
     function juuPosBridge(count,W2,H2){
-      if(!count) return [];
-      const stW=U+1,gap=5;
-      const totW=count*stW+(count-1)*gap, sx=(W2-totW)/2+stW/2;
-      return Array.from({length:count},(_,i)=>({cx:sx+i*(stW+gap),cy:H2/2}));
+      return stickCenters(count,W2,H2);
     }
 
     // 答え欄(row-ans)の表示・座標計算は、必ずsvgJAnsのレイアウトが確定してから行う。
@@ -2333,16 +3031,70 @@ function runAnim(animType,prevState,nextState,onDone){
   // 「10本の10」を、そのまま対消滅の実体として使う（新たにA列へ10本を描き直さない）。
   if(animType==='annihilate-juu-borrowed'){
     document.getElementById('bridge100-layer').innerHTML='';
+    if(DISPLAY_MODE==='card'){
+      const svgJA=document.getElementById('svg-juu-a');
+      const svgJB=document.getElementById('svg-juu-b');
+      const svgJAns=document.getElementById('svg-juu-ans');
+      const existingGhostA=needBorrowI?1:0;
+      const hc=hdrCenter('hdr-juu');
+      const pos10=bridgeCardPositions(10,hc,'juu');
+      const WB=vbW('svg-juu-b'),HB=vbH('svg-juu-b');
+      const{pos:posBLocal}=cardBoxPositions(bJ,0,'juu',WB,HB);
+      const posB=posBLocal.map(p=>svgToLayer(svgJB,p.cx,p.cy));
+      const WA=vbW('svg-juu-a'),HA=vbH('svg-juu-a');
+      const{pos:posAExistingFull}=cardBoxPositions(jAfterBorrowI+existingGhostA,0,'juu',WA,HA);
+      const posAExistingActive=posAExistingFull.slice(0,jAfterBorrowI);
+      const posAExistingLayer=posAExistingActive.map(p=>svgToLayer(svgJA,p.cx,p.cy));
+
+      const n=Math.min(10,bJ);
+      const remainTen=10-n;
+      const usedTen=pos10.slice(remainTen);
+
+      layer.innerHTML='';
+      const elTen=pos10.map(p=>{const g=mk('g',{},layer);drawCardSingle(g,p.x,p.y,'juu',1,1,'#e35d3a',false);return g;});
+      const elUsedTen=elTen.slice(remainTen);
+      svgJB.innerHTML='';
+      const elBReal=posBLocal.map(p=>{const g=mk('g',{},svgJB);drawCardSingle(g,p.cx,p.cy,'juu',1,1,null,false);return g;});
+
+      cardAnnihilatePairs({
+        posA:usedTen, posB, realA:elUsedTen, realB:elBReal,
+        place:'juu', color:'#e35d3a',
+        onAllDone:()=>{
+          layer.innerHTML='';
+          renderBridgeHyaku(nextState);
+          renderCardPlace('juu',svgJB,0,1,null,bJ);
+
+          document.getElementById('row-ans').style.display='table-row';
+          const jAns2=remainTen+jAfterBorrowI;
+          const WAns=vbW('svg-juu-ans'),HAns=vbH('svg-juu-ans');
+          const{pos:posAnsLocal}=cardBoxPositions(jAns2,0,'juu',WAns,HAns);
+          const lDestAll=posAnsLocal.map(p=>svgToLayer(svgJAns,p.cx,p.cy));
+
+          svgJA.innerHTML='';
+          renderCardPlace('juu',svgJA,0,1,null,jAfterBorrowI+existingGhostA);
+
+          const remainSrc=pos10.slice(0,remainTen);
+          const allSrc=[...remainSrc,...posAExistingLayer];
+
+          svgJAns.innerHTML='';
+          setTimeout(()=>{
+            cardFlyMany(layer,allSrc,lDestAll,'juu',null,550,()=>{
+              layer.innerHTML='';
+              renderCardPlace('juu',svgJAns,jAns2,1,null,0);
+              onDone();
+            });
+          },350);
+        }
+      });
+      return;
+    }
     const svgJA=document.getElementById('svg-juu-a');
     const svgJB=document.getElementById('svg-juu-b');
     const svgJAns=document.getElementById('svg-juu-ans');
     const existingGhostA = needBorrowI ? 1 : 0;
 
     function juuPos(count,W2,H2){
-      if(!count) return [];
-      const stW=U+1,gap=5;
-      const totW=count*stW+(count-1)*gap, sx=(W2-totW)/2+stW/2;
-      return Array.from({length:count},(_,i)=>({cx:sx+i*(stW+gap),cy:H2/2}));
+      return stickCenters(count,W2,H2);
     }
     const W=vbW('svg-juu-a');
 
@@ -2482,12 +3234,18 @@ function runAnim(animType,prevState,nextState,onDone){
       drawUnit:'hyaku', unitSize:su,
       getPositions:(svgEl,count)=>{
         if(!count) return [];
+        if(DISPLAY_MODE==='card') return cardGetPositions('hyaku')(svgEl,count);
         const W=vbW('svg-hyaku-a'),H=parseInt(svgEl.getAttribute('height'))||86;
         return Array.from({length:count},(_,i)=>hyakuTilePos(i,count,W,H,su));
       }
     });
     return;
   }
+
+  // ここまでのどの専用アニメーションにも一致しなかった場合のフォールバック。
+  // カード方式では、個別演出をまだ用意していないanimTypeでも見た目が固まらないよう、
+  // 簡易クロスフェードで確実に次の状態へ切り替える。
+  if(DISPLAY_MODE==='card'){runCardTransition(nextState,onDone);return;}
 
   layer.innerHTML='';
   onDone();
@@ -2501,7 +3259,7 @@ function getSenScale(){
 }
 
 // ============================================================
-// レイアウト更新（列の表示/非表示・幅の動的拡張・is-empty制御）
+// レイアウト更新（列の表示/非表示・幅の動的拡張）
 // <col>要素を1つ操作するだけで thead/tbody 両方の対応列が同時に
 // 表示/非表示・幅変更される（tableの仕様）ため、ヘッダーとデータの
 // ズレは構造的に発生しない。
@@ -2517,31 +3275,52 @@ function updateLayout(){
   document.getElementById('colgrp-hyaku').style.display=has3?'table-column':'none';
   document.querySelectorAll('.th-hyaku, .td-hyaku').forEach(el=>{el.style.display=hyakuDisp;});
 
-  // ---- 十の位の幅：くり下げで一時的に増える本数も考慮 ----
+  // ---- 十の位の幅・高さ：くり下げで一時的に増える本数も考慮 ----
   // 表示しうる最大本数：A行のaJ本、もしくは(借りてきた後の)十の位の本数+10(ブリッジ表示)
   const maxJuuCount=Math.max(aJ,bJ,10+aJ,1);
-  const stW=U+1,gap=5; // renderSticksと同じ計算式
-  const juuNeedW=Math.min(maxJuuCount,19)*stW+(Math.min(maxJuuCount,19)-1)*gap+16; // 余白
-  const juuWidth=Math.max(124,Math.round(juuNeedW));
+  let juuWidth,juuHeight,juuHeightAns;
+  if(DISPLAY_MODE==='card'){
+    // カード方式：5枚で1段・あふれたら次の段という固定レイアウトなので、
+    // cardNeedWidth/cardNeedHeightで実際に必要な幅・高さを逆算する。
+    juuWidth=Math.max(124,Math.round(cardNeedWidth(maxJuuCount,'juu')));
+    juuHeight=Math.max(86,Math.round(cardNeedHeight(maxJuuCount,'juu')));
+    juuHeightAns=juuHeight+8;
+  } else {
+    const juuNeedW=stickLayout(Math.min(maxJuuCount,19)).totW+16; // renderSticksと同じ計算式（5本グループ間隔込み）＋余白
+    juuWidth=Math.max(124,Math.round(juuNeedW));
+    juuHeight=86;juuHeightAns=94;
+  }
   document.querySelector('col.col-juu').style.width=juuWidth+'px';
-  ['svg-juu-a','svg-juu-b','svg-juu-ans'].forEach(id=>{
+  ['svg-juu-a','svg-juu-b'].forEach(id=>{
     const svg=document.getElementById(id);
     svg.setAttribute('width',juuWidth);
-    const vbH=svg.getAttribute('viewBox').split(' ')[3];
-    svg.setAttribute('viewBox',`0 0 ${juuWidth} ${vbH}`);
+    svg.setAttribute('height',juuHeight);
+    svg.setAttribute('viewBox',`0 0 ${juuWidth} ${juuHeight}`);
   });
+  {
+    const svg=document.getElementById('svg-juu-ans');
+    svg.setAttribute('width',juuWidth);
+    svg.setAttribute('height',juuHeightAns);
+    svg.setAttribute('viewBox',`0 0 ${juuWidth} ${juuHeightAns}`);
+  }
 
   // ---- 百の位の幅・高さ：A行の枚数が多い場合に大きく広げる ----
-  // hyakuTilePos(実際のタイル配置の共通関数)が返す座標から、全タイルがちょうど
-  // 収まるのに必要な左右・上下の広がり(hyakuFootprint)を逆算し、それに合わせて
-  // 枠の幅・高さを自動的に広げる（タイル自体の大きさはHYAKU_TILE_REF_H基準で一定）。
+  // タイル方式では hyakuFootprint（実際のタイル配置の共通関数）から逆算し、
+  // カード方式では cardNeedWidth/cardNeedHeight（5枚ずつ横一列の固定レイアウト）から逆算する。
   const maxHyakuCount=Math.max(aH,1);
-  const hyakuFp=hyakuFootprint(maxHyakuCount,hyakuRefSu());
-  const hyakuNeedW=hyakuFp.width+16; // 左右の余白
-  const hyakuWidth=Math.max(124,Math.round(hyakuNeedW));
-  const hyakuNeedH=hyakuFp.height+8; // 上下の余白
-  const hyakuHeight=Math.max(86,Math.round(hyakuNeedH));
-  const hyakuHeightAns=hyakuHeight+8; // 答え行はもともと86→94のように+8高くする慣例に合わせる
+  let hyakuWidth,hyakuHeight,hyakuHeightAns;
+  if(DISPLAY_MODE==='card'){
+    hyakuWidth=Math.max(124,Math.round(cardNeedWidth(maxHyakuCount,'hyaku')));
+    hyakuHeight=Math.max(86,Math.round(cardNeedHeight(maxHyakuCount,'hyaku')));
+    hyakuHeightAns=hyakuHeight+8;
+  } else {
+    const hyakuFp=hyakuFootprint(maxHyakuCount,hyakuRefSu());
+    const hyakuNeedW=hyakuFp.width+16; // 左右の余白
+    hyakuWidth=Math.max(124,Math.round(hyakuNeedW));
+    const hyakuNeedH=hyakuFp.height+8; // 上下の余白
+    hyakuHeight=Math.max(86,Math.round(hyakuNeedH));
+    hyakuHeightAns=hyakuHeight+8; // 答え行はもともと86→94のように+8高くする慣例に合わせる
+  }
   document.getElementById('colgrp-hyaku').style.width=hyakuWidth+'px';
   ['svg-hyaku-a','svg-hyaku-b'].forEach(id=>{
     const svg=document.getElementById(id);
@@ -2556,8 +3335,34 @@ function updateLayout(){
     svg.setAttribute('viewBox',`0 0 ${hyakuWidth} ${hyakuHeightAns}`);
   }
 
-  // ---- is-empty トグル：答え行のそのセルにタイルが無いときだけ斜線予告枠を表示 ----
-  document.getElementById('col-hyaku-ans').classList.add('is-empty');
+  // ---- 一の位の幅・高さ：カード方式では、じゅうのくらいから借りてきた「10このカード」が
+  // bridge10-layer（ヘッダー中心・5枚×2段の固定レイアウト）にあふれずに収まるよう、
+  // あらかじめ列の幅を広げておく。cardNeedWidth(5枚ぶん)を確保しておけば、
+  // カードは常に縮小されない一定サイズのまま表示され、枠からはみ出すこともない。
+  // タイル方式は今まで通り固定サイズ(110×86)のままでよい。
+  const maxIchiCount=Math.max(aI,bI,10,1);
+  let ichiWidth,ichiHeight,ichiHeightAns;
+  if(DISPLAY_MODE==='card'){
+    ichiWidth=Math.max(110,Math.round(cardNeedWidth(maxIchiCount,'ichi')));
+    ichiHeight=Math.max(86,Math.round(cardNeedHeight(maxIchiCount,'ichi')));
+    ichiHeightAns=ichiHeight+8;
+  } else {
+    ichiWidth=110;ichiHeight=86;ichiHeightAns=94;
+  }
+  document.querySelector('col.col-ichi').style.width=ichiWidth+'px';
+  ['svg-ichi-a','svg-ichi-b'].forEach(id=>{
+    const svg=document.getElementById(id);
+    svg.setAttribute('width',ichiWidth);
+    svg.setAttribute('height',ichiHeight);
+    svg.setAttribute('viewBox',`0 0 ${ichiWidth} ${ichiHeight}`);
+  });
+  {
+    const svg=document.getElementById('svg-ichi-ans');
+    svg.setAttribute('width',ichiWidth);
+    svg.setAttribute('height',ichiHeightAns);
+    svg.setAttribute('viewBox',`0 0 ${ichiWidth} ${ichiHeightAns}`);
+  }
+
 }
 
 // ============================================================
@@ -2569,6 +3374,7 @@ function updateUI(skipAnim){
   document.getElementById('step-num').textContent=stepIdx+1;
   document.getElementById('step-title-text').innerHTML=step.title;
   document.getElementById('step-desc').innerHTML=step.desc;
+  speakStep(step.desc);
   document.getElementById('step-ind').textContent=`${stepIdx+1} / ${total}`;
   document.getElementById('btn-prev').disabled=animBusy||(stepIdx===0);
   document.getElementById('btn-next').disabled=animBusy||(stepIdx===total-1);
@@ -2615,6 +3421,20 @@ function setProblem(a,b){
   updateUI(true);
 }
 
+// タイル方式／カード方式の切り替え。stepsのデータ自体（数値・状態）は
+// モードに依存しないので作り直さなくてよく、レイアウト幅の再計算と、
+// 現在のステップの再描画だけ行えばよい。
+function setDisplayMode(mode){
+  if(animBusy||mode===DISPLAY_MODE)return;
+  cancelAnim();
+  DISPLAY_MODE=mode;
+  document.getElementById('mode-btn-tile').classList.toggle('active',mode==='tile');
+  document.getElementById('mode-btn-card').classList.toggle('active',mode==='card');
+  document.getElementById('anim-layer').innerHTML='';
+  updateLayout();
+  updateUI(true);
+}
+
 function setMethod(m){
   if(animBusy)return;
   calcMethod=m;
@@ -2648,10 +3468,23 @@ function generateFromInput(){
 document.getElementById('inp-a').addEventListener('keydown',e=>{if(e.key==='Enter')generateFromInput();});
 document.getElementById('inp-b').addEventListener('keydown',e=>{if(e.key==='Enter')generateFromInput();});
 
+// キーボードの矢印キーで「すすむ／もどる」を操作する。
+// ただし数字入力欄など、テキスト入力中に矢印キーで値を操作したい要素に
+// フォーカスがある場合は、ステップ送りを行わずそのまま通常の動作に任せる。
+document.addEventListener('keydown',e=>{
+  if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;
+  const tag=(document.activeElement&&document.activeElement.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  e.preventDefault();
+  goStep(e.key==='ArrowRight'?1:-1);
+});
+
 // 初期化
 updateLayout();
 steps=buildSteps();
+warmupTTS();
 updateUI(true);
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,warmupTTS,{once:true}));
 </script>
 </body>
 </html>
