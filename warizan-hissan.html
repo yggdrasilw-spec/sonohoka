@@ -1126,7 +1126,13 @@ class AdvancedDivisionEngine {
             // 前の段から下りてきた数字（prevRemainderCells）＋ 今回新たに見る1桁。
             // 今回新たに見る1桁は、i===0なら row1、i>0なら「おろした後の数」（下段）を指す。
             const currentNewDigitCell = (i === 0) ? { r: 1, c: targetCol } : (nextDigitCellOverride || { r: 1, c: targetCol });
-            const currentDvdPartCells = [...prevRemainderCells, currentNewDigitCell];
+            // 商がまだ一度も立っていない段階（先頭の位で「商は立たない」を繰り返している間）は、
+            // ひき算やおろす処理が一度も行われていないため、対象の桁は全てrow1にそのまま残っている。
+            // このときprevRemainderCellsは更新されないので、代わりにM列目〜現在の桁までを
+            // まとめてハイライト対象にする（例：681÷202で68や681の全桁を対象にする）。
+            const currentDvdPartCells = hasFirstQuotientStarted
+                ? [...prevRemainderCells, currentNewDigitCell]
+                : Array.from({ length: targetCol - M + 1 }, (_, j) => ({ r: 1, c: M + j }));
             // 仮商を先に計算してbrainHtmlに渡す
             let preTrialQ = undefined;
             if (divisorInt >= 10) {
