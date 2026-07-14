@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>10倍のひみつ ～コインで見る位取り～</title>
+<style>
+  :root{
+    --blue:#2f6fb0;
+    --blue-bg:#eaf3fc;
+    --yellow:#e0b400;
+    --yellow-bg:#fff8dc;
+    --pink:#e7648a;
+    --green:#2f8f5b;
+    --ink:#2f3a3f;
+    --paper:#fffefb;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+    background:#f4f7f5;
+    margin:0;
+    padding:20px;
+    color:var(--ink);
+  }
+  h1{
+    font-size:22px;
+    color:var(--green);
+    margin:0 0 14px 4px;
+  }
+  h1 .q{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:26px;height:26px;
+    border-radius:50%;
+    background:var(--green);
+    color:#fff;
+    font-size:16px;
+    margin-right:8px;
+  }
+  .panel{
+    background:var(--paper);
+    border-radius:16px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+    padding:16px 20px;
+    margin-bottom:16px;
+  }
+  .config-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+  }
+  .group-editor{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:#f0f4f2;
+    border-radius:10px;
+    padding:6px 10px;
+    border:1px solid #dde5e1;
+  }
+  .group-editor select, .group-editor input{
+    font-size:14px;
+    padding:4px 6px;
+    border-radius:6px;
+    border:1px solid #ccc;
+  }
+  .group-editor input[type=number]{width:52px;}
+  .group-editor button{
+    border:none;background:#e88;color:#fff;border-radius:6px;
+    width:22px;height:22px;cursor:pointer;font-size:13px;line-height:1;
+  }
+  .btn{
+    border:none;
+    border-radius:20px;
+    padding:8px 18px;
+    font-size:14px;
+    cursor:pointer;
+    font-weight:bold;
+    color:#fff;
+    transition:transform .1s;
+  }
+  .btn:active{transform:scale(0.95);}
+  .btn.add{background:var(--blue);}
+  .btn.build{background:var(--green);}
+  .btn.next{background:var(--pink);}
+  .btn.reset{background:#999;}
+  .btn.auto{background:#c98b2e;}
+  .btn:disabled{background:#ccc;cursor:not-allowed;}
+  #status{
+    font-size:15px;
+    min-height:22px;
+    margin-top:4px;
+    color:#555;
+  }
+  #equation{
+    font-size:20px;
+    font-weight:bold;
+    color:var(--blue);
+    margin-top:2px;
+  }
+  #stage{
+    width:100%;
+    overflow-x:auto;
+    background:linear-gradient(180deg,#fbfdfc,#f2f6f4);
+    border-radius:16px;
+  }
+  svg{display:block;}
+  .set-label{
+    font-size:13px;
+    fill:#888;
+    font-weight:bold;
+  }
+  .frame-blue{
+    fill:none;
+    stroke:var(--blue);
+    stroke-width:2.5;
+  }
+  .frame-yellow{
+    fill:none;
+    stroke:var(--yellow);
+    stroke-width:3;
+  }
+  .sparkle-star{
+    pointer-events:none;
+  }
+  .flash-circle{
+    fill:#fffbe0;
+    pointer-events:none;
+  }
+  .coin-img{
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.28));
+  }
+  .exchange-text{
+    font-size:34px;
+    font-weight:900;
+    fill:var(--pink);
+    text-anchor:middle;
+  }
+  .result-label{
+    font-size:14px;
+    fill:#555;
+    text-anchor:middle;
+  }
+  .arrow-line{
+    stroke:#c0392b;
+    stroke-width:3;
+    fill:none;
+    marker-end:url(#arrowhead);
+  }
+  table.pvt{
+    border-collapse:collapse;
+    font-size:20px;
+    font-weight:bold;
+    text-align:center;
+  }
+  table.pvt th, table.pvt td{
+    width:56px;height:44px;
+    border:2px solid #999;
+  }
+  table.pvt th{background:#eee;font-size:14px;}
+  .footer-note{
+    font-size:12px;color:#999;margin-top:10px;
+  }
+</style>
+</head>
+<body>
+
+<h1><span class="q">?</span>数を10倍すると、もとの数からどのようにかわるか考えよう。</h1>
+
+<div class="panel">
+  <div class="config-row" id="groupList"></div>
+  <div class="config-row" style="margin-top:10px;">
+    <button class="btn add" id="addGroupBtn">＋ コインの種類を追加</button>
+    <button class="btn build" id="buildBtn">この組み合わせでつくる</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="config-row">
+    <button class="btn next" id="nextBtn">つぎへ ▶</button>
+    <button class="btn auto" id="autoBtn">▶▶ オート再生</button>
+    <button class="btn reset" id="resetBtn">さいしょから</button>
+  </div>
+  <div id="equation"></div>
+  <div id="status">「この組み合わせでつくる」を押すと、アニメーションが始まります。</div>
+</div>
+
+<div class="panel">
+  <div id="stage">
+    <svg id="svgRoot" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#c0392b"/>
+        </marker>
+      </defs>
+      <g id="layer-sets"></g>
+      <g id="layer-frames"></g>
+      <g id="layer-effects"></g>
+      <g id="layer-results"></g>
+    </svg>
+  </div>
+  <div class="footer-note">位取り表は最後のステップで表示されます。</div>
+  <div id="pvtWrap" style="margin-top:14px;"></div>
+</div>
+
+<script>
+/* ============================================================
+   設定：コインの種類・枚数・倍率は自由に変更できます
+   ============================================================ */
+let CONFIG = {
+  groups: [
+    { value: 10, count: 2 },
+    { value: 5,  count: 1 }
+  ],
+  multiplier: 10
+};
+
+const COIN_VALUES = [1,5,10,50,100,500,1000,5000,10000];
+const R = 22;              // 硬貨の半径
+const STACK_OVERLAP = 15;  // 同じ種類の硬貨を重ねる量
+const GROUP_GAP = 26;      // 種類ごとのすき間
+const SET_GAP = 95;        // セット間の横のすき間
+const X0 = 140;            // 最初のセットのX座標
+const Y0 = 130;            // 最初のセットのY座標（フレーム上端）
+
+function coinImagePath(v){
+  const webpSet = new Set([1000,5000,10000]);   // 紙幣はwebp、それ以外はpng
+  return `img/${v}yen.${webpSet.has(v) ? 'webp' : 'png'}`;
+}
+
+function coinImageBox(v){
+  if(v >= 1000){
+    // 紙幣は横長の長方形として表示
+    return { w: R*3.4, h: R*1.7 };
+  }
+  return { w: R*2, h: R*2 };   // 硬貨は正方形の枠に収める
+}
+
+function svgEl(tag, attrs){
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function drawCoin(parent, cx, cy, value, id){
+  const g = svgEl('g', {class:'coin', 'data-id':id, transform:`translate(${cx},${cy})`});
+  const box = coinImageBox(value);
+  const path = coinImagePath(value);
+  const img = svgEl('image', {
+    class:'coin-img',
+    x: -box.w/2, y: -box.h/2, width: box.w, height: box.h,
+    href: path,
+    preserveAspectRatio: 'xMidYMid meet'
+  });
+  img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', path); // 古いブラウザ向け
+  g.appendChild(img);
+  parent.appendChild(g);
+  return g;
+}
+
+
+
+/* ------------------------------------------------------------
+   レイアウト計算：1セット分の高さや各コインのy位置
+   ------------------------------------------------------------ */
+function computeSetLayout(){
+  let y = Y0 + 14 + R;
+  const groupsY = [];
+  CONFIG.groups.forEach((g, gi) => {
+    const coinYs = [];
+    for(let k=0;k<g.count;k++){
+      coinYs.push(y + k*STACK_OVERLAP);
+    }
+    groupsY.push(coinYs);
+    const blockHeight = R*2 + (g.count-1)*STACK_OVERLAP;
+    y = y + blockHeight - R + GROUP_GAP;
+  });
+  const contentBottom = y - GROUP_GAP + R + 14;
+  return { groupsY, frameTop: Y0, frameBottom: contentBottom, frameLeft: -R-14, frameRight: R+14 };
+}
+
+let layout = null;
+let setsShown = 0;
+let stepIndex = 0;
+let steps = [];
+let autoTimer = null;
+
+const layerSets = document.getElementById('layer-sets');
+const layerFrames = document.getElementById('layer-frames');
+const layerEffects = document.getElementById('layer-effects');
+const layerResults = document.getElementById('layer-results');
+const svgRoot = document.getElementById('svgRoot');
+const statusEl = document.getElementById('status');
+const equationEl = document.getElementById('equation');
+const nextBtn = document.getElementById('nextBtn');
+const autoBtn = document.getElementById('autoBtn');
+
+function originalTotal(){
+  return CONFIG.groups.reduce((s,g)=> s + g.value*g.count, 0);
+}
+function newTotal(){
+  return originalTotal() * CONFIG.multiplier;
+}
+
+function setStatus(msg){ statusEl.textContent = msg; }
+function setEquation(msg){ equationEl.textContent = msg; }
+
+/* ------------------------------------------------------------
+   1セット分（縦にコインを並べたもの＋青いわく）を描画
+   ------------------------------------------------------------ */
+function drawSet(index){
+  const cx = X0 + index*SET_GAP;
+  const g = svgEl('g', {class:'coin-set', id:'set-'+index, opacity:0});
+  layerSets.appendChild(g);
+
+  CONFIG.groups.forEach((grp, gi) => {
+    layout.groupsY[gi].forEach((cy, k) => {
+      drawCoin(g, cx, cy, grp.value, `s${index}-g${gi}-k${k}`);
+    });
+  });
+
+  const label = svgEl('text', {class:'set-label', x:cx, y: Y0 - 14, 'text-anchor':'middle'});
+  label.textContent = '×' + (index+1);
+  g.appendChild(label);
+
+  const frame = svgEl('rect', {
+    class:'frame-blue',
+    x: cx + layout.frameLeft, y: layout.frameTop,
+    width: layout.frameRight - layout.frameLeft,
+    height: layout.frameBottom - layout.frameTop,
+    rx: 10
+  });
+  g.appendChild(frame);
+
+  g.style.transition = 'opacity .5s ease';
+  requestAnimationFrame(()=> requestAnimationFrame(()=> g.setAttribute('opacity',1)) );
+  return g;
+}
+
+/* ------------------------------------------------------------
+   黄色い横長のわく（あるグループを10セット分まとめて囲む）
+   ------------------------------------------------------------ */
+function drawYellowFrame(gi){
+  const ys = layout.groupsY[gi];
+  const top = ys[0] - R - 10;
+  const bottom = ys[ys.length-1] + R + 10;
+  const left = X0 + layout.frameLeft - 6;
+  const right = X0 + (setsShown-1)*SET_GAP + layout.frameRight + 6;
+  const rect = svgEl('rect', {
+    class:'frame-yellow', id:'yframe-'+gi,
+    x:left, y:top, width:right-left, height:bottom-top, rx:14, opacity:0
+  });
+  layerFrames.appendChild(rect);
+  rect.style.transition = 'opacity .5s ease';
+  requestAnimationFrame(()=> requestAnimationFrame(()=> rect.setAttribute('opacity',1)) );
+  return {rect, top, bottom, left, right};
+}
+
+/* ------------------------------------------------------------
+   両替！ の文字
+   ------------------------------------------------------------ */
+function showExchangeText(){
+  const cx = X0 + (setsShown-1)*SET_GAP/2 + 40;
+  const cy = (layout.frameTop + layout.frameBottom)/2;
+  const t = svgEl('text', {class:'exchange-text', x:cx, y:cy, opacity:0});
+  t.textContent = '両替！';
+  layerEffects.appendChild(t);
+  t.style.transition = 'opacity .3s ease, transform .5s cubic-bezier(.34,1.56,.64,1)';
+  t.style.transformBox = 'fill-box';
+  t.style.transformOrigin = 'center';
+  t.style.transform = 'scale(0.3)';
+  requestAnimationFrame(()=> requestAnimationFrame(()=> {
+    t.setAttribute('opacity',1);
+    t.style.transform = 'scale(1)';
+  }));
+  return t;
+}
+function fadeOutExchangeText(){
+  const t = layerEffects.querySelector('text.exchange-text');
+  if(t){ t.style.transition='opacity .4s ease'; t.setAttribute('opacity',0); setTimeout(()=>t.remove(),400); }
+}
+
+/* ------------------------------------------------------------
+   青いわく（各セットの枠）をフェードアウトして消す
+   ------------------------------------------------------------ */
+function removeBlueFrames(){
+  document.querySelectorAll('.frame-blue').forEach(el => {
+    if(!el.isConnected) return;
+    el.style.transition = 'opacity .5s ease';
+    el.style.opacity = 0;
+    setTimeout(()=> el.remove(), 500);
+  });
+}
+
+/* ------------------------------------------------------------
+   キラリーン！ エフェクト（中心にフラッシュ＋星が飛び散る）
+   ------------------------------------------------------------ */
+function sparkleEffect(cx, cy){
+  const g = svgEl('g', {class:'sparkle-burst'});
+  layerEffects.appendChild(g);
+
+  // 中心のフラッシュ
+  const flash = svgEl('circle', {class:'flash-circle', cx, cy, r:2, opacity:0.9});
+  g.appendChild(flash);
+  flash.style.transition = 'r .45s ease-out, opacity .45s ease-out';
+  requestAnimationFrame(()=> requestAnimationFrame(()=> {
+    flash.setAttribute('r', 46);
+    flash.setAttribute('opacity', 0);
+  }));
+
+  // 飛び散る星
+  const colors = ['#fff59d','#ffffff','#ffd54f'];
+  const starPath = 'M0,-9 L2.3,-2.3 L9,0 L2.3,2.3 L0,9 L-2.3,2.3 L-9,0 L-2.3,-2.3 Z';
+  const starCount = 8;
+  for(let i=0;i<starCount;i++){
+    const angle = (Math.PI*2/starCount)*i - Math.PI/2;
+    const dist = 44;
+    const sx = cx + Math.cos(angle)*dist;
+    const sy = cy + Math.sin(angle)*dist;
+    const star = svgEl('path', {
+      class:'sparkle-star', d:starPath, fill:colors[i%colors.length],
+      transform:`translate(${cx},${cy}) scale(0)`, opacity:0
+    });
+    g.appendChild(star);
+    const delay = i*0.03;
+    star.style.transition = `transform .45s cubic-bezier(.34,1.56,.64,1) ${delay}s, opacity .3s ease ${delay}s`;
+    requestAnimationFrame(()=> requestAnimationFrame(()=> {
+      star.setAttribute('transform', `translate(${sx},${sy}) scale(1)`);
+      star.setAttribute('opacity', 1);
+    }));
+    setTimeout(()=> {
+      star.style.transition = 'opacity .35s ease';
+      star.setAttribute('opacity', 0);
+    }, 480+delay*1000);
+  }
+  setTimeout(()=> g.remove(), 950);
+}
+
+/* ------------------------------------------------------------
+   あるグループの全コインを中心に集めて → 新しいコインに変身
+   青いわくを消し、黄色いわくを正方形に縮めながら
+   コインを中心に集め、キラリーン！で変身させる
+   ------------------------------------------------------------ */
+function convergeGroup(gi, frameInfo){
+  return new Promise(resolve => {
+    removeBlueFrames();
+
+    const grp = CONFIG.groups[gi];
+    const centerX = (frameInfo.left+frameInfo.right)/2;
+    const centerY = (frameInfo.top+frameInfo.bottom)/2;
+    const frameHeight = frameInfo.bottom - frameInfo.top;
+    const squareSize = frameHeight;              // 縦横比が正方形ぐらいになる
+    const newLeft = centerX - squareSize/2;
+
+    // 黄色いわくを、横方向に中心へ縮めて正方形にする
+    const rect = frameInfo.rect;
+    rect.style.transition = 'x 1s ease, width 1s ease';
+    rect.setAttribute('x', newLeft);
+    rect.setAttribute('width', squareSize);
+
+    // 同時に、コインを黄色いわくの中心座標へ集める（重ねるように）
+    const coins = [];
+    for(let s=0;s<setsShown;s++){
+      layout.groupsY[gi].forEach((cy,k) => {
+        const el = document.querySelector(`[data-id="s${s}-g${gi}-k${k}"]`);
+        if(el) coins.push(el);
+      });
+    }
+    coins.forEach(el => {
+      el.style.transition = 'transform 1s ease-in, opacity 1s ease-in';
+      el.setAttribute('transform', `translate(${centerX},${centerY}) scale(0.15)`);
+      el.style.opacity = 0.15;
+    });
+
+    setTimeout(() => {
+      coins.forEach(el => el.remove());
+
+      // キラリーン！
+      sparkleEffect(centerX, centerY);
+
+      setTimeout(() => {
+        const newValue = grp.value * CONFIG.multiplier;
+        const startY = centerY - ((grp.count-1)*STACK_OVERLAP)/2;
+        const rg = svgEl('g', {class:'result-coins', opacity:0});
+        layerResults.appendChild(rg);
+        for(let k=0;k<grp.count;k++){
+          drawCoin(rg, centerX, startY + k*STACK_OVERLAP, newValue, `res-${gi}-${k}`);
+        }
+        const lbl = svgEl('text', {class:'result-label', x:centerX, y: frameInfo.top - 12});
+        lbl.textContent = `${grp.value}×10=${newValue}`;
+        rg.appendChild(lbl);
+
+        rg.style.transformBox = 'fill-box';
+        rg.style.transformOrigin = 'center';
+        rg.style.transform = 'scale(0.3)';
+        rg.style.transition = 'opacity .45s ease, transform .45s cubic-bezier(.34,1.56,.64,1)';
+        requestAnimationFrame(()=> requestAnimationFrame(()=> {
+          rg.setAttribute('opacity',1);
+          rg.style.transform = 'scale(1)';
+        }));
+        resolve();
+      }, 380);
+    }, 1000);
+  });
+}
+
+/* ------------------------------------------------------------
+   位取り表
+   ------------------------------------------------------------ */
+function buildPlaceValueTable(){
+  const orig = originalTotal();
+  const neu = newTotal();
+  const digitsNeeded = Math.max(String(neu).length, 3);
+  const colNames = ['一','十','百','千','万'];
+  const colColors = ['#fbdfe8','#fff3bf','#dbeafe','#dcfce7','#f3e8ff'];
+  const cols = [];
+  for(let i=digitsNeeded-1;i>=0;i--) cols.push(i);
+
+  function digitAt(num, place){
+    return Math.floor(num / Math.pow(10,place)) % 10;
+  }
+
+  let html = '<table class="pvt"><tr><th></th>';
+  cols.forEach(c => {
+    html += `<th style="background:${colColors[c]||'#eee'}">${colNames[c]||c+1+'桁目'}</th>`;
+  });
+  html += '</tr><tr><td style="background:#f7f7f7;font-size:12px;">もと</td>';
+  cols.forEach(c => {
+    const d = digitAt(orig,c);
+    const blank = orig < Math.pow(10,c) && !(c===0 && orig===0);
+    html += `<td style="background:${colColors[c]||'#fff'};color:${blank?'#ccc':'#333'}">${blank? '' : d}</td>`;
+  });
+  html += '</tr><tr><td style="background:#f7f7f7;font-size:12px;">10倍</td>';
+  cols.forEach(c => {
+    const blank = neu < Math.pow(10,c) && !(c===0 && neu===0);
+    const d = digitAt(neu,c);
+    html += `<td style="background:${colColors[c]||'#fff'};color:${blank?'#ccc':'#c0392b'};font-weight:900;">${blank? '' : d}</td>`;
+  });
+  html += '</tr></table>';
+
+  html += `<div style="margin-top:10px;font-size:16px;">
+    <b>${orig} × 10 = ${neu}</b><br>
+    <span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ上の位にうつり、一の位に 0 がつきます。</span>
+  </div>`;
+  document.getElementById('pvtWrap').innerHTML = html;
+}
+
+/* ------------------------------------------------------------
+   ステップの組み立て
+   ------------------------------------------------------------ */
+function buildSteps(){
+  steps = [];
+
+  steps.push(()=>{
+    setsShown = 1;
+    drawSet(0);
+    setEquation(`${originalTotal()}`);
+    setStatus('①まず、コインを縦に並べます（同じ種類は少し重ねて置きます）。青いわくで囲みました。');
+  });
+
+  for(let i=1;i<10;i++){
+    steps.push((idx=>()=>{
+      setsShown = idx+1;
+      drawSet(idx);
+      setEquation(`${originalTotal()} が ${idx+1} セット`);
+      setStatus(`③10倍するために、同じ${originalTotal()}円のセットを右にふやしていきます。（${idx+1}／10）`);
+    })(i));
+  }
+
+  const frameInfos = [];
+  CONFIG.groups.forEach((g, gi) => {
+    steps.push(()=>{
+      const info = drawYellowFrame(gi);
+      frameInfos[gi] = info;
+      setStatus(`④⑤「${g.value}円 × 10セット」を黄色いわくで囲みます。（${gi+1}／${CONFIG.groups.length}）`);
+    });
+  });
+
+  steps.push(()=>{
+    showExchangeText();
+    setStatus('⑥両替！　同じ種類のコインが10まい集まると、上の位の1まいに変身します。');
+  });
+
+  CONFIG.groups.forEach((g, gi) => {
+    steps.push(async ()=>{
+      fadeOutExchangeText();
+      setStatus(`⑦⑧青いわくが消え、黄色いわくが真ん中に向かって縮んで正方形に。${g.value}円×10セットが中心に集まり、キラリーン！${g.value*CONFIG.multiplier}円 に変わります。`);
+      await convergeGroup(gi, frameInfos[gi]);
+    });
+  });
+
+  steps.push(()=>{
+    buildPlaceValueTable();
+    setEquation(`${originalTotal()} × 10 = ${newTotal()}`);
+    setStatus('⑨位取り表でも確認しましょう。それぞれの位の数字が、1つ上の位に移ります。');
+    document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+}
+
+async function runStep(){
+  if(stepIndex >= steps.length){
+    setStatus('これで10倍のアニメーションはおわりです。「さいしょから」でもう一度見られます。');
+    nextBtn.disabled = true;
+    stopAuto();
+    return;
+  }
+  const fn = steps[stepIndex];
+  stepIndex++;
+  await fn();
+  if(stepIndex >= steps.length){
+    nextBtn.disabled = true;
+    nextBtn.textContent = 'おわり';
+    stopAuto();
+  }
+}
+
+function resetStage(){
+  layerSets.innerHTML = '';
+  layerFrames.innerHTML = '';
+  layerEffects.innerHTML = '';
+  layerResults.innerHTML = '';
+  document.getElementById('pvtWrap').innerHTML = '';
+  setsShown = 0;
+  stepIndex = 0;
+  nextBtn.disabled = false;
+  nextBtn.textContent = 'つぎへ ▶';
+  setEquation('');
+  stopAuto();
+}
+
+function buildScene(){
+  resetStage();
+  layout = computeSetLayout();
+  const totalWidth = X0 + (CONFIG.multiplier-1)*SET_GAP + layout.frameRight + 140;
+  const totalHeight = Math.max(layout.frameBottom + 40, 480);
+  svgRoot.setAttribute('viewBox', `0 0 ${totalWidth} ${totalHeight}`);
+  svgRoot.setAttribute('width', totalWidth);
+  svgRoot.setAttribute('height', totalHeight);
+  buildSteps();
+  setStatus('準備ができました。「つぎへ」ボタンでアニメーションを進めます。');
+  setEquation(`${originalTotal()}`);
+}
+
+function stopAuto(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; autoBtn.textContent='▶▶ オート再生'; }
+}
+
+/* ------------------------------------------------------------
+   設定パネル（コインの種類・枚数を自由に変更）
+   ------------------------------------------------------------ */
+const groupListEl = document.getElementById('groupList');
+
+function renderGroupEditors(){
+  groupListEl.innerHTML = '';
+  CONFIG.groups.forEach((g, i) => {
+    const row = document.createElement('div');
+    row.className = 'group-editor';
+
+    const sel = document.createElement('select');
+    COIN_VALUES.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v; opt.textContent = v + '円';
+      if(v === g.value) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => { g.value = parseInt(sel.value); };
+
+    const numIn = document.createElement('input');
+    numIn.type = 'number'; numIn.min = 1; numIn.max = 9; numIn.value = g.count;
+    numIn.onchange = () => { g.count = Math.max(1, Math.min(9, parseInt(numIn.value)||1)); numIn.value = g.count; };
+
+    const label = document.createElement('span');
+    label.textContent = 'まい';
+    label.style.fontSize = '13px';
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '×';
+    delBtn.onclick = () => {
+      if(CONFIG.groups.length <= 1) return;
+      CONFIG.groups.splice(i,1);
+      renderGroupEditors();
+    };
+
+    row.appendChild(sel);
+    row.appendChild(numIn);
+    row.appendChild(label);
+    row.appendChild(delBtn);
+    groupListEl.appendChild(row);
+  });
+}
+
+document.getElementById('addGroupBtn').onclick = () => {
+  if(CONFIG.groups.length >= 4) { alert('コインの種類は4種類までにしましょう。'); return; }
+  CONFIG.groups.push({value:1, count:1});
+  renderGroupEditors();
+};
+document.getElementById('buildBtn').onclick = buildScene;
+nextBtn.onclick = runStep;
+document.getElementById('resetBtn').onclick = () => { buildScene(); };
+autoBtn.onclick = () => {
+  if(autoTimer){ stopAuto(); return; }
+  autoBtn.textContent = '■ 停止';
+  autoTimer = setInterval(()=>{
+    if(stepIndex >= steps.length){ stopAuto(); return; }
+    runStep();
+  }, 1300);
+};
+
+renderGroupEditors();
+buildScene();
+</script>
+</body>
+</html>
