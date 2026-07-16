@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>「ばい」のお勉強シミュレーター - 3段階抽象化対応</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Yusei+Magic&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Kosugi Maru', sans-serif;
+            background-color: #f0fdf4;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        
+        .header-title {
+            font-family: 'Yusei Magic', sans-serif;
+        }
+
+        /* アニメーション定義 */
+        @keyframes convey {
+            0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(0) scale(1); }
+        }
+        .animate-convey { animation: convey 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+
+        /* =========================================
+           リボン ⇔ テープ ⇔ 線分図 のモーフィングCSS
+        ========================================= */
+        #ribbon-container {
+            display: flex;
+            align-items: flex-end; /* 線分図の基準を下に合わせるため */
+            height: 120px;
+            width: 100%;
+            position: relative;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .segment {
+            position: relative;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: left center;
+            opacity: 0; /* 初期状態は見えない */
+        }
+
+        .segment.revealed {
+            opacity: 1;
+        }
+
+        /* 内部の表現レイヤー */
+        .layer-ribbon, .layer-tape, .layer-line {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- モード：リボン (具体) --- */
+        #ribbon-container[data-mode="ribbon"] .segment { height: 48px; margin-bottom: 30px;}
+        #ribbon-container[data-mode="ribbon"] .layer-ribbon { 
+            opacity: 1; 
+            background: linear-gradient(135deg, #fca5a5 0%, #f43f5e 100%);
+            border-top: 3px solid #e11d48;
+            border-bottom: 3px solid #e11d48;
+            border-right: 2px dashed #fda4af;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        /* リボンの最初の端の丸み */
+        #ribbon-container[data-mode="ribbon"] .segment:first-child .layer-ribbon { border-top-left-radius: 8px; border-bottom-left-radius: 8px; border-left: 3px solid #e11d48;}
+        #ribbon-container[data-mode="ribbon"] .segment:last-child .layer-ribbon { border-top-right-radius: 8px; border-bottom-right-radius: 8px; border-right: 3px solid #e11d48;}
+
+        /* --- モード：テープ図 (半具体) --- */
+        #ribbon-container[data-mode="tape"] .segment { height: 36px; margin-bottom: 30px;}
+        #ribbon-container[data-mode="tape"] .layer-tape { 
+            opacity: 1; 
+            background: #bae6fd; /* light blue */
+            border: 2px solid #0284c7; 
+            margin-right: -2px; /* 境界線を重ねる */
+        }
+
+        /* --- モード：線分図 (抽象) --- */
+        #ribbon-container[data-mode="line"] .segment { height: 4px; margin-bottom: 30px;}
+        #ribbon-container[data-mode="line"] .layer-line { 
+            opacity: 1; 
+            background: #1e293b; /* slate-800 */
+        }
+        
+        /* 線分図の目盛り (右端に立てる) */
+        .tick-mark {
+            position: absolute;
+            right: 0;
+            top: -12px;
+            width: 2px;
+            height: 28px;
+            background-color: #1e293b;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        /* 0の目盛り (最初のセグメントの左端) */
+        .tick-mark-zero {
+            position: absolute;
+            left: 0;
+            top: -12px;
+            width: 2px;
+            height: 28px;
+            background-color: #1e293b;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        #ribbon-container[data-mode="line"] .tick-mark,
+        #ribbon-container[data-mode="line"] .tick-mark-zero { opacity: 1; }
+
+        /* ラベル類 */
+        .label-top, .label-bottom {
+            position: absolute;
+            right: 0;
+            transform: translateX(50%);
+            white-space: nowrap;
+            transition: all 0.5s ease;
+            opacity: 0;
+            font-weight: bold;
+        }
+        
+        .label-top-zero, .label-bottom-zero {
+            position: absolute;
+            left: 0;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            transition: all 0.5s ease;
+            opacity: 0;
+            font-weight: bold;
+        }
+
+        .label-top { top: -35px; color: #db2777; font-size: 14px;}
+        .label-bottom { bottom: -30px; color: #7e22ce; font-size: 14px;}
+        .label-top-zero { top: -35px; color: #64748b; font-size: 14px;}
+        .label-bottom-zero { bottom: -30px; color: #64748b; font-size: 14px;}
+
+        /* テープと線分図のときにラベルを表示 */
+        #ribbon-container[data-mode="tape"] .label-bottom,
+        #ribbon-container[data-mode="line"] .label-top,
+        #ribbon-container[data-mode="line"] .label-bottom,
+        #ribbon-container[data-mode="line"] .label-top-zero,
+        #ribbon-container[data-mode="line"] .label-bottom-zero {
+            opacity: 1;
+        }
+
+        /* 1つ分の長さを表す注釈 (線分図のときだけ最初のブロックに出す) */
+        .base-annotation {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #db2777;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            white-space: nowrap;
+        }
+        #ribbon-container[data-mode="tape"] .segment:first-child .base-annotation { opacity: 1; top: -20px; }
+        #ribbon-container[data-mode="ribbon"] .segment:first-child .base-annotation { opacity: 1; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-2 md:p-6">
+
+    <div class="max-w-5xl w-full bg-white rounded-3xl shadow-xl border-4 border-emerald-300 p-4 md:p-6 flex flex-col justify-between" style="min-height: 700px;">
+        
+        <!-- ヘッダーとタブ -->
+        <div>
+            <div class="flex flex-col lg:flex-row justify-between items-center border-b-4 border-dashed border-gray-200 pb-4 mb-4">
+                <div class="text-center lg:text-left mb-3 lg:mb-0">
+                    <h1 class="header-title text-3xl md:text-4xl text-orange-500 flex items-center justify-center lg:justify-start gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-yellow-400"></i>
+                        「ばい」のお勉強シミュレーター
+                    </h1>
+                    <p class="text-xs md:text-sm text-gray-500 mt-1">「いくつ分（個数）」と「長さ（図）」で、九九のいみをかんぺきにしよう！</p>
+                </div>
+                
+                <!-- タブ切り替え（2つに整理） -->
+                <div class="flex bg-gray-100 rounded-2xl p-1 gap-1 flex-wrap justify-center shadow-inner">
+                    <button onclick="switchTab('copier')" id="tab-copier" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all duration-300 bg-white text-orange-600 shadow-md border border-orange-100">
+                        <i class="fa-solid fa-apple-whole mr-1"></i> ふしぎなコピーき (こ数)
+                    </button>
+                    <button onclick="switchTab('ribbon')" id="tab-ribbon" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all duration-300 text-gray-500 hover:bg-white/50 border border-transparent">
+                        <i class="fa-solid fa-ruler-horizontal mr-1"></i> リボンとテープ図 (長さ)
+                    </button>
+                </div>
+            </div>
+
+            <!-- コントロールパネル（設定エリア） -->
+            <div class="bg-blue-50/50 rounded-2xl p-3 md:p-4 border-2 border-blue-100 mb-4 flex flex-col md:flex-row gap-4 items-center justify-around">
+                
+                <!-- 1. キャラクター/アイテムの選択 (コピー機のときのみ目立たせる) -->
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] md:text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full mb-1">あいてむ</span>
+                    <div class="flex gap-1.5">
+                        <button onclick="changeItem('apple')" id="item-apple" class="item-btn w-9 h-9 rounded-full border-2 border-orange-400 bg-white text-lg flex items-center justify-center transition-all shadow-md scale-110">🍎</button>
+                        <button onclick="changeItem('star')" id="item-star" class="item-btn w-9 h-9 rounded-full border-2 border-transparent bg-white text-lg flex items-center justify-center transition-all shadow-md">⭐</button>
+                        <button onclick="changeItem('fish')" id="item-fish" class="item-btn w-9 h-9 rounded-full border-2 border-transparent bg-white text-lg flex items-center justify-center transition-all shadow-md">🐟</button>
+                        <button onclick="changeItem('car')" id="item-car" class="item-btn w-9 h-9 rounded-full border-2 border-transparent bg-white text-lg flex items-center justify-center transition-all shadow-md">🚗</button>
+                    </div>
+                </div>
+
+                <!-- 2. もとの大きさ（基準量 1〜9） -->
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] md:text-xs font-bold text-pink-700 bg-pink-100 px-2 py-0.5 rounded-full mb-1">もとの 大きさ（１つ分）</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="adjustBase(-1)" class="w-8 h-8 bg-pink-400 text-white font-bold rounded-lg text-lg shadow hover:bg-pink-500 transition-all active:scale-95 flex items-center justify-center">-</button>
+                        <div class="text-center w-12">
+                            <span id="base-display" class="text-2xl md:text-3xl font-extrabold text-pink-600">2</span>
+                            <span id="unit-base" class="text-xs text-pink-500 font-bold ml-0.5">こ</span>
+                        </div>
+                        <button onclick="adjustBase(1)" class="w-8 h-8 bg-pink-400 text-white font-bold rounded-lg text-lg shadow hover:bg-pink-500 transition-all active:scale-95 flex items-center justify-center">+</button>
+                    </div>
+                </div>
+
+                <!-- 3. 何倍にするか（いくつ分 1〜9） -->
+                <div class="flex flex-col items-center w-full md:w-auto">
+                    <span class="text-[10px] md:text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full mb-1">なんばい に する？（いくつ分）</span>
+                    <div class="grid grid-cols-5 md:grid-cols-9 gap-1 w-full justify-center">
+                        <!-- JSで動的にボタンのハイライトを管理 -->
+                        <button onclick="changeMultiplier(1)" id="mult-1" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">1倍</button>
+                        <button onclick="changeMultiplier(2)" id="mult-2" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">2倍</button>
+                        <button onclick="changeMultiplier(3)" id="mult-3" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-purple-500 text-white font-bold rounded-md transition-all shadow-md scale-105">3倍</button>
+                        <button onclick="changeMultiplier(4)" id="mult-4" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">4倍</button>
+                        <button onclick="changeMultiplier(5)" id="mult-5" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">5倍</button>
+                        <button onclick="changeMultiplier(6)" id="mult-6" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">6倍</button>
+                        <button onclick="changeMultiplier(7)" id="mult-7" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">7倍</button>
+                        <button onclick="changeMultiplier(8)" id="mult-8" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">8倍</button>
+                        <button onclick="changeMultiplier(9)" id="mult-9" class="mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm">9倍</button>
+                    </div>
+                </div>
+
+                <!-- 4. 再生アクション -->
+                <div>
+                    <button onclick="runSimulation()" class="px-5 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-black rounded-xl shadow-lg flex items-center gap-2 text-base transition-all whitespace-nowrap border-b-4 border-emerald-700">
+                        <i class="fa-solid fa-play"></i> はじめる！
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= シミュレーション描画領域 ================= -->
+        <div class="flex-grow border-4 border-dashed border-gray-200 rounded-3xl p-3 md:p-6 bg-slate-50 relative overflow-hidden flex flex-col justify-center items-center min-h-[250px]">
+            
+            <!-- ====== 案1: ふしぎなコピーき (離散量・個数) ====== -->
+            <div id="view-copier" class="w-full flex flex-col justify-between items-center gap-4">
+                <div class="w-full grid grid-cols-12 gap-2 items-center">
+                    <!-- 左：もとの部屋 -->
+                    <div class="col-span-3 bg-pink-50 border-4 border-pink-200 rounded-2xl p-2 md:p-4 flex flex-col items-center justify-center min-h-[180px] shadow-inner relative">
+                        <span class="absolute top-1.5 left-1.5 text-[10px] bg-pink-400 text-white font-bold px-1.5 py-0.5 rounded">もと</span>
+                        <div id="copier-base-items" class="grid w-full justify-items-center items-center mt-3 gap-1">
+                            <!-- JSで生成 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 中：ふしぎなコピーゲート -->
+                    <div class="col-span-2 flex flex-col items-center justify-center">
+                        <div id="copier-machine" class="w-full h-24 md:h-28 bg-gradient-to-b from-yellow-300 to-amber-500 rounded-xl border-4 border-amber-600 shadow-md flex flex-col items-center justify-center text-white font-extrabold relative overflow-hidden">
+                            <span class="z-10 text-xs md:text-sm leading-tight text-center">ふしぎな<br>コピーき</span>
+                            <div class="absolute inset-0 bg-white opacity-10 animate-pulse"></div>
+                            <div class="absolute bottom-0 w-full h-2 bg-red-500"></div>
+                        </div>
+                        <div class="text-xl md:text-2xl text-amber-500 mt-2">
+                            <i class="fa-solid fa-right-long animate-pulse"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- 右：ばいの部屋 -->
+                    <div class="col-span-7 bg-purple-50 border-4 border-purple-200 rounded-2xl p-2 md:p-4 flex flex-col items-center justify-center min-h-[180px] shadow-inner relative">
+                        <span class="absolute top-1.5 left-1.5 text-[10px] bg-purple-400 text-white font-bold px-1.5 py-0.5 rounded">ばいの へや</span>
+                        <div id="copier-result-container" class="grid w-full h-full p-1 items-stretch justify-items-center gap-1.5">
+                            <!-- コピーされたグループがここに並ぶ -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== 案2: リボン・テープ・線分図 (連続量・長さ) ====== -->
+            <div id="view-ribbon" class="w-full hidden flex-col justify-center items-center gap-2">
+                
+                <!-- 表示モード切り替えトグル (アニメーション後に活性化) -->
+                <div id="ribbon-mode-controls" class="mb-4 flex bg-white rounded-full p-1 shadow-sm border border-gray-200 opacity-50 pointer-events-none transition-opacity duration-300">
+                    <button onclick="switchRibbonMode('ribbon')" id="rmode-ribbon" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-bold bg-pink-100 text-pink-700 shadow-sm transition-all">🎀 リボン</button>
+                    <button onclick="switchRibbonMode('tape')" id="rmode-tape" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-gray-500 hover:bg-gray-100 transition-all">🟩 テープ図</button>
+                    <button onclick="switchRibbonMode('line')" id="rmode-line" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-gray-500 hover:bg-gray-100 transition-all">📏 線分図</button>
+                </div>
+
+                <div class="w-full bg-white rounded-2xl border border-gray-200 p-6 md:p-10 flex flex-col justify-center items-center relative overflow-visible mt-4">
+                    
+                    <!-- モーフィングコンテナ -->
+                    <div id="ribbon-container" data-mode="ribbon" class="w-[90%] mx-auto">
+                        <!-- JSでセグメント(segment)を動的生成 -->
+                    </div>
+
+                    <!-- テープ図用の中かっこ（ぜんぶの長さ） -->
+                    <div id="total-brace" class="absolute top-2 w-[90%] left-[5%] flex flex-col items-center transition-opacity duration-500 opacity-0 pointer-events-none">
+                        <span class="text-emerald-600 font-black text-sm md:text-base bg-white px-2 mb-[-10px] z-10" id="total-brace-text">ぜんぶで ? cm</span>
+                        <div class="w-full h-4 border-t-2 border-x-2 border-emerald-500 rounded-t-lg"></div>
+                    </div>
+
+                </div>
+                <p class="text-xs text-gray-400 mt-2"><i class="fa-solid fa-circle-info"></i> アニメーションが終わると、上のボタンで図の形を変身させられるよ！</p>
+            </div>
+
+        </div>
+
+        <!-- ================= かけ算の式（ダイナミック連動） ================= -->
+        <div class="mt-4 p-4 bg-amber-100/50 rounded-2xl border-2 border-yellow-300 text-center relative">
+            <span class="absolute -top-3 left-6 text-xs bg-yellow-400 text-amber-900 font-bold px-3 py-1 rounded-full shadow">さんすう の しき</span>
+            
+            <div class="flex items-center justify-center gap-2 md:gap-4 text-2xl md:text-4xl font-black text-gray-800 mt-2">
+                <!-- もとの数 -->
+                <div class="flex flex-col items-center">
+                    <div class="px-3 py-1.5 bg-pink-100 border-2 border-pink-400 rounded-xl text-pink-600 min-w-[55px] md:min-w-[70px] shadow-sm flex items-end justify-center">
+                        <span id="formula-base">2</span>
+                        <span class="text-sm font-bold ml-1 mb-1 text-pink-500" id="formula-unit-base">こ</span>
+                    </div>
+                    <span class="text-[10px] md:text-xs text-pink-500 font-bold mt-1">1つ分</span>
+                </div>
+                
+                <div class="text-gray-400 font-normal">×</div>
+                
+                <!-- 倍の数 -->
+                <div class="flex flex-col items-center">
+                    <div class="px-3 py-1.5 bg-purple-100 border-2 border-purple-400 rounded-xl text-purple-600 min-w-[55px] md:min-w-[70px] shadow-sm">
+                        <span id="formula-mult">3</span>
+                    </div>
+                    <span class="text-[10px] md:text-xs text-purple-500 font-bold mt-1">いくつ分(ばい)</span>
+                </div>
+                
+                <div class="text-gray-400 font-normal">＝</div>
+                
+                <!-- ぜんぶの数 -->
+                <div class="flex flex-col items-center">
+                    <div class="px-3 py-1.5 bg-emerald-50 border-2 border-emerald-300 text-emerald-400 rounded-xl min-w-[80px] md:min-w-[100px] shadow-sm flex items-end justify-center transition-all duration-300" id="formula-total-box">
+                        <span id="formula-total">?</span>
+                        <span class="text-sm font-bold ml-1 mb-1" id="formula-unit-total">こ</span>
+                    </div>
+                    <span class="text-[10px] md:text-xs text-emerald-600 font-bold mt-1">ぜんぶの数</span>
+                </div>
+            </div>
+            
+            <!-- 説明文 -->
+            <p id="explain-text" class="text-gray-700 font-bold text-sm md:text-base mt-4 bg-white inline-block px-5 py-2 rounded-full shadow-sm border border-gray-100 transition-all duration-300">
+                はやく 「はじめる」ボタン を おしてね！
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        // --- アプリのグローバル状態 ---
+        let currentTab = 'copier'; // 'copier', 'ribbon'
+        let currentRibbonMode = 'ribbon'; // 'ribbon', 'tape', 'line'
+        let selectedItem = 'apple';
+        let baseValue = 2; // 1~9
+        let multiplierValue = 3; // 1~9
+        let isAnimating = false;
+
+        const itemEmojis = { apple: '🍎', star: '⭐', fish: '🐟', car: '🚗' };
+
+        // --- 効果音システム ---
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSound(type, delay = 0, pitch = 1.0) {
+            try {
+                initAudio();
+                const t = audioCtx.currentTime + delay;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                if (type === 'pop') { // ポン！
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(180 * pitch, t);
+                    osc.frequency.exponentialRampToValueAtTime(500 * pitch, t + 0.1);
+                    gain.gain.setValueAtTime(0.2, t);
+                    gain.gain.linearRampToValueAtTime(0.01, t + 0.1);
+                    osc.start(t); osc.stop(t + 0.1);
+                } 
+                else if (type === 'whoosh') { // シュッ（変身音）
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, t);
+                    osc.frequency.exponentialRampToValueAtTime(100, t + 0.3);
+                    gain.gain.setValueAtTime(0.1, t);
+                    gain.gain.linearRampToValueAtTime(0.01, t + 0.3);
+                    osc.start(t); osc.stop(t + 0.3);
+                }
+                else if (type === 'success') { // チャララーン！
+                    const notes = [261.6, 329.6, 392.0, 523.2];
+                    notes.forEach((freq, i) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g); g.connect(audioCtx.destination);
+                        o.type = 'sine';
+                        o.frequency.setValueAtTime(freq, t + i * 0.08);
+                        g.gain.setValueAtTime(0.1, t + i * 0.08);
+                        g.gain.linearRampToValueAtTime(0.01, t + i * 0.08 + 0.2);
+                        o.start(t + i * 0.08); o.stop(t + i * 0.08 + 0.2);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // --- UI イベント制御 ---
+        function switchTab(tabId) {
+            if (isAnimating) return;
+            currentTab = tabId;
+            
+            // タブの見た目更新
+            document.getElementById('tab-copier').className = "tab-btn px-4 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all duration-300 text-gray-500 hover:bg-white/50 border border-transparent";
+            document.getElementById('tab-ribbon').className = "tab-btn px-4 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all duration-300 text-gray-500 hover:bg-white/50 border border-transparent";
+            
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.className = "tab-btn px-4 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all duration-300 bg-white text-orange-600 shadow-md border border-orange-100";
+
+            // ビューの切り替え
+            document.getElementById('view-copier').classList.add('hidden');
+            document.getElementById('view-ribbon').classList.add('hidden');
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            // 単位の切り替え
+            const unit = tabId === 'copier' ? 'こ' : 'cm';
+            document.getElementById('unit-base').textContent = unit;
+            document.getElementById('formula-unit-base').textContent = unit;
+            document.getElementById('formula-unit-total').textContent = unit;
+
+            // リボンタブに切り替えた時はモードを「リボン」に戻す
+            if(tabId === 'ribbon') {
+                switchRibbonMode('ribbon');
+                document.getElementById('ribbon-mode-controls').classList.add('opacity-50', 'pointer-events-none');
+            }
+
+            initAudio();
+            runSimulation();
+        }
+
+        function switchRibbonMode(mode) {
+            currentRibbonMode = mode;
+            document.getElementById('ribbon-container').setAttribute('data-mode', mode);
+            
+            // ボタンの見た目更新
+            ['ribbon', 'tape', 'line'].forEach(m => {
+                const btn = document.getElementById(`rmode-${m}`);
+                btn.className = "px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-gray-500 hover:bg-gray-100 transition-all";
+            });
+            
+            const activeClass = mode === 'ribbon' ? 'bg-pink-100 text-pink-700 shadow-sm' :
+                                mode === 'tape' ? 'bg-blue-100 text-blue-700 shadow-sm' :
+                                'bg-slate-800 text-white shadow-sm';
+            
+            const activeBtn = document.getElementById(`rmode-${mode}`);
+            activeBtn.className = `px-3 py-1.5 rounded-full text-xs md:text-sm font-bold transition-all ${activeClass}`;
+
+            // 全体のかっこ（Tapeの時のみ表示）
+            const brace = document.getElementById('total-brace');
+            if(mode === 'tape') {
+                brace.style.opacity = '1';
+                brace.style.width = `${(100/9) * multiplierValue}%`; // 伸びた幅に合わせる
+            } else {
+                brace.style.opacity = '0';
+            }
+
+            playSound('whoosh');
+        }
+
+        function changeItem(itemKey) {
+            if (isAnimating) return;
+            selectedItem = itemKey;
+            document.querySelectorAll('.item-btn').forEach(btn => {
+                btn.classList.remove('border-orange-400', 'scale-110');
+                btn.classList.add('border-transparent');
+            });
+            document.getElementById(`item-${itemKey}`).classList.add('border-orange-400', 'scale-110');
+            document.getElementById(`item-${itemKey}`).classList.remove('border-transparent');
+            if(currentTab === 'copier') runSimulation();
+        }
+
+        function adjustBase(diff) {
+            if (isAnimating) return;
+            const newVal = baseValue + diff;
+            if (newVal >= 1 && newVal <= 9) {
+                baseValue = newVal;
+                document.getElementById('base-display').textContent = baseValue;
+                runSimulation();
+            }
+        }
+
+        function changeMultiplier(num) {
+            if (isAnimating) return;
+            multiplierValue = num;
+            document.querySelectorAll('.mult-btn').forEach(btn => {
+                btn.className = "mult-btn px-2 py-1.5 text-xs md:text-sm bg-white border border-purple-200 text-purple-700 font-bold rounded-md transition-all shadow-sm";
+            });
+            document.getElementById(`mult-${num}`).className = "mult-btn px-2 py-1.5 text-xs md:text-sm bg-purple-500 text-white font-bold rounded-md transition-all shadow-md scale-105";
+            runSimulation();
+        }
+
+        // --- シミュレーション描画実行エンジン ---
+        function runSimulation() {
+            if (isAnimating) return;
+            isAnimating = true;
+            initAudio();
+            
+            const total = baseValue * multiplierValue;
+            
+            // 数式の更新（リセット状態）
+            document.getElementById('formula-base').textContent = baseValue;
+            document.getElementById('formula-mult').textContent = multiplierValue;
+            
+            const tBox = document.getElementById('formula-total-box');
+            tBox.className = "px-3 py-1.5 bg-gray-100 border-2 border-gray-300 text-gray-400 rounded-xl min-w-[80px] md:min-w-[100px] shadow-inner flex items-end justify-center transition-all duration-300";
+            document.getElementById('formula-total').innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+            
+            document.getElementById('explain-text').innerHTML = `けいさんちゅう...`;
+
+            if (currentTab === 'copier') {
+                renderCopier(baseValue, multiplierValue, total);
+            } else {
+                renderRibbon(baseValue, multiplierValue, total);
+            }
+        }
+
+        // --- 案1: コピー機 (離散量) ---
+        function renderCopier(base, mult, total) {
+            const baseContainer = document.getElementById('copier-base-items');
+            baseContainer.innerHTML = '';
+            
+            // 9個用グリッド調整
+            baseContainer.className = base <= 4 ? "grid grid-cols-2 gap-1 w-full justify-items-center" : 
+                                      base <= 6 ? "grid grid-cols-3 gap-1 w-full justify-items-center" : 
+                                      "grid grid-cols-3 gap-0.5 w-full justify-items-center";
+
+            const emojiSize = base > 6 ? "text-xl" : "text-2xl md:text-3xl";
+
+            for (let i = 0; i < base; i++) {
+                const item = document.createElement('div');
+                item.className = `${emojiSize} p-0.5 bg-white rounded border border-pink-200 shadow-sm animate-pop`;
+                item.style.animationDelay = `${i * 30}ms`;
+                item.textContent = itemEmojis[selectedItem];
+                baseContainer.appendChild(item);
+            }
+
+            const resultContainer = document.getElementById('copier-result-container');
+            resultContainer.innerHTML = '';
+            resultContainer.className = mult <= 3 ? "grid grid-cols-1 gap-2 w-full h-full p-1 items-center justify-items-center" : 
+                                        mult <= 6 ? "grid grid-cols-2 gap-2 w-full h-full p-1 items-center justify-items-center" : 
+                                        "grid grid-cols-3 gap-1.5 w-full h-full p-1 items-center justify-items-center";
+
+            const machine = document.getElementById('copier-machine');
+            machine.classList.add('animate-bounce');
+
+            let groupCount = 0;
+            const intervalTime = mult > 6 ? 200 : mult > 4 ? 300 : 400;
+
+            function popNext() {
+                if (groupCount < mult) {
+                    const wrap = document.createElement('div');
+                    wrap.className = "bg-white border-2 border-purple-300 rounded-xl p-1 relative flex flex-col items-center justify-center animate-convey w-full h-full min-h-[40px]";
+                    
+                    const label = document.createElement('span');
+                    label.className = "absolute -top-2.5 text-[9px] bg-purple-400 text-white font-bold px-1.5 rounded-full whitespace-nowrap scale-90";
+                    label.textContent = `${groupCount + 1}つ分`;
+                    wrap.appendChild(label);
+
+                    const itemsDiv = document.createElement('div');
+                    itemsDiv.className = "flex gap-0.5 justify-center items-center flex-wrap";
+                    const rSize = base > 6 ? "text-xs md:text-sm" : base > 4 ? "text-sm md:text-base" : "text-base md:text-lg";
+                    
+                    for (let j = 0; j < base; j++) {
+                        const itm = document.createElement('span');
+                        itm.className = rSize;
+                        itm.textContent = itemEmojis[selectedItem];
+                        itemsDiv.appendChild(itm);
+                    }
+                    wrap.appendChild(itemsDiv);
+                    resultContainer.appendChild(wrap);
+
+                    playSound('pop', 0, 1.0 + (groupCount * 0.1));
+                    groupCount++;
+                    setTimeout(popNext, intervalTime);
+                } else {
+                    machine.classList.remove('animate-bounce');
+                    finishSimulation(base, mult, total, 'こ');
+                }
+            }
+            setTimeout(popNext, 300);
+        }
+
+        // --- 案2: リボン ⇔ テープ ⇔ 線分図 (連続量) ---
+        function renderRibbon(base, mult, total) {
+            const container = document.getElementById('ribbon-container');
+            container.innerHTML = '';
+            
+            // 強制的に初期モード(リボン)にセットしてUIロック
+            switchRibbonMode('ribbon');
+            document.getElementById('ribbon-mode-controls').classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('total-brace').style.opacity = '0';
+
+            // 1セグメントの幅は全体(100%)の1/9 (約11.11%) とする。
+            // 9倍の時にぴったり100%になる。
+            const segWidthPct = 100 / 9;
+
+            let count = 0;
+            const intervalTime = mult > 6 ? 150 : mult > 4 ? 200 : 300;
+
+            function drawSegment() {
+                if(count < mult) {
+                    const isFirst = (count === 0);
+                    const isLast = (count === mult - 1);
+                    
+                    const seg = document.createElement('div');
+                    seg.className = "segment flex items-center justify-center";
+                    seg.style.width = `${segWidthPct}%`;
+                    
+                    // --- 1. リボンレイヤー ---
+                    const lRibbon = document.createElement('div');
+                    lRibbon.className = "layer-ribbon overflow-hidden";
+                    // 柄としてアイテムを並べる
+                    lRibbon.innerHTML = `<div class="text-[10px] opacity-30 whitespace-nowrap">${Array(base).fill(itemEmojis[selectedItem]).join('')}</div>`;
+                    
+                    // --- 2. テープ図レイヤー ---
+                    const lTape = document.createElement('div');
+                    lTape.className = "layer-tape";
+                    
+                    // --- 3. 線分図レイヤー ---
+                    const lLine = document.createElement('div');
+                    lLine.className = "layer-line";
+
+                    // === 共通装飾（目盛りやラベル） ===
+                    
+                    // 0の目盛りとラベル (最初のセグメントだけ左端に置く)
+                    if(isFirst) {
+                        const tick0 = document.createElement('div'); tick0.className = "tick-mark-zero";
+                        const top0 = document.createElement('div'); top0.className = "label-top-zero"; top0.textContent = "0";
+                        const bot0 = document.createElement('div'); bot0.className = "label-bottom-zero"; bot0.textContent = "0";
+                        seg.appendChild(tick0); seg.appendChild(top0); seg.appendChild(bot0);
+                        
+                        // 1つ分の注釈 ("2cm" みたいなラベル)
+                        const ann = document.createElement('div');
+                        ann.className = "base-annotation";
+                        ann.innerHTML = `${base}cm`;
+                        seg.appendChild(ann);
+                    }
+
+                    // 右端の目盛りとラベル (K倍, K*N cm)
+                    const tick = document.createElement('div'); tick.className = "tick-mark";
+                    const topL = document.createElement('div'); topL.className = "label-top"; topL.textContent = `${base * (count+1)}`;
+                    const botL = document.createElement('div'); botL.className = "label-bottom"; botL.textContent = `${count+1}倍`;
+                    
+                    seg.appendChild(lRibbon);
+                    seg.appendChild(lTape);
+                    seg.appendChild(lLine);
+                    seg.appendChild(tick);
+                    seg.appendChild(topL);
+                    seg.appendChild(botL);
+
+                    container.appendChild(seg);
+
+                    // DOMに追加後、1フレーム待ってrevealedクラスを付与(アニメーション発火)
+                    requestAnimationFrame(() => {
+                        seg.classList.add('revealed');
+                        playSound('pop', 0, 1.0 + (count * 0.1));
+                    });
+
+                    count++;
+                    setTimeout(drawSegment, intervalTime);
+                } else {
+                    // 全部の描画完了
+                    document.getElementById('total-brace-text').textContent = `ぜんぶで ${total} cm`;
+                    // モード切り替えボタンを解放
+                    document.getElementById('ribbon-mode-controls').classList.remove('opacity-50', 'pointer-events-none');
+                    finishSimulation(base, mult, total, 'cm');
+                }
+            }
+
+            setTimeout(drawSegment, 300);
+        }
+
+        // --- シミュレーション終了時 ---
+        function finishSimulation(base, mult, total, unit) {
+            isAnimating = false;
+            playSound('success');
+
+            const tBox = document.getElementById('formula-total-box');
+            tBox.className = "px-3 py-1.5 bg-emerald-500 border-2 border-emerald-600 text-white rounded-xl min-w-[80px] md:min-w-[100px] shadow-lg flex items-end justify-center transition-all duration-300 animate-pop relative";
+            
+            document.getElementById('formula-total').innerHTML = `${total} <i class="fa-solid fa-star text-yellow-300 text-xs animate-ping absolute -top-1 -right-1"></i>`;
+            document.getElementById('formula-total').className = "font-black text-3xl md:text-4xl";
+            document.getElementById('formula-unit-total').className = "text-sm font-bold ml-1 mb-1 text-emerald-100";
+
+            const explain = document.getElementById('explain-text');
+            explain.className = "text-gray-700 font-bold text-sm md:text-base mt-4 bg-white inline-block px-5 py-2 rounded-full shadow border-2 border-emerald-300 animate-fade-in";
+            explain.innerHTML = `「<span class="text-pink-600 font-extrabold text-lg">${base} ${unit}</span>」の「<span class="text-purple-600 font-extrabold text-lg">${mult}倍</span>」は、「<span class="text-emerald-600 font-extrabold text-xl">${total} ${unit}</span>」になるよ！`;
+        }
+
+        // 初期化
+        window.onload = () => {
+            runSimulation();
+        };
+    </script>
+</body>
+</html>

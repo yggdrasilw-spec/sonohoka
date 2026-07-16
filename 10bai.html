@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>10倍のひみつ ～コインで見る位取り～</title>
+<title>10倍・10で割るひみつ ～コインやお札で見る位取り～</title>
 <style>
   :root{
     --blue:#2f6fb0;
@@ -88,6 +88,8 @@
   .btn.reset{background:#999;}
   .btn.auto{background:#c98b2e;}
   .btn:disabled{background:#ccc;cursor:not-allowed;}
+  .btn.mode-btn{background:#cfd8d5;color:#4a5750;}
+  .btn.mode-btn.active{background:var(--green);color:#fff;}
   #status{
     font-size:15px;
     min-height:22px;
@@ -167,12 +169,16 @@
 </head>
 <body>
 
-<h1><span class="q">?</span>数を10倍すると、もとの数からどのようにかわるか考えよう。</h1>
+<h1 id="mainTitle"><span class="q">?</span>数を10倍すると、もとの数からどのようにかわるか考えよう。</h1>
 
 <div class="panel">
+  <div class="config-row" style="margin-bottom:12px;">
+    <button class="btn mode-btn active" id="modeMulBtn">×10 のパターン</button>
+    <button class="btn mode-btn" id="modeDivBtn">÷10 のパターン</button>
+  </div>
   <div class="config-row" id="groupList"></div>
   <div class="config-row" style="margin-top:10px;">
-    <button class="btn add" id="addGroupBtn">＋ コインの種類を追加</button>
+    <button class="btn add" id="addGroupBtn">＋ コインやお札の種類を追加</button>
     <button class="btn build" id="buildBtn">この組み合わせでつくる</button>
   </div>
 </div>
@@ -210,6 +216,7 @@
    設定：コインの種類・枚数・倍率は自由に変更できます
    ============================================================ */
 let CONFIG = {
+  mode: 'multiply',   // 'multiply' = ×10のパターン, 'divide' = ÷10のパターン
   groups: [
     { value: 10, count: 2 },
     { value: 5,  count: 1 }
@@ -218,6 +225,15 @@ let CONFIG = {
 };
 
 const COIN_VALUES = [1,5,10,50,100,500,1000,5000,10000];
+
+/* モードごとに選べる金種を制限する
+   ×10パターン：10倍すると存在しない金額（5000円→5万円、10000円→10万円）は選べない
+   ÷10パターン：10で割ると存在しない金額（1円→0.1円、5円→0.5円）は選べない */
+function allowedValues(mode){
+  return mode === 'divide'
+    ? COIN_VALUES.filter(v => v % 10 === 0)
+    : COIN_VALUES.filter(v => v * 10 <= 10000);
+}
 const R = 22;              // 硬貨の半径
 const STACK_OVERLAP = 15;  // 同じ種類の硬貨を重ねる量
 const GROUP_GAP = 44;      // 種類ごとのすき間（黄色枠が重ならないよう広め）
@@ -507,12 +523,111 @@ function convergeGroup(gi, frameInfo){
 }
 
 /* ------------------------------------------------------------
+   ÷10パターン：中心の大きいお金 → キラリーン！ →
+   1/10の金額を10セット、横に広げる（convergeGroupの逆再生）
+   ------------------------------------------------------------ */
+function divergeGroup(gi, centerInfo){
+  return new Promise(resolve => {
+    const grp = CONFIG.groups[gi];
+    const { centerX, centerY, squareSize, left, right, top, bottom } = centerInfo;
+
+    sparkleEffect(centerX, centerY);
+
+    setTimeout(() => {
+      const bigEl = document.getElementById('bigcoin-'+gi);
+      if(bigEl) bigEl.remove();
+
+      // 黄色いわく（正方形）を中心にフェードイン
+      const rect = svgEl('rect', {
+        class:'frame-yellow', id:'yframe-'+gi,
+        x:centerX-squareSize/2, y:top, width:squareSize, height:bottom-top, rx:14, opacity:0
+      });
+      layerFrames.appendChild(rect);
+      rect.style.transition = 'opacity .4s ease';
+      requestAnimationFrame(()=> requestAnimationFrame(()=> rect.setAttribute('opacity',1)));
+
+      // 1/10の金額の硬貨・お札を10セット分、いったん中心に重ねて生成
+      const smallValue = grp.value / 10;
+      const coinInfos = [];
+      for(let s=0;s<10;s++){
+        const cx = X0 + s*SET_GAP;
+        layout.groupsY[gi].forEach((cy,k) => {
+          const el = drawCoin(layerSets, centerX, centerY, smallValue, `s${s}-g${gi}-k${k}`);
+          el.setAttribute('transform', `translate(${centerX},${centerY}) scale(0.15)`);
+          el.style.opacity = 0.15;
+          coinInfos.push({el, cx, cy});
+        });
+      }
+
+      setTimeout(() => {
+        // 黄色いわくを横に広げる
+        rect.style.transition = 'x 1s ease, width 1s ease';
+        rect.setAttribute('x', left);
+        rect.setAttribute('width', right-left);
+
+        // 硬貨・お札を10セットの位置へ広げる
+        coinInfos.forEach(({el, cx, cy}) => {
+          el.style.transition = 'transform 1s ease-out, opacity 1s ease-out';
+          el.setAttribute('transform', `translate(${cx},${cy}) scale(1)`);
+          el.style.opacity = 1;
+        });
+
+        setTimeout(resolve, 1050);
+      }, 350);
+    }, 500);
+  });
+}
+
+/* ------------------------------------------------------------
+   ÷10パターン：選ばれたセットを目立たせる
+   ------------------------------------------------------------ */
+function highlightSet(s){
+  const frame = document.querySelector(`.frame-blue[data-set="${s}"]`);
+  if(frame){
+    frame.style.transition = 'stroke .3s ease, stroke-width .3s ease';
+    frame.style.stroke = 'var(--pink)';
+    frame.setAttribute('stroke-width', 4);
+  }
+}
+
+/* ------------------------------------------------------------
+   ÷10パターン：選ばれなかった9セットをフェードアウトして消す
+   ------------------------------------------------------------ */
+function discardOtherSets(keepIndex){
+  for(let s=0;s<10;s++){
+    if(s === keepIndex) continue;
+    CONFIG.groups.forEach((g, gi) => {
+      layout.groupsY[gi].forEach((cy,k) => {
+        const el = document.querySelector(`[data-id="s${s}-g${gi}-k${k}"]`);
+        if(el){
+          el.style.transition = 'opacity .6s ease, transform .6s ease';
+          el.style.opacity = 0;
+          el.setAttribute('transform', el.getAttribute('transform') + ' scale(0.5)');
+          setTimeout(()=> el.remove(), 600);
+        }
+      });
+    });
+    const frame = document.querySelector(`.frame-blue[data-set="${s}"]`);
+    if(frame){
+      frame.style.transition = 'opacity .6s ease';
+      frame.style.opacity = 0;
+      setTimeout(()=> frame.remove(), 600);
+    }
+  }
+  document.querySelectorAll('.frame-yellow').forEach(rect => {
+    rect.style.transition = 'opacity .6s ease';
+    rect.style.opacity = 0;
+    setTimeout(()=> rect.remove(), 600);
+  });
+}
+
+/* ------------------------------------------------------------
    位取り表
    ------------------------------------------------------------ */
-function buildPlaceValueTable(){
+function buildPlaceValueTable(mode){
   const orig = originalTotal();
-  const neu = newTotal();
-  const digitsNeeded = Math.max(String(neu).length, 3);
+  const neu = mode === 'divide' ? orig / 10 : orig * 10;
+  const digitsNeeded = Math.max(String(Math.max(orig,neu)).length, 3);
   const colNames = ['一','十','百','千','万'];
   const colColors = ['#fbdfe8','#fff3bf','#dbeafe','#dcfce7','#f3e8ff'];
   const cols = [];
@@ -532,7 +647,7 @@ function buildPlaceValueTable(){
     const blank = orig < Math.pow(10,c) && !(c===0 && orig===0);
     html += `<td style="background:${colColors[c]||'#fff'};color:${blank?'#ccc':'#333'}">${blank? '' : d}</td>`;
   });
-  html += '</tr><tr><td style="background:#f7f7f7;font-size:12px;">10倍</td>';
+  html += `</tr><tr><td style="background:#f7f7f7;font-size:12px;">${mode==='divide' ? '10で割る' : '10倍'}</td>`;
   cols.forEach(c => {
     const blank = neu < Math.pow(10,c) && !(c===0 && neu===0);
     const d = digitAt(neu,c);
@@ -540,24 +655,25 @@ function buildPlaceValueTable(){
   });
   html += '</tr></table>';
 
-  html += `<div style="margin-top:10px;font-size:16px;">
-    <b>${orig} × 10 = ${neu}</b><br>
-    <span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ上の位にうつり、一の位に 0 がつきます。</span>
-  </div>`;
+  const opText = mode==='divide'
+    ? `<b>${orig} ÷ 10 = ${neu}</b><br><span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ下の位にうつり、一の位の 0 がなくなります。</span>`
+    : `<b>${orig} × 10 = ${neu}</b><br><span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ上の位にうつり、一の位に 0 がつきます。</span>`;
+
+  html += `<div style="margin-top:10px;font-size:16px;">${opText}</div>`;
   document.getElementById('pvtWrap').innerHTML = html;
 }
 
 /* ------------------------------------------------------------
    ステップの組み立て
    ------------------------------------------------------------ */
-function buildSteps(){
+function buildStepsMultiply(){
   steps = [];
 
   steps.push(()=>{
     setsShown = 1;
     drawSet(0);
     setEquation(`${originalTotal()}`);
-    setStatus('①まず、コインを縦に並べます（同じ種類は少し重ねて置きます）。青いわくで囲みました。');
+    setStatus('①まず、コインやお札を縦に並べます（同じ種類は少し重ねて置きます）。青いわくで囲みました。');
   });
 
   for(let i=1;i<10;i++){
@@ -580,7 +696,7 @@ function buildSteps(){
 
   steps.push(()=>{
     showExchangeText();
-    setStatus('⑥両替！　同じ種類のコインが10まい集まると、上の位の1まいに変身します。');
+    setStatus('⑥両替！　同じ種類のコインやお札が10まい集まると、上の位の1まいに変身します。');
   });
 
   CONFIG.groups.forEach((g, gi) => {
@@ -592,11 +708,100 @@ function buildSteps(){
   });
 
   steps.push(()=>{
-    buildPlaceValueTable();
+    buildPlaceValueTable('multiply');
     setEquation(`${originalTotal()} × 10 = ${newTotal()}`);
     setStatus('⑨位取り表でも確認しましょう。それぞれの位の数字が、1つ上の位に移ります。');
     document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
   });
+}
+
+/* ------------------------------------------------------------
+   ÷10のパターン（×10の完全な逆再生）
+   1. 中心に選んだお金（大きい金額）を表示
+   2. 両替して1/10の金額を10セット、横に広げる
+   3. そのうち1セット（左はし）だけを選ぶ
+   4. 選ばれなかった9セットは消える
+   ------------------------------------------------------------ */
+function buildStepsDivide(){
+  steps = [];
+
+  // 10セット分の最終レイアウトをあらかじめ計算しておき、
+  // 中心にお金を表示する位置に使う（convergeGroupの計算と同じ考え方）
+  const centerInfos = CONFIG.groups.map((g, gi) => {
+    const ys = layout.groupsY[gi];
+    const top = ys[0] - R - 6;
+    const bottom = ys[ys.length-1] + R + 6;
+    const left = X0 + layout.frameLeft - 4;
+    const right = X0 + 9*SET_GAP + layout.frameRight + 4;
+    const centerX = (left+right)/2;
+    const centerY = (top+bottom)/2;
+    const squareSize = bottom - top;
+    return { centerX, centerY, squareSize, left, right, top, bottom };
+  });
+
+  steps.push(()=>{
+    setsShown = 0;
+    CONFIG.groups.forEach((g, gi) => {
+      const ci = centerInfos[gi];
+      const startY = ci.centerY - ((g.count-1)*STACK_OVERLAP)/2;
+      const gEl = svgEl('g', {class:'coin-set', id:'bigcoin-'+gi, opacity:0});
+      layerSets.appendChild(gEl);
+      for(let k=0;k<g.count;k++){
+        drawCoin(gEl, ci.centerX, startY + k*STACK_OVERLAP, g.value, `big-g${gi}-k${k}`);
+      }
+      gEl.style.transition = 'opacity .5s ease';
+      requestAnimationFrame(()=> requestAnimationFrame(()=> gEl.setAttribute('opacity',1)));
+    });
+    setEquation(`${originalTotal()}`);
+    setStatus('①中心に、選んだコインやお札を表示します。');
+  });
+
+  CONFIG.groups.forEach((g, gi) => {
+    steps.push(async ()=>{
+      setStatus(`②両替して、${g.value}円を10等分した ${g.value/10}円 を10セット、横にならべます。（${gi+1}／${CONFIG.groups.length}）`);
+      await divergeGroup(gi, centerInfos[gi]);
+    });
+  });
+
+  steps.push(()=>{
+    setsShown = 10;
+    for(let s=0;s<10;s++){
+      const frame = svgEl('rect', {
+        class:'frame-blue', 'data-set': s,
+        x: X0+s*SET_GAP+layout.frameLeft, y: layout.frameTop,
+        width: layout.frameRight - layout.frameLeft,
+        height: layout.frameBottom - layout.frameTop,
+        rx: 10, opacity:0
+      });
+      layerSets.appendChild(frame);
+      frame.style.transition = 'opacity .5s ease';
+      requestAnimationFrame(()=> requestAnimationFrame(()=> frame.setAttribute('opacity',1)));
+    }
+    setEquation(`${originalTotal()} ÷ 10`);
+    setStatus('③10等分されたお金が、10セットに分かれました。それぞれを青いわくで囲みます。');
+  });
+
+  steps.push(()=>{
+    setStatus('④この中から1セットだけを選びます（左はし）。');
+    highlightSet(0);
+  });
+
+  steps.push(()=>{
+    setStatus('⑤選ばれなかった9セットは消えます。残った1セットが答えです。');
+    discardOtherSets(0);
+  });
+
+  steps.push(()=>{
+    buildPlaceValueTable('divide');
+    setEquation(`${originalTotal()} ÷ 10 = ${originalTotal()/10}`);
+    setStatus('⑥位取り表でも確認しましょう。それぞれの位の数字が、1つ下の位に移ります。');
+    document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+}
+
+function buildSteps(){
+  if(CONFIG.mode === 'divide') buildStepsDivide();
+  else buildStepsMultiply();
 }
 
 async function runStep(){
@@ -651,15 +856,19 @@ function stopAuto(){
    設定パネル（コインの種類・枚数を自由に変更）
    ------------------------------------------------------------ */
 const groupListEl = document.getElementById('groupList');
+const mainTitleEl = document.getElementById('mainTitle');
+const modeMulBtn = document.getElementById('modeMulBtn');
+const modeDivBtn = document.getElementById('modeDivBtn');
 
 function renderGroupEditors(){
   groupListEl.innerHTML = '';
+  const allowed = allowedValues(CONFIG.mode);
   CONFIG.groups.forEach((g, i) => {
     const row = document.createElement('div');
     row.className = 'group-editor';
 
     const sel = document.createElement('select');
-    COIN_VALUES.forEach(v => {
+    allowed.forEach(v => {
       const opt = document.createElement('option');
       opt.value = v; opt.textContent = v + '円';
       if(v === g.value) opt.selected = true;
@@ -691,9 +900,30 @@ function renderGroupEditors(){
   });
 }
 
+function setMode(mode){
+  if(CONFIG.mode === mode) return;
+  CONFIG.mode = mode;
+  modeMulBtn.classList.toggle('active', mode === 'multiply');
+  modeDivBtn.classList.toggle('active', mode === 'divide');
+  mainTitleEl.innerHTML = mode === 'divide'
+    ? '<span class="q">?</span>数を10で割ると、もとの数からどのようにかわるか考えよう。'
+    : '<span class="q">?</span>数を10倍すると、もとの数からどのようにかわるか考えよう。';
+
+  // 選択中の金種が新しいモードで選べない場合は、選べる金種の中から選び直す
+  const allowed = allowedValues(mode);
+  CONFIG.groups.forEach(g => {
+    if(!allowed.includes(g.value)) g.value = allowed[0];
+  });
+  renderGroupEditors();
+  buildScene();
+}
+
+modeMulBtn.onclick = () => setMode('multiply');
+modeDivBtn.onclick = () => setMode('divide');
+
 document.getElementById('addGroupBtn').onclick = () => {
-  if(CONFIG.groups.length >= 4) { alert('コインの種類は4種類までにしましょう。'); return; }
-  CONFIG.groups.push({value:1, count:1});
+  if(CONFIG.groups.length >= 4) { alert('コインやお札の種類は4種類までにしましょう。'); return; }
+  CONFIG.groups.push({value: allowedValues(CONFIG.mode)[0], count:1});
   renderGroupEditors();
 };
 document.getElementById('buildBtn').onclick = buildScene;
