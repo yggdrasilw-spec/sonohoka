@@ -162,6 +162,15 @@
     border:2px solid #999;
   }
   table.pvt th{background:#eee;font-size:14px;}
+  .pvt-svg{background:#fff;border-radius:12px;overflow:visible;}
+  .pv-header-text{font-size:14px;font-weight:bold;fill:#555;text-anchor:middle;}
+  .pv-row-label{font-size:13px;fill:#555;font-weight:bold;text-anchor:middle;}
+  .pv-digit{font-size:22px;font-weight:900;fill:#333;text-anchor:middle;}
+  .pv-digit-moving{fill:#c0392b;}
+  .pv-digit-result{fill:#c0392b;}
+  .pv-digit-result.pv-history{fill:#333;}
+  .pv-arrow{stroke:#c0392b;stroke-width:2.5;fill:none;}
+  .pv-arrow.pv-history{stroke:#333;}
   .footer-note{
     font-size:12px;color:#999;margin-top:10px;
   }
@@ -284,7 +293,10 @@ function drawCoin(parent, cx, cy, value, id){
 function computeSetLayout(){
   let y = Y0 + 14 + R;
   const groupsY = [];
+  let maxHalfWidth = R; // コインだけなら硬貨の半径がそのまま基準
   CONFIG.groups.forEach((g, gi) => {
+    const box = coinImageBox(g.value);
+    maxHalfWidth = Math.max(maxHalfWidth, box.w/2); // 紙幣が含まれる場合は横幅の半分で上書き
     const coinYs = [];
     for(let k=0;k<g.count;k++){
       coinYs.push(y + k*STACK_OVERLAP);
@@ -294,7 +306,8 @@ function computeSetLayout(){
     y = y + blockHeight - R + GROUP_GAP;
   });
   const contentBottom = y - GROUP_GAP + R + 14;
-  return { groupsY, frameTop: Y0, frameBottom: contentBottom, frameLeft: -(R+10), frameRight: R+10 };
+  const framePad = 10;
+  return { groupsY, frameTop: Y0, frameBottom: contentBottom, frameLeft: -(maxHalfWidth+framePad), frameRight: maxHalfWidth+framePad };
 }
 
 let layout = null;
@@ -322,6 +335,65 @@ function newTotal(){
 
 function setStatus(msg){ statusEl.textContent = msg; }
 function setEquation(msg){ equationEl.textContent = msg; }
+
+/* ------------------------------------------------------------
+   効果音（Web Audio APIで簡単な音を合成）
+   ------------------------------------------------------------ */
+let audioCtx = null;
+function ensureAudio(){
+  try{
+    if(!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) audioCtx = new AC();
+    }
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }catch(e){ /* オーディオが使えない環境では無音のまま進める */ }
+  return audioCtx;
+}
+function playTone(freq, dur, opts={}){
+  const ctx = ensureAudio();
+  if(!ctx) return;
+  const t0 = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = opts.type || 'sine';
+  osc.frequency.setValueAtTime(freq, t0);
+  if(opts.freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(opts.freqEnd,1), t0+dur);
+  const peak = opts.gain ?? 0.16;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak, t0+0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0+dur+0.03);
+}
+function playSlideSound(){ playTone(520, 0.16, {type:'sine', freqEnd:760, gain:0.11}); }
+function playZeroAppearSound(){
+  playTone(660, 0.12, {type:'square', gain:0.14});
+  setTimeout(()=>playTone(990, 0.18, {type:'sine', gain:0.15}), 90);
+}
+function playZeroVanishSound(){ playTone(480, 0.24, {type:'sine', freqEnd:110, gain:0.13}); }
+function playFinishChime(){
+  playTone(523.25, 0.15, {gain:0.13});
+  setTimeout(()=>playTone(659.25, 0.15, {gain:0.13}), 120);
+  setTimeout(()=>playTone(783.99, 0.25, {gain:0.15}), 240);
+}
+function playSetAppearSound(){ playTone(720, 0.09, {type:'sine', freqEnd:900, gain:0.07}); }
+function playFrameAppearSound(){ playTone(340, 0.2, {type:'triangle', freqEnd:460, gain:0.09}); }
+function playExchangeSound(){
+  playTone(523.25, 0.12, {gain:0.15});
+  setTimeout(()=>playTone(659.25, 0.12, {gain:0.15}), 90);
+  setTimeout(()=>playTone(880, 0.22, {gain:0.17}), 180);
+}
+function playConvergeWhoosh(){ playTone(280, 0.4, {type:'sawtooth', freqEnd:1000, gain:0.05}); }
+function playDivergeWhoosh(){ playTone(1000, 0.4, {type:'sawtooth', freqEnd:280, gain:0.05}); }
+function playSparkleChime(){
+  playTone(1046.5, 0.16, {gain:0.13});
+  setTimeout(()=>playTone(1318.5, 0.22, {gain:0.14}), 80);
+}
+function playSelectSound(){ playTone(700, 0.09, {type:'square', gain:0.09}); }
+function playDiscardSound(){ playTone(420, 0.28, {type:'sine', freqEnd:140, gain:0.07}); }
+function playClickSound(){ playTone(600, 0.06, {type:'sine', gain:0.06}); }
 
 /* ------------------------------------------------------------
    1セット分（縦にコインを並べたもの＋青いわく）を描画
@@ -352,6 +424,7 @@ function drawSet(index){
 
   g.style.transition = 'opacity .5s ease';
   requestAnimationFrame(()=> requestAnimationFrame(()=> g.setAttribute('opacity',1)) );
+  playSetAppearSound();
   return g;
 }
 
@@ -371,6 +444,7 @@ function drawYellowFrame(gi){
   layerFrames.appendChild(rect);
   rect.style.transition = 'opacity .5s ease';
   requestAnimationFrame(()=> requestAnimationFrame(()=> rect.setAttribute('opacity',1)) );
+  playFrameAppearSound();
   return {rect, top, bottom, left, right};
 }
 
@@ -391,6 +465,7 @@ function showExchangeText(){
     t.setAttribute('opacity',1);
     t.style.transform = 'scale(1)';
   }));
+  playExchangeSound();
   return t;
 }
 function fadeOutExchangeText(){
@@ -416,6 +491,7 @@ function removeBlueFrames(){
 function sparkleEffect(cx, cy){
   const g = svgEl('g', {class:'sparkle-burst'});
   layerEffects.appendChild(g);
+  playSparkleChime();
 
   // 中心のフラッシュ
   const flash = svgEl('circle', {class:'flash-circle', cx, cy, r:2, opacity:0.9});
@@ -489,6 +565,7 @@ function convergeGroup(gi, frameInfo){
       el.setAttribute('transform', `translate(${centerX},${centerY}) scale(0.15)`);
       el.style.opacity = 0.15;
     });
+    playConvergeWhoosh();
 
     setTimeout(() => {
       coins.forEach(el => el.remove());
@@ -571,6 +648,7 @@ function divergeGroup(gi, centerInfo){
           el.setAttribute('transform', `translate(${cx},${cy}) scale(1)`);
           el.style.opacity = 1;
         });
+        playDivergeWhoosh();
 
         setTimeout(resolve, 1050);
       }, 350);
@@ -588,12 +666,14 @@ function highlightSet(s){
     frame.style.stroke = 'var(--pink)';
     frame.setAttribute('stroke-width', 4);
   }
+  playSelectSound();
 }
 
 /* ------------------------------------------------------------
    ÷10パターン：選ばれなかった9セットをフェードアウトして消す
    ------------------------------------------------------------ */
 function discardOtherSets(keepIndex){
+  playDiscardSound();
   for(let s=0;s<10;s++){
     if(s === keepIndex) continue;
     CONFIG.groups.forEach((g, gi) => {
@@ -622,51 +702,427 @@ function discardOtherSets(keepIndex){
 }
 
 /* ------------------------------------------------------------
-   位取り表
+   位取り表（アニメーション版・複数回の続けて10倍/10で割るに対応）
+   もとの数字が、コピーされて斜めにスライドしながら
+   1つ上（×10）または1つ下（÷10）の位へ移動する様子をみせる。
+   「続けてさらに10倍／10で割る」を押すたびに、下に新しい行を追加していく。
+   直前の変換（赤色）は、次の変換が始まると黒色（履歴）に変わる。
    ------------------------------------------------------------ */
+const PVT_CELL_W = 56;
+const PVT_CELL_H = 46;
+const PVT_HEADER_H = 32;
+const PVT_LABEL_W = 68;
+const PVT_RIGHT_MARGIN = 60;                 // 一の位の「0」が欄外へ消えるための余白
+const PVT_COL_NAMES  = ['一','十','百','千','万','十万','百万','千万'];
+const PVT_COL_COLORS = ['#fbdfe8','#fff3bf','#dbeafe','#dcfce7','#f3e8ff','#ffe4d6','#e0f7f4','#ece4ff'];
+const PVT_MAX_DIGITS = PVT_COL_NAMES.length; // これ以上は「続けて10倍」をグレーアウト
+
+let pvt = null; // 現在の位取り表のアニメーション状態
+
+function pvtDigitAt(num, place){
+  return Math.floor(num / Math.pow(10,place)) % 10;
+}
+function pvtRowY(rowIndex){
+  return PVT_HEADER_H + rowIndex*PVT_CELL_H + PVT_CELL_H/2;
+}
+function pvtUpdateSvgSize(){
+  const totalW = PVT_LABEL_W + pvt.digitsNeeded*PVT_CELL_W + PVT_RIGHT_MARGIN;
+  const totalH = PVT_HEADER_H + Math.max(pvt.rowCount,1)*PVT_CELL_H + 10;
+  pvt.svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  pvt.svg.setAttribute('width', totalW);
+  pvt.svg.setAttribute('height', totalH);
+}
+
+/* 桁数が足りなくなったら、左側に新しい列を追加する。
+   ラベル列（もと／×10 など）はそのままの位置に残し、
+   それ以外の要素（ヘッダー・数字・矢印）だけを右にずらす。 */
+function pvtEnsureColumns(requiredDigits){
+  if(requiredDigits <= pvt.digitsNeeded){ pvtUpdateSvgSize(); return; }
+  const delta = requiredDigits - pvt.digitsNeeded;
+
+  pvt.svg.querySelectorAll('rect,text,line').forEach(el => {
+    if(el.classList.contains('pv-label-elem')) return;
+    ['x','x1','x2'].forEach(attr => {
+      if(el.hasAttribute(attr)) el.setAttribute(attr, parseFloat(el.getAttribute(attr)) + delta*PVT_CELL_W);
+    });
+  });
+
+  for(let newIndex=0; newIndex<delta; newIndex++){
+    const place = requiredDigits - 1 - newIndex;
+    const x = PVT_LABEL_W + newIndex*PVT_CELL_W;
+    const color = PVT_COL_COLORS[place] || '#eee';
+    pvt.svg.appendChild(svgEl('rect', {x, y:0, width:PVT_CELL_W, height:PVT_HEADER_H, fill:color, stroke:'#999', 'stroke-width':1.5}));
+    const hText = svgEl('text', {x:x+PVT_CELL_W/2, y:PVT_HEADER_H/2+5, class:'pv-header-text'});
+    hText.textContent = PVT_COL_NAMES[place] || (place+1)+'桁目';
+    pvt.svg.appendChild(hText);
+    for(let r=0; r<pvt.rowCount; r++){
+      const cellY = pvtRowY(r) - PVT_CELL_H/2;
+      const fill = r===0 ? color : '#fff';
+      pvt.svg.appendChild(svgEl('rect', {x, y:cellY, width:PVT_CELL_W, height:PVT_CELL_H, fill, stroke:'#999', 'stroke-width':1.5}));
+    }
+  }
+  pvt.digitsNeeded = requiredDigits;
+  pvtUpdateSvgSize();
+}
+
+/* 新しい行（ラベル＋セルの枠）を一番下に追加する */
+function pvtAddRow(labelText){
+  const rowIndex = pvt.rowCount;
+  const cellY = pvtRowY(rowIndex) - PVT_CELL_H/2;
+  pvt.svg.appendChild(svgEl('rect', {x:0, y:cellY, width:PVT_LABEL_W, height:PVT_CELL_H, fill:'#f7f7f7', stroke:'#999', 'stroke-width':1.5, class:'pv-label-elem'}));
+  const lt = svgEl('text', {x:PVT_LABEL_W/2, y:pvtRowY(rowIndex)+5, class:'pv-row-label pv-label-elem'});
+  lt.textContent = labelText;
+  pvt.svg.appendChild(lt);
+  for(let i=0; i<pvt.digitsNeeded; i++){
+    const place = pvt.digitsNeeded-1-i;
+    const x = PVT_LABEL_W + i*PVT_CELL_W;
+    const fill = rowIndex===0 ? (PVT_COL_COLORS[place]||'#fff') : '#fff';
+    pvt.svg.appendChild(svgEl('rect', {x, y:cellY, width:PVT_CELL_W, height:PVT_CELL_H, fill, stroke:'#999', 'stroke-width':1.5}));
+  }
+  pvt.rowCount++;
+  pvtUpdateSvgSize();
+  return rowIndex;
+}
+
+/* もとの数字（一番上の行）を静止状態で配置する */
+function pvtPlaceDigitsInRow(rowIndex, value){
+  const rowY = pvtRowY(rowIndex);
+  for(let place=0; place<pvt.digitsNeeded; place++){
+    const blank = value < Math.pow(10,place) && !(place===0 && value===0);
+    if(blank) continue;
+    const i = pvt.digitsNeeded-1-place;
+    const x = PVT_LABEL_W + i*PVT_CELL_W + PVT_CELL_W/2;
+    const t = svgEl('text', {x, y: rowY+7, class:'pv-digit', 'data-row':rowIndex, 'data-place':place});
+    t.textContent = pvtDigitAt(value, place);
+    pvt.svg.appendChild(t);
+  }
+}
+
+/* 直前の変換（赤色）を履歴（黒色）に変える */
+function pvtRecolorHistory(){
+  pvt.svg.querySelectorAll('.pv-digit-result:not(.pv-history), .pv-arrow:not(.pv-history)').forEach(el => {
+    el.classList.add('pv-history');
+    if(el.tagName === 'line') el.setAttribute('marker-end', 'url(#pvArrowheadBlack)');
+  });
+}
+
+function updatePvtOpText(fromTotal, toTotal, mode){
+  const textDiv = document.getElementById('pvtOpText');
+  if(!textDiv) return;
+  textDiv.innerHTML = mode==='divide'
+    ? `<b>${fromTotal} ÷ 10 = ${toTotal}</b><br><span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ下の位にうつり、一の位の 0 がなくなります。</span>`
+    : `<b>${fromTotal} × 10 = ${toTotal}</b><br><span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ上の位にうつり、一の位に 0 がつきます。</span>`;
+}
+
+function updatePvtContinueButtons(){
+  const mulBtn = document.getElementById('pvtMulBtn');
+  const divBtn = document.getElementById('pvtDivBtn');
+  const total = pvt.lastTotal;
+  if(mulBtn) mulBtn.disabled = !(String(total*10).length <= PVT_MAX_DIGITS);
+  if(divBtn) divBtn.disabled = !(total % 10 === 0 && total/10 >= 1);
+}
+
+/* 「続けて」の操作が金額的にコイン・お札アニメで再現可能か判定する */
+function coinAnimationFeasible(mode, groupValues){
+  if(mode === 'divide'){
+    return groupValues.every(v => v % 10 === 0 && v/10 >= 1);
+  }
+  return groupValues.every(v => String(v*10).length < 6); // 10倍して6桁になる組は不可
+}
+
+/* 続けて10倍／10で割るときに、コイン・お札のアニメーションを
+   もう一度最初から（現在の金額を新しい「もと」として）再生する */
+async function runCoinContinueAnimation(mode, groupValues){
+  const savedConfig = CONFIG;
+  const savedLayout = layout;
+  const savedSteps = steps;
+  const savedStepIndex = stepIndex;
+
+  CONFIG = {
+    mode,
+    groups: savedConfig.groups.map((g,i) => ({ value: groupValues[i], count: g.count })),
+    multiplier: 10
+  };
+  layout = computeSetLayout();
+  const totalWidth = X0 + (CONFIG.multiplier-1)*SET_GAP + layout.frameRight + 140;
+  const totalHeight = Math.max(layout.frameBottom + 40, 480);
+  svgRoot.setAttribute('viewBox', `0 0 ${totalWidth} ${totalHeight}`);
+  svgRoot.setAttribute('width', totalWidth);
+  svgRoot.setAttribute('height', totalHeight);
+  layerSets.innerHTML = ''; layerFrames.innerHTML = ''; layerEffects.innerHTML = ''; layerResults.innerHTML = '';
+  setsShown = 0;
+
+  buildSteps(true); // skipPvt：位取り表は別で管理しているので追加しない
+  const localSteps = steps;
+  setEquation(`${originalTotal()}`);
+  for(const stepFn of localSteps){
+    await stepFn();
+    await new Promise(r => setTimeout(r, 820));
+  }
+
+  steps = savedSteps;
+  stepIndex = savedStepIndex;
+  CONFIG = savedConfig;
+  layout = savedLayout;
+}
+
+/* 「続けてさらに10倍／10で割る」ボタンが押されたときの処理 */
+async function pvtContinue(mode){
+  if(!pvt || pvt.animating) return;
+  pvt.animating = true;
+  const fromRowIndex = pvt.rowCount - 1;
+  const fromTotal = pvt.lastTotal;
+  const toTotal = mode === 'multiply' ? fromTotal*10 : fromTotal/10;
+  const mulBtn = document.getElementById('pvtMulBtn');
+  const divBtn = document.getElementById('pvtDivBtn');
+  if(mulBtn) mulBtn.disabled = true;
+  if(divBtn) divBtn.disabled = true;
+
+  const chk = document.getElementById('pvtCoinAnimChk');
+  const wantsCoinAnim = chk && chk.checked;
+  const feasible = coinAnimationFeasible(mode, pvt.groupValues);
+  if(wantsCoinAnim && feasible){
+    await runCoinContinueAnimation(mode, pvt.groupValues);
+  } else if(wantsCoinAnim && !feasible){
+    setStatus('（今回は金額の都合で、コイン・お札のアニメーションは省略します）');
+  }
+
+  pvtRunTransition(mode, fromTotal, toTotal, fromRowIndex, () => {
+    pvt.lastTotal = toTotal;
+    pvt.groupValues = pvt.groupValues.map(v => mode==='divide' ? v/10 : v*10);
+    pvt.animating = false;
+    updatePvtOpText(fromTotal, toTotal, mode);
+    updatePvtContinueButtons();
+    document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+}
+
+/* 位取り表の初回表示（ステップ⑨／⑥から呼ばれる） */
 function buildPlaceValueTable(mode){
   const orig = originalTotal();
   const neu = mode === 'divide' ? orig / 10 : orig * 10;
-  const digitsNeeded = Math.max(String(Math.max(orig,neu)).length, 3);
-  const colNames = ['一','十','百','千','万'];
-  const colColors = ['#fbdfe8','#fff3bf','#dbeafe','#dcfce7','#f3e8ff'];
-  const cols = [];
-  for(let i=digitsNeeded-1;i>=0;i--) cols.push(i);
 
-  function digitAt(num, place){
-    return Math.floor(num / Math.pow(10,place)) % 10;
+  const svg = svgEl('svg', {class:'pvt-svg'});
+  const defs = svgEl('defs', {});
+  const marker = svgEl('marker', {id:'pvArrowhead', markerWidth:8, markerHeight:8, refX:6, refY:3, orient:'auto'});
+  marker.appendChild(svgEl('path', {d:'M0,0 L6,3 L0,6 Z', fill:'#c0392b'}));
+  defs.appendChild(marker);
+  const markerBlack = svgEl('marker', {id:'pvArrowheadBlack', markerWidth:8, markerHeight:8, refX:6, refY:3, orient:'auto'});
+  markerBlack.appendChild(svgEl('path', {d:'M0,0 L6,3 L0,6 Z', fill:'#333'}));
+  defs.appendChild(markerBlack);
+  svg.appendChild(defs);
+
+  pvt = { svg, digitsNeeded:0, rowCount:0, lastTotal:orig, animating:true, groupValues: CONFIG.groups.map(g=>g.value) };
+
+  const wrap = document.getElementById('pvtWrap');
+  wrap.innerHTML = '';
+  wrap.appendChild(svg);
+
+  pvtEnsureColumns(Math.max(String(Math.max(orig,neu)).length, 3));
+  pvtAddRow('もと');
+  pvtPlaceDigitsInRow(0, orig);
+
+  const textDiv = document.createElement('div');
+  textDiv.id = 'pvtOpText';
+  textDiv.style.marginTop = '10px';
+  textDiv.style.fontSize = '16px';
+  wrap.appendChild(textDiv);
+
+  const chkLabel = document.createElement('label');
+  chkLabel.style.display = 'flex';
+  chkLabel.style.alignItems = 'center';
+  chkLabel.style.gap = '6px';
+  chkLabel.style.fontSize = '14px';
+  chkLabel.style.marginTop = '10px';
+  chkLabel.style.cursor = 'pointer';
+  const chk = document.createElement('input');
+  chk.type = 'checkbox';
+  chk.id = 'pvtCoinAnimChk';
+  chkLabel.appendChild(chk);
+  chkLabel.appendChild(document.createTextNode('硬貨・紙幣アニメを見る（続けて10倍／10で割るのとき）'));
+  wrap.appendChild(chkLabel);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.marginTop = '10px';
+  btnRow.style.display = 'flex';
+  btnRow.style.flexWrap = 'wrap';
+  btnRow.style.gap = '10px';
+  const mulBtn = document.createElement('button');
+  mulBtn.className = 'btn add';
+  mulBtn.id = 'pvtMulBtn';
+  mulBtn.textContent = '続けてさらに10倍';
+  mulBtn.disabled = true;
+  mulBtn.onclick = () => pvtContinue('multiply');
+  const divBtn = document.createElement('button');
+  divBtn.className = 'btn next';
+  divBtn.id = 'pvtDivBtn';
+  divBtn.textContent = '続けてさらに10で割る';
+  divBtn.disabled = true;
+  divBtn.onclick = () => pvtContinue('divide');
+  btnRow.appendChild(mulBtn);
+  btnRow.appendChild(divBtn);
+  wrap.appendChild(btnRow);
+
+  pvtRunTransition(mode, orig, neu, 0, () => {
+    pvt.lastTotal = neu;
+    pvt.groupValues = pvt.groupValues.map(v => mode==='divide' ? v/10 : v*10);
+    pvt.animating = false;
+    updatePvtOpText(orig, neu, mode);
+    updatePvtContinueButtons();
+  });
+}
+
+/* ------------------------------------------------------------
+   位取り表：ある行(fromRowIndex)から次の行へ、数字が斜めに
+   スライドするアニメーション本体。続けて10倍／10で割るでも共通利用。
+   ------------------------------------------------------------ */
+function pvtRunTransition(mode, fromTotal, toTotal, fromRowIndex, onDone){
+  pvtRecolorHistory(); // 直前の変換を履歴色（黒）にする
+
+  const neededDigits = Math.max(pvt.digitsNeeded, String(Math.max(fromTotal,toTotal)).length, 3);
+  pvtEnsureColumns(neededDigits);
+  const toRowIndex = pvtAddRow(mode === 'divide' ? '÷10' : '×10');
+
+  const fromRowY = pvtRowY(fromRowIndex);
+  const toRowY = pvtRowY(toRowIndex);
+
+  const moves = [];
+  if(mode === 'multiply'){
+    for(let place=0; place<pvt.digitsNeeded; place++){
+      const blank = fromTotal < Math.pow(10,place) && !(place===0 && fromTotal===0);
+      if(blank) continue;
+      moves.push({ fromPlace:place, toPlace:place+1, digit:pvtDigitAt(fromTotal,place) });
+    }
+  } else {
+    for(let place=1; place<pvt.digitsNeeded; place++){
+      if(fromTotal < Math.pow(10,place)) continue;
+      moves.push({ fromPlace:place, toPlace:place-1, digit:pvtDigitAt(fromTotal,place) });
+    }
   }
+  moves.sort((a,b)=> b.fromPlace - a.fromPlace); // 高い位から順に、少しずつ間をあけて動かす
 
-  let html = '<table class="pvt"><tr><th></th>';
-  cols.forEach(c => {
-    html += `<th style="background:${colColors[c]||'#eee'}">${colNames[c]||c+1+'桁目'}</th>`;
-  });
-  html += '</tr><tr><td style="background:#f7f7f7;font-size:12px;">もと</td>';
-  cols.forEach(c => {
-    const d = digitAt(orig,c);
-    const blank = orig < Math.pow(10,c) && !(c===0 && orig===0);
-    html += `<td style="background:${colColors[c]||'#fff'};color:${blank?'#ccc':'#333'}">${blank? '' : d}</td>`;
-  });
-  html += `</tr><tr><td style="background:#f7f7f7;font-size:12px;">${mode==='divide' ? '10で割る' : '10倍'}</td>`;
-  cols.forEach(c => {
-    const blank = neu < Math.pow(10,c) && !(c===0 && neu===0);
-    const d = digitAt(neu,c);
-    html += `<td style="background:${colColors[c]||'#fff'};color:${blank?'#ccc':'#c0392b'};font-weight:900;">${blank? '' : d}</td>`;
-  });
-  html += '</tr></table>';
+  const staggerStep = 160;
+  let delay = 0;
 
-  const opText = mode==='divide'
-    ? `<b>${orig} ÷ 10 = ${neu}</b><br><span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ下の位にうつり、一の位の 0 がなくなります。</span>`
-    : `<b>${orig} × 10 = ${neu}</b><br><span style="font-size:13px;color:#666;">それぞれの位の数が、1つずつ上の位にうつり、一の位に 0 がつきます。</span>`;
+  moves.forEach(mv => {
+    const fromIndex = pvt.digitsNeeded-1-mv.fromPlace;
+    const fromX = PVT_LABEL_W + fromIndex*PVT_CELL_W + PVT_CELL_W/2;
+    const inRange = mv.toPlace>=0 && mv.toPlace<pvt.digitsNeeded;
+    const toIndex = pvt.digitsNeeded-1-mv.toPlace;
+    const toX = inRange ? (PVT_LABEL_W + toIndex*PVT_CELL_W + PVT_CELL_W/2) : fromX;
 
-  html += `<div style="margin-top:10px;font-size:16px;">${opText}</div>`;
-  document.getElementById('pvtWrap').innerHTML = html;
+    setTimeout(() => {
+      playSlideSound();
+
+      const origEl = pvt.svg.querySelector(`text[data-row="${fromRowIndex}"][data-place="${mv.fromPlace}"]`);
+      if(origEl){ origEl.style.transition = 'opacity .4s ease'; origEl.style.opacity = 0.25; }
+
+      const moving = svgEl('text', {x: fromX, y: fromRowY+7, class:'pv-digit pv-digit-moving'});
+      moving.textContent = mv.digit;
+      pvt.svg.appendChild(moving);
+
+      const arrow = svgEl('line', {
+        x1: fromX, y1: fromRowY+16, x2: fromX, y2: fromRowY+16,
+        class:'pv-arrow', 'marker-end':'url(#pvArrowhead)', opacity:0
+      });
+      pvt.svg.appendChild(arrow);
+
+      requestAnimationFrame(()=> requestAnimationFrame(()=> {
+        moving.style.transition = 'transform .7s cubic-bezier(.35,.05,.25,1)';
+        moving.style.transform = `translate(${toX-fromX}px, ${toRowY-fromRowY}px)`;
+        arrow.style.transition = 'opacity .3s ease, x2 .7s ease, y2 .7s ease';
+        arrow.setAttribute('opacity', 0.85);
+        arrow.setAttribute('x2', toX);
+        arrow.setAttribute('y2', toRowY-16);
+      }));
+
+      setTimeout(()=>{
+        const fixed = svgEl('text', {x: toX, y: toRowY+7, class:'pv-digit pv-digit-result', 'data-row':toRowIndex, 'data-place':mv.toPlace});
+        fixed.textContent = mv.digit;
+        pvt.svg.appendChild(fixed);
+        moving.remove();
+      }, 720);
+    }, delay);
+    delay += staggerStep;
+  });
+
+  const afterMoves = delay + 750;
+
+  if(mode === 'multiply'){
+    // 一の位に「0」が出現するアニメーション
+    setTimeout(() => {
+      const toIndex = pvt.digitsNeeded-1;
+      const x = PVT_LABEL_W + toIndex*PVT_CELL_W + PVT_CELL_W/2;
+      const zero = svgEl('text', {x, y: toRowY+7, class:'pv-digit pv-digit-result', 'data-row':toRowIndex, 'data-place':0});
+      zero.textContent = '0';
+      zero.style.opacity = 0;
+      zero.style.transformBox = 'fill-box';
+      zero.style.transformOrigin = 'center';
+      zero.style.transform = 'scale(0.2)';
+      pvt.svg.appendChild(zero);
+      playZeroAppearSound();
+      requestAnimationFrame(()=> requestAnimationFrame(()=> {
+        zero.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1), opacity .3s ease';
+        zero.style.opacity = 1;
+        zero.style.transform = 'scale(1.25)';
+        setTimeout(()=>{ zero.style.transition = 'transform .2s ease'; zero.style.transform = 'scale(1)'; }, 260);
+      }));
+      setTimeout(playFinishChime, 500);
+      setTimeout(()=> onDone && onDone(), 700);
+    }, afterMoves);
+  } else {
+    // 一の位の「0」：もとの「0」はそのまま残し、コピーが右下（欄外）へスライドしたあと消える
+    setTimeout(() => {
+      const fromIndex0 = pvt.digitsNeeded-1; // place 0
+      const fromX0 = PVT_LABEL_W + fromIndex0*PVT_CELL_W + PVT_CELL_W/2;
+      const offIndex = pvt.digitsNeeded; // 表の外（右）へ
+      const offX = PVT_LABEL_W + offIndex*PVT_CELL_W + PVT_CELL_W/2;
+
+      playSlideSound();
+      // もとの「0」自体は残すが、他の桁と同じ薄さに揃えて浮かないようにする
+      const origZeroEl = pvt.svg.querySelector(`text[data-row="${fromRowIndex}"][data-place="0"]`);
+      if(origZeroEl){ origZeroEl.style.transition = 'opacity .4s ease'; origZeroEl.style.opacity = 0.25; }
+
+      const moving = svgEl('text', {x: fromX0, y: fromRowY+7, class:'pv-digit pv-digit-moving'});
+      moving.textContent = '0';
+      moving.style.transformBox = 'fill-box';
+      moving.style.transformOrigin = 'center';
+      pvt.svg.appendChild(moving);
+
+      const arrow = svgEl('line', {
+        x1: fromX0, y1: fromRowY+16, x2: fromX0, y2: fromRowY+16,
+        class:'pv-arrow', 'marker-end':'url(#pvArrowhead)', opacity:0
+      });
+      pvt.svg.appendChild(arrow);
+
+      requestAnimationFrame(()=> requestAnimationFrame(()=> {
+        moving.style.transition = 'transform .7s cubic-bezier(.35,.05,.25,1)';
+        moving.style.transform = `translate(${offX-fromX0}px, ${toRowY-fromRowY}px)`;
+        arrow.style.transition = 'opacity .3s ease, x2 .7s ease, y2 .7s ease';
+        arrow.setAttribute('opacity', 0.85);
+        arrow.setAttribute('x2', offX);
+        arrow.setAttribute('y2', toRowY-16);
+      }));
+
+      setTimeout(()=>{
+        // 欄外に到着した「0」のコピーを、消える演出とともに消去する（もとの0は残ったまま）
+        playZeroVanishSound();
+        moving.style.transition = 'transform .4s ease-in, opacity .4s ease-in';
+        moving.style.transform = `translate(${offX-fromX0}px, ${toRowY-fromRowY}px) scale(0.2)`;
+        moving.style.opacity = 0;
+        setTimeout(()=> moving.remove(), 420);
+      }, 720);
+
+      setTimeout(playFinishChime, 720+450);
+      setTimeout(()=> onDone && onDone(), 720+650);
+    }, afterMoves);
+  }
 }
 
 /* ------------------------------------------------------------
    ステップの組み立て
    ------------------------------------------------------------ */
-function buildStepsMultiply(){
+function buildStepsMultiply(skipPvt){
   steps = [];
 
   steps.push(()=>{
@@ -707,12 +1163,14 @@ function buildStepsMultiply(){
     });
   });
 
-  steps.push(()=>{
-    buildPlaceValueTable('multiply');
-    setEquation(`${originalTotal()} × 10 = ${newTotal()}`);
-    setStatus('⑨位取り表でも確認しましょう。それぞれの位の数字が、1つ上の位に移ります。');
-    document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
-  });
+  if(!skipPvt){
+    steps.push(()=>{
+      buildPlaceValueTable('multiply');
+      setEquation(`${originalTotal()} × 10 = ${newTotal()}`);
+      setStatus('⑨位取り表でも確認しましょう。それぞれの位の数字が、1つ上の位に移ります。');
+      document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+  }
 }
 
 /* ------------------------------------------------------------
@@ -722,7 +1180,7 @@ function buildStepsMultiply(){
    3. そのうち1セット（左はし）だけを選ぶ
    4. 選ばれなかった9セットは消える
    ------------------------------------------------------------ */
-function buildStepsDivide(){
+function buildStepsDivide(skipPvt){
   steps = [];
 
   // 10セット分の最終レイアウトをあらかじめ計算しておき、
@@ -791,17 +1249,19 @@ function buildStepsDivide(){
     discardOtherSets(0);
   });
 
-  steps.push(()=>{
-    buildPlaceValueTable('divide');
-    setEquation(`${originalTotal()} ÷ 10 = ${originalTotal()/10}`);
-    setStatus('⑥位取り表でも確認しましょう。それぞれの位の数字が、1つ下の位に移ります。');
-    document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
-  });
+  if(!skipPvt){
+    steps.push(()=>{
+      buildPlaceValueTable('divide');
+      setEquation(`${originalTotal()} ÷ 10 = ${originalTotal()/10}`);
+      setStatus('⑥位取り表でも確認しましょう。それぞれの位の数字が、1つ下の位に移ります。');
+      document.getElementById('pvtWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+  }
 }
 
-function buildSteps(){
-  if(CONFIG.mode === 'divide') buildStepsDivide();
-  else buildStepsMultiply();
+function buildSteps(skipPvt){
+  if(CONFIG.mode === 'divide') buildStepsDivide(skipPvt);
+  else buildStepsMultiply(skipPvt);
 }
 
 async function runStep(){
