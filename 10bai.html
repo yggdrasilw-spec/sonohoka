@@ -824,10 +824,14 @@ function updatePvtContinueButtons(){
 
 /* 「続けて」の操作が金額的にコイン・お札アニメで再現可能か判定する */
 function coinAnimationFeasible(mode, groupValues){
+  // 硬貨・紙幣の画像は10万円未満の金額しか用意されていないため、
+  // 変換前・変換後のどちらの金額も10万円未満であることを確認する
+  const IMAGE_LIMIT = 100000;
+  if(!groupValues.every(v => v < IMAGE_LIMIT)) return false; // すでに10万円以上ならその時点で不可
   if(mode === 'divide'){
     return groupValues.every(v => v % 10 === 0 && v/10 >= 1);
   }
-  return groupValues.every(v => String(v*10).length < 6); // 10倍して6桁になる組は不可
+  return groupValues.every(v => v*10 < IMAGE_LIMIT); // 10倍して10万円以上になる場合も不可
 }
 
 /* 続けて10倍／10で割るときに、コイン・お札のアニメーションを
