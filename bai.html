@@ -322,10 +322,12 @@
                         <!-- JSでセグメント(segment)を動的生成 -->
                     </div>
 
-                    <!-- テープ図用の中かっこ（ぜんぶの長さ） -->
-                    <div id="total-brace" class="absolute top-2 w-[90%] left-[5%] flex flex-col items-center transition-opacity duration-500 opacity-0 pointer-events-none">
-                        <span class="text-emerald-600 font-black text-sm md:text-base bg-white px-2 mb-[-10px] z-10" id="total-brace-text">ぜんぶで ? cm</span>
-                        <div class="w-full h-4 border-t-2 border-x-2 border-emerald-500 rounded-t-lg"></div>
+                    <!-- テープ図・線分図用の円弧（教科書スタイル） -->
+                    <div id="total-brace" class="absolute top-0 left-[5%] w-[90%] h-[120px] transition-opacity duration-500 opacity-0 pointer-events-none">
+                        <svg id="brace-svg" viewBox="0 0 100 120" preserveAspectRatio="none" class="absolute inset-0 w-full h-full" style="overflow: visible;">
+                            <path id="brace-path" d="" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+                        </svg>
+                        <span id="total-brace-text" class="absolute text-emerald-600 font-black text-sm md:text-base bg-white px-2 whitespace-nowrap" style="left:50%; top:24px; transform: translate(-50%, 0);">ぜんぶで ? cm</span>
                     </div>
 
                 </div>
@@ -469,6 +471,36 @@
             runSimulation();
         }
 
+        // container(#ribbon-container)は高さ120px固定・下寄せ(flex-end)・margin-bottom:30pxで統一されている。
+        // そのため、モードごとのセグメント高さから「テープ/線分図の上端(y)」を逆算し、
+        // 円弧の始点・終点がぴったり目盛り／テープの縦線に重なるようにする。
+        const SEG_HEIGHT = { ribbon: 48, tape: 36, line: 4 };
+        function updateBrace(mode) {
+            const brace = document.getElementById('total-brace');
+            const path = document.getElementById('brace-path');
+            const label = document.getElementById('total-brace-text');
+
+            if (mode !== 'tape' && mode !== 'line') {
+                brace.style.opacity = '0';
+                return;
+            }
+
+            // 横幅：ribbon-containerは親(stage)の90%幅。そのcontainer内でセグメント1つ分=1/9。
+            // total-braceは親(stage)基準の%指定なので、90(containerの占有率) × mult/9 で
+            // ぴったりセグメントmult個分の右端(=最後の目盛り/縦線)に一致させる。
+            brace.style.width = `${(90 / 9) * multiplierValue}%`;
+            brace.style.opacity = '1';
+
+            // 縦位置：120(高さ) - 30(margin-bottom) - セグメント高さ = セグメント上端
+            const segTop = 120 - 30 - SEG_HEIGHT[mode];
+            // 線分図は目盛り線の上端(セグメント上端から12px上)に、テープ図はテープの上辺にぴったり合わせる
+            const yBase = (mode === 'line') ? segTop - 12 : segTop;
+            const yPeak = yBase - 34; // 円弧の高さ
+
+            path.setAttribute('d', `M 0,${yBase} C 0,${yPeak} 100,${yPeak} 100,${yBase}`);
+            label.style.top = `${yPeak - 16}px`;
+        }
+
         function switchRibbonMode(mode) {
             currentRibbonMode = mode;
             document.getElementById('ribbon-container').setAttribute('data-mode', mode);
@@ -486,14 +518,8 @@
             const activeBtn = document.getElementById(`rmode-${mode}`);
             activeBtn.className = `px-3 py-1.5 rounded-full text-xs md:text-sm font-bold transition-all ${activeClass}`;
 
-            // 全体のかっこ（Tapeの時のみ表示）
-            const brace = document.getElementById('total-brace');
-            if(mode === 'tape') {
-                brace.style.opacity = '1';
-                brace.style.width = `${(100/9) * multiplierValue}%`; // 伸びた幅に合わせる
-            } else {
-                brace.style.opacity = '0';
-            }
+            // 全体の円弧（テープ図・線分図のときに表示）
+            updateBrace(mode);
 
             playSound('whoosh');
         }
