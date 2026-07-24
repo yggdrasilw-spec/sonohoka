@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>とけいの時間学習 - 時間/時刻モード＋空アニメーション</title>
+<style>
+:root{
+  --bg:#efe5d6;
+  --card:#fffef9;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg);
+  font-family:'Zen Kaku Gothic New','Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
+  display:flex;justify-content:center;align-items:center;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;-webkit-user-select:none;
+}
+
+/* ---- 16:9 レターボックス コンテナ ---- */
+.app{
+  position:relative;
+  width:100vw;height:100vh;
+  max-width:177.78vh;
+  max-height:56.25vw;
+  aspect-ratio:16/9;
+  background:var(--card);
+  border-radius:clamp(8px,1.4vh,22px);
+  box-shadow:0 10px 32px rgba(0,0,0,0.12);
+  border:1px solid #eadbc8;
+  overflow:hidden;
+}
+
+/* ---- 空の背景レイヤー ---- */
+.sky-layer{
+  position:absolute;inset:0;z-index:0;
+  transition:opacity 0.25s;
+}
+.sky-layer.sky-hidden{display:none;}
+#skySvg{width:100%;height:100%;display:block;}
+
+/* ---- コンテンツ全体 ---- */
+.app-content{
+  position:absolute;inset:0;z-index:1;
+  display:flex;flex-direction:column;
+  padding:clamp(6px,1.3vh,16px) clamp(10px,1.8vh,20px);
+  gap:clamp(3px,0.8vh,8px);
+}
+
+/* ---- ヘッダー ---- */
+.app-header{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:clamp(6px,1vw,14px);
+  background:rgba(255,253,249,0.86);
+  backdrop-filter:blur(2px);
+  border-radius:clamp(8px,1.2vh,14px);
+  padding:clamp(3px,0.7vh,7px) clamp(8px,1.2vw,14px);
+}
+.header-left{display:flex;align-items:center;gap:clamp(4px,0.8vw,10px);flex-shrink:1;min-width:0;}
+h1{
+  color:#5c3d2e;font-size:clamp(0.8rem,2.2vh,1.15rem);
+  display:flex;align-items:center;gap:5px;white-space:nowrap;
+}
+.mode-tabs{display:flex;gap:4px;flex-shrink:0;}
+.mode-tab{
+  padding:clamp(4px,0.8vh,8px) clamp(8px,1.1vw,14px);
+  border-radius:16px;border:1.6px solid #d4c0a5;
+  background:#fffefb;font-weight:700;font-family:inherit;
+  font-size:clamp(0.58rem,1.2vh,0.76rem);cursor:pointer;color:#5c3d2e;
+  white-space:nowrap;transition:all 0.15s;
+}
+.mode-tab.active{background:#ff7b42;border-color:#ff7b42;color:#fff;}
+.settings-btn{
+  flex-shrink:0;
+  width:clamp(24px,4vh,34px);height:clamp(24px,4vh,34px);
+  border-radius:50%;border:1.6px solid #d4c0a5;background:#fffefb;
+  font-size:clamp(0.8rem,1.8vh,1.1rem);cursor:pointer;color:#5c3d2e;
+  display:flex;align-items:center;justify-content:center;
+}
+.settings-btn:hover{background:#fff3e5;}
+
+/* ---- モードパネル共通 ---- */
+.mode-panel{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;
+  gap:clamp(3px,0.8vh,8px);
+}
+.mode-panel.hidden{display:none;}
+
+/* ==== 時間学習モード ==== */
+.main-row{flex:1 1 auto;min-height:0;display:flex;gap:clamp(8px,1.6vw,20px);}
+.clocks-panel{
+  flex:1.55 1 0;min-width:0;
+  display:flex;align-items:center;justify-content:center;
+  gap:clamp(4px,1vw,14px);
+}
+.clock-block{
+  height:100%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:clamp(1px,0.5vh,5px);min-width:0;
+}
+.clock-block.small{flex:0 1 27%;}
+.clock-block.main{flex:0 1 40%;}
+.clock-label{
+  flex:0 0 auto;font-size:clamp(0.55rem,1.2vh,0.72rem);font-weight:700;
+  color:#6b4f3c;display:flex;align-items:center;gap:4px;white-space:nowrap;
+  background:rgba(255,253,249,0.8);border-radius:10px;padding:1px 7px;
+}
+.clock-label.main-label{color:#c9631f;}
+.dot-blue,.dot-red,.dot-amber{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.dot-blue{background:rgba(69,123,157,0.6);border:1.4px solid rgba(69,123,157,0.9);}
+.dot-red{background:#e63946;}
+.dot-amber{background:#ff7b42;}
+.svg-wrapper{
+  flex:1 1 auto;min-height:0;aspect-ratio:1/1;width:auto;max-width:100%;
+  background:#fffcf7;border-radius:50%;
+  box-shadow:inset 0 0 10px rgba(0,0,0,0.03),0 3px 14px rgba(0,0,0,0.08);
+  position:relative;touch-action:none;
+}
+svg{width:100%;height:100%;display:block;touch-action:none;}
+
+.control-panel{
+  flex:1 1 0;min-width:0;display:flex;flex-direction:column;
+  justify-content:center;gap:clamp(3px,0.9vh,9px);min-height:0;
+}
+.control-section{
+  background:rgba(254,252,248,0.92);border:1.4px solid #ead9c5;
+  border-radius:clamp(8px,1.2vh,14px);
+  padding:clamp(3px,0.7vh,7px) clamp(6px,1vw,12px);
+  display:flex;flex-direction:column;gap:clamp(2px,0.5vh,5px);flex:0 0 auto;
+}
+.time-row{
+  display:flex;align-items:center;gap:4px;flex-wrap:wrap;
+  font-size:clamp(0.58rem,1.25vh,0.75rem);font-weight:700;color:#4a3728;
+}
+.time-row-label{flex-shrink:0;}
+select{
+  padding:clamp(2px,0.5vh,5px) 15px clamp(2px,0.5vh,5px) 5px;
+  border-radius:7px;border:1.6px solid #dccbb6;font-weight:700;
+  background:#fffefb;font-family:inherit;font-size:clamp(0.58rem,1.25vh,0.75rem);
+  color:#4a3728;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b6f55'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 4px center;
+  cursor:pointer;min-width:2.1em;text-align:center;
+}
+.ampm-toggle{display:flex;gap:2px;}
+.ampm-btn{
+  padding:clamp(2px,0.5vh,4px) clamp(5px,0.7vw,8px);border-radius:10px;
+  border:1.5px solid #d4c0a5;background:#fffefb;font-weight:700;font-family:inherit;
+  font-size:clamp(0.52rem,1.1vh,0.68rem);cursor:pointer;color:#5c3d2e;white-space:nowrap;
+}
+.ampm-btn.active{background:#6b8cae;border-color:#4f6f90;color:#fff;}
+.mini-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.mini-label{font-size:clamp(0.55rem,1.15vh,0.7rem);font-weight:700;color:#8b6f55;flex-shrink:0;white-space:nowrap;}
+.count-btn{
+  padding:clamp(3px,0.6vh,6px) clamp(6px,0.9vw,11px);border-radius:14px;
+  border:1.8px solid #d4c0a5;background:#fffefb;font-weight:700;font-family:inherit;
+  font-size:clamp(0.55rem,1.15vh,0.72rem);cursor:pointer;color:#5c3d2e;
+  transition:all 0.15s;white-space:nowrap;
+}
+.count-btn:active{transform:scale(0.94);background:#fff3e5;border-color:#f90;}
+.count-btn.active-step{background:#fff0e0;border-color:#ff7b42;color:#e65c00;box-shadow:0 0 0 2px rgba(255,123,66,0.15);}
+.info-panel{
+  display:flex;align-items:center;gap:5px;font-size:clamp(0.6rem,1.3vh,0.82rem);
+  font-weight:700;color:#5c3d2e;flex-wrap:wrap;justify-content:center;
+}
+.info-panel .elapsed{font-weight:800;font-size:clamp(0.72rem,1.65vh,1rem);color:#e65c00;}
+.info-panel .detail{font-size:clamp(0.53rem,1.05vh,0.65rem);color:#8b6f55;font-weight:600;}
+.btn-row{display:flex;gap:clamp(4px,0.8vw,10px);justify-content:center;flex:0 0 auto;}
+.btn{
+  padding:clamp(5px,1vh,10px) clamp(10px,1.4vw,18px);border-radius:20px;border:none;
+  font-weight:700;font-family:inherit;font-size:clamp(0.6rem,1.3vh,0.8rem);cursor:pointer;
+  letter-spacing:0.02em;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  flex:1 1 0;white-space:nowrap;
+}
+.btn-play{background:#ff7b42;color:#fff;}
+.btn-play:hover{background:#e86930;}
+.btn-play:active{transform:scale(0.96);}
+.btn-play.playing{background:#b0a090;pointer-events:none;}
+.btn-reset{background:#fff;border:1.8px solid #c9b396;color:#4a3728;}
+.btn-reset:hover{background:#fef9f4;}
+
+/* ---- 数直線フッター ---- */
+.numberline-section{flex:0 0 auto;height:clamp(64px,17vh,116px);display:flex;flex-direction:column;gap:1px;}
+.numberline-title{
+  font-size:clamp(0.54rem,1.1vh,0.7rem);font-weight:700;color:#8b6f55;flex:0 0 auto;
+  text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.seg-toggle{display:flex;gap:2px;}
+.seg-btn{
+  padding:1px 8px;border-radius:10px;border:1.4px solid #d4c0a5;background:#fffefb;
+  font-weight:700;font-family:inherit;font-size:clamp(0.5rem,1vh,0.64rem);cursor:pointer;color:#5c3d2e;
+}
+.seg-btn.active{background:#ff7b42;border-color:#ff7b42;color:#fff;}
+.numberline-box{
+  flex:1 1 auto;min-height:0;border:1.4px solid #ead9c5;border-radius:0;
+  background:rgba(255,252,247,0.92);overflow:hidden;
+}
+#numberlineSvg{display:block;width:100%;height:100%;}
+
+/* ==== 時刻学習モード ==== */
+.reading-row{flex:1 1 auto;min-height:0;display:flex;gap:clamp(10px,2vw,26px);}
+.reading-clock-panel{
+  flex:1.3 1 0;min-width:0;display:flex;align-items:center;justify-content:center;
+}
+.reading-svg-wrapper{
+  height:100%;aspect-ratio:1/1;max-width:100%;
+  background:#fffcf7;border-radius:50%;
+  box-shadow:inset 0 0 12px rgba(0,0,0,0.03),0 4px 18px rgba(0,0,0,0.08);
+  position:relative;touch-action:none;
+}
+.reading-control-panel{
+  flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;
+  gap:clamp(6px,1.4vh,16px);
+}
+.reading-section{
+  background:rgba(254,252,248,0.92);border:1.4px solid #ead9c5;
+  border-radius:clamp(10px,1.6vh,16px);
+  padding:clamp(8px,1.6vh,16px) clamp(10px,1.6vw,18px);
+  display:flex;flex-direction:column;align-items:center;gap:clamp(4px,1vh,10px);
+}
+.reading-digital{
+  font-size:clamp(1.1rem,4.2vh,2.4rem);font-weight:800;color:#e65c00;letter-spacing:0.02em;
+}
+.reading-ampm-label{font-size:clamp(0.7rem,1.8vh,1rem);font-weight:700;color:#6b4f3c;}
+.reading-ampm-toggle{display:flex;gap:6px;}
+.reading-ampm-toggle .ampm-btn{font-size:clamp(0.62rem,1.4vh,0.82rem);padding:clamp(4px,0.9vh,8px) clamp(10px,1.6vw,16px);}
+.reading-hint{font-size:clamp(0.55rem,1.15vh,0.72rem);color:#a3927e;text-align:center;line-height:1.4;}
+.reading-hint .key{display:inline-block;background:#f0e6d8;border-radius:4px;padding:1px 5px;margin:0 1px;font-weight:700;color:#6b5040;}
+.random-btn{
+  padding:clamp(6px,1.1vh,11px) clamp(14px,2vw,22px);border-radius:20px;border:none;
+  background:#6b8cae;color:#fff;font-weight:700;font-family:inherit;
+  font-size:clamp(0.6rem,1.3vh,0.82rem);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+.random-btn:hover{background:#57718f;}
+.random-btn:active{transform:scale(0.96);}
+
+/* ---- 設定オーバーレイ ---- */
+.settings-overlay{
+  position:absolute;inset:0;z-index:20;
+  background:rgba(30,20,10,0.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.settings-overlay.hidden{display:none;}
+.settings-panel{
+  background:#fffef9;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,0.25);
+  padding:clamp(14px,2.6vh,26px) clamp(16px,2.6vw,30px);
+  width:min(88%,420px);max-height:88%;overflow:auto;
+  display:flex;flex-direction:column;gap:clamp(8px,1.6vh,16px);
+}
+.settings-panel h2{font-size:clamp(0.95rem,2.2vh,1.2rem);color:#5c3d2e;}
+.settings-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-size:clamp(0.68rem,1.5vh,0.85rem);font-weight:700;color:#4a3728;
+  flex-wrap:wrap;
+}
+.settings-row .seg-toggle .seg-btn{font-size:clamp(0.6rem,1.3vh,0.76rem);padding:4px 12px;}
+.switch{
+  position:relative;width:42px;height:24px;flex-shrink:0;
+}
+.switch input{opacity:0;width:0;height:0;}
+.switch-track{
+  position:absolute;inset:0;background:#d8c8ae;border-radius:14px;transition:0.2s;cursor:pointer;
+}
+.switch-track::before{
+  content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;
+  background:#fff;border-radius:50%;transition:0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.3);
+}
+.switch input:checked + .switch-track{background:#ff7b42;}
+.switch input:checked + .switch-track::before{transform:translateX(18px);}
+.settings-close{
+  align-self:center;padding:8px 24px;border-radius:20px;border:1.8px solid #c9b396;
+  background:#fff;color:#4a3728;font-weight:700;font-family:inherit;cursor:pointer;margin-top:4px;
+}
+.settings-close:hover{background:#fef9f4;}
+hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sky-layer" id="skyLayer">
+    <svg id="skySvg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop id="skyGradTop" offset="0%" stop-color="#4a9de8"/>
+          <stop id="skyGradBottom" offset="100%" stop-color="#cdeeff"/>
+        </linearGradient>
+        <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fff6d0" stop-opacity="0.9"/>
+          <stop offset="60%" stop-color="#ffe17a" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#ffe17a" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#eef2ff" stop-opacity="0.8"/>
+          <stop offset="60%" stop-color="#c8d4ef" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="#c8d4ef" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect x="0" y="0" width="1600" height="900" fill="url(#skyGrad)"/>
+      <g id="starsGroup"></g>
+      <g id="sunGroup">
+        <circle id="sunGlowCircle" cx="200" cy="700" r="90" fill="url(#sunGlow)"/>
+        <circle id="sunDisc" cx="200" cy="700" r="34" fill="#ffd35c"/>
+      </g>
+      <g id="moonGroup">
+        <circle id="moonGlowCircle" cx="200" cy="700" r="70" fill="url(#moonGlow)"/>
+        <circle id="moonDisc" cx="200" cy="700" r="26" fill="#f2f3fa"/>
+        <circle cx="192" cy="692" r="4" fill="#d9dcee"/>
+        <circle cx="204" cy="704" r="3" fill="#d9dcee"/>
+        <circle cx="196" cy="708" r="2.4" fill="#d9dcee"/>
+      </g>
+      <path id="hillPath" d="M0,860 Q400,800 800,850 T1600,840 L1600,900 L0,900 Z" fill="#3e5c3e" opacity="0.55"/>
+    </svg>
+  </div>
+
+  <div class="app-content">
+    <div class="app-header">
+      <div class="header-left">
+        <h1>🕐 とけいの じかん学習</h1>
+      </div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="duration">⏱ 時間を数える</button>
+        <button class="mode-tab" data-mode="reading">🕐 時刻を読む</button>
+      </div>
+      <button class="settings-btn" id="settingsBtn" title="設定">⚙</button>
+    </div>
+
+    <!-- ============ 時間学習モード ============ -->
+    <div class="mode-panel" id="durationMode">
+      <div class="main-row">
+        <div class="clocks-panel">
+          <div class="clock-block small">
+            <div class="clock-label"><span class="dot-blue"></span>開始時刻</div>
+            <div class="svg-wrapper">
+              <svg viewBox="0 0 500 500" id="startClockSvg" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="250" cy="250" r="222" fill="#fffef9" stroke="#cfbda3" stroke-width="5"/>
+                <circle cx="250" cy="250" r="210" fill="none" stroke="#ede0cd" stroke-width="1" stroke-dasharray="6 5"/>
+                <g id="startTicks"></g>
+                <g id="startHandsGroup" style="cursor:grab;">
+                  <path id="startHitMinute" stroke="transparent" stroke-width="34" fill="none" stroke-linecap="round"/>
+                  <path id="startHitHour" stroke="transparent" stroke-width="28" fill="none" stroke-linecap="round"/>
+                  <path id="startMinuteHand" fill="rgba(69,123,157,0.75)" stroke="rgba(58,107,138,0.8)" stroke-width="0.6" stroke-linejoin="round"/>
+                  <path id="startHourHand" fill="rgba(44,76,107,0.65)" stroke="rgba(30,58,82,0.7)" stroke-width="0.6" stroke-linejoin="round"/>
+                </g>
+                <circle cx="250" cy="250" r="10" fill="#4a3728"/>
+                <circle cx="250" cy="250" r="5" fill="#fdfaf5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="clock-block main">
+            <div class="clock-label main-label"><span class="dot-amber"></span>うごく時計</div>
+            <div class="svg-wrapper">
+              <svg viewBox="0 0 500 500" id="mainClockSvg" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="glowRing">
+                    <feGaussianBlur stdDeviation="1.8" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                <circle cx="250" cy="250" r="222" fill="#fffef9" stroke="#cfbda3" stroke-width="5"/>
+                <circle cx="250" cy="250" r="210" fill="none" stroke="#ede0cd" stroke-width="1" stroke-dasharray="6 5"/>
+                <g id="ringGroup"></g>
+                <g id="mainTicks"></g>
+                <circle id="startMarker" cx="0" cy="0" r="7" fill="rgba(69,123,157,0.5)" stroke="#fff" stroke-width="2" visibility="hidden"/>
+                <circle id="endMarker" cx="0" cy="0" r="7" fill="#e63946" stroke="#fff" stroke-width="2" visibility="hidden"/>
+                <g id="mainHandsGroup">
+                  <path id="mainMinuteHand" fill="#ff7b42" stroke="#d9601f" stroke-width="0.6" stroke-linejoin="round"/>
+                  <path id="mainHourHand" fill="#c9631f" stroke="#9c4a15" stroke-width="0.6" stroke-linejoin="round"/>
+                </g>
+                <circle cx="250" cy="250" r="10" fill="#4a3728"/>
+                <circle cx="250" cy="250" r="5" fill="#fdfaf5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="clock-block small">
+            <div class="clock-label"><span class="dot-red"></span>終了時刻</div>
+            <div class="svg-wrapper">
+              <svg viewBox="0 0 500 500" id="endClockSvg" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="250" cy="250" r="222" fill="#fffef9" stroke="#cfbda3" stroke-width="5"/>
+                <circle cx="250" cy="250" r="210" fill="none" stroke="#ede0cd" stroke-width="1" stroke-dasharray="6 5"/>
+                <g id="endTicks"></g>
+                <g id="endHandsGroup" style="cursor:grab;">
+                  <path id="endHitMinute" stroke="transparent" stroke-width="34" fill="none" stroke-linecap="round"/>
+                  <path id="endHitHour" stroke="transparent" stroke-width="28" fill="none" stroke-linecap="round"/>
+                  <path id="endMinuteHand" fill="#e63946" stroke="#c02b36" stroke-width="0.6" stroke-linejoin="round"/>
+                  <path id="endHourHand" fill="#b52b36" stroke="#8a1f28" stroke-width="0.6" stroke-linejoin="round"/>
+                </g>
+                <circle cx="250" cy="250" r="10" fill="#4a3728"/>
+                <circle cx="250" cy="250" r="5" fill="#fdfaf5"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <aside class="control-panel">
+          <div class="control-section">
+            <div class="time-row">
+              <span class="dot-blue"></span><span class="time-row-label">開始</span>
+              <div class="ampm-toggle" data-target="start">
+                <button class="ampm-btn active" data-val="am">午前</button>
+                <button class="ampm-btn" data-val="pm">午後</button>
+              </div>
+              <select id="startHour"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+              <span>時</span>
+              <select id="startMinute"><option value="0">0</option><option value="5">5</option><option value="10">10</option><option value="15" selected>15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option></select>
+              <span>分</span>
+            </div>
+            <div class="time-row">
+              <span class="dot-red"></span><span class="time-row-label">終了</span>
+              <div class="ampm-toggle" data-target="end">
+                <button class="ampm-btn active" data-val="am">午前</button>
+                <button class="ampm-btn" data-val="pm">午後</button>
+              </div>
+              <select id="endHour"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+              <span>時</span>
+              <select id="endMinute"><option value="0">0</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45" selected>45</option><option value="50">50</option><option value="55">55</option></select>
+              <span>分</span>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <div class="mini-row">
+              <span class="mini-label">🔢 数える</span>
+              <button class="count-btn" id="btnCount1min">1分</button>
+              <button class="count-btn" id="btnCount5min">5分</button>
+              <button class="count-btn" id="btnCount1hour">1時間</button>
+              <button class="count-btn" id="btnCountReset">↺やり直し</button>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <div class="info-panel">
+              <span>🕐経過:</span>
+              <span class="elapsed" id="elapsedText">1時間30分</span>
+              <span class="detail" id="countDetail"></span>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-play" id="btnPlay">▶ 自動再生</button>
+            <button class="btn btn-reset" id="btnReset">↺ リセット</button>
+          </div>
+        </aside>
+      </div>
+
+      <div class="numberline-section">
+        <div class="numberline-title">
+          <span>📏 数直線</span>
+          <div class="seg-toggle" id="nlModeToggle">
+            <button class="seg-btn active" data-nl="24h">24時間</button>
+            <button class="seg-btn" data-nl="12h">午前午後</button>
+          </div>
+        </div>
+        <div class="numberline-box">
+          <svg id="numberlineSvg" xmlns="http://www.w3.org/2000/svg">
+            <line id="nlAxis" x1="0" y1="0" x2="0" y2="0" stroke="#cbb99a" stroke-width="2" stroke-linecap="round"/>
+            <g id="nlTicks"></g>
+            <g id="nlArrowGroup"></g>
+            <circle id="nlStartDot" r="7" fill="rgba(69,123,157,0.85)" stroke="#fff" stroke-width="2"/>
+            <circle id="nlEndDot" r="7" fill="#e63946" stroke="#fff" stroke-width="2"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 時刻学習モード ============ -->
+    <div class="mode-panel hidden" id="readingMode">
+      <div class="reading-row">
+        <div class="reading-clock-panel">
+          <div class="reading-svg-wrapper">
+            <svg viewBox="0 0 500 500" id="readingClockSvg" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="250" cy="250" r="222" fill="#fffef9" stroke="#cfbda3" stroke-width="6"/>
+              <circle cx="250" cy="250" r="210" fill="none" stroke="#ede0cd" stroke-width="1" stroke-dasharray="6 5"/>
+              <g id="readingTicks"></g>
+              <g id="readingHandsGroup" style="cursor:grab;">
+                <path id="readingHitMinute" stroke="transparent" stroke-width="34" fill="none" stroke-linecap="round"/>
+                <path id="readingHitHour" stroke="transparent" stroke-width="28" fill="none" stroke-linecap="round"/>
+                <path id="readingMinuteHand" fill="#3a6b8a" stroke="#28506b" stroke-width="0.6" stroke-linejoin="round"/>
+                <path id="readingHourHand" fill="#2c4c6b" stroke="#1e3a52" stroke-width="0.6" stroke-linejoin="round"/>
+              </g>
+              <circle cx="250" cy="250" r="11" fill="#4a3728"/>
+              <circle cx="250" cy="250" r="5.5" fill="#fdfaf5"/>
+            </svg>
+          </div>
+        </div>
+        <div class="reading-control-panel">
+          <div class="reading-section" id="readingDigitalSection">
+            <div class="reading-ampm-label" id="readingAmPmLabel">午前</div>
+            <div class="reading-digital" id="readingDigital">3時15分</div>
+          </div>
+          <div class="reading-section">
+            <div class="reading-ampm-toggle ampm-toggle" data-target="reading">
+              <button class="ampm-btn active" data-val="am">☀️ 午前</button>
+              <button class="ampm-btn" data-val="pm">🌙 午後</button>
+            </div>
+          </div>
+          <div class="reading-section">
+            <button class="random-btn" id="btnRandomTime">🎲 ランダムな時刻に挑戦</button>
+          </div>
+          <p class="reading-hint">💡 <span class="key">針をドラッグ</span>して時刻を作ろう。上のボタンで<span class="key">午前・午後</span>も選べます</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 設定パネル ============ -->
+  <div class="settings-overlay hidden" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>⚙ 設定</h2>
+      <div class="settings-row">
+        <span>🌅 背景の空アニメーション</span>
+        <label class="switch">
+          <input type="checkbox" id="toggleSky" checked>
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <hr class="settings-divider">
+      <div class="settings-row">
+        <span>🖱 ドラッグの単位</span>
+        <div class="seg-toggle" id="dragStepToggle">
+          <button class="seg-btn active" data-step="5">5分刻み</button>
+          <button class="seg-btn" data-step="1">1分刻み</button>
+        </div>
+      </div>
+      <hr class="settings-divider">
+      <div class="settings-row">
+        <span>🔢 時刻を読むモード：デジタル表示</span>
+        <label class="switch">
+          <input type="checkbox" id="toggleDigital" checked>
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <button class="settings-close" id="closeSettings">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /* ============================================================
+     共通ユーティリティ
+  ============================================================ */
+  function degToRad(d){return (d*Math.PI)/180;}
+  function clockDegToRad(cd){return degToRad(cd-90);}
+  function minuteToAngleDeg(m){return m*6;}
+  function hourMinuteToAngleDeg(h,m){return ((h%12)*30)+(m*0.5);}
+  function to24Hour(hour12, ampm){ return (hour12%12) + (ampm==='pm'?12:0); }
+
+  function triangleD(size, half){ return `M ${size} 0 L ${-size*0.4} ${half} L ${-size*0.4} ${-half} Z`; }
+  function appendArrow(parent,x,y,angleDeg,color,size,half){
+    const p=document.createElementNS(SVG_NS,'path');
+    p.setAttribute('d', triangleD(size,half));
+    p.setAttribute('fill', color);
+    p.setAttribute('transform', `translate(${x.toFixed(2)},${y.toFixed(2)}) rotate(${angleDeg.toFixed(2)})`);
+    parent.appendChild(p);
+    return p;
+  }
+
+  const CX=250, CY=250, R_CLOCK=210;
+
+  function makeHandPath(clockDeg, length, baseHalfWidth){
+    const rad = clockDegToRad(clockDeg);
+    const tx = CX + length*Math.cos(rad), ty = CY + length*Math.sin(rad);
+    const bo = 13;
+    const bx = CX - bo*Math.cos(rad), by = CY - bo*Math.sin(rad);
+    const pr = rad + Math.PI/2;
+    const blx = bx + baseHalfWidth*Math.cos(pr), bly = by + baseHalfWidth*Math.sin(pr);
+    const brx = bx - baseHalfWidth*Math.cos(pr), bry = by - baseHalfWidth*Math.sin(pr);
+    return `M ${tx.toFixed(2)} ${ty.toFixed(2)} L ${blx.toFixed(2)} ${bly.toFixed(2)} L ${brx.toFixed(2)} ${bry.toFixed(2)} Z`;
+  }
+  function makeHitPath(clockDeg, length){
+    const rad = clockDegToRad(clockDeg);
+    return `M ${CX} ${CY} L ${(CX+length*Math.cos(rad)).toFixed(1)} ${(CY+length*Math.sin(rad)).toFixed(1)}`;
+  }
+  function setHandPair(hourHandEl, minuteHandEl, hitHourEl, hitMinuteEl, h, m, hourLen, minLen, hourW, minW){
+    const ha = hourMinuteToAngleDeg(h,m);
+    const ma = minuteToAngleDeg(m);
+    hourHandEl.setAttribute('d', makeHandPath(ha, hourLen, hourW/2));
+    minuteHandEl.setAttribute('d', makeHandPath(ma, minLen, minW/2));
+    if (hitHourEl) hitHourEl.setAttribute('d', makeHitPath(ha, hourLen));
+    if (hitMinuteEl) hitMinuteEl.setAttribute('d', makeHitPath(ma, minLen));
+  }
+
+  function buildTicksNumbers(el, simple){
+    let html='';
+    if (simple){
+      for (let h=0; h<12; h++){
+        const rad = clockDegToRad(h*30);
+        const inner=R_CLOCK-26, outer=R_CLOCK-2;
+        const x1=CX+inner*Math.cos(rad), y1=CY+inner*Math.sin(rad);
+        const x2=CX+outer*Math.cos(rad), y2=CY+outer*Math.sin(rad);
+        html += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#5c4a3a" stroke-width="4" stroke-linecap="round"/>`;
+      }
+      for (let h=1; h<=12; h++){
+        const rad = clockDegToRad(h*30);
+        const r=R_CLOCK-46;
+        const x=CX+r*Math.cos(rad), y=CY+r*Math.sin(rad);
+        html += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="30" font-weight="bold" fill="#4a3728" style="font-family:inherit;">${h}</text>`;
+      }
+    } else {
+      for (let i=0;i<60;i++){
+        const rad = clockDegToRad(i*6);
+        const is5=(i%5===0), isHour=(i%15===0);
+        let inner,outer,sw,color;
+        if (isHour){ inner=R_CLOCK-22; outer=R_CLOCK-2; sw=3.5; color='#5c4a3a'; }
+        else if (is5){ inner=R_CLOCK-18; outer=R_CLOCK-2; sw=2.2; color='#7a6955'; }
+        else { inner=R_CLOCK-12; outer=R_CLOCK-2; sw=0.8; color='#cbb99a'; }
+        const x1=CX+inner*Math.cos(rad), y1=CY+inner*Math.sin(rad);
+        const x2=CX+outer*Math.cos(rad), y2=CY+outer*Math.sin(rad);
+        html += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"/>`;
+      }
+      for (let h=1;h<=12;h++){
+        const rad = clockDegToRad(h*30);
+        const r=R_CLOCK-36;
+        const x=CX+r*Math.cos(rad), y=CY+r*Math.sin(rad);
+        html += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="bold" fill="#4a3728" style="font-family:inherit;">${h}</text>`;
+      }
+    }
+    el.innerHTML = html;
+  }
+
+  /* ============================================================
+     空アニメーション（太陽・月・空の色・星）
+  ============================================================ */
+  const Sky = (function(){
+    const skySvg = document.getElementById('skySvg');
+    const skyLayer = document.getElementById('skyLayer');
+    const skyGradTop = document.getElementById('skyGradTop');
+    const skyGradBottom = document.getElementById('skyGradBottom');
+    const sunGroup = document.getElementById('sunGroup');
+    const moonGroup = document.getElementById('moonGroup');
+    const sunDisc = document.getElementById('sunDisc');
+    const sunGlowCircle = document.getElementById('sunGlowCircle');
+    const moonDisc = document.getElementById('moonDisc');
+    const moonGlowCircle = document.getElementById('moonGlowCircle');
+    const starsGroup = document.getElementById('starsGroup');
+
+    const W = 1600, H = 900;
+    let enabled = true;
+
+    // 星を生成（固定シードで毎回同じ配置に）
+    (function buildStars(){
+      let seed = 42;
+      function rnd(){ seed = (seed*9301+49297)%233280; return seed/233280; }
+      let html='';
+      for (let i=0;i<55;i++){
+        const x = rnd()*W;
+        const y = rnd()*H*0.62;
+        const r = 1+rnd()*1.8;
+        const op = 0.4+rnd()*0.6;
+        html += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="#fff" opacity="${op.toFixed(2)}"/>`;
+      }
+      starsGroup.innerHTML = html;
+    })();
+
+    const STOPS = [
+      {t:0,    top:'#0b1130', bottom:'#1b2350'},
+      {t:4.2,  top:'#0b1130', bottom:'#232a5c'},
+      {t:5.4,  top:'#2b2f6b', bottom:'#c96a5a'},
+      {t:6.3,  top:'#5a7fc4', bottom:'#ffd39a'},
+      {t:8,    top:'#5ea8e8', bottom:'#bfe3ff'},
+      {t:12,   top:'#4a9de8', bottom:'#cdeeff'},
+      {t:16,   top:'#5ea8e8', bottom:'#ffe3a0'},
+      {t:17.6, top:'#7d6bb0', bottom:'#ff9d6c'},
+      {t:18.6, top:'#39306e', bottom:'#a1543f'},
+      {t:20,   top:'#101433', bottom:'#232a5c'},
+      {t:24,   top:'#0b1130', bottom:'#1b2350'}
+    ];
+    function hexToRgb(hex){ const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+    function rgbToHex(r,g,b){ return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''); }
+    function lerp(a,b,f){ return a+(b-a)*f; }
+    function lerpColor(c1,c2,f){
+      const a=hexToRgb(c1), b=hexToRgb(c2);
+      return rgbToHex(lerp(a[0],b[0],f), lerp(a[1],b[1],f), lerp(a[2],b[2],f));
+    }
+    function colorsAt(hour){
+      const h = ((hour%24)+24)%24;
+      for (let i=0;i<STOPS.length-1;i++){
+        const s0=STOPS[i], s1=STOPS[i+1];
+        if (h>=s0.t && h<=s1.t){
+          const f=(h-s0.t)/(s1.t-s0.t);
+          return {top:lerpColor(s0.top,s1.top,f), bottom:lerpColor(s0.bottom,s1.bottom,f)};
+        }
+      }
+      return {top:STOPS[0].top, bottom:STOPS[0].bottom};
+    }
+
+    function update(hour24){
+      if (!enabled) return;
+      const h = ((hour24%24)+24)%24;
+      const c = colorsAt(h);
+      skyGradTop.setAttribute('stop-color', c.top);
+      skyGradBottom.setAttribute('stop-color', c.bottom);
+
+      const isDay = (h>=6 && h<18);
+      let frac;
+      if (isDay) frac = (h-6)/12;
+      else frac = (h>=18) ? (h-18)/12 : (h+6)/12;
+
+      const marginX = 140, horizonY = H*0.82, archH = H*0.58;
+      const x = marginX + frac*(W - marginX*2);
+      const y = horizonY - Math.sin(frac*Math.PI)*archH;
+
+      const edgeFade = Math.max(0, Math.min(1, Math.min(frac/0.035, (1-frac)/0.035)));
+
+      sunDisc.setAttribute('cx', x.toFixed(1)); sunDisc.setAttribute('cy', y.toFixed(1));
+      sunGlowCircle.setAttribute('cx', x.toFixed(1)); sunGlowCircle.setAttribute('cy', y.toFixed(1));
+      moonDisc.setAttribute('cx', x.toFixed(1)); moonDisc.setAttribute('cy', y.toFixed(1));
+      moonGlowCircle.setAttribute('cx', x.toFixed(1)); moonGlowCircle.setAttribute('cy', y.toFixed(1));
+
+      sunGroup.style.opacity = isDay ? edgeFade : 0;
+      moonGroup.style.opacity = isDay ? 0 : edgeFade;
+      starsGroup.style.opacity = isDay ? 0 : edgeFade;
+    }
+
+    function setEnabled(v){
+      enabled = v;
+      skyLayer.classList.toggle('sky-hidden', !v);
+    }
+
+    return { update, setEnabled };
+  })();
+
+  /* ============================================================
+     時間学習モード（3つの時計＋数直線）
+  ============================================================ */
+  (function DurationMode(){
+    const startClockSvg = document.getElementById('startClockSvg');
+    const endClockSvg = document.getElementById('endClockSvg');
+    const startTicksEl = document.getElementById('startTicks');
+    const endTicksEl = document.getElementById('endTicks');
+    const mainTicksEl = document.getElementById('mainTicks');
+
+    const ringGroup = document.getElementById('ringGroup');
+    const startMarker = document.getElementById('startMarker');
+    const endMarker = document.getElementById('endMarker');
+
+    const startMinuteHand = document.getElementById('startMinuteHand');
+    const startHourHand = document.getElementById('startHourHand');
+    const startHitMinute = document.getElementById('startHitMinute');
+    const startHitHour = document.getElementById('startHitHour');
+    const endMinuteHand = document.getElementById('endMinuteHand');
+    const endHourHand = document.getElementById('endHourHand');
+    const endHitMinute = document.getElementById('endHitMinute');
+    const endHitHour = document.getElementById('endHitHour');
+    const mainMinuteHand = document.getElementById('mainMinuteHand');
+    const mainHourHand = document.getElementById('mainHourHand');
+
+    const startHandsGroup = document.getElementById('startHandsGroup');
+    const endHandsGroup = document.getElementById('endHandsGroup');
+
+    const selStartH = document.getElementById('startHour');
+    const selStartM = document.getElementById('startMinute');
+    const selEndH = document.getElementById('endHour');
+    const selEndM = document.getElementById('endMinute');
+    const btnPlay = document.getElementById('btnPlay');
+    const btnReset = document.getElementById('btnReset');
+    const elapsedText = document.getElementById('elapsedText');
+    const countDetail = document.getElementById('countDetail');
+    const btnCount1min = document.getElementById('btnCount1min');
+    const btnCount5min = document.getElementById('btnCount5min');
+    const btnCount1hour = document.getElementById('btnCount1hour');
+    const btnCountReset = document.getElementById('btnCountReset');
+
+    const numberlineSvg = document.getElementById('numberlineSvg');
+    const nlAxis = document.getElementById('nlAxis');
+    const nlTicks = document.getElementById('nlTicks');
+    const nlArrowGroup = document.getElementById('nlArrowGroup');
+    const nlStartDot = document.getElementById('nlStartDot');
+    const nlEndDot = document.getElementById('nlEndDot');
+    const nlModeToggle = document.getElementById('nlModeToggle');
+
+    let dragStepMinutes = 5;
+    let nlDisplayMode = '24h'; // '24h' | '12h'
+
+    const RING_BASE_R=130, RING_SPACING=15, RING_STROKE_W=10;
+    const HOUR_HAND_LEN=98, MINUTE_HAND_LEN=138, HOUR_BASE_W=8, MINUTE_BASE_W=5;
+
+    const ringColors = ['#4ECDC4','#54C08E','#7EC870','#A8D860','#D4E050','#F0D840','#F5B830','#F09030','#E85538','#D04050','#A840C0','#5B8BD0'];
+
+    let startHour12=3, startMinute=15, startAmPm='am';
+    let endHour12=4, endMinute=45, endAmPm='am';
+    let totalMinutes=0, countedMinutes=0, isAnimating=false, animationId=null;
+
+    let numberlineMax=1440, nlScale=1, nlAxisY=30, nlLastElapsed=0;
+
+    function readTimes(){
+      startHour12 = parseInt(selStartH.value);
+      startMinute = parseInt(selStartM.value);
+      endHour12 = parseInt(selEndH.value);
+      endMinute = parseInt(selEndM.value);
+      const sh = to24Hour(startHour12, startAmPm);
+      const eh = to24Hour(endHour12, endAmPm);
+      let st = sh*60+startMinute;
+      let et = eh*60+endMinute;
+      if (et<=st) et+=1440;
+      totalMinutes = Math.min(et-st, 1440);
+    }
+    function startAbs24(){ return to24Hour(startHour12,startAmPm)*60+startMinute; }
+
+    function formatTime(min){
+      const h=Math.floor(min/60), m=min%60;
+      if (h>0 && m>0) return `${h}時間${m}分`;
+      if (h>0) return `${h}時間`;
+      return `${m}分間`;
+    }
+    function updateElapsedDisplay(){
+      if (countedMinutes>0 && countedMinutes<totalMinutes){
+        elapsedText.textContent = formatTime(countedMinutes);
+        countDetail.textContent = `（あと ${formatTime(totalMinutes-countedMinutes)}）`;
+      } else if (countedMinutes>=totalMinutes && totalMinutes>0){
+        elapsedText.textContent = formatTime(totalMinutes);
+        countDetail.textContent = '✅ 数え終わり！';
+      } else {
+        elapsedText.textContent = formatTime(totalMinutes);
+        countDetail.textContent = '';
+      }
+      if (totalMinutes===0){ elapsedText.textContent='0分'; countDetail.textContent=''; }
+    }
+
+    function ringArrowAngle(cd,r){
+      const rad1=clockDegToRad(cd-0.6), rad2=clockDegToRad(cd);
+      const x1=CX+r*Math.cos(rad1), y1=CY+r*Math.sin(rad1);
+      const x2=CX+r*Math.cos(rad2), y2=CY+r*Math.sin(rad2);
+      return Math.atan2(y2-y1,x2-x1)*180/Math.PI;
+    }
+    function drawFullRing(r,startAngleDeg,color){
+      const startRad=clockDegToRad(startAngleDeg);
+      const sx=CX+r*Math.cos(startRad), sy=CY+r*Math.sin(startRad);
+      const midRad=clockDegToRad(startAngleDeg+180);
+      const mx=CX+r*Math.cos(midRad), my=CY+r*Math.sin(midRad);
+      const path=document.createElementNS(SVG_NS,'path');
+      path.setAttribute('d', `M ${sx.toFixed(2)} ${sy.toFixed(2)} A ${r} ${r} 0 1 1 ${mx.toFixed(2)} ${my.toFixed(2)} A ${r} ${r} 0 1 1 ${sx.toFixed(2)} ${sy.toFixed(2)}`);
+      path.setAttribute('fill','none'); path.setAttribute('stroke',color);
+      path.setAttribute('stroke-width',RING_STROKE_W); path.setAttribute('stroke-linecap','round');
+      path.setAttribute('filter','url(#glowRing)');
+      ringGroup.appendChild(path);
+    }
+    function drawPartialRing(r,startAngleDeg,endAngleDeg,color){
+      const startRad=clockDegToRad(startAngleDeg), endRad=clockDegToRad(endAngleDeg);
+      const sx=CX+r*Math.cos(startRad), sy=CY+r*Math.sin(startRad);
+      const ex=CX+r*Math.cos(endRad), ey=CY+r*Math.sin(endRad);
+      const largeArc = (endAngleDeg-startAngleDeg)>180?1:0;
+      const path=document.createElementNS(SVG_NS,'path');
+      path.setAttribute('d', `M ${sx.toFixed(2)} ${sy.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`);
+      path.setAttribute('fill','none'); path.setAttribute('stroke',color);
+      path.setAttribute('stroke-width',RING_STROKE_W); path.setAttribute('stroke-linecap','round');
+      path.setAttribute('filter','url(#glowRing)');
+      ringGroup.appendChild(path);
+    }
+    function updateRings(minutes){
+      ringGroup.innerHTML='';
+      if (minutes<=0) return;
+      const startAngleDeg = minuteToAngleDeg(startMinute);
+      const fullHours = Math.floor(minutes/60);
+      const remainMin = minutes%60;
+      for (let i=0;i<fullHours;i++){
+        drawFullRing(RING_BASE_R+i*RING_SPACING, startAngleDeg, ringColors[i%ringColors.length]);
+      }
+      let tipR,tipCd,tipColor;
+      if (remainMin>0){
+        const r=RING_BASE_R+fullHours*RING_SPACING;
+        const color=ringColors[fullHours%ringColors.length];
+        const endAngleDeg = startAngleDeg + (remainMin/60)*360;
+        drawPartialRing(r, startAngleDeg, endAngleDeg, color);
+        tipR=r; tipCd=endAngleDeg; tipColor=color;
+      } else if (fullHours>0){
+        tipR = RING_BASE_R+(fullHours-1)*RING_SPACING;
+        tipCd = startAngleDeg+360;
+        tipColor = ringColors[(fullHours-1)%ringColors.length];
+      }
+      if (tipR!==undefined){
+        const tipRad=clockDegToRad(tipCd);
+        const tipX=CX+tipR*Math.cos(tipRad), tipY=CY+tipR*Math.sin(tipRad);
+        appendArrow(ringGroup, tipX, tipY, ringArrowAngle(tipCd,tipR), tipColor, 16, 8);
+      }
+    }
+    function updateMarkers(minForMarker){
+      if (minForMarker<=0 && !isAnimating){
+        startMarker.setAttribute('visibility','hidden');
+        endMarker.setAttribute('visibility','hidden');
+        return;
+      }
+      startMarker.setAttribute('visibility','visible');
+      endMarker.setAttribute('visibility','visible');
+      const sa = minuteToAngleDeg(startMinute);
+      const sr = clockDegToRad(sa);
+      startMarker.setAttribute('cx', CX+RING_BASE_R*Math.cos(sr));
+      startMarker.setAttribute('cy', CY+RING_BASE_R*Math.sin(sr));
+      const ea = sa + (minForMarker/60)*360;
+      const fh = Math.floor(minForMarker/60);
+      const er = RING_BASE_R+fh*RING_SPACING;
+      const erad = clockDegToRad(ea);
+      endMarker.setAttribute('cx', CX+er*Math.cos(erad));
+      endMarker.setAttribute('cy', CY+er*Math.sin(erad));
+    }
+
+    function updateStartClock(){
+      setHandPair(startHourHand, startMinuteHand, startHitHour, startHitMinute, startHour12, startMinute, HOUR_HAND_LEN, MINUTE_HAND_LEN, HOUR_BASE_W, MINUTE_BASE_W);
+    }
+    function updateEndClock(){
+      setHandPair(endHourHand, endMinuteHand, endHitHour, endHitMinute, endHour12, endMinute, HOUR_HAND_LEN, MINUTE_HAND_LEN, HOUR_BASE_W, MINUTE_BASE_W);
+    }
+    function updateMainClock(elapsedForHands){
+      let h,m,abs24;
+      if (elapsedForHands===null || elapsedForHands===undefined){
+        h = startHour12%12; m = startMinute;
+        abs24 = startAbs24()/60;
+      } else {
+        const ctS = startAbs24();
+        const ctE = ctS + elapsedForHands;
+        h = Math.floor(ctE/60)%12; m = ctE%60;
+        abs24 = (ctE%1440)/60;
+      }
+      setHandPair(mainHourHand, mainMinuteHand, null, null, h, m, HOUR_HAND_LEN, MINUTE_HAND_LEN, HOUR_BASE_W, MINUTE_BASE_W);
+      Sky.update(abs24);
+    }
+
+    function drawScene(arcMinutes, handMinutes){
+      updateRings(arcMinutes);
+      updateMarkers(arcMinutes);
+      updateMainClock(handMinutes);
+      updateNumberlineArrow(arcMinutes);
+    }
+
+    /* ---- 数直線 ---- */
+    function rebuildNumberlineAxis(maxMinutes){
+      numberlineMax = maxMinutes;
+      const w = numberlineSvg.clientWidth || numberlineSvg.parentElement.clientWidth;
+      const h = numberlineSvg.clientHeight || numberlineSvg.parentElement.clientHeight;
+      numberlineSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      nlScale = w/maxMinutes;
+      nlAxisY = h*0.5;
+
+      nlAxis.setAttribute('x1',0); nlAxis.setAttribute('x2',w);
+      nlAxis.setAttribute('y1',nlAxisY); nlAxis.setAttribute('y2',nlAxisY);
+      nlStartDot.setAttribute('cy',nlAxisY);
+      nlEndDot.setAttribute('cy',nlAxisY);
+
+      const minorLen = h*0.09;
+      const hourLen = h*0.19;
+      const fontSize = Math.max(8, h*0.15);
+      const labelBelowY = nlAxisY + hourLen + fontSize*0.95;
+      const labelAboveY = nlAxisY - hourLen - fontSize*0.35;
+
+      let html='';
+      for (let m=0; m<=maxMinutes; m+=10){
+        const isHour = (m%60===0);
+        const x = m*nlScale;
+        const y1 = nlAxisY-(isHour?hourLen:minorLen);
+        const y2 = nlAxisY+(isHour?hourLen:minorLen);
+        const color = isHour? '#5c4a3a':'#cbb99a';
+        const sw = isHour? 2.2:1;
+        html += `<line x1="${x.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"/>`;
+        if (isHour){
+          let anchor = 'middle';
+          if (m===0) anchor='start';
+          else if (m===maxMinutes) anchor='end';
+          const mm = ((m%1440)+1440)%1440;
+          if (nlDisplayMode==='24h'){
+            const label = Math.round(m/60);
+            html += `<text x="${x.toFixed(1)}" y="${labelBelowY.toFixed(1)}" text-anchor="${anchor}" font-size="${fontSize.toFixed(1)}" font-weight="bold" fill="#5c4a3a" style="font-family:inherit;">${label}</text>`;
+          } else {
+            if (mm<=720){
+              const label = Math.round(mm/60);
+              html += `<text x="${x.toFixed(1)}" y="${labelAboveY.toFixed(1)}" text-anchor="${anchor}" font-size="${fontSize.toFixed(1)}" font-weight="bold" fill="#3a6b8a" style="font-family:inherit;">${label}</text>`;
+            }
+            if (mm>=720 || (mm===0 && m>0)){
+              const label = (mm>=720) ? Math.round((mm-720)/60) : 12;
+              html += `<text x="${x.toFixed(1)}" y="${labelBelowY.toFixed(1)}" text-anchor="${anchor}" font-size="${fontSize.toFixed(1)}" font-weight="bold" fill="#a13d3d" style="font-family:inherit;">${label}</text>`;
+            }
+          }
+        }
+      }
+      nlTicks.innerHTML = html;
+    }
+    function updateNumberlineStaticMarkers(){
+      const startPos = startAbs24();
+      const endPos = startPos + totalMinutes;
+      const neededMax = Math.max(1440, Math.ceil(endPos/60)*60);
+      if (neededMax !== numberlineMax) rebuildNumberlineAxis(neededMax);
+      nlStartDot.setAttribute('cx', (startPos*nlScale).toFixed(1));
+      nlEndDot.setAttribute('cx', (endPos*nlScale).toFixed(1));
+    }
+    function updateNumberlineArrow(elapsed){
+      nlLastElapsed = elapsed||0;
+      nlArrowGroup.innerHTML='';
+      if (!elapsed || elapsed<=0) return;
+      const startPos = startAbs24();
+      const curPos = startPos+elapsed;
+      const x1=startPos*nlScale, x2=curPos*nlScale;
+      const line=document.createElementNS(SVG_NS,'line');
+      line.setAttribute('x1',x1.toFixed(1)); line.setAttribute('y1',nlAxisY);
+      line.setAttribute('x2',x2.toFixed(1)); line.setAttribute('y2',nlAxisY);
+      line.setAttribute('stroke','#ff7b42'); line.setAttribute('stroke-width', Math.max(3,nlAxisY*0.12));
+      line.setAttribute('stroke-linecap','round');
+      nlArrowGroup.appendChild(line);
+      appendArrow(nlArrowGroup, x2, nlAxisY, 0, '#ff7b42', Math.max(9,nlAxisY*0.32), Math.max(5,nlAxisY*0.16));
+    }
+
+    let resizeTimer=null;
+    window.addEventListener('resize', ()=>{
+      clearTimeout(resizeTimer);
+      resizeTimer=setTimeout(()=>{
+        rebuildNumberlineAxis(numberlineMax);
+        updateNumberlineStaticMarkers();
+        updateNumberlineArrow(nlLastElapsed);
+      },120);
+    });
+
+    nlModeToggle.querySelectorAll('.seg-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        nlDisplayMode = btn.dataset.nl;
+        nlModeToggle.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active', b===btn));
+        rebuildNumberlineAxis(numberlineMax);
+        updateNumberlineStaticMarkers();
+        updateNumberlineArrow(nlLastElapsed);
+      });
+    });
+
+    /* ---- アニメーション ---- */
+    function startAnimation(){
+      if (isAnimating || totalMinutes<=0) return;
+      resetAllVisuals();
+      isAnimating=true;
+      btnPlay.classList.add('playing'); btnPlay.textContent='⏳ 再生中...';
+      const duration = Math.max(1500,(totalMinutes/60)*4000);
+      const startTime = performance.now();
+      function anim(ts){
+        const raw = Math.min((ts-startTime)/duration,1);
+        const el = raw*totalMinutes;
+        drawScene(el, el);
+        if (raw<1) animationId=requestAnimationFrame(anim);
+        else finishAnimation();
+      }
+      animationId=requestAnimationFrame(anim);
+    }
+    function finishAnimation(){
+      isAnimating=false; countedMinutes=totalMinutes;
+      drawScene(totalMinutes, totalMinutes);
+      updateElapsedDisplay();
+      btnPlay.classList.remove('playing'); btnPlay.textContent='▶ 自動再生';
+      animationId=null;
+    }
+    function resetAllVisuals(){
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId=null; isAnimating=false; countedMinutes=0;
+      btnPlay.classList.remove('playing'); btnPlay.textContent='▶ 自動再生';
+      ringGroup.innerHTML='';
+      startMarker.setAttribute('visibility','hidden');
+      endMarker.setAttribute('visibility','hidden');
+      updateMainClock(null);
+      updateNumberlineArrow(0);
+      updateElapsedDisplay();
+    }
+    function addCounted(minutes){
+      if (isAnimating || totalMinutes<=0) return;
+      countedMinutes = Math.min(countedMinutes+minutes, totalMinutes);
+      drawScene(countedMinutes, countedMinutes);
+      updateElapsedDisplay();
+    }
+    function resetCounted(){
+      if (isAnimating) return;
+      countedMinutes=0;
+      ringGroup.innerHTML='';
+      startMarker.setAttribute('visibility','hidden');
+      endMarker.setAttribute('visibility','hidden');
+      updateMainClock(null);
+      updateNumberlineArrow(0);
+      updateElapsedDisplay();
+    }
+
+    /* ---- ドラッグ ---- */
+    let dragTarget=null, dragGroup=null, dragSvg=null, dragLastMinute=0;
+    function getClockDeg(e, svgEl){
+      const rect = svgEl.getBoundingClientRect();
+      const sx=500/rect.width, sy=500/rect.height;
+      let cx,cy;
+      if (e.touches && e.touches.length>0){ cx=e.touches[0].clientX; cy=e.touches[0].clientY; }
+      else if (e.changedTouches && e.changedTouches.length>0){ cx=e.changedTouches[0].clientX; cy=e.changedTouches[0].clientY; }
+      else { cx=e.clientX; cy=e.clientY; }
+      const px=(cx-rect.left)*sx, py=(cy-rect.top)*sy;
+      const dx=px-CX, dy=py-CY;
+      let cd = Math.atan2(dy,dx)*180/Math.PI + 90;
+      if (cd<0) cd+=360;
+      return cd;
+    }
+    function onDragDown(e,target,svgEl){
+      e.preventDefault(); e.stopPropagation();
+      dragTarget=target; dragSvg=svgEl;
+      dragGroup = target==='start'?startHandsGroup:endHandsGroup;
+      dragLastMinute = target==='start'?startMinute:endMinute;
+      dragGroup.style.cursor='grabbing';
+      dragGroup.style.filter='drop-shadow(0 0 6px rgba(255,180,50,0.8))';
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragUp);
+      document.addEventListener('touchmove', onDragMove, {passive:false});
+      document.addEventListener('touchend', onDragUp);
+      document.addEventListener('touchcancel', onDragUp);
+    }
+    function shiftHour(hourSel, hourVar, delta){
+      let h = ((hourVar-1+delta)%12+12)%12+1;
+      hourSel.value = h;
+      return h;
+    }
+    function onDragMove(e){
+      if (!dragTarget) return;
+      e.preventDefault();
+      const cd = getClockDeg(e, dragSvg);
+      const stepDeg = dragStepMinutes*6;
+      const minute = (Math.round(cd/stepDeg)*dragStepMinutes)%60;
+      const last = dragLastMinute;
+      if (last>=50 && minute<=10){
+        if (dragTarget==='start') startHour12 = shiftHour(selStartH, startHour12, +1);
+        else endHour12 = shiftHour(selEndH, endHour12, +1);
+      } else if (last<=10 && minute>=50){
+        if (dragTarget==='start') startHour12 = shiftHour(selStartH, startHour12, -1);
+        else endHour12 = shiftHour(selEndH, endHour12, -1);
+      }
+      dragLastMinute = minute;
+      if (dragTarget==='start'){ startMinute=minute; selStartM.value=startMinute; }
+      else { endMinute=minute; selEndM.value=endMinute; }
+      readTimes();
+      resetProgressOnly();
+      updateStartClock(); updateEndClock();
+      updateNumberlineStaticMarkers();
+      updateElapsedDisplay();
+    }
+    function onDragUp(){
+      if (!dragTarget) return;
+      if (dragGroup){ dragGroup.style.cursor='grab'; dragGroup.style.filter=''; }
+      dragTarget=null; dragGroup=null; dragSvg=null;
+      document.removeEventListener('mousemove', onDragMove);
+      document.removeEventListener('mouseup', onDragUp);
+      document.removeEventListener('touchmove', onDragMove);
+      document.removeEventListener('touchend', onDragUp);
+      document.removeEventListener('touchcancel', onDragUp);
+    }
+    startHandsGroup.addEventListener('mousedown', e=>onDragDown(e,'start',startClockSvg));
+    startHandsGroup.addEventListener('touchstart', e=>onDragDown(e,'start',startClockSvg), {passive:false});
+    endHandsGroup.addEventListener('mousedown', e=>onDragDown(e,'end',endClockSvg));
+    endHandsGroup.addEventListener('touchstart', e=>onDragDown(e,'end',endClockSvg), {passive:false});
+
+    /* ---- AM/PM トグル ---- */
+    document.querySelectorAll('.ampm-toggle[data-target="start"] .ampm-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        startAmPm = btn.dataset.val;
+        document.querySelectorAll('.ampm-toggle[data-target="start"] .ampm-btn').forEach(b=>b.classList.toggle('active', b===btn));
+        onTimeChange();
+      });
+    });
+    document.querySelectorAll('.ampm-toggle[data-target="end"] .ampm-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        endAmPm = btn.dataset.val;
+        document.querySelectorAll('.ampm-toggle[data-target="end"] .ampm-btn').forEach(b=>b.classList.toggle('active', b===btn));
+        onTimeChange();
+      });
+    });
+
+    /* ---- ボタン ---- */
+    btnCount1min.addEventListener('click', ()=>addCounted(1));
+    btnCount5min.addEventListener('click', ()=>addCounted(5));
+    btnCount1hour.addEventListener('click', ()=>addCounted(60));
+    btnCountReset.addEventListener('click', resetCounted);
+
+    function buildMinuteOptions(selectEl, step){
+      const cur = parseInt(selectEl.value);
+      const currentValue = isNaN(cur)?0:cur;
+      const snapped = (Math.round(currentValue/step)*step)%60;
+      selectEl.innerHTML='';
+      for (let m=0;m<60;m+=step){
+        const opt=document.createElement('option');
+        opt.value=String(m); opt.textContent=String(m);
+        if (m===snapped) opt.selected=true;
+        selectEl.appendChild(opt);
+      }
+    }
+    function setDragStep(step){
+      dragStepMinutes = step;
+      buildMinuteOptions(selStartM, step);
+      buildMinuteOptions(selEndM, step);
+      onTimeChange();
+    }
+    window.__durationSetDragStep = setDragStep;
+
+    function resetProgressOnly(){
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId=null; isAnimating=false; countedMinutes=0;
+      btnPlay.classList.remove('playing'); btnPlay.textContent='▶ 自動再生';
+      ringGroup.innerHTML='';
+      startMarker.setAttribute('visibility','hidden');
+      endMarker.setAttribute('visibility','hidden');
+      updateMainClock(null);
+      updateNumberlineArrow(0);
+    }
+    function onTimeChange(){
+      readTimes();
+      resetProgressOnly();
+      updateStartClock(); updateEndClock();
+      updateNumberlineStaticMarkers();
+      updateElapsedDisplay();
+    }
+    [selStartH, selStartM, selEndH, selEndM].forEach(s=>s.addEventListener('change', onTimeChange));
+
+    btnPlay.addEventListener('click', ()=>{
+      readTimes(); updateElapsedDisplay();
+      if (totalMinutes<=0) return;
+      resetAllVisuals();
+      setTimeout(startAnimation, 120);
+    });
+    btnReset.addEventListener('click', ()=>{
+      readTimes(); updateElapsedDisplay();
+      resetAllVisuals();
+      updateNumberlineStaticMarkers();
+    });
+
+    function init(){
+      buildTicksNumbers(startTicksEl, true);
+      buildTicksNumbers(endTicksEl, true);
+      buildTicksNumbers(mainTicksEl, false);
+      readTimes();
+      rebuildNumberlineAxis(1440);
+      updateStartClock(); updateEndClock();
+      updateMainClock(null);
+      updateNumberlineStaticMarkers();
+      updateElapsedDisplay();
+    }
+    init();
+
+    window.__durationModeRefreshLayout = function(){
+      rebuildNumberlineAxis(numberlineMax);
+      updateNumberlineStaticMarkers();
+      updateNumberlineArrow(nlLastElapsed);
+      updateMainClock(isAnimating?null:(countedMinutes>0?countedMinutes:null));
+    };
+  })();
+
+  /* ============================================================
+     時刻学習モード（文字盤ひとつ・シンプル）
+  ============================================================ */
+  const ReadingMode = (function(){
+    const readingTicksEl = document.getElementById('readingTicks');
+    const readingHandsGroup = document.getElementById('readingHandsGroup');
+    const readingHourHand = document.getElementById('readingHourHand');
+    const readingMinuteHand = document.getElementById('readingMinuteHand');
+    const readingHitHour = document.getElementById('readingHitHour');
+    const readingHitMinute = document.getElementById('readingHitMinute');
+    const readingClockSvg = document.getElementById('readingClockSvg');
+    const readingDigital = document.getElementById('readingDigital');
+    const readingAmPmLabel = document.getElementById('readingAmPmLabel');
+    const readingDigitalSection = document.getElementById('readingDigitalSection');
+    const btnRandomTime = document.getElementById('btnRandomTime');
+
+    const HOUR_HAND_LEN=100, MINUTE_HAND_LEN=140, HOUR_BASE_W=9, MINUTE_BASE_W=5.5;
+    let dragStepMinutes = 5;
+    let hour12 = 3, minute = 15, ampm = 'am';
+    let digitalVisible = true;
+
+    function currentHour24(){ return to24Hour(hour12, ampm) + minute/60; }
+
+    function render(){
+      setHandPair(readingHourHand, readingMinuteHand, readingHitHour, readingHitMinute, hour12, minute, HOUR_HAND_LEN, MINUTE_HAND_LEN, HOUR_BASE_W, MINUTE_BASE_W);
+      readingDigital.textContent = `${hour12}時${minute}分`;
+      readingAmPmLabel.textContent = ampm==='am' ? '午前' : '午後';
+      Sky.update(currentHour24());
+    }
+
+    function setAmPm(v){
+      ampm = v;
+      document.querySelectorAll('.ampm-toggle[data-target="reading"] .ampm-btn').forEach(b=>b.classList.toggle('active', b.dataset.val===v));
+      render();
+    }
+    document.querySelectorAll('.ampm-toggle[data-target="reading"] .ampm-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>setAmPm(btn.dataset.val));
+    });
+
+    /* ---- ドラッグ ---- */
+    let dragging=false, dragLastMinute=minute;
+    function getClockDeg(e){
+      const rect = readingClockSvg.getBoundingClientRect();
+      const sx=500/rect.width, sy=500/rect.height;
+      let cx,cy;
+      if (e.touches && e.touches.length>0){ cx=e.touches[0].clientX; cy=e.touches[0].clientY; }
+      else if (e.changedTouches && e.changedTouches.length>0){ cx=e.changedTouches[0].clientX; cy=e.changedTouches[0].clientY; }
+      else { cx=e.clientX; cy=e.clientY; }
+      const px=(cx-rect.left)*sx, py=(cy-rect.top)*sy;
+      const dx=px-CX, dy=py-CY;
+      let cd = Math.atan2(dy,dx)*180/Math.PI + 90;
+      if (cd<0) cd+=360;
+      return cd;
+    }
+    function shiftHour12(delta){ hour12 = ((hour12-1+delta)%12+12)%12+1; }
+    function onDown(e){
+      e.preventDefault(); e.stopPropagation();
+      dragging=true; dragLastMinute=minute;
+      readingHandsGroup.style.cursor='grabbing';
+      readingHandsGroup.style.filter='drop-shadow(0 0 6px rgba(255,180,50,0.8))';
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, {passive:false});
+      document.addEventListener('touchend', onUp);
+      document.addEventListener('touchcancel', onUp);
+    }
+    function onMove(e){
+      if (!dragging) return;
+      e.preventDefault();
+      const cd = getClockDeg(e);
+      const stepDeg = dragStepMinutes*6;
+      const m = (Math.round(cd/stepDeg)*dragStepMinutes)%60;
+      const last = dragLastMinute;
+      if (last>=50 && m<=10) shiftHour12(+1);
+      else if (last<=10 && m>=50) shiftHour12(-1);
+      dragLastMinute = m;
+      minute = m;
+      render();
+    }
+    function onUp(){
+      if (!dragging) return;
+      dragging=false;
+      readingHandsGroup.style.cursor='grab';
+      readingHandsGroup.style.filter='';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+      document.removeEventListener('touchcancel', onUp);
+    }
+    readingHandsGroup.addEventListener('mousedown', onDown);
+    readingHandsGroup.addEventListener('touchstart', onDown, {passive:false});
+
+    btnRandomTime.addEventListener('click', ()=>{
+      hour12 = 1+Math.floor(Math.random()*12);
+      const steps = 60/dragStepMinutes;
+      minute = Math.floor(Math.random()*steps)*dragStepMinutes;
+      ampm = Math.random()<0.5 ? 'am':'pm';
+      document.querySelectorAll('.ampm-toggle[data-target="reading"] .ampm-btn').forEach(b=>b.classList.toggle('active', b.dataset.val===ampm));
+      render();
+    });
+
+    function setDragStep(step){ dragStepMinutes = step; }
+    function setDigitalVisible(v){
+      digitalVisible = v;
+      readingDigitalSection.style.visibility = v ? 'visible' : 'hidden';
+    }
+
+    function init(){
+      buildTicksNumbers(readingTicksEl, false);
+      render();
+    }
+    init();
+
+    return { render, setDragStep, setDigitalVisible, currentHour24 };
+  })();
+
+  /* ============================================================
+     モード切替・設定パネル
+  ============================================================ */
+  const modeTabs = document.querySelectorAll('.mode-tab');
+  const durationModeEl = document.getElementById('durationMode');
+  const readingModeEl = document.getElementById('readingMode');
+  let activeMode = 'duration';
+
+  modeTabs.forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      const mode = tab.dataset.mode;
+      if (mode===activeMode) return;
+      activeMode = mode;
+      modeTabs.forEach(t=>t.classList.toggle('active', t===tab));
+      durationModeEl.classList.toggle('hidden', mode!=='duration');
+      readingModeEl.classList.toggle('hidden', mode!=='reading');
+      if (mode==='reading'){
+        ReadingMode.render();
+      } else {
+        if (window.__durationModeRefreshLayout) window.__durationModeRefreshLayout();
+      }
+    });
+  });
+
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  const closeSettings = document.getElementById('closeSettings');
+  settingsBtn.addEventListener('click', ()=>settingsOverlay.classList.remove('hidden'));
+  closeSettings.addEventListener('click', ()=>settingsOverlay.classList.add('hidden'));
+  settingsOverlay.addEventListener('click', (e)=>{ if (e.target===settingsOverlay) settingsOverlay.classList.add('hidden'); });
+
+  const toggleSky = document.getElementById('toggleSky');
+  toggleSky.addEventListener('change', ()=>{ Sky.setEnabled(toggleSky.checked); });
+
+  const dragStepToggle = document.getElementById('dragStepToggle');
+  dragStepToggle.querySelectorAll('.seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      dragStepToggle.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active', b===btn));
+      const step = parseInt(btn.dataset.step);
+      if (window.__durationSetDragStep) window.__durationSetDragStep(step);
+      ReadingMode.setDragStep(step);
+    });
+  });
+
+  const toggleDigital = document.getElementById('toggleDigital');
+  toggleDigital.addEventListener('change', ()=>{ ReadingMode.setDigitalVisible(toggleDigital.checked); });
+
+  console.log('✅ 時計学習ツール（時間/時刻モード＋空アニメーション版） ready');
+})();
+</script>
+</body>
+</html>
