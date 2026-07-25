@@ -356,7 +356,7 @@
 
         <div class="metric-card">
           <span class="metric-title">上流の池の面積:</span>
-          <span id="m2-pond-text" class="metric-value">まだ池はない</span>
+          <span id="m2-pond-text" class="metric-value" style="display:inline-block; min-width:290px; font-size:13px; white-space:nowrap;">まだ池はない</span>
         </div>
       </div>
 
@@ -847,12 +847,12 @@ function drawLogSVG(x, y, scale, pointyDown, opacity = 1.0) {
   ctx.ellipse(0, h/2, 16, 8, 0, 0, Math.PI*2);
   ctx.fill();
 
-  // Bark main body
+  // Debarked wood body (beavers strip and eat the bark, leaving the pale wood exposed)
   let grad = ctx.createLinearGradient(-w/2, 0, w/2, 0);
-  grad.addColorStop(0, '#3e2723');
-  grad.addColorStop(0.3, '#6d4c41');
-  grad.addColorStop(0.7, '#5d4037');
-  grad.addColorStop(1, '#271c19');
+  grad.addColorStop(0, '#b9a37e');
+  grad.addColorStop(0.3, '#e6d9bd');
+  grad.addColorStop(0.7, '#dcc9a4');
+  grad.addColorStop(1, '#a8916c');
 
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -863,20 +863,30 @@ function drawLogSVG(x, y, scale, pointyDown, opacity = 1.0) {
   ctx.lineTo(-w/2, h/2 - 20);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = '#1b0000';
+  ctx.strokeStyle = '#5c4a30';
   ctx.lineWidth = 2;
   ctx.stroke();
 
+  // A thin strip of remaining dark bark along one edge, where it hasn't been fully gnawed off
+  ctx.fillStyle = 'rgba(76,54,33,0.55)';
+  ctx.beginPath();
+  ctx.moveTo(-w/2, -h/2);
+  ctx.lineTo(-w/2 + 3, -h/2);
+  ctx.lineTo(-w/2 + 3, h/2 - 20);
+  ctx.lineTo(-w/2, h/2 - 20);
+  ctx.closePath();
+  ctx.fill();
+
   // Fresh wood cut visible at top end
-  ctx.fillStyle = '#d7ccc8';
+  ctx.fillStyle = '#f0e6cf';
   ctx.beginPath();
   ctx.ellipse(0, -h/2, w/2, 6, 0, 0, Math.PI*2);
   ctx.fill();
-  ctx.strokeStyle = '#8d6e63';
+  ctx.strokeStyle = '#b9a37e';
   ctx.stroke();
 
-  // Bark texture lines
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  // Tooth/gnaw marks running along the exposed wood
+  ctx.strokeStyle = 'rgba(120,98,64,0.4)';
   ctx.lineWidth = 1.5;
   for (let i = -h/2 + 15; i < h/2 - 25; i += 18) {
     ctx.beginPath();
@@ -884,9 +894,18 @@ function drawLogSVG(x, y, scale, pointyDown, opacity = 1.0) {
     ctx.quadraticCurveTo(0, i + 4, w/2 - 3, i);
     ctx.stroke();
   }
+  // Fine chisel-like grooves left by gnawing teeth
+  ctx.strokeStyle = 'rgba(120,98,64,0.3)';
+  ctx.lineWidth = 1;
+  for (let i = -w/2 + 5; i < w/2 - 3; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(i, -h/2 + 8);
+    ctx.lineTo(i, h/2 - 24);
+    ctx.stroke();
+  }
 
   // Pointy tip freshly gnawed wood highlight
-  ctx.fillStyle = '#bcaaa4';
+  ctx.fillStyle = '#f0e6cf';
   ctx.beginPath();
   ctx.moveTo(-w/2 + 2, h/2 - 20);
   ctx.lineTo(0, h/2);
@@ -1899,19 +1918,6 @@ function renderTopView() {
     ctx.restore();
   });
 
-  // --- ビーバー(俯瞰視点用の簡易アイコン) ---
-  const beaverBx = M2_LANE_X_START - 30;
-  const beaverBy = M2_RIVER_BOTTOM + 20;
-  ctx.save();
-  ctx.fillStyle = '#6d4c41';
-  ctx.beginPath();
-  ctx.ellipse(beaverBx, beaverBy, 14, 10, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#3e2723';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.restore();
-
   // 完成メッセージバナー的な演出（進行度テキスト）
   if (m2Completed) {
     ctx.fillStyle = m2LeakSide !== null ? 'rgba(255, 241, 118, 0.95)' : 'rgba(255,255,255,0.9)';
@@ -2064,32 +2070,52 @@ function drawM2WallChunk(xStart, xEnd, yTop, yBottom, seedBase) {
   ctx.closePath();
 
   let mudGrad = ctx.createLinearGradient(xStart, 0, xEnd, 0);
-  mudGrad.addColorStop(0, '#5d4530');
-  mudGrad.addColorStop(0.5, '#6d4c35');
-  mudGrad.addColorStop(1, '#4a3623');
+  mudGrad.addColorStop(0, '#c9b490');
+  mudGrad.addColorStop(0.5, '#d8c4a0');
+  mudGrad.addColorStop(1, '#b9a37e');
   ctx.fillStyle = mudGrad;
   ctx.fill();
-  ctx.strokeStyle = '#271c19';
+  ctx.strokeStyle = '#5c4a30';
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.clip(); // これ以降の素材はこのデコボコ輪郭の中だけに描く
 
-  // --- 大枝(太い枝) ---
+  // --- 大枝(太い枝)：樹皮を剥いで(食べて)白っぽくなった生木の色にする ---
   const logCount = Math.max(1, Math.round(h / 20));
   for (let i = 0; i < logCount; i++) {
     const ly = yTop + (i + 0.5) * (h / logCount) + (m2Seeded(seedBase + 300 + i) - 0.5) * 6;
     const tilt = (m2Seeded(seedBase + 400 + i) - 0.5) * 8;
+    const lw = 6 + m2Seeded(seedBase + 500 + i) * 3;
     ctx.save();
-    ctx.strokeStyle = i % 2 === 0 ? '#3e2e1f' : '#4e3a28';
-    ctx.lineWidth = 6 + m2Seeded(seedBase + 500 + i) * 3;
+    ctx.strokeStyle = i % 2 === 0 ? '#e6d9bd' : '#dcc9a4';
+    ctx.lineWidth = lw;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(xStart - 4, ly - tilt);
     ctx.lineTo(xEnd + 4, ly + tilt);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1.5;
+    // 丸太の丸みを出すハイライトと、縁に残るうっすらした樹皮の跡
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = Math.max(1, lw * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(xStart - 4, ly - tilt - lw * 0.2);
+    ctx.lineTo(xEnd + 4, ly + tilt - lw * 0.2);
     ctx.stroke();
+    ctx.strokeStyle = 'rgba(93,64,38,0.35)';
+    ctx.lineWidth = Math.max(1, lw * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(xStart - 4, ly - tilt + lw * 0.42);
+    ctx.lineTo(xEnd + 4, ly + tilt + lw * 0.42);
+    ctx.stroke();
+    // 歯で齧った跡(細かい溝)を等間隔に
+    ctx.strokeStyle = 'rgba(120,98,64,0.4)';
+    ctx.lineWidth = 1;
+    for (let gx = xStart + 4; gx < xEnd; gx += 5) {
+      ctx.beginPath();
+      ctx.moveTo(gx, ly - tilt - lw / 2 + 1);
+      ctx.lineTo(gx, ly - tilt + lw / 2 - 1);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -2349,8 +2375,11 @@ function drawM2CompletedDownstream() {
   const flowFraction = Math.max(0.12, 1 - m2DownstreamDry);
   const midY = (M2_RIVER_TOP + M2_RIVER_BOTTOM) / 2;
   const fullHalf = (M2_RIVER_BOTTOM - M2_RIVER_TOP) / 2;
-  const throatHalf = Math.max(2, fullHalf * flowFraction * 0.12);
   const fanHalf = fullHalf * flowFraction;
+  // 壁のすぐ下流も、点源から染み出すのではなく、その時点の流れの半分くらいの
+  // 幅で流れ出し、そこから先で扇状にまた広がっていく方が自然に見える
+  // (ダム完成直後、流量がまだ十分残っている間は、もとの川幅の半分程度になる)。
+  const throatHalf = Math.max(2, fanHalf * 0.5);
   const startX = M2_LANE_X_END;
   const fanDist = m2FanDistanceFor(flowFraction);
   const fanX = startX + fanDist;
@@ -2375,7 +2404,7 @@ function drawM2CompletedDownstream() {
 // 池が巣を作れるくらい育った後に描く、大枝・小枝・石・泥を組み合わせたドーム状の巣
 // (壁と同じ質感になるよう、ジャギーな輪郭＋混ざり合った素材で描く)
 function drawM2Nest(baseX, apexY) {
-  const nx = baseX - m2PondLength * 0.5; // 池の中ほど、上流寄りに配置
+  const nx = baseX - m2PondLength * 0.33; // 池の一番深いところ(ダム寄り)に少し寄せて配置
   const ny = apexY;
   const seed = 4321;
   ctx.save();
@@ -2392,9 +2421,9 @@ function drawM2Nest(baseX, apexY) {
     if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
   }
   ctx.closePath();
-  ctx.fillStyle = '#4e342e';
+  ctx.fillStyle = '#c9b490';
   ctx.fill();
-  ctx.strokeStyle = '#271c19';
+  ctx.strokeStyle = '#5c4a30';
   ctx.lineWidth = 2;
   ctx.stroke();
 
@@ -2411,23 +2440,38 @@ function drawM2Nest(baseX, apexY) {
   }
   ctx.lineTo(nx - 27, ny + 2);
   ctx.closePath();
-  ctx.fillStyle = '#6d4c41';
+  ctx.fillStyle = '#d8c4a0';
   ctx.fill();
-  ctx.strokeStyle = '#3e2723';
+  ctx.strokeStyle = '#5c4a30';
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.clip();
 
-  // 大枝(太い枝)を数本、放射状に組む
+  // 大枝(太い枝)を数本、放射状に組む。樹皮を剥いで(食べて)白っぽくなった生木の色にする
   for (let i = 0; i < 5; i++) {
     const ang = (-Math.PI * 0.85) + (i / 4) * Math.PI * 0.7 + (m2Seeded(seed + 300 + i) - 0.5) * 0.2;
+    const lw = 5 + m2Seeded(seed + 400 + i) * 2.5;
+    const x0 = nx - Math.cos(ang) * 30, y0 = ny + 4 + Math.sin(-ang) * 4;
+    const x1 = nx + Math.cos(ang) * 30, y1 = ny - Math.sin(-ang) * 22;
     ctx.save();
-    ctx.strokeStyle = i % 2 === 0 ? '#3e2e1f' : '#4e3a28';
-    ctx.lineWidth = 5 + m2Seeded(seed + 400 + i) * 2.5;
+    ctx.strokeStyle = i % 2 === 0 ? '#e6d9bd' : '#dcc9a4';
+    ctx.lineWidth = lw;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(nx - Math.cos(ang) * 30, ny + 4 + Math.sin(-ang) * 4);
-    ctx.lineTo(nx + Math.cos(ang) * 30, ny - Math.sin(-ang) * 22);
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = Math.max(1, lw * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 - lw * 0.2);
+    ctx.lineTo(x1, y1 - lw * 0.2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(93,64,38,0.35)';
+    ctx.lineWidth = Math.max(1, lw * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + lw * 0.42);
+    ctx.lineTo(x1, y1 + lw * 0.42);
     ctx.stroke();
     ctx.restore();
   }
