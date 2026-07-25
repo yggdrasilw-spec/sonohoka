@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>できた！スタンプカード for Chromebook</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --panel-bg: #ffffff;
+            --primary-color: #ff6b6b;
+            --accent-color: #ffd166;
+            --text-color: #2d3748;
+            --stamp-emoji: "🌸";
+            --card-border: #ffd166;
+            --font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            /* テーマごとの背景画像（img/frame_◯◯.png 等）。ファイルが無ければ何も表示されず背景色のみになる */
+            --frame-bg: none;
+            --stamp-bg: none;
+            --stamp-goal-bg: none;
+            --gohoubi-bg: none;
+            --push-bg: none;
+            --mission-bg: none;
+        }
+
+        /* --- テーマ定義 --- */
+        body.theme-space {
+            --bg-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            --card-bg: rgba(20, 30, 48, 0.92);
+            --panel-bg: #1e293b;
+            --primary-color: #38ef7d;
+            --accent-color: #00b4db;
+            --text-color: #f8fafc;
+            --stamp-emoji: "🚀";
+            --card-border: #00b4db;
+        }
+
+        body.theme-dino {
+            --bg-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --panel-bg: #f0fdf4;
+            --primary-color: #059669;
+            --accent-color: #f59e0b;
+            --text-color: #14532d;
+            --stamp-emoji: "🦖";
+            --card-border: #f59e0b;
+        }
+
+        body.theme-simple {
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfed 100%);
+            --card-bg: #ffffff;
+            --panel-bg: #ffffff;
+            --primary-color: #4a5568;
+            --accent-color: #cbd5e0;
+            --text-color: #1a202c;
+            --stamp-emoji: "⭐";
+            --card-border: #a0aec0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0; padding: 0;
+            font-family: var(--font-family);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        /* 16:9 Chromebook 画面ぴったり配置 */
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg-gradient);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            padding: 12px;
+            transition: background 0.5s ease;
+        }
+
+        .chromebook-frame {
+            width: 100%;
+            height: 100%;
+            max-width: 1280px;
+            max-height: 720px; /* 16:9 アスペクト比にフィット */
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            padding: 16px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ヘッダー */
+        header {
+            height: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px dashed rgba(0,0,0,0.1);
+            padding-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .theme-select {
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid #cbd5e0;
+            font-weight: bold;
+            font-size: 13px;
+            background: white;
+            color: #2d3748;
+            cursor: pointer;
+        }
+
+        .btn-header {
+            background: rgba(0,0,0,0.06);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            color: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-header:hover { background: rgba(0,0,0,0.12); }
+
+        /* 2カラム メインエリア */
+        .app-body {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 20px;
+            padding-top: 12px;
+            height: calc(100% - 74px);
+        }
+
+        /* 左カラム：スタンプカードエリア */
+        .card-container {
+            background-color: var(--panel-bg);
+            background-image: var(--frame-bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border: 4px solid var(--card-border);
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.03);
+            height: 100%;
+        }
+        .card-container.has-custom-bg {
+            border: none;
+            box-shadow: none;
+        }
+
+        .stamp-grid {
+            display: grid;
+            gap: 12px;
+            width: 100%;
+            height: 100%;
+            max-height: 480px;
+            align-content: center;
+            justify-content: center;
+        }
+
+        .stamp-slot {
+            background: rgba(0,0,0,0.03);
+            border: 3px dashed rgba(0,0,0,0.15);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: rgba(0,0,0,0.3);
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            aspect-ratio: 1 / 1;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .stamp-slot.active {
+            border: 2px solid transparent;
+            background: rgba(255,255,255,0.8);
+        }
+
+        /* PNGが実際に読み込めたマスだけ、枠線・塗りを画像に置き換える（読み込めない場合は上の通常デザインのまま） */
+        .stamp-slot.has-custom-bg {
+            background-color: transparent;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border: none;
+        }
+        .stamp-slot.has-custom-bg.active {
+            background-color: transparent;
+            border: none;
+        }
+
+        .stamp-mark {
+            width: 85%;
+            height: 85%;
+            background: linear-gradient(135deg, #ff8787, #ff6b6b);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            animation: stampBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            border: 3px solid #ffffff;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+        }
+
+        /* カスタム画像スタンプ用（真円クリップ） */
+        .stamp-mark.has-image {
+            background: #ffffff;
+        }
+        .stamp-mark-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+        }
+
+        @keyframes stampBounce {
+            0% { transform: scale(3) rotate(-20deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .stamp-slot.goal-slot {
+            border: 3px double #f59e0b;
+            background: #fffbe3;
+        }
+        .stamp-slot.goal-slot.has-custom-bg {
+            border: none;
+            background-color: transparent;
+        }
+        .stamp-slot.goal-slot::after {
+            content: "👑";
+            position: absolute;
+            top: -12px;
+            right: -6px;
+            font-size: 18px;
+        }
+
+        /* 右カラム：操作＆ご褒美エリア */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+            height: 100%;
+        }
+
+        .reward-card {
+            background-color: var(--panel-bg);
+            background-image: var(--gohoubi-bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 18px;
+            padding: 16px;
+            border: 2px solid var(--accent-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            flex: 1;
+        }
+        .reward-card.has-custom-bg {
+            border: none;
+            box-shadow: none;
+        }
+
+        .reward-badge {
+            background: var(--accent-color);
+            color: #744210;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .reward-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .reward-img-box {
+            width: 90px;
+            height: 90px;
+            border-radius: 12px;
+            object-fit: cover;
+            margin-top: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .interactive-zone {
+            background-color: var(--panel-bg);
+            background-image: var(--push-bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 18px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            flex: 1.2;
+        }
+        .interactive-zone.has-custom-bg {
+            box-shadow: none;
+        }
+
+        .self-check-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: rgba(0,0,0,0.04);
+            background-image: var(--mission-bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 10px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+        .self-check-container.has-custom-bg {
+            background-color: transparent;
+        }
+
+        /* --- 表紙のスタンプピッカー（今日押すスタンプを複数の中からえらぶ） --- */
+        .stamp-picker {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+        }
+        .stamp-picker-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--text-color);
+            opacity: 0.65;
+        }
+        .stamp-picker-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            max-width: 100%;
+        }
+        .stamp-picker-item {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 3px solid rgba(0,0,0,0.12);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            background: #fff;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+        }
+        .stamp-picker-item.active {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255,107,107,0.25);
+            transform: scale(1.08);
+        }
+        .stamp-picker-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* --- 保護者設定：スタンプギャラリー編集用サムネイル --- */
+        .gallery-thumb {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #cbd5e0;
+            background: #fff;
+        }
+        .gallery-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .gallery-thumb .del-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: rgba(220, 53, 69, 0.9);
+            color: #fff;
+            font-size: 10px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .self-check-cb {
+            width: 22px;
+            height: 22px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+        .self-check-label {
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .stamp-btn {
+            width: 100%;
+            max-width: 280px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #ff6b6b, #ff8787);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 20px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .stamp-btn:hover:not(:disabled) {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 25px rgba(255, 107, 107, 0.5);
+        }
+
+        .stamp-btn:disabled {
+            background: #cbd5e0;
+            color: #a0aec0;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-msg {
+            font-size: 13px;
+            font-weight: bold;
+            color: #718096;
+            text-align: center;
+        }
+
+        /* 最下部デバッグストリップ */
+        .debug-strip {
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            font-size: 11px;
+            color: #a0aec0;
+            margin-top: 4px;
+        }
+        .debug-btn-mini {
+            background: rgba(0,0,0,0.06);
+            border: none;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #718096;
+            cursor: pointer;
+        }
+
+        /* モーダル */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .modal-box {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 480px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            color: #2d3748;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-title { font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 16px; }
+
+        /* 算数クイズ */
+        .quiz-box { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .quiz-q { font-size: 24px; font-weight: bold; background: #f7fafc; padding: 8px 24px; border-radius: 10px; }
+        .quiz-input { width: 100px; padding: 8px; font-size: 20px; text-align: center; border: 2px solid #cbd5e0; border-radius: 8px; }
+
+        /* 設定フォーム */
+        .form-row { margin-bottom: 12px; }
+        .form-row label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+        .form-input { width: 100%; padding: 8px 12px; font-size: 14px; border: 2px solid #e2e8f0; border-radius: 8px; }
+        .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+        .btn-m { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+        .btn-m-pri { background: #3182ce; color: white; }
+        .btn-m-sec { background: #edf2f7; color: #4a5568; }
+
+        /* アルバム */
+        .album-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; max-height: 250px; overflow-y: auto; }
+        .album-card-item { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; font-size: 12px; text-align: center; }
+
+        /* パターンB：ゴール達成オーバーレイ */
+        .goal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.96);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.5s; text-align: center; padding: 20px;
+        }
+        .goal-overlay.open { opacity: 1; pointer-events: auto; }
+        .goal-header { font-size: 32px; color: #ff6b6b; font-weight: 900; }
+
+        .confetti-p { position: absolute; width: 10px; height: 10px; animation: fall 3s linear infinite; top: -10px; z-index: 51; }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(700px) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="theme-sakura">
+
+    <div class="chromebook-frame">
+        <!-- ヘッダー -->
+        <header>
+            <div class="header-title">
+                <span id="header-emoji">🌸</span> <span>できた！スタンプカード</span>
+            </div>
+            <div class="header-controls">
+                <select class="theme-select" id="theme-selector" onchange="changeTheme(this.value)">
+                    <option value="theme-sakura">🌸 さくらテーマ</option>
+                    <option value="theme-space">🚀 うちゅうテーマ</option>
+                    <option value="theme-dino">🦖 きょうりゅうテーマ</option>
+                    <option value="theme-simple">⭐ シンプルテーマ</option>
+                </select>
+                <button class="btn-header" onclick="openAlbumModal()">📖 がんばりアルバム</button>
+                <button class="btn-header" onclick="openLockModal()">⚙️ ほごしゃメニュー</button>
+            </div>
+        </header>
+
+        <!-- メイン画面 (16:9 2カラム) -->
+        <div class="app-body">
+            <!-- 左：スタンプ台紙 -->
+            <div class="card-container">
+                <div class="stamp-grid" id="stamp-grid"></div>
+            </div>
+
+            <!-- 右：操作＆ご褒美パネル -->
+            <div class="control-panel">
+                <!-- ご褒美情報 -->
+                <div class="reward-card">
+                    <div class="reward-badge">🎁 ゴールの ごほうび</div>
+                    <div class="reward-title" id="reward-display-text">おやつデラックス</div>
+                    <img id="reward-display-img" class="reward-img-box" src="" alt="ご褒美">
+                </div>
+
+                <!-- スタンプ押し＆振り返りアクション -->
+                <div class="interactive-zone">
+                    <div id="stamp-picker" class="stamp-picker">
+                        <div class="stamp-picker-label">きょう おすスタンプをえらぼう</div>
+                        <div id="stamp-picker-list" class="stamp-picker-list"></div>
+                    </div>
+
+                    <label class="self-check-container">
+                        <input type="checkbox" class="self-check-cb" id="self-check-cb" onchange="toggleStampButton()">
+                        <span class="self-check-label">きょうの ミッション できた！</span>
+                    </label>
+
+                    <button class="stamp-btn" id="push-stamp-btn" onclick="handleStampClick()" disabled>
+                        <span>🔴</span> <span>スタンプを おす！</span>
+                    </button>
+
+                    <div class="status-msg" id="status-msg">チェックを入れて スタンプを押してね</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 最下部デバッグストリップ -->
+        <div class="debug-strip">
+            <span>[Chromebook 16:9 Fit]</span>
+            <button class="debug-btn-mini" onclick="simulateTomorrow()">☀️ 日付を1日進める</button>
+            <button class="debug-btn-mini" onclick="resetAllData()">🔄 初期化</button>
+        </div>
+
+        <!-- パターンB: ゴール達成オーバーレイ -->
+        <div class="goal-overlay" id="goal-screen">
+            <div id="confetti-holder"></div>
+            <div class="goal-header">🎉 ぜんぶ たまったよ！ 🎉</div>
+            <p style="font-size: 18px; font-weight: bold; margin-top: 8px;">最後まで よく がんばったね！</p>
+            
+            <div style="background: #fff9e6; border: 3px dashed #ffd166; border-radius: 16px; padding: 16px 30px; margin: 16px 0;">
+                <p style="font-size: 13px; color: #b7791f; font-weight: bold;">🎁 ごほうび 🎁</p>
+                <p id="goal-reward-name" style="font-size: 22px; font-weight: bold; margin-top: 4px;">おやつデラックス</p>
+                <img id="goal-reward-img" class="reward-img-box" style="margin: 8px auto 0 auto; width: 80px; height: 80px;" src="" alt="ご褒美">
+            </div>
+
+            <p style="font-size: 15px; color: #e53e3e; font-weight: bold;">📢 おうちの ひとに タブレットを わたしてね！</p>
+            <button class="btn-header" style="margin-top: 20px; background: #ff6b6b; color: white; padding: 10px 24px; font-size: 15px;" onclick="openLockModal('goal')">⚙️ ほごしゃが かくにんする</button>
+        </div>
+
+        <!-- モーダル: 算数クイズ -->
+        <div class="modal-overlay" id="quiz-modal">
+            <div class="modal-box">
+                <div class="modal-title">🔒 ほごしゃかくにん</div>
+                <div class="quiz-box">
+                    <p style="font-size: 13px; color: #718096;">大人の人が 計算をして 解除してください。</p>
+                    <div class="quiz-q" id="quiz-q-text">4 × 5 = ?</div>
+                    <input type="number" class="quiz-input" id="quiz-ans-input">
+                    <div class="btn-row" style="width: 100%;">
+                        <button class="btn-m btn-m-sec" onclick="closeModal('quiz-modal')">もどる</button>
+                        <button class="btn-m btn-m-pri" onclick="verifyQuiz()">あける</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- モーダル: 保護者設定 -->
+        <div class="modal-overlay" id="parent-settings-overlay">
+            <div class="modal-box">
+                <div class="modal-title">⚙️ 保護者設定</div>
+                
+                <div id="parent-reset-zone" style="display:none; background:#fff5f5; border:1px solid #feb2b2; padding:12px; border-radius:10px; margin-bottom:12px; text-align:center;">
+                    <p style="font-weight:bold; color:#c53030; font-size:13px;">🏆 ゴール達成の確認</p>
+                    <p style="font-size:11px; color:#4a5568; margin:4px 0 8px 0;">ご褒美を渡したら、新しいカードにリセットします。</p>
+                    <button class="btn-m btn-m-pri" style="background:#38a169;" onclick="confirmCardReset()">🎁 ごほうびを渡して新カードにする</button>
+                </div>
+
+                <div class="form-row">
+                    <label>カードのマス数</label>
+                    <select class="form-input" id="cfg-max-stamps">
+                        <option value="5">5マス</option>
+                        <option value="10">10マス</option>
+                        <option value="15">15マス</option>
+                        <option value="20">20マス</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label>ご褒美の名前</label>
+                    <input type="text" class="form-input" id="cfg-reward-text" value="おやつデラックス">
+                </div>
+
+                <div class="form-row">
+                    <label>ご褒美の画像（URLまたは画像ファイル名）</label>
+                    <input type="text" class="form-input" id="cfg-reward-img" placeholder="例: reward.png">
+                    <div style="margin-top:4px; display:flex; gap:6px;">
+                        <button class="debug-btn-mini" onclick="setPresetImg('https://img.icons8.com/emoji/96/000000/cookie-emoji.png')">🍪クッキー</button>
+                        <button class="debug-btn-mini" onclick="setPresetImg('https://img.icons8.com/emoji/96/000000/video-game-emoji.png')">🎮ゲーム</button>
+                    </div>
+                </div>
+
+                <div class="form-row" style="background:#f7fafc; padding:10px; border-radius:8px;">
+                    <label>スタンプ画像の登録（複数登録できます）</label>
+                    <p style="font-size:11px; color:#718096; margin:2px 0 6px 0;">登録した画像は、表紙の「スタンプをえらぶ」からえらべます。一度おしたスタンプの絵柄はあとから変わりません。</p>
+
+                    <div id="cfg-stamp-gallery" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+
+                    <input type="file" id="cfg-stamp-file" accept="image/*" class="form-input" style="padding:6px;">
+
+                    <div style="display:flex; gap:6px; margin-top:6px;">
+                        <input type="text" id="cfg-stamp-url" class="form-input" placeholder="画像URLから追加（任意）">
+                        <button type="button" class="btn-m btn-m-sec" style="flex:0 0 auto; padding:0 14px;" onclick="addStampToGalleryFromUrl()">追加</button>
+                    </div>
+
+                    <label style="margin-top:10px;">スタンプの大きさ：<span id="cfg-stamp-size-val">85</span>%</label>
+                    <input type="range" id="cfg-stamp-size" min="50" max="100" value="85" style="width:100%;">
+                </div>
+
+                <div class="form-row" style="background:#f7fafc; padding:8px; border-radius:8px;">
+                    <label>スタンプ数の手動調整</label>
+                    <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+                        <button class="debug-btn-mini" onclick="adjustCount(-1)">-1</button>
+                        <span id="cfg-count-disp" style="font-weight:bold;">0</span>
+                        <button class="debug-btn-mini" onclick="adjustCount(1)">+1</button>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn-m btn-m-sec" onclick="closeModal('parent-settings-overlay')">とじる</button>
+                    <button class="btn-m btn-m-pri" onclick="saveParentSettings()">設定を保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- モーダル: がんばりアルバム -->
+        <div class="modal-overlay" id="album-modal">
+            <div class="modal-box">
+                <div class="modal-title">📖 がんばりアルバム</div>
+                <p style="font-size: 12px; color: #718096; text-align:center;">これまでに クリアした カードの きろく</p>
+                <div class="album-grid" id="album-list"></div>
+                <div class="btn-row">
+                    <button class="btn-m btn-m-sec" onclick="closeModal('album-modal')">とじる</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let state = {
+            stampsCount: 0,
+            maxStamps: 10,
+            rewardText: "おやつデラックス",
+            rewardImgUrl: "",
+            lastStampedDate: "",
+            theme: "theme-sakura",
+            history: [],
+            customStampSize: 85,     // スタンプの大きさ（マスに対する割合 %）
+            stampGallery: [],        // 設定で登録した複数のスタンプ画像（base64の配列）
+            selectedStampSrc: null,  // 次に押す時に使うスタンプ（ギャラリー内のsrc）。nullならテーマ絵文字
+            stampRecord: []          // 実際に押されたマスごとの記録。押した瞬間に確定し、後から変わらない（ロック）
+        };
+
+        let quizAnswer = 0;
+        let lockContext = 'normal';
+        let dateOffset = 0;
+
+        const themeEmojis = {
+            'theme-sakura': '🌸',
+            'theme-space': '🚀',
+            'theme-dino': '🦖',
+            'theme-simple': '⭐'
+        };
+
+        window.onload = function() {
+            loadData();
+            applyTheme(state.theme);
+            renderCard();
+            updateUI();
+            renderStampPicker();
+        };
+
+        function saveData() {
+            localStorage.setItem('chromebook_stamp_state', JSON.stringify(state));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('chromebook_stamp_state');
+            if (saved) {
+                try { state = Object.assign(state, JSON.parse(saved)); } catch(e){}
+            }
+
+            // --- マイグレーション：以前のバージョン（単一のcustomStampImg）からギャラリー方式へ移行 ---
+            if (!Array.isArray(state.stampGallery)) state.stampGallery = [];
+            if (state.customStampImg && state.stampGallery.length === 0) {
+                state.stampGallery.push(state.customStampImg);
+                state.selectedStampSrc = state.customStampImg;
+            }
+            delete state.customStampImg;
+            if (typeof state.selectedStampSrc === 'undefined') state.selectedStampSrc = null;
+
+            // すでに押されているのに記録が無い古いマスは、現在のテーマ絵文字として補完する
+            if (!Array.isArray(state.stampRecord)) state.stampRecord = [];
+            const emojiNow = themeEmojis[state.theme] || '🌸';
+            while (state.stampRecord.length < state.stampsCount) {
+                state.stampRecord.push({ type: 'emoji', emoji: emojiNow });
+            }
+        }
+
+        function changeTheme(themeName) {
+            state.theme = themeName;
+            applyTheme(themeName);
+            saveData();
+            renderCard();
+        }
+
+        function applyTheme(themeName) {
+            document.body.className = themeName;
+            document.getElementById('theme-selector').value = themeName;
+            const emoji = themeEmojis[themeName] || '🌸';
+            document.getElementById('header-emoji').innerText = emoji;
+            document.documentElement.style.setProperty('--stamp-emoji', `"${emoji}"`);
+
+            refreshThemeImages(themeName);
+            renderStampPicker();
+        }
+
+        // --- テーマ背景画像（img/フォルダのPNG）の読み込み確認 ---
+        // 各PNGが実際に存在するかを事前チェックし、存在するものだけ背景として使う。
+        // 存在しない場合は何もせず、これまで通りの色・枠線によるフォールバック表示のままになる。
+        let themeImgOk = { frame: false, push: false, stamp: false, stampGoal: false, gohoubi: false, mission: false };
+
+        function checkImageExists(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(true);
+                img.onerror = () => resolve(false);
+                img.src = url;
+            });
+        }
+
+        async function refreshThemeImages(themeName) {
+            const imgKey = themeName.replace(/^theme-/, '');
+            const targets = {
+                frame:     { url: `img/frame_${imgKey}.png`,      cssVar: '--frame-bg' },      // 真ん中の枠（台紙全体）
+                push:      { url: `img/push_${imgKey}.png`,       cssVar: '--push-bg' },        // スタンプを押す全体の枠（チェック＋ボタンのパネル）
+                stamp:     { url: `img/stamp_${imgKey}.png`,      cssVar: '--stamp-bg' },        // 通常マス
+                stampGoal: { url: `img/stamp_goal_${imgKey}.png`, cssVar: '--stamp-goal-bg' },   // 最終マス（ゴール）
+                gohoubi:   { url: `img/gohoubi_${imgKey}.png`,    cssVar: '--gohoubi-bg' },      // ご褒美の枠
+                mission:   { url: `img/mission_${imgKey}.png`,    cssVar: '--mission-bg' }       // ミッションのピル
+            };
+
+            await Promise.all(Object.keys(targets).map(async (key) => {
+                const { url, cssVar } = targets[key];
+                const ok = await checkImageExists(url);
+                themeImgOk[key] = ok;
+                document.documentElement.style.setProperty(cssVar, ok ? `url('${url}')` : 'none');
+            }));
+
+            const cardEl = document.querySelector('.card-container');
+            const rewardEl = document.querySelector('.reward-card');
+            const zoneEl = document.querySelector('.interactive-zone');
+            const missionEl = document.querySelector('.self-check-container');
+            if (cardEl) cardEl.classList.toggle('has-custom-bg', themeImgOk.frame);
+            if (rewardEl) rewardEl.classList.toggle('has-custom-bg', themeImgOk.gohoubi);
+            if (zoneEl) zoneEl.classList.toggle('has-custom-bg', themeImgOk.push);
+            if (missionEl) missionEl.classList.toggle('has-custom-bg', themeImgOk.mission);
+
+            renderCard(); // マス目（通常・ゴール）の背景反映のため再描画
+        }
+
+        // --- カスタムスタンプ画像の取り込み処理 ---
+        // 画像を読み込み、正方形にせず縦横比を保ったまま200px以内に縮小してbase64化する
+        // （表示側はobject-fit:coverの円クリップで真円に整えるため、元画像の比率は保持してよい）
+        function processStampImageSource(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = () => {
+                    const MAX_SIZE = 200;
+                    let w = img.width, h = img.height;
+                    if (w > h) {
+                        if (w > MAX_SIZE) { h = Math.round((h * MAX_SIZE) / w); w = MAX_SIZE; }
+                    } else {
+                        if (h > MAX_SIZE) { w = Math.round((w * MAX_SIZE) / h); h = MAX_SIZE; }
+                    }
+                    const c = document.createElement('canvas');
+                    c.width = w; c.height = h;
+                    const cctx = c.getContext('2d');
+                    cctx.drawImage(img, 0, 0, w, h);
+                    resolve(c.toDataURL('image/png'));
+                };
+                img.onerror = () => reject("画像を読み込めませんでした（URLやファイルを確認してください）");
+                img.src = src;
+            });
+        }
+
+        // --- スタンプギャラリー（設定画面での複数登録） ---
+        function renderGalleryEditor() {
+            const wrap = document.getElementById('cfg-stamp-gallery');
+            if (!wrap) return;
+            wrap.innerHTML = '';
+            if (!state.stampGallery || state.stampGallery.length === 0) {
+                wrap.innerHTML = '<span style="font-size:11px;color:#a0aec0;">まだ登録されていません</span>';
+                return;
+            }
+            state.stampGallery.forEach((src, idx) => {
+                const t = document.createElement('div');
+                t.className = 'gallery-thumb';
+                const img = document.createElement('img');
+                img.src = src;
+                const del = document.createElement('div');
+                del.className = 'del-btn';
+                del.innerHTML = '✕';
+                del.onclick = () => deleteStampFromGallery(idx);
+                t.appendChild(img);
+                t.appendChild(del);
+                wrap.appendChild(t);
+            });
+        }
+
+        function addStampToGalleryImage(base64) {
+            if (!Array.isArray(state.stampGallery)) state.stampGallery = [];
+            state.stampGallery.push(base64);
+            saveData();
+            renderGalleryEditor();
+            renderStampPicker();
+        }
+
+        function deleteStampFromGallery(idx) {
+            const removed = state.stampGallery[idx];
+            state.stampGallery.splice(idx, 1);
+            if (state.selectedStampSrc === removed) {
+                state.selectedStampSrc = null; // 選択中だった画像が消えたらデフォルト（絵文字）に戻す
+            }
+            saveData();
+            renderGalleryEditor();
+            renderStampPicker();
+        }
+
+        function addStampToGalleryFromUrl() {
+            const input = document.getElementById('cfg-stamp-url');
+            const url = input.value.trim();
+            if (!url) return;
+            processStampImageSource(url).then(base64 => {
+                addStampToGalleryImage(base64);
+                input.value = '';
+            }).catch(err => alert(err));
+        }
+
+        document.getElementById('cfg-stamp-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                processStampImageSource(evt.target.result).then(base64 => {
+                    addStampToGalleryImage(base64);
+                    e.target.value = '';
+                }).catch(err => alert(err));
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('cfg-stamp-size').addEventListener('input', (e) => {
+            document.getElementById('cfg-stamp-size-val').innerText = e.target.value;
+        });
+
+        // --- 表紙のスタンプピッカー（今日押すスタンプを複数の中から選ぶ） ---
+        function renderStampPicker() {
+            const wrap = document.getElementById('stamp-picker');
+            const list = document.getElementById('stamp-picker-list');
+            if (!wrap || !list) return;
+            list.innerHTML = '';
+
+            if (!state.stampGallery || state.stampGallery.length === 0) {
+                wrap.style.display = 'none';
+                return;
+            }
+            wrap.style.display = 'flex';
+
+            const emoji = themeEmojis[state.theme] || '🌸';
+
+            // デフォルト（テーマ絵文字）
+            const defItem = document.createElement('div');
+            defItem.className = 'stamp-picker-item' + (state.selectedStampSrc ? '' : ' active');
+            defItem.innerText = emoji;
+            defItem.title = 'テーマの絵文字';
+            defItem.onclick = () => { state.selectedStampSrc = null; saveData(); renderStampPicker(); };
+            list.appendChild(defItem);
+
+            state.stampGallery.forEach((src) => {
+                const item = document.createElement('div');
+                item.className = 'stamp-picker-item' + (state.selectedStampSrc === src ? ' active' : '');
+                const img = document.createElement('img');
+                img.src = src;
+                item.appendChild(img);
+                item.onclick = () => { state.selectedStampSrc = src; saveData(); renderStampPicker(); };
+                list.appendChild(item);
+            });
+        }
+
+        function renderCard() {
+            const grid = document.getElementById('stamp-grid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(5, 1fr)`;
+
+            const emoji = themeEmojis[state.theme] || '🌸';
+            const sizePercent = state.customStampSize || 85;
+
+            for (let i = 1; i <= state.maxStamps; i++) {
+                const slot = document.createElement('div');
+                const isGoal = (i === state.maxStamps);
+                slot.className = 'stamp-slot';
+                if (isGoal) slot.classList.add('goal-slot');
+
+                // 通常マス／最終マスそれぞれ、対応するPNGが実際に読み込めた場合だけ背景に反映する
+                const useCustomBg = isGoal ? themeImgOk.stampGoal : themeImgOk.stamp;
+                if (useCustomBg) {
+                    slot.classList.add('has-custom-bg');
+                    slot.style.backgroundImage = isGoal ? 'var(--stamp-goal-bg)' : 'var(--stamp-bg)';
+                }
+
+                if (i <= state.stampsCount) {
+                    slot.classList.add('active');
+                    const mark = document.createElement('div');
+                    mark.className = 'stamp-mark';
+
+                    // 押した瞬間に記録された内容をそのまま使う（＝あとから絵柄が変わらない＝ロック）
+                    const rec = (state.stampRecord && state.stampRecord[i - 1]) || null;
+
+                    if (rec && rec.type === 'image' && rec.src) {
+                        mark.classList.add('has-image');
+                        const imgTag = document.createElement('img');
+                        imgTag.className = 'stamp-mark-img';
+                        imgTag.src = rec.src;
+                        imgTag.alt = 'スタンプ';
+                        mark.appendChild(imgTag);
+                    } else {
+                        mark.innerText = (rec && rec.emoji) ? rec.emoji : emoji;
+                    }
+                    slot.appendChild(mark);
+                } else {
+                    slot.innerText = i;
+                }
+                grid.appendChild(slot);
+            }
+
+            // マスの実際のレイアウトが確定した後、正方形の一辺を基準にスタンプの直径をpxで固定する。
+            // これによりマスの縦横比に関わらず、スタンプは常に真円になる。
+            requestAnimationFrame(() => {
+                document.querySelectorAll('#stamp-grid .stamp-slot.active .stamp-mark').forEach(mark => {
+                    const slot = mark.parentElement;
+                    const base = Math.min(slot.clientWidth, slot.clientHeight);
+                    if (base > 0) {
+                        const diameter = Math.round(base * (sizePercent / 100));
+                        mark.style.width = diameter + 'px';
+                        mark.style.height = diameter + 'px';
+                    }
+                });
+            });
+        }
+
+        function updateUI() {
+            document.getElementById('reward-display-text').innerText = state.rewardText;
+            const imgEl = document.getElementById('reward-display-img');
+            if (state.rewardImgUrl) {
+                imgEl.src = state.rewardImgUrl;
+                imgEl.style.display = 'block';
+            } else {
+                imgEl.style.display = 'none';
+            }
+
+            const today = getTodayStr();
+            const btn = document.getElementById('push-stamp-btn');
+            const msg = document.getElementById('status-msg');
+            const cb = document.getElementById('self-check-cb');
+
+            if (state.stampsCount >= state.maxStamps) {
+                btn.disabled = true;
+                cb.checked = false;
+                cb.disabled = true;
+                msg.innerText = "🎉 ぜんぶ たまったよ！おめでとう！";
+                
+                document.getElementById('goal-reward-name').innerText = state.rewardText;
+                const goalImg = document.getElementById('goal-reward-img');
+                if (state.rewardImgUrl) { goalImg.src = state.rewardImgUrl; goalImg.style.display = 'block'; }
+                else { goalImg.style.display = 'none'; }
+                
+                document.getElementById('goal-screen').classList.add('open');
+                startConfetti();
+            } else if (state.lastStampedDate === today) {
+                btn.disabled = true;
+                cb.checked = true;
+                cb.disabled = true;
+                msg.innerText = "✨ きょうの分は バッチリ！ またあしたね！";
+                document.getElementById('goal-screen').classList.remove('open');
+                stopConfetti();
+            } else {
+                cb.disabled = false;
+                toggleStampButton();
+                document.getElementById('goal-screen').classList.remove('open');
+                stopConfetti();
+            }
+        }
+
+        function toggleStampButton() {
+            const today = getTodayStr();
+            if (state.lastStampedDate === today || state.stampsCount >= state.maxStamps) return;
+
+            const cb = document.getElementById('self-check-cb');
+            const btn = document.getElementById('push-stamp-btn');
+            const msg = document.getElementById('status-msg');
+
+            if (cb.checked) {
+                btn.disabled = false;
+                msg.innerText = "ボタンを おして スタンプを はろう！";
+            } else {
+                btn.disabled = true;
+                msg.innerText = "「ミッションできた」に チェックを入れてね";
+            }
+        }
+
+        function handleStampClick() {
+            const today = getTodayStr();
+            if (state.lastStampedDate === today) return;
+
+            // 押した瞬間に「今日使うスタンプ」を確定して記録する。
+            // これ以降ギャラリーの選択を変えても、このマスの絵柄は変わらない（ロック）。
+            if (!Array.isArray(state.stampRecord)) state.stampRecord = [];
+            const emojiNow = themeEmojis[state.theme] || '🌸';
+            const rec = state.selectedStampSrc
+                ? { type: 'image', src: state.selectedStampSrc }
+                : { type: 'emoji', emoji: emojiNow };
+            state.stampRecord.push(rec);
+
+            state.stampsCount++;
+            state.lastStampedDate = today;
+
+            playStampSound();
+            saveData();
+            renderCard();
+            updateUI();
+        }
+
+        function playStampSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+            } catch(e){}
+        }
+
+        function openLockModal(ctx = 'normal') {
+            lockContext = ctx;
+            const n1 = Math.floor(Math.random() * 8) + 2;
+            const n2 = Math.floor(Math.random() * 8) + 2;
+            quizAnswer = n1 * n2;
+            document.getElementById('quiz-q-text').innerText = `${n1} × ${n2} = ?`;
+            document.getElementById('quiz-ans-input').value = '';
+            document.getElementById('quiz-modal').classList.add('open');
+            document.getElementById('quiz-ans-input').focus();
+        }
+
+        function verifyQuiz() {
+            const ans = parseInt(document.getElementById('quiz-ans-input').value, 10);
+            if (ans === quizAnswer) {
+                closeModal('quiz-modal');
+                openParentSettings();
+            } else {
+                alert("計算がちがいます。大人の人が解いてください。");
+                document.getElementById('quiz-ans-input').value = '';
+            }
+        }
+
+        function openParentSettings() {
+            document.getElementById('cfg-max-stamps').value = state.maxStamps;
+            document.getElementById('cfg-reward-text').value = state.rewardText;
+            document.getElementById('cfg-reward-img').value = state.rewardImgUrl;
+            document.getElementById('cfg-count-disp').innerText = state.stampsCount;
+
+            document.getElementById('cfg-stamp-url').value = '';
+            document.getElementById('cfg-stamp-file').value = '';
+            document.getElementById('cfg-stamp-size').value = state.customStampSize || 85;
+            document.getElementById('cfg-stamp-size-val').innerText = state.customStampSize || 85;
+            renderGalleryEditor();
+
+            const resetZone = document.getElementById('parent-reset-zone');
+            if (lockContext === 'goal' || state.stampsCount >= state.maxStamps) {
+                resetZone.style.display = 'block';
+            } else {
+                resetZone.style.display = 'none';
+            }
+
+            document.getElementById('parent-settings-overlay').classList.add('open');
+        }
+
+        function saveParentSettings() {
+            state.maxStamps = parseInt(document.getElementById('cfg-max-stamps').value, 10);
+            state.rewardText = document.getElementById('cfg-reward-text').value;
+            state.rewardImgUrl = document.getElementById('cfg-reward-img').value;
+            state.customStampSize = parseInt(document.getElementById('cfg-stamp-size').value, 10) || 85;
+
+            if (state.stampsCount > state.maxStamps) state.stampsCount = state.maxStamps;
+            if (state.stampRecord.length > state.stampsCount) state.stampRecord.length = state.stampsCount;
+
+            saveData();
+            renderCard();
+            updateUI();
+            renderStampPicker();
+            closeModal('parent-settings-overlay');
+        }
+
+        function confirmCardReset() {
+            if (confirm("ご褒美を渡して、新しいカードをスタートしますか？")) {
+                state.history.push({
+                    date: getTodayStr(),
+                    reward: state.rewardText,
+                    stamps: state.maxStamps
+                });
+
+                state.stampsCount = 0;
+                state.lastStampedDate = "";
+                state.stampRecord = [];
+                saveData();
+                renderCard();
+                updateUI();
+                closeModal('parent-settings-overlay');
+            }
+        }
+
+        function adjustCount(val) {
+            let next = state.stampsCount + val;
+            if (next >= 0 && next <= state.maxStamps) {
+                if (val > 0) {
+                    const emojiNow = themeEmojis[state.theme] || '🌸';
+                    const rec = state.selectedStampSrc
+                        ? { type: 'image', src: state.selectedStampSrc }
+                        : { type: 'emoji', emoji: emojiNow };
+                    state.stampRecord.push(rec);
+                } else if (val < 0) {
+                    state.stampRecord.pop();
+                }
+                state.stampsCount = next;
+                document.getElementById('cfg-count-disp').innerText = state.stampsCount;
+            }
+        }
+
+        function openAlbumModal() {
+            const list = document.getElementById('album-list');
+            list.innerHTML = '';
+
+            if (state.history.length === 0) {
+                list.innerHTML = '<p style="grid-column: span 2; color:#a0aec0; padding:20px;">まだクリア記録がありません。がんばってスタンプをためよう！</p>';
+            } else {
+                state.history.forEach((item, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'album-card-item';
+                    card.innerHTML = `
+                        <div style="font-weight:bold; color:#2b6cb0;">🏅 クリア #${idx+1}</div>
+                        <div style="margin:2px 0;">🎁 ${item.reward}</div>
+                        <div style="font-size:10px; color:#718096;">${item.date} 達成</div>
+                    `;
+                    list.appendChild(card);
+                });
+            }
+
+            document.getElementById('album-modal').classList.add('open');
+        }
+
+        function setPresetImg(url) {
+            document.getElementById('cfg-reward-img').value = url;
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        function getTodayStr() {
+            const d = new Date();
+            if (dateOffset > 0) d.setDate(d.getDate() + dateOffset);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        function simulateTomorrow() {
+            dateOffset++;
+            alert("日付を1日進めました！");
+            updateUI();
+        }
+
+        function resetAllData() {
+            if (confirm("全データを初期化しますか？")) {
+                localStorage.removeItem('chromebook_stamp_state');
+                location.reload();
+            }
+        }
+
+        let confettiTimer;
+        function startConfetti() {
+            const holder = document.getElementById('confetti-holder');
+            if (confettiTimer) return;
+            confettiTimer = setInterval(() => {
+                const p = document.createElement('div');
+                p.className = 'confetti-p';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.backgroundColor = ['#ff6b6b','#ffd166','#38ef7d','#00b4db','#e0c3fc'][Math.floor(Math.random()*5)];
+                holder.appendChild(p);
+                setTimeout(() => p.remove(), 3000);
+            }, 120);
+        }
+        function stopConfetti() {
+            clearInterval(confettiTimer);
+            confettiTimer = null;
+            document.getElementById('confetti-holder').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
