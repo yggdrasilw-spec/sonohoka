@@ -793,6 +793,9 @@ const MATERIAL_IMAGES = {
   mud:   { swim: 'img/beaver_swim_mud.png',   place: 'img/beaver_place_mud.png'   }
 };
 
+// 設置が終わり、何も持たずに上流へ帰るときに使う画像（img フォルダに用意してもらう透過PNG）
+const EMPTY_HANDED_SWIM_IMAGE = 'img/beaver_swim_empty.png';
+
 // ビーバーが設置エリアに到着して待機するX座標は、DAM_ZONE_LEFTの宣言後に別途定義する（下記参照）
 // 縦方向は固定値ではなく、その時点の「上流側の水面」に中心を合わせる
 function getCarrierArriveY() {
@@ -1426,10 +1429,26 @@ function retireCarrier() {
   imgEl.style.setProperty('--face', '-1'); // 上流(左)へ向きを反転
   imgEl.style.top = getSurfaceYAtX(0) + 'px'; // 上流の水面の高さに合わせながら戻る
   imgEl.style.left = '-160px'; // 画面外（上流方向＝左）へ泳ぎ去る
+
+  // 帰る間は何も持っていないので、手ぶら用の泳ぎpngに差し替える
+  imgEl.style.background = '';
+  imgEl.style.border = '';
+  imgEl.style.minHeight = '';
+  imgEl.onload = null;
+  imgEl.onerror = () => {
+    // png未配置でも動作確認できるよう、簡易プレースホルダーに差し替える
+    imgEl.style.background = '#5d4037';
+    imgEl.style.border = '3px dashed #ffe082';
+    imgEl.style.minHeight = '70px';
+  };
+  imgEl.src = EMPTY_HANDED_SWIM_IMAGE;
+  imgEl.classList.add('swim-bob');
+
   clearTimeout(window.__carryRetireTimer);
   window.__carryRetireTimer = setTimeout(() => {
     imgEl.style.display = 'none';
     imgEl.style.setProperty('--face', '1'); // 次回の登場に備えて向きを戻す
+    imgEl.classList.remove('swim-bob');
   }, 900);
 }
 
@@ -1617,9 +1636,25 @@ function familySwimOut(lane) {
     el.style.setProperty('--face', '-1'); // 上流(左)へ向きを反転
     el.style.top = (getSurfaceYAtX(0) + lane.offset) + 'px';
     el.style.left = '-160px';
+
+    // 帰る間は何も持っていないので、手ぶら用の泳ぎpngに差し替える
+    el.onload = null;
+    el.onerror = () => {
+      // png未配置でも動作確認できるよう、簡易プレースホルダーに差し替える
+      el.style.background = '#5d4037';
+      el.style.border = '3px dashed #ffe082';
+      el.style.minHeight = '70px';
+    };
+    el.src = EMPTY_HANDED_SWIM_IMAGE;
+    el.classList.add('swim-bob');
+
     setTimeout(() => {
       el.style.display = 'none';
       el.style.setProperty('--face', '1');
+      el.classList.remove('swim-bob');
+      el.style.background = '';
+      el.style.border = '';
+      el.style.minHeight = '';
       resolve();
     }, 950);
   });
