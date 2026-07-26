@@ -21,7 +21,6 @@
             --stamp-goal-bg: none;
             --gohoubi-bg: none;
             --push-bg: none;
-            --dekita-bg: none;
             --mission-off-bg: none;
             --mission-on-bg: none;
             --btn-bg: none;
@@ -392,7 +391,6 @@
             align-items: center;
             gap: 10px;
             background-color: rgba(0,0,0,0.04);
-            background-image: var(--dekita-bg);
             background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
@@ -413,7 +411,7 @@
             pointer-events: none;
         }
 
-        /* チェック状態を表す正方形アイコン（ピルの背景=mission_XXX.pngとは別レイヤー） */
+        /* チェック状態を表す正方形アイコン（フォールバック表示用。mission_off/on_XXX.pngが読み込めた場合はvisibility:hiddenで隠され、ピル全体(.self-check-container)側の画像に絵として統合される） */
         .self-check-icon {
             width: 30px;
             height: 30px;
@@ -438,13 +436,6 @@
         }
         .self-check-icon.checked::after {
             content: "✔";
-        }
-        .self-check-icon.has-custom-bg {
-            border: none;
-            background-color: transparent;
-        }
-        .self-check-icon.has-custom-bg::after {
-            content: "";
         }
 
         /* --- 表紙のスタンプピッカー（今日押すスタンプを複数の中からえらぶ） --- */
@@ -933,7 +924,7 @@
         // --- テーマ背景画像（img/フォルダのPNG）の読み込み確認 ---
         // 各PNGが実際に存在するかを事前チェックし、存在するものだけ背景として使う。
         // 存在しない場合は何もせず、これまで通りの色・枠線によるフォールバック表示のままになる。
-        let themeImgOk = { frame: false, push: false, stamp: false, stampGoal: false, gohoubi: false, dekita: false, missionOff: false, missionOn: false, btn: false };
+        let themeImgOk = { frame: false, push: false, stamp: false, stampGoal: false, gohoubi: false, missionOff: false, missionOn: false, btn: false };
         let missionUrls = { off: '', on: '' };
 
         function checkImageExists(url) {
@@ -956,9 +947,8 @@
                 stamp:      { url: `img/stamp_${imgKey}.png`,      cssVar: '--stamp-bg' },        // 通常マス
                 stampGoal:  { url: `img/stamp_goal_${imgKey}.png`, cssVar: '--stamp-goal-bg' },   // 最終マス（ゴール）
                 gohoubi:    { url: `img/gohoubi_${imgKey}.png`,    cssVar: '--gohoubi-bg' },      // ご褒美の枠
-                dekita:     { url: `img/dekita_${imgKey}.png`,     cssVar: '--dekita-bg' },       // 「ミッションできた」チェックボックス＋テキストの枠全体（ピルの背景）
-                missionOff: { url: missionUrls.off,                cssVar: '--mission-off-bg' },  // ミッションできたチェックボックスの枠（チェックなし）
-                missionOn:  { url: missionUrls.on,                 cssVar: '--mission-on-bg' },   // ミッションできたチェックボックスの枠（チェックあり）
+                missionOff: { url: missionUrls.off,                cssVar: '--mission-off-bg' },  // 「チェックボックス＋きょうのミッションできた！」ピル全体（未チェック時の絵）
+                missionOn:  { url: missionUrls.on,                 cssVar: '--mission-on-bg' },   // 「チェックボックス＋きょうのミッションできた！」ピル全体（チェック済み時の絵）
                 btn:        { url: `img/btn_${imgKey}.png`,        cssVar: '--btn-bg' }           // 「スタンプをおす」ボタン
             };
 
@@ -972,34 +962,31 @@
             const cardEl = document.querySelector('.card-container');
             const rewardEl = document.querySelector('.reward-card');
             const zoneEl = document.querySelector('.interactive-zone');
-            const missionEl = document.querySelector('.self-check-container');
             const btnEl = document.getElementById('push-stamp-btn');
             if (cardEl) cardEl.classList.toggle('has-custom-bg', themeImgOk.frame);
             if (rewardEl) rewardEl.classList.toggle('has-custom-bg', themeImgOk.gohoubi);
             if (zoneEl) zoneEl.classList.toggle('has-custom-bg', themeImgOk.push);
-            if (missionEl) missionEl.classList.toggle('has-custom-bg', themeImgOk.dekita);
             if (btnEl) btnEl.classList.toggle('has-custom-bg', themeImgOk.btn);
 
-            // dekita_XXX.png / btn_XXX.png が読み込めた場合は、PNG側に文字が描かれている想定のため
-            // 代わりのテキストを隠す。display:none だと枠のサイズが縮んでpngごとズレるので、
-            // visibility:hidden で「場所は確保したまま見た目だけ消す」ようにする。
-            const missionLabelTextEl = document.getElementById('self-check-label-text');
-            if (missionLabelTextEl) missionLabelTextEl.style.visibility = themeImgOk.dekita ? 'hidden' : '';
-
+            // btn_XXX.png が読み込めた場合は、PNG側に文字が描かれている想定のため代わりのテキストを隠す。
+            // display:none だと枠のサイズが縮んでpngごとズレるので、visibility:hidden で「場所は確保したまま見た目だけ消す」。
             const stampBtnTextEl = document.getElementById('stamp-btn-text');
             if (stampBtnTextEl) stampBtnTextEl.style.visibility = themeImgOk.btn ? 'hidden' : '';
 
-            updateMissionVisual(); // チェック前／チェック後の見た目を反映
+            updateMissionVisual(); // チェック前／チェック後のピル全体の見た目を反映
 
             renderCard(); // マス目（通常・ゴール）の背景反映のため再描画
         }
 
-        // チェック前／チェック後で、小さな正方形アイコンの画像を切り替える。
-        // 対応するPNGが無ければ、これまで通りチェックマーク付きの丸背景で表示する。
+        // 「チェックボックス＋きょうのミッションできた！」のピル全体を、チェックの有無に応じて
+        // mission_off_XXX.png / mission_on_XXX.png に丸ごと差し替える。
+        // 対応するPNGが無ければ、これまで通り四角アイコン＋チェックマーク＋テキストのフォールバック表示にする。
         function updateMissionVisual() {
             const icon = document.getElementById('self-check-icon');
             const cb = document.getElementById('self-check-cb');
-            if (!icon || !cb) return;
+            const container = document.querySelector('.self-check-container');
+            const labelText = document.getElementById('self-check-label-text');
+            if (!icon || !cb || !container) return;
 
             const checked = cb.checked;
             icon.classList.toggle('checked', checked);
@@ -1008,12 +995,17 @@
             const url = checked ? missionUrls.on : missionUrls.off;
 
             if (ok) {
-                icon.style.backgroundImage = `url('${url}')`;
-                icon.classList.add('has-custom-bg');
+                container.style.backgroundImage = `url('${url}')`;
+                container.classList.add('has-custom-bg');
             } else {
-                icon.style.backgroundImage = 'none';
-                icon.classList.remove('has-custom-bg');
+                container.style.backgroundImage = 'none';
+                container.classList.remove('has-custom-bg');
             }
+
+            // カスタム画像側にチェックボックスとテキストが描かれているため、
+            // フォールバック用の四角アイコン・テキストは重ならないよう隠す（画像が無ければ従来通り表示）。
+            icon.style.visibility = ok ? 'hidden' : '';
+            if (labelText) labelText.style.visibility = ok ? 'hidden' : '';
         }
 
         // --- カスタムスタンプ画像の取り込み処理 ---
