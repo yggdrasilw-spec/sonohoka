@@ -14,9 +14,16 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      padding: 15px;
-      overflow-x: hidden;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 画面(16:9など)いっぱいに収まるよう、縦横同比率で#scale-stage全体を拡大縮小する */
+    #scale-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform-origin: center center;
     }
 
     h1 {
@@ -80,6 +87,8 @@
     }
 
     /* Viewport Area */
+    /* Canvasの本来サイズは920x500。画面への収まりは #scale-stage による
+       縦横同比率スケーリングで対応するため、ここでのトリミングは行わない。 */
     #viewport-wrapper {
       position: relative;
       width: 920px;
@@ -87,6 +96,16 @@
       background: #0f171e;
       overflow: hidden;
       cursor: crosshair;
+    }
+
+    /* Canvasと、それに連動するオーバーレイ(ビーバー・演出・向き選択ポップアップ)をまとめるコンテナ。
+       現在はトリミングなし(top:0)。将来的に一部を隠したい場合はここのtopを調整する。 */
+    #viewport-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 920px;
+      height: 500px;
     }
 
     canvas {
@@ -125,13 +144,26 @@
       gap: 6px;
       align-items: center;
       z-index: 20;
-      background: rgba(30, 22, 18, 0.88);
+      left: calc(100% + 12px); /* ボタンの右横に出す */
+      bottom: 0; /* ボタンの下端に揃え、上方向に伸びる（画面下端からはみ出さないように） */
+      transform-origin: left bottom;
+      background: rgba(30, 22, 18, 0.92);
       border: 2px solid #ffe082;
       border-radius: 14px;
-      padding: 10px;
+      padding: 8px 10px;
       box-shadow: 0 6px 18px rgba(0,0,0,0.5);
-      animation: popIn 0.25s ease-out;
-      pointer-events: none; /* ポップアップの背景部分はCanvasへのクリックを妨げない */
+      animation: popIn 0.25s ease-out forwards;
+      pointer-events: none; /* 背景部分はクリックを妨げない */
+    }
+    #orientation-popup::after {
+      /* 太い枝ボタンを指す吹き出しの三角（左向き） */
+      content: '';
+      position: absolute;
+      left: -9px;
+      bottom: 14px;
+      border-width: 7px 9px 7px 0;
+      border-style: solid;
+      border-color: transparent #ffe082 transparent transparent;
     }
     @keyframes popIn {
       0%   { transform: scale(0.6); opacity: 0; }
@@ -139,14 +171,15 @@
     }
     #orientation-popup .orient-label {
       color: #ffe082;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
       margin-bottom: 2px;
+      white-space: nowrap;
     }
     #orientation-popup button {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
-      padding: 7px 12px;
+      padding: 6px 10px;
       border-radius: 10px;
       border: 2px solid #3e2723;
       background: #795548;
@@ -154,6 +187,7 @@
       cursor: pointer;
       white-space: nowrap;
       pointer-events: auto;
+      width: 100%;
     }
     #orientation-popup button.chosen {
       background: #ff9800;
@@ -424,6 +458,7 @@
 </head>
 <body>
 
+  <div id="scale-stage">
   <h1>🦫 ビーバーのダムづくり - リアルシミュレーション</h1>
 
   <div id="app-container">
@@ -482,13 +517,10 @@
     <div id="viewport-wrapper">
       <div id="completion-banner">🎉 ダム完成！視点が切り替わり「大きな池」ができました！</div>
 
-      <canvas id="simCanvas" width="920" height="500"></canvas>
-      <div id="anim-layer"></div>
-      <img id="beaver-carrier" src="" alt="">
-      <div id="orientation-popup">
-        <div class="orient-label">とがってる方はどっち？</div>
-        <button id="orient-btn-down" onclick="chooseOrientation(true)">⬇️ 下にする</button>
-        <button id="orient-btn-up" onclick="chooseOrientation(false)">⬆️ 上にする</button>
+      <div id="viewport-inner">
+        <canvas id="simCanvas" width="920" height="500"></canvas>
+        <div id="anim-layer"></div>
+        <img id="beaver-carrier" src="" alt="">
       </div>
 
       <!-- Beaver Assistant Dialogue -->
@@ -530,7 +562,12 @@
     <!-- Toolbar -->
     <div id="toolbar">
       <div id="toolbar-mode1" style="display:flex; justify-content:space-around; align-items:center; width:100%;">
-      <div class="tool-group">
+      <div class="tool-group" id="tool-group-branch" style="position:relative;">
+        <div id="orientation-popup">
+          <div class="orient-label">とがってる方は？</div>
+          <button id="orient-btn-down" onclick="chooseOrientation(true)">⬇️ 下にする</button>
+          <button id="orient-btn-up" onclick="chooseOrientation(false)">⬆️ 上にする</button>
+        </div>
         <button class="tool-btn active" id="btn-branch" onclick="selectTool('branch')">
           <svg class="material-icon-svg" viewBox="0 0 40 40">
             <path d="M15,5 L25,5 L25,28 L20,36 L15,28 Z" fill="#795548" stroke="#3e2723" stroke-width="2"/>
@@ -583,6 +620,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 
 <script>
@@ -1305,10 +1343,7 @@ function onCarrierArrived(tool) {
 // 向き選択ポップアップをビーバーの近くに表示する
 function showOrientationPopup() {
   const popup = document.getElementById('orientation-popup');
-  const arriveY = getCarrierArriveY();
   popup.style.display = 'flex';
-  popup.style.left = (CARRY_ARRIVE_X + 90) + 'px';
-  popup.style.top = (arriveY - 70) + 'px';
   updateOrientationButtons();
 }
 
@@ -1528,8 +1563,10 @@ function switchMode(mode) {
 // --- CANVAS CLICK INTERACTION & LOGIC ---
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
+  // #scale-stageによる拡大縮小分を補正し、Canvas本来の座標系(920x500)に変換する
+  const scaleFactor = rect.width / canvas.width;
+  const clickX = (e.clientX - rect.left) / scaleFactor;
+  const clickY = (e.clientY - rect.top) / scaleFactor;
 
   if (appMode === 'MODE2') {
     handleMode2Click(clickX, clickY);
@@ -3133,6 +3170,27 @@ function updateAndDrawParticles() {
     }
   }
 }
+
+// --- 画面(16:9など)いっぱいに収まるよう、#scale-stage全体を縦横同比率で拡大縮小する ---
+function fitStage() {
+  const stage = document.getElementById('scale-stage');
+  const prevTransform = stage.style.transform;
+  stage.style.transform = 'none'; // 実寸を測るため一旦解除
+  const rect = stage.getBoundingClientRect();
+  const naturalW = rect.width;
+  const naturalH = rect.height;
+  if (naturalW === 0 || naturalH === 0) { stage.style.transform = prevTransform; return; }
+
+  const margin = 16; // 画面端との最低余白
+  const availW = window.innerWidth - margin;
+  const availH = window.innerHeight - margin;
+
+  const scale = Math.min(availW / naturalW, availH / naturalH);
+  stage.style.transform = `scale(${scale})`;
+}
+window.addEventListener('resize', fitStage);
+window.addEventListener('DOMContentLoaded', fitStage);
+fitStage();
 
 // Start Render Loop
 render();
