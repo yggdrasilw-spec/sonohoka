@@ -95,6 +95,119 @@
       height: 500px;
     }
 
+    /* --- 材料を運ぶビーバー（DOMオーバーレイ） --- */
+    #beaver-carrier {
+      position: absolute;
+      left: -160px;
+      top: 260px;
+      width: 130px;
+      height: auto;
+      transform: translateY(-50%);
+      pointer-events: none;
+      z-index: 15;
+      display: none;
+      filter: drop-shadow(0 6px 8px rgba(0,0,0,0.45));
+      transition: left 1.3s cubic-bezier(.42,0,.35,1), top 1.3s cubic-bezier(.42,0,.35,1);
+    }
+    #beaver-carrier.swim-bob {
+      animation: beaverBob 0.5s ease-in-out infinite;
+    }
+    @keyframes beaverBob {
+      0%, 100% { transform: translateY(-50%) rotate(-2deg); }
+      50%      { transform: translateY(-46%) rotate(2deg); }
+    }
+
+    /* --- 向き選択ポップアップ --- */
+    #orientation-popup {
+      position: absolute;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      z-index: 20;
+      background: rgba(30, 22, 18, 0.88);
+      border: 2px solid #ffe082;
+      border-radius: 14px;
+      padding: 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      animation: popIn 0.25s ease-out;
+    }
+    @keyframes popIn {
+      0%   { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    #orientation-popup .orient-label {
+      color: #ffe082;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    #orientation-popup button {
+      font-size: 13px;
+      font-weight: bold;
+      padding: 7px 12px;
+      border-radius: 10px;
+      border: 2px solid #3e2723;
+      background: #795548;
+      color: #fff8e1;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #orientation-popup button.chosen {
+      background: #ff9800;
+      border-color: #ffe082;
+    }
+
+    /* --- 設置演出（刺さる／流されるSVGアニメ）を差し込むレイヤー --- */
+    #anim-layer {
+      position: absolute;
+      left: 0; top: 0;
+      width: 920px;
+      height: 500px;
+      pointer-events: none;
+      z-index: 12;
+      overflow: hidden;
+    }
+    .anim-piece { position: absolute; }
+
+    @keyframes branchStake {
+      0%   { transform: translateY(-46px) scaleY(0.6); opacity: 0; }
+      55%  { transform: translateY(6px) scaleY(1.08); opacity: 1; }
+      75%  { transform: translateY(-3px) scaleY(0.97); }
+      100% { transform: translateY(0) scaleY(1); opacity: 1; }
+    }
+    @keyframes branchFloat {
+      0%   { transform: translate(0,0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(260px, -14px) rotate(78deg); opacity: 0; }
+    }
+    @keyframes twigSettle {
+      0%   { transform: translateY(-18px) rotate(-14deg) scale(0.7); opacity: 0; }
+      60%  { transform: translateY(3px) rotate(4deg) scale(1.05); opacity: 1; }
+      100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+    }
+    @keyframes twigDrift {
+      0%   { transform: translate(0,0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(240px, -20px) rotate(320deg); opacity: 0; }
+    }
+    @keyframes stoneDrop {
+      0%   { transform: translateY(-60px) scale(0.9); opacity: 0; }
+      65%  { transform: translateY(4px) scale(1.12, 0.88); opacity: 1; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    @keyframes stoneSink {
+      0%   { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(70px); opacity: 0; }
+    }
+    @keyframes mudSplat {
+      0%   { transform: scale(0.4); opacity: 0; }
+      55%  { transform: scale(1.25, 0.75); opacity: 1; }
+      100% { transform: scale(1, 0.85); opacity: 1; }
+    }
+    @keyframes mudDissolve {
+      0%   { transform: scale(0.6); opacity: 0.9; filter: blur(0px); }
+      100% { transform: scale(2.4); opacity: 0; filter: blur(3px); }
+    }
+
     /* Beaver Speech Overlay */
     #beaver-dialogue {
       position: absolute;
@@ -368,6 +481,13 @@
       <div id="completion-banner">🎉 ダム完成！視点が切り替わり「大きな池」ができました！</div>
 
       <canvas id="simCanvas" width="920" height="500"></canvas>
+      <div id="anim-layer"></div>
+      <img id="beaver-carrier" src="" alt="">
+      <div id="orientation-popup">
+        <div class="orient-label">とがってる方はどっち？</div>
+        <button id="orient-btn-down" onclick="chooseOrientation(true)">⬇️ 下にする</button>
+        <button id="orient-btn-up" onclick="chooseOrientation(false)">⬆️ 上にする</button>
+      </div>
 
       <!-- Beaver Assistant Dialogue -->
       <div id="beaver-dialogue">
@@ -417,7 +537,7 @@
           🪵 太い枝
         </button>
 
-        <button class="tool-btn pointy-down" id="rotate-btn" onclick="toggleRotation()">
+        <button class="tool-btn pointy-down" id="rotate-btn" onclick="toggleRotation()" style="display:none;">
           🔄 むき: 尖った方【下 ⬇️】
         </button>
       </div>
@@ -569,6 +689,30 @@ let currentTool = 'branch';
 let isPointyDown = true; // true = Pointy Down (Correct), false = Pointy Up/Horizontal (Fail)
 let cameraView = 'SIDE'; // 'SIDE', 'TRANSITION', 'OVERVIEW'
 let transitionProgress = 0; // 0.0 (Side Cross-Section) to 1.0 (Isometric Top-Down Panoramic)
+
+// --- 材料を運ぶビーバー：状態管理 ---
+// 'idle'     = 誰も泳いでいない（材料ボタンを押すのを待っている）
+// 'swimming' = 上流から設置エリアに向かって泳いでいる最中（クリック不可）
+// 'arrived'  = 設置エリアに到着し、設置待ち（クリックで設置できる）
+let beaverCarryState = 'idle';
+let carryTool = null;          // 今運んでいる（運ぼうとしている）材料
+let carrySeq = 0;              // 連打・切り替え時に古いタイマーを無効化するための通し番号
+
+// 材料ごとの画像パス（img フォルダに用意してもらう透過PNG）
+const MATERIAL_IMAGES = {
+  branch: {
+    swim: 'img/beaver_swim_branch.png',
+    place_down: 'img/beaver_place_branch_down.png', // 尖った方が下
+    place_up:   'img/beaver_place_branch_up.png'    // 尖った方が上
+  },
+  twig:  { swim: 'img/beaver_swim_twig.png',  place: 'img/beaver_place_twig.png'  },
+  stone: { swim: 'img/beaver_swim_stone.png', place: 'img/beaver_place_stone.png' },
+  mud:   { swim: 'img/beaver_swim_mud.png',   place: 'img/beaver_place_mud.png'   }
+};
+
+// ビーバーが設置エリアに到着して待機する座標（設置エリアの目安地点）
+const CARRY_ARRIVE_X = 455;
+const CARRY_ARRIVE_Y = 260;
 
 // Dam Seal & Water Simulation State
 let damGrid = []; // Grid of dam zone to evaluate continuous sealing across depth/width
@@ -1058,7 +1202,10 @@ function drawMudSVG(x, y, scale, seed = 0, opacity = 1.0) {
 }
 
 // --- UI EVENT HANDLERS ---
+// 材料ボタンを押すと、即設置ではなく「ビーバーがその材料を運んで上流から泳いでくる」演出を開始する。
 function selectTool(tool) {
+  if (appMode !== 'MODE1' || cameraView !== 'SIDE' || isCompleted) return;
+
   currentTool = tool;
   sfxSelectTool();
   document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -1067,27 +1214,209 @@ function selectTool(tool) {
   document.getElementById('btn-' + tool).classList.add('active');
 
   const hints = {
-    branch: '太い枝を選んだよ！【むき】を確認して、尖った方を下にして川底に刺そう。',
-    twig: '小枝を選んだよ！太い枝の間に引っかけることで、水流を弱めることができるよ。',
-    stone: '石を選んだよ！小枝の上に置くことで、小枝が流されないように押さえつける重しになるよ。',
-    mud: '泥を選んだよ！枝と石の骨組みの「すき間」にぬり込んで、水をしっかりせき止めよう！'
+    branch: '太い枝を運んでくるよ！ビーバーが上流から泳いでくるのを待とう。',
+    twig: '小枝を運んでくるよ！太い枝の間に引っかけることで、水流を弱めることができるよ。',
+    stone: '石を運んでくるよ！小枝の上に置くことで、小枝が流されないように押さえつける重しになるよ。',
+    mud: '泥を運んでくるよ！枝と石の骨組みの「すき間」にぬり込んで、水をしっかりせき止めよう！'
   };
   speak(hints[tool]);
+
+  startCarryIn(tool);
+}
+
+// ビーバーが材料をくわえて／持って上流から泳いでくる演出を開始する
+function startCarryIn(tool) {
+  carrySeq++;
+  const seq = carrySeq;
+  carryTool = tool;
+  beaverCarryState = 'swimming';
+  hideOrientationPopup();
+
+  const imgEl = document.getElementById('beaver-carrier');
+  const cfg = MATERIAL_IMAGES[tool];
+
+  // 現在地から再スタート（既に途中まで泳いでいた場合はそこから続行）
+  const wasVisible = imgEl.style.display === 'block';
+  imgEl.style.transition = 'none';
+  if (!wasVisible) {
+    imgEl.style.left = '-160px';
+    imgEl.style.top = CARRY_ARRIVE_Y + 'px';
+  }
+  imgEl.src = cfg.swim;
+  imgEl.style.display = 'block';
+  imgEl.classList.add('swim-bob');
+  // transitionを一旦切ってから即座に戻すことで、位置リセットをアニメーションさせない
+  void imgEl.offsetWidth;
+  imgEl.style.transition = 'left 1.3s cubic-bezier(.42,0,.35,1), top 1.3s cubic-bezier(.42,0,.35,1)';
+
+  imgEl.onload = null;
+  imgEl.onerror = () => {
+    // png未配置でも動作確認できるよう、簡易プレースホルダーに差し替える
+    imgEl.style.background = '#5d4037';
+    imgEl.style.border = '3px dashed #ffe082';
+    imgEl.style.minHeight = '70px';
+  };
+
+  requestAnimationFrame(() => {
+    imgEl.style.left = CARRY_ARRIVE_X + 'px';
+    imgEl.style.top = CARRY_ARRIVE_Y + 'px';
+  });
+
+  clearTimeout(window.__carryArriveTimer);
+  window.__carryArriveTimer = setTimeout(() => {
+    if (seq !== carrySeq) return; // 途中で別の材料に切り替えられていたら無視
+    onCarrierArrived(tool);
+  }, 1350);
+}
+
+// ビーバーが設置エリアに到着したときの処理：ポーズ画像に切り替え、向き選択（枝のみ）を出す
+function onCarrierArrived(tool) {
+  beaverCarryState = 'arrived';
+  const imgEl = document.getElementById('beaver-carrier');
+  imgEl.classList.remove('swim-bob');
+  const cfg = MATERIAL_IMAGES[tool];
+
+  if (tool === 'branch') {
+    imgEl.src = isPointyDown ? cfg.place_down : cfg.place_up;
+    showOrientationPopup();
+    speak('太い枝を構えたよ！とがってる方を選んで、川底の刺したい場所をタップしよう。');
+  } else {
+    imgEl.src = cfg.place;
+    const arrivedHints = {
+      twig: '小枝を構えたよ！引っかけたい場所をタップしよう。',
+      stone: '石を構えたよ！重しにしたい場所をタップしよう。',
+      mud: '泥を構えたよ！塗り込みたいすき間をタップしよう。'
+    };
+    speak(arrivedHints[tool]);
+  }
+}
+
+// 向き選択ポップアップをビーバーの近くに表示する
+function showOrientationPopup() {
+  const popup = document.getElementById('orientation-popup');
+  popup.style.display = 'flex';
+  popup.style.left = (CARRY_ARRIVE_X + 70) + 'px';
+  popup.style.top = (CARRY_ARRIVE_Y - 70) + 'px';
+  updateOrientationButtons();
+}
+
+function hideOrientationPopup() {
+  document.getElementById('orientation-popup').style.display = 'none';
+}
+
+function updateOrientationButtons() {
+  document.getElementById('orient-btn-down').classList.toggle('chosen', isPointyDown);
+  document.getElementById('orient-btn-up').classList.toggle('chosen', !isPointyDown);
+}
+
+// ポップアップから向きを選ぶと、ビーバーが持つ枝のpngもその向きに差し替わる
+function chooseOrientation(pointyDown) {
+  isPointyDown = pointyDown;
+  sfxClick();
+  updateOrientationButtons();
+
+  const imgEl = document.getElementById('beaver-carrier');
+  const cfg = MATERIAL_IMAGES.branch;
+  if (beaverCarryState === 'arrived' && carryTool === 'branch') {
+    imgEl.src = isPointyDown ? cfg.place_down : cfg.place_up;
+  }
+
+  speak(isPointyDown
+    ? '「尖った方を下にすると、ザクッと川底に刺さるよ！」'
+    : '「平らな方を下にすると…川底に刺さるかな？試してみよう！」');
+}
+
+// 設置（成功／失敗）が確定したら、ビーバーは離脱してidleに戻る
+function retireCarrier() {
+  carrySeq++; // 進行中のtimeoutを無効化
+  beaverCarryState = 'idle';
+  carryTool = null;
+  hideOrientationPopup();
+  const imgEl = document.getElementById('beaver-carrier');
+  imgEl.style.left = '1040px'; // 画面外（下流方向）へ泳ぎ去る
+  clearTimeout(window.__carryRetireTimer);
+  window.__carryRetireTimer = setTimeout(() => {
+    imgEl.style.display = 'none';
+    imgEl.style.left = '-160px';
+  }, 900);
+}
+
+// --- 設置演出（刺さる／流される 等）をSVGアニメーションとして #anim-layer に差し込む ---
+function spawnMaterialAnim(tool, success, x, y) {
+  const layer = document.getElementById('anim-layer');
+  const wrap = document.createElement('div');
+  wrap.className = 'anim-piece';
+  wrap.style.left = x + 'px';
+  wrap.style.top = y + 'px';
+
+  let svg = '';
+  let animName = '';
+  let duration = 700;
+
+  if (tool === 'branch') {
+    if (success) {
+      const tip = isPointyDown ? '' : ''; // 見た目は共通、向きは既にビーバー側で表現済み
+      svg = `<svg width="20" height="70" viewBox="0 0 20 70" style="margin-left:-10px;margin-top:-60px;">
+        <rect x="6" y="0" width="8" height="70" rx="3" fill="#8d6e63" stroke="#4e342e" stroke-width="2"/>
+        <path d="M6,0 L14,0 L10,14 Z" fill="#4e342e"/>
+      </svg>`;
+      animName = 'branchStake'; duration = 550;
+    } else {
+      svg = `<svg width="70" height="16" viewBox="0 0 70 16" style="margin-left:-10px;margin-top:-8px;">
+        <rect x="0" y="4" width="70" height="8" rx="4" fill="#8d6e63" stroke="#4e342e" stroke-width="2"/>
+      </svg>`;
+      animName = 'branchFloat'; duration = 900;
+    }
+  } else if (tool === 'twig') {
+    if (success) {
+      svg = `<svg width="46" height="30" viewBox="0 0 46 30" style="margin-left:-23px;margin-top:-24px;">
+        <path d="M4,26 Q20,4 42,10" stroke="#a1887f" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M10,20 Q22,18 30,6" stroke="#8d6e63" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>`;
+      animName = 'twigSettle'; duration = 500;
+    } else {
+      svg = `<svg width="40" height="30" viewBox="0 0 40 30" style="margin-left:-20px;margin-top:-15px;">
+        <path d="M4,20 Q16,4 36,12" stroke="#a1887f" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>`;
+      animName = 'twigDrift'; duration = 850;
+    }
+  } else if (tool === 'stone') {
+    if (success) {
+      svg = `<svg width="42" height="34" viewBox="0 0 42 34" style="margin-left:-21px;margin-top:-30px;">
+        <ellipse cx="21" cy="18" rx="19" ry="14" fill="#78909c" stroke="#37474f" stroke-width="2"/>
+        <path d="M9,14 Q20,8 32,12" stroke="#cfd8dc" stroke-width="2" fill="none"/>
+      </svg>`;
+      animName = 'stoneDrop'; duration = 500;
+    } else {
+      svg = `<svg width="36" height="30" viewBox="0 0 36 30" style="margin-left:-18px;margin-top:-15px;">
+        <ellipse cx="18" cy="15" rx="16" ry="12" fill="#78909c" stroke="#37474f" stroke-width="2"/>
+      </svg>`;
+      animName = 'stoneSink'; duration = 650;
+    }
+  } else if (tool === 'mud') {
+    if (success) {
+      svg = `<svg width="44" height="30" viewBox="0 0 44 30" style="margin-left:-22px;margin-top:-20px;">
+        <ellipse cx="22" cy="16" rx="20" ry="12" fill="#4e342e" stroke="#271c19" stroke-width="2"/>
+        <circle cx="16" cy="14" r="2" fill="#6d4c41"/>
+        <circle cx="28" cy="18" r="2.4" fill="#3e2723"/>
+      </svg>`;
+      animName = 'mudSplat'; duration = 450;
+    } else {
+      svg = `<svg width="34" height="34" viewBox="0 0 34 34" style="margin-left:-17px;margin-top:-17px;">
+        <circle cx="17" cy="17" r="15" fill="#4e342e" opacity="0.7"/>
+      </svg>`;
+      animName = 'mudDissolve'; duration = 750;
+    }
+  }
+
+  wrap.innerHTML = svg;
+  wrap.style.animation = `${animName} ${duration}ms ease-out forwards`;
+  layer.appendChild(wrap);
+  setTimeout(() => wrap.remove(), duration + 60);
 }
 
 function toggleRotation() {
-  isPointyDown = !isPointyDown;
-  sfxClick();
-  const btn = document.getElementById('rotate-btn');
-  if (isPointyDown) {
-    btn.className = 'tool-btn pointy-down';
-    btn.innerHTML = '🔄 むき: 尖った方【下 ⬇️】';
-    speak('「尖った方を下にすると、ザクッと川底に刺さるよ！」');
-  } else {
-    btn.className = 'tool-btn pointy-up';
-    btn.innerHTML = '🔄 むき: 尖った方【上 ⬆️】';
-    speak('「平らな方を下にすると…川底に刺さるかな？試してみよう！」');
-  }
+  chooseOrientation(!isPointyDown);
 }
 
 let bubbleVisible = true; // ビーバーアイコンをクリックすると吹き出しの表示/非表示が切り替わる
@@ -1120,7 +1449,20 @@ function resetDam() {
   document.getElementById('completion-banner').classList.remove('show');
   document.getElementById('camera-mode-text').innerText = '断面（横から）';
   updateMetrics();
-  speak('川底はまだ浅いね。まずは「太い枝」の向き（尖った方を下）をそろえて、川底に刺そう！');
+
+  // 運搬ビーバーの状態もリセット
+  carrySeq++;
+  beaverCarryState = 'idle';
+  carryTool = null;
+  hideOrientationPopup();
+  const carrierEl = document.getElementById('beaver-carrier');
+  carrierEl.style.transition = 'none';
+  carrierEl.style.display = 'none';
+  carrierEl.style.left = '-160px';
+  carrierEl.classList.remove('swim-bob');
+  document.getElementById('anim-layer').innerHTML = '';
+
+  speak('川底はまだ浅いね。まずは「太い枝」ボタンを押して、ビーバーに運んできてもらおう！');
 }
 
 // 現在のモードに応じて、適切なリセット処理を呼び分ける
@@ -1137,6 +1479,18 @@ function resetCurrent() {
 function switchMode(mode) {
   appMode = mode;
   sfxModeSwitch();
+
+  if (mode !== 'MODE1') {
+    carrySeq++;
+    beaverCarryState = 'idle';
+    carryTool = null;
+    hideOrientationPopup();
+    const carrierEl = document.getElementById('beaver-carrier');
+    carrierEl.style.transition = 'none';
+    carrierEl.style.display = 'none';
+    carrierEl.style.left = '-160px';
+    carrierEl.classList.remove('swim-bob');
+  }
 
   document.getElementById('mode-btn-1').classList.toggle('active', mode === 'MODE1');
   document.getElementById('mode-btn-2').classList.toggle('active', mode === 'MODE2');
@@ -1168,6 +1522,14 @@ canvas.addEventListener('click', (e) => {
 
   if (cameraView !== 'SIDE' || isCompleted) return;
 
+  // ビーバーが材料を持って到着していない間は設置できない（泳いでいる最中 or 何も選んでいない）
+  if (beaverCarryState !== 'arrived' || carryTool !== currentTool) {
+    if (beaverCarryState === 'swimming') {
+      speak('ビーバーが泳いでくるのを待ってね！');
+    }
+    return;
+  }
+
   // Check if click is inside Dam Building Zone (x: 380 ~ 540, y: 220 ~ 430)
   if (clickX < 370 || clickX > 550 || clickY < 210 || clickY > 440) {
     sfxFail();
@@ -1179,15 +1541,11 @@ canvas.addEventListener('click', (e) => {
   if (currentTool === 'branch') {
     if (!isPointyDown) {
       // FAIL: Branch orientation is wrong (Pointy Up/Horizontal) -> Floats downstream!
-      activeParticles.push({
-        type: 'floating_log',
-        x: clickX, y: clickY,
-        vx: 3.5, vy: -0.5,
-        opacity: 1.0,
-        pointyDown: false
-      });
+      spawnMaterialAnim('branch', false, clickX, clickY);
       sfxFloatAway();
       speak('うわわっ！平らな面が下だと川底に刺さらず、水に押されて流されちゃった！');
+      retireCarrier();
+      calculateSealAndWater();
       return;
     }
 
@@ -1196,19 +1554,16 @@ canvas.addEventListener('click', (e) => {
     const isNearOtherLog = placedLogs.some(l => Math.hypot(l.x - clickX, l.y - clickY) < 45);
 
     if (!isNearBottom && !isNearOtherLog) {
-      activeParticles.push({
-        type: 'floating_log',
-        x: clickX, y: clickY,
-        vx: 4.0, vy: 0.5,
-        opacity: 1.0,
-        pointyDown: true
-      });
+      spawnMaterialAnim('branch', false, clickX, clickY);
       sfxFail();
       speak('宙に浮いた場所には設置できないよ！まずは川底に深々と刺そう！');
+      retireCarrier();
+      calculateSealAndWater();
       return;
     }
 
     // SUCCESS: Anchor log
+    spawnMaterialAnim('branch', true, clickX, clickY);
     placedLogs.push({ x: clickX, y: clickY, scale: 0.85 });
     markGrid(clickX, clickY, 'log');
     sfxPlaceLog();
@@ -1222,18 +1577,16 @@ canvas.addEventListener('click', (e) => {
 
     if (!hasLogSupport) {
       // FAIL: Twigs wash away without thick logs
-      activeParticles.push({
-        type: 'floating_twig',
-        x: clickX, y: clickY,
-        vx: 4.5, vy: 0,
-        opacity: 1.0
-      });
+      spawnMaterialAnim('twig', false, clickX, clickY);
       sfxFloatAway();
       speak('ああっ！太い枝の『柱』がない場所だと、小枝はあっという間に流されちゃう！');
+      retireCarrier();
+      calculateSealAndWater();
       return;
     }
 
     // SUCCESS
+    spawnMaterialAnim('twig', true, clickX, clickY);
     placedTwigs.push({ x: clickX, y: clickY, scale: 0.9 });
     markGrid(clickX, clickY, 'twig');
     sfxPlaceTwig();
@@ -1247,18 +1600,16 @@ canvas.addEventListener('click', (e) => {
 
     if (!hasTwigSupport) {
       // FAIL: Stone sinks directly to riverbed without securing twigs
-      activeParticles.push({
-        type: 'sinking_stone',
-        x: clickX, y: clickY,
-        targetY: 415,
-        opacity: 1.0
-      });
+      spawnMaterialAnim('stone', false, clickX, clickY);
       sfxSink();
       speak('ゴトン…石が底に沈んじゃった！石はただ置く（沈める）んじゃなくて、小枝を押さえる『重し』にするんだ！');
+      retireCarrier();
+      calculateSealAndWater();
       return;
     }
 
     // SUCCESS
+    spawnMaterialAnim('stone', true, clickX, clickY);
     placedStones.push({ x: clickX, y: clickY, scale: 0.85 });
     markGrid(clickX, clickY, 'stone');
     sfxPlaceStone();
@@ -1273,24 +1624,23 @@ canvas.addEventListener('click', (e) => {
 
     if (!hasStructure) {
       // FAIL: Mud dissolves into cloudy water
-      activeParticles.push({
-        type: 'dissolving_mud',
-        x: clickX, y: clickY,
-        radius: 10,
-        opacity: 1.0
-      });
+      spawnMaterialAnim('mud', false, clickX, clickY);
       sfxDissolve();
       speak('ジュワ〜…泥が溶けて流れて消えちゃった！枝と石で壁の骨組みを作ってから泥を塗ろう！');
+      retireCarrier();
+      calculateSealAndWater();
       return;
     }
 
     // SUCCESS
+    spawnMaterialAnim('mud', true, clickX, clickY);
     placedMud.push({ x: clickX, y: clickY, scale: 0.9, seed: Math.random() * 1000 });
     markGrid(clickX, clickY, 'mud');
     sfxPlaceMud();
     speak('すばらしい！泥が隙間を埋めて、水漏れがピタッと止まり始めたぞ！');
   }
 
+  retireCarrier();
   calculateSealAndWater();
 });
 
