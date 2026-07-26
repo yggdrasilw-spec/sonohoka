@@ -355,16 +355,50 @@ select{
   font-size:clamp(0.75rem,1.7vh,1.02rem);font-weight:800;color:#4a3728;text-align:center;
   margin-top:2px;
 }
-.trivia-box{
-  background:rgba(255,246,225,0.9);border:1.6px solid #f0d9a0;border-radius:12px;
-  padding:clamp(6px,1.2vh,12px) clamp(8px,1.4vw,14px);
-  font-size:clamp(0.58rem,1.25vh,0.76rem);color:#6b4f3c;line-height:1.6;font-weight:600;
-  display:flex;flex-direction:column;align-items:center;gap:8px;
-}
-.trivia-box.hidden{display:none;}
-.zodiac-wheel-wrap{width:100%;max-width:280px;aspect-ratio:1/1;}
-#zodiacClockCanvas{width:100%;height:100%;display:block;}
 .trivia-text{margin:0;text-align:left;}
+
+/* ---- 十二支ポップアップ（午前・午後の名前のひみつ） ---- */
+.trivia-overlay{
+  position:absolute;inset:0;z-index:38;
+  background:rgba(30,20,10,0.4);
+  display:flex;align-items:center;justify-content:center;
+  padding:clamp(10px,2vh,24px);
+}
+.trivia-overlay.hidden{display:none;}
+.trivia-card{
+  background:#fffef9;border-radius:20px;box-shadow:0 14px 44px rgba(0,0,0,0.3);
+  padding:clamp(14px,2.4vh,22px) clamp(16px,2.4vw,26px);
+  max-width:min(94vw,620px);max-height:92vh;overflow:auto;
+  display:flex;flex-direction:column;align-items:center;gap:clamp(6px,1.2vh,12px);
+  position:relative;
+}
+.trivia-card-title{
+  font-size:clamp(0.85rem,2vh,1.15rem);font-weight:800;color:#5c3d2e;text-align:center;
+}
+.trivia-close-btn{
+  position:absolute;top:10px;right:12px;
+  width:30px;height:30px;border-radius:50%;border:1.6px solid #d4c0a5;background:#fffefb;
+  font-size:1rem;cursor:pointer;color:#5c3d2e;display:flex;align-items:center;justify-content:center;
+}
+.trivia-close-btn:hover{background:#fff3e5;}
+.zodiac-wheel-wrap{width:100%;max-width:380px;}
+#zodiacClockCanvas{width:100%;height:auto;display:block;}
+.trivia-explain{width:100%;max-width:420px;display:flex;flex-direction:column;gap:6px;align-items:center;}
+.trivia-line{
+  margin:0;text-align:center;font-weight:700;color:#5c3d2e;
+  font-size:clamp(0.72rem,1.7vh,0.92rem);line-height:1.6;
+}
+.trivia-answer-btn{
+  margin-top:2px;padding:6px 16px;border-radius:14px;border:1.6px solid #f0d9a0;
+  background:#fff6e1;color:#a1651f;font-weight:800;font-family:inherit;
+  font-size:clamp(0.68rem,1.5vh,0.85rem);cursor:pointer;
+}
+.trivia-answer-btn:hover{background:#ffedc7;}
+.trivia-answer{
+  margin:0;text-align:center;font-weight:800;color:#c9631f;
+  font-size:clamp(0.72rem,1.7vh,0.92rem);
+}
+.trivia-answer.hidden{display:none;}
 
 /* ==== 時刻・時間クイズモード ==== */
 .quiz-row{flex:1 1 auto;min-height:0;display:flex;gap:clamp(10px,2vw,26px);align-items:center;}
@@ -652,7 +686,7 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
           <div class="reading-svg-wrapper">
             <svg viewBox="-55 -55 610 610" id="readingClockSvg" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <filter id="guideGlow" filterUnits="userSpaceOnUse" x="-300" y="-300" width="1100" height="1100">
+                <filter id="guideGlow" x="-120%" y="-120%" width="340%" height="340%">
                   <feGaussianBlur stdDeviation="3" result="blur"/>
                   <feFlood flood-color="#ffd54a" flood-opacity="0.95" result="color"/>
                   <feComposite in="color" in2="blur" operator="in" result="glowColor"/>
@@ -745,10 +779,6 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
             <div class="ampm-result" id="ampmResult">🌞 午前6時（朝）だよ</div>
           </div>
           <button class="guide-btn" id="ampmTriviaBtn">🤔 「午前・午後」の名前のひみつ</button>
-          <div class="trivia-box hidden" id="ampmTriviaBox">
-            <div class="zodiac-wheel-wrap"><canvas id="zodiacClockCanvas"></canvas></div>
-            <p class="trivia-text">昔の日本では、1日をぐるっと十二支（子・丑・寅…）で表していたよ。円の一番上が「子（ね）＝真夜中0時」、真下が「午（うま）＝正午12時」。この「午」を境にして、前を「午前」、後ろを「午後」と呼ぶようになったんだ。「午」の「前」と「後」で「午前・午後」なんだね！</p>
-          </div>
         </div>
       </div>
     </div>
@@ -829,6 +859,23 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
         </label>
       </div>
       <button class="settings-close" id="closeSettings">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ============ 十二支ポップアップ（午前・午後の名前のひみつ） ============ -->
+  <div class="trivia-overlay hidden" id="triviaOverlay">
+    <div class="trivia-card">
+      <button class="trivia-close-btn" id="triviaCloseBtn">✕</button>
+      <div class="trivia-card-title">🤔「午前・午後」の名前のひみつ</div>
+      <div class="zodiac-wheel-wrap"><canvas id="zodiacClockCanvas"></canvas></div>
+      <div class="trivia-explain">
+        <p class="trivia-line" style="color:#3a6b8a;">正午より前の12時間 → 「午前（ごぜん）」</p>
+        <p class="trivia-line" style="color:#a13d3d;">正午より後の12時間 → 「午後（ごご）」</p>
+        <p class="trivia-line">昔は時刻も十二支で表していたんだね。</p>
+        <p class="trivia-line">真夜中のことを「丑三つ時（うしみつどき）」と言ったりするよ。今の何時か分かる？</p>
+        <button class="trivia-answer-btn" id="triviaAnswerBtn">💡 こたえを見る</button>
+        <p class="trivia-answer hidden" id="triviaAnswerText">だいたい今の午前2時30分ごろ（丑の刻のまん中）のことだよ！</p>
+      </div>
     </div>
   </div>
 </div>
@@ -2255,7 +2302,8 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
     const sunGroup = document.getElementById('ampmSunGroup');
     const sunEmoji = document.getElementById('ampmSunEmoji');
     const triviaBtn = document.getElementById('ampmTriviaBtn');
-    const triviaBox = document.getElementById('ampmTriviaBox');
+    const triviaOverlay = document.getElementById('triviaOverlay');
+    const triviaCloseBtn = document.getElementById('triviaCloseBtn');
 
     // 円弧: 0時(40,220) -> 12時(200,60) -> 24時(360,220) の半円2つ
     function arcPoint(hour24){
@@ -2296,19 +2344,19 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
       const rad = deg*Math.PI/180;
       return { x: cx + r*Math.cos(rad), y: cy + r*Math.sin(rad) };
     }
-    let zodiacDrawn = false;
     function drawZodiacWheel(){
       const canvas = document.getElementById('zodiacClockCanvas');
       if (!canvas) return;
-      const cssSize = canvas.clientWidth || canvas.parentElement.clientWidth || 280;
+      const wrapW = canvas.clientWidth || canvas.parentElement.clientWidth || 340;
+      const S = wrapW;                 // 円のサイズの基準
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = cssSize*dpr;
-      canvas.height = cssSize*dpr;
+      canvas.width = S*dpr; canvas.height = S*dpr;
+      canvas.style.height = S+'px';
       const ctx = canvas.getContext('2d');
       ctx.setTransform(dpr,0,0,dpr,0,0);
-      ctx.clearRect(0,0,cssSize,cssSize);
+      ctx.clearRect(0,0,S,S);
 
-      const S=cssSize, cx=S/2, cy=S/2;
+      const cx=S/2, cy=S/2;
       const R=S*0.47, Rring=S*0.36, Rhour=S*0.415, Rzodiac=S*0.265, Rcenter=S*0.15;
 
       // 背景：上半分＝夜、下半分＝昼
@@ -2334,6 +2382,20 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
         ctx.strokeStyle='rgba(90,70,50,0.35)'; ctx.lineWidth=Math.max(1,S*0.004); ctx.stroke();
       }
 
+      // 「午」だけを扇形の枠で強調（塗りつぶしなし、11時〜13時の境目を結ぶ）
+      {
+        const a1 = hourToXY(11, R, cx, cy);
+        const startDeg = (11/24)*360 - 90;
+        const endDeg = (13/24)*360 - 90;
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.lineTo(a1.x,a1.y);
+        ctx.arc(cx,cy,R, startDeg*Math.PI/180, endDeg*Math.PI/180);
+        ctx.lineTo(cx,cy);
+        ctx.closePath();
+        ctx.strokeStyle='#ff7b42'; ctx.lineWidth=Math.max(2,S*0.012); ctx.stroke();
+      }
+
       // 時刻の数字（0〜23）
       ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.font = `700 ${Math.max(9,S*0.032)}px 'Zen Kaku Gothic New',sans-serif`;
@@ -2343,24 +2405,23 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
         ctx.fillText(String(h===0?24:h), p.x, p.y);
       }
 
-      // 干支アイコン＋漢字
+      // 干支アイコン＋漢字（「午」だけ文字色をオレンジに）
       ZODIAC.forEach(z=>{
-        const isKey = (z.hourCenter===0 || z.hourCenter===12);
+        const isUma = (z.hourCenter===12);
         const pEmoji = hourToXY(z.hourCenter, Rzodiac+S*0.06, cx, cy);
         const pKanji = hourToXY(z.hourCenter, Rzodiac-S*0.05, cx, cy);
-        if (isKey){
-          const pHi = hourToXY(z.hourCenter, Rzodiac, cx, cy);
-          ctx.beginPath(); ctx.arc(pHi.x,pHi.y,S*0.095,0,2*Math.PI);
-          ctx.fillStyle='rgba(255,123,66,0.22)'; ctx.fill();
-        }
         ctx.font = `${Math.max(12,S*0.062)}px sans-serif`;
         ctx.fillText(z.emoji, pEmoji.x, pEmoji.y);
         ctx.font = `800 ${Math.max(10,S*0.042)}px 'Zen Kaku Gothic New',sans-serif`;
-        ctx.fillStyle = isKey ? '#c9631f' : '#5c3d2e';
+        ctx.fillStyle = isUma ? '#c9631f' : '#5c3d2e';
         ctx.fillText(z.kanji, pKanji.x, pKanji.y);
       });
 
-      // 中心：夜／昼ラベル
+      // 中心：夜／昼ラベル（点線の円で囲む）
+      ctx.beginPath(); ctx.arc(cx,cy,Rcenter,0,2*Math.PI);
+      ctx.setLineDash([S*0.01,S*0.01]);
+      ctx.strokeStyle='#8b6f55'; ctx.lineWidth=Math.max(1,S*0.005); ctx.stroke();
+      ctx.setLineDash([]);
       ctx.font = `700 ${Math.max(9,S*0.034)}px 'Zen Kaku Gothic New',sans-serif`;
       ctx.fillStyle='#3a6b8a';
       ctx.fillText('夜', cx, cy-S*0.06);
@@ -2368,11 +2429,13 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
       ctx.fillText('昼', cx, cy+S*0.06);
       ctx.beginPath(); ctx.moveTo(cx-S*0.14,cy); ctx.lineTo(cx+S*0.14,cy);
       ctx.strokeStyle='#8b6f55'; ctx.lineWidth=1; ctx.stroke();
-
-      zodiacDrawn = true;
     }
+    let resizeTimer2=null;
     window.addEventListener('resize', ()=>{
-      if (!triviaBox.classList.contains('hidden')) drawZodiacWheel();
+      clearTimeout(resizeTimer2);
+      resizeTimer2=setTimeout(()=>{
+        if (!triviaOverlay.classList.contains('hidden')) drawZodiacWheel();
+      },120);
     });
 
     function update(){
@@ -2388,12 +2451,23 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
       resultEl.style.color = isAm ? '#3a6b8a' : '#a13d3d';
     }
     slider.addEventListener('input', update);
-    triviaBtn.addEventListener('click', ()=>{
-      triviaBox.classList.toggle('hidden');
-      if (!triviaBox.classList.contains('hidden')){
-        requestAnimationFrame(drawZodiacWheel);
-      }
+
+    function openTrivia(){
+      triviaOverlay.classList.remove('hidden');
+      requestAnimationFrame(drawZodiacWheel);
+    }
+    function closeTrivia(){
+      triviaOverlay.classList.add('hidden');
+    }
+    triviaBtn.addEventListener('click', openTrivia);
+    triviaCloseBtn.addEventListener('click', closeTrivia);
+    triviaOverlay.addEventListener('click', (e)=>{ if (e.target===triviaOverlay) closeTrivia(); });
+    const triviaAnswerBtn = document.getElementById('triviaAnswerBtn');
+    const triviaAnswerText = document.getElementById('triviaAnswerText');
+    triviaAnswerBtn.addEventListener('click', ()=>{
+      triviaAnswerText.classList.toggle('hidden');
     });
+
     function init(){ update(); }
     return { init };
   })();
