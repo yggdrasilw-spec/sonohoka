@@ -209,6 +209,7 @@
             align-items: center;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.03);
             height: 100%;
+            position: relative;
         }
         .card-container.has-custom-bg {
             border: none;
@@ -223,10 +224,31 @@
             max-height: 480px;
             align-content: center;
             justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 自由配置モード：グリッドをやめて、各マスをJSで指定した%位置・大きさに絶対配置する */
+        .stamp-grid.free-mode {
+            display: block;
+            max-height: none;
+        }
+        .stamp-grid.free-mode .stamp-slot {
+            position: absolute;
+        }
+
+        /* すごろくの道（二重線）を描くSVG。マスの下・背景の上に敷く */
+        .road-svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .stamp-slot {
-            background: rgba(0,0,0,0.03);
+            background-color: var(--panel-bg);
+            box-shadow: inset 0 0 0 999px rgba(0,0,0,0.03);
             border: 3px dashed rgba(0,0,0,0.15);
             border-radius: 18px;
             display: flex;
@@ -244,12 +266,14 @@
 
         .stamp-slot.active {
             border: 2px solid transparent;
-            background: rgba(255,255,255,0.8);
+            background-color: var(--panel-bg);
+            box-shadow: inset 0 0 0 999px rgba(255,255,255,0.8);
         }
 
         /* PNGが実際に読み込めたマスだけ、枠線・塗りを画像に置き換える（読み込めない場合は上の通常デザインのまま） */
         .stamp-slot.has-custom-bg {
             background-color: transparent;
+            box-shadow: none;
             background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
@@ -257,6 +281,7 @@
         }
         .stamp-slot.has-custom-bg.active {
             background-color: transparent;
+            box-shadow: none;
             border: none;
         }
 
@@ -640,6 +665,54 @@
         .album-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; max-height: 250px; overflow-y: auto; }
         .album-card-item { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; font-size: 12px; text-align: center; }
 
+        /* 自由配置エディタ */
+        .layout-editor-canvas {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #f7fafc;
+            border: 3px dashed #cbd5e0;
+            border-radius: 16px;
+            overflow: hidden;
+            touch-action: none;
+        }
+        .layout-road-svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        .layout-box {
+            position: absolute;
+            background: rgba(255,255,255,0.92);
+            border: 3px solid #4a5568;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            color: #2d3748;
+            cursor: grab;
+            touch-action: none;
+            box-sizing: border-box;
+        }
+        .layout-box.selected {
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49,130,206,0.3);
+        }
+        .layout-box .resize-handle {
+            position: absolute;
+            right: -9px;
+            bottom: -9px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3182ce;
+            border: 2px solid white;
+            cursor: nwse-resize;
+        }
+
         /* パターンB：ゴール達成オーバーレイ */
         .goal-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -684,6 +757,7 @@
         <div class="app-body">
             <!-- 左：スタンプ台紙 -->
             <div class="card-container">
+                <svg class="road-svg" id="road-svg"></svg>
                 <div class="stamp-grid" id="stamp-grid"></div>
             </div>
 
@@ -716,13 +790,6 @@
                     <div class="status-msg" id="status-msg">チェックを入れて スタンプを押してね</div>
                 </div>
             </div>
-        </div>
-
-        <!-- 最下部デバッグストリップ -->
-        <div class="debug-strip">
-            <span>[Chromebook 16:9 Fit]</span>
-            <button class="debug-btn-mini" onclick="simulateTomorrow()">☀️ 日付を1日進める</button>
-            <button class="debug-btn-mini" onclick="resetAllData()">🔄 初期化</button>
         </div>
 
         <!-- パターンB: ゴール達成オーバーレイ -->
@@ -766,6 +833,11 @@
                     <p style="font-weight:bold; color:#c53030; font-size:13px;">🏆 ゴール達成の確認</p>
                     <p style="font-size:11px; color:#4a5568; margin:4px 0 8px 0;">ご褒美を渡したら、新しいカードにリセットします。</p>
                     <button class="btn-m btn-m-pri" style="background:#38a169;" onclick="confirmCardReset()">🎁 ごほうびを渡して新カードにする</button>
+                </div>
+
+                <div class="form-row">
+                    <button type="button" class="btn-m btn-m-sec" style="width:100%;" onclick="openLayoutEditor()">📐 位置と大きさを自分で決める</button>
+                    <p id="layout-mode-hint" style="font-size:11px; color:#718096; margin-top:4px;"></p>
                 </div>
 
                 <div class="form-row">
@@ -818,9 +890,31 @@
                     </div>
                 </div>
 
+                <div class="form-row" style="background:#f7fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e0;">
+                    <label>管理者機能</label>
+                    <p style="font-size:11px; color:#718096; margin:2px 0 8px 0;">動作確認や、まる（サイクル）を終えて全部やり直したいときに使います。</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="debug-btn-mini" onclick="simulateTomorrow()">☀️ 日付を1日進める</button>
+                        <button class="debug-btn-mini" onclick="resetAllData()">🔄 全データを初期化</button>
+                    </div>
+                </div>
+
                 <div class="btn-row">
                     <button class="btn-m btn-m-sec" onclick="closeModal('parent-settings-overlay')">とじる</button>
                     <button class="btn-m btn-m-pri" onclick="saveParentSettings()">設定を保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- モーダル: 自由配置エディタ -->
+        <div class="modal-overlay" id="layout-editor-overlay">
+            <div class="modal-box" style="max-width: 900px; width: 95%;">
+                <div class="modal-title">📐 マスの位置と大きさを決める</div>
+                <p style="font-size: 12px; color: #718096; margin-bottom: 10px;">マスをドラッグして動かせます。右下の青い丸をドラッグすると大きさを変えられます（タブレットでは2本指のピンチでも大きさを変えられます）。すごろくの線は、マスの中心どうしを自動でつなぎます。</p>
+                <div id="layout-editor-canvas" class="layout-editor-canvas"></div>
+                <div class="btn-row">
+                    <button class="btn-m btn-m-sec" onclick="resetFreeLayoutToGrid()">🔲 グリッド配置に戻す</button>
+                    <button class="btn-m btn-m-pri" onclick="closeLayoutEditor()">保存して閉じる</button>
                 </div>
             </div>
         </div>
@@ -851,7 +945,9 @@
             customStampSize: 85,     // スタンプの大きさ（マスに対する割合 %）
             stampGallery: [],        // 設定で登録した複数のスタンプ画像（base64の配列）
             selectedStampSrc: null,  // 次に押す時に使うスタンプ（ギャラリー内のsrc）。nullならテーマ絵文字
-            stampRecord: []          // 実際に押されたマスごとの記録。押した瞬間に確定し、後から変わらない（ロック）
+            stampRecord: [],         // 実際に押されたマスごとの記録。押した瞬間に確定し、後から変わらない（ロック）
+            layoutMode: 'grid',      // 'grid'（整列）または 'free'（自由配置）
+            freeLayout: []           // 自由配置モードでの各マスの位置・大きさ（%）。[{x,y,w,h}, ...]
         };
 
         let quizAnswer = 0;
@@ -875,6 +971,8 @@
             updateUI();
             renderStampPicker();
         };
+
+        window.addEventListener('resize', () => { renderRoad(); });
 
         function saveData() {
             localStorage.setItem('chromebook_stamp_state', JSON.stringify(state));
@@ -1141,16 +1239,30 @@
         function renderCard() {
             const grid = document.getElementById('stamp-grid');
             grid.innerHTML = '';
-            grid.style.gridTemplateColumns = `repeat(5, 1fr)`;
 
             const emoji = themeEmojis[state.theme] || '🌸';
             const sizePercent = state.customStampSize || 85;
+
+            const isFree = state.layoutMode === 'free'
+                && Array.isArray(state.freeLayout)
+                && state.freeLayout.length === state.maxStamps;
+
+            grid.classList.toggle('free-mode', isFree);
+            grid.style.gridTemplateColumns = isFree ? '' : `repeat(5, 1fr)`;
 
             for (let i = 1; i <= state.maxStamps; i++) {
                 const slot = document.createElement('div');
                 const isGoal = (i === state.maxStamps);
                 slot.className = 'stamp-slot';
                 if (isGoal) slot.classList.add('goal-slot');
+
+                if (isFree) {
+                    const box = state.freeLayout[i - 1];
+                    slot.style.left = box.x + '%';
+                    slot.style.top = box.y + '%';
+                    slot.style.width = box.w + '%';
+                    slot.style.height = box.h + '%';
+                }
 
                 // 通常マス／最終マスそれぞれ、対応するPNGが実際に読み込めた場合だけ背景に反映する
                 const useCustomBg = isGoal ? themeImgOk.stampGoal : themeImgOk.stamp;
@@ -1196,7 +1308,90 @@
                         mark.style.height = diameter + 'px';
                     }
                 });
+                renderRoad();
             });
+        }
+
+        // すごろくの道（二重線）を、実際のマスの中心座標を測って描画する。
+        // グリッド配置・自由配置のどちらでも、DOM上の実際の位置から計算するので共通で使える。
+        function renderRoad() {
+            const svg = document.getElementById('road-svg');
+            const container = document.querySelector('.card-container');
+            if (!svg || !container) return;
+
+            const crect = container.getBoundingClientRect();
+            const w = crect.width, h = crect.height;
+            if (w <= 0 || h <= 0) return;
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            svg.innerHTML = '';
+
+            const slots = Array.from(document.querySelectorAll('#stamp-grid .stamp-slot'));
+            if (slots.length < 2) return;
+
+            const rects = slots.map(s => s.getBoundingClientRect());
+            const centers = rects.map(r => ({ x: r.left - crect.left + r.width / 2, y: r.top - crect.top + r.height / 2 }));
+            const avgH = rects.reduce((sum, r) => sum + r.height, 0) / rects.length;
+            const turnThreshold = avgH * 0.6; // これより縦にずれていたら「段が変わった」とみなす
+
+            const roadWidth = Math.max(8, Math.min(w, h) * 0.03);
+
+            for (let i = 0; i < centers.length - 1; i++) {
+                const a = centers[i], b = centers[i + 1];
+
+                // i番目のマス（1-indexで i+1）が達成済みなら、次のマスへの道が塗られる
+                const filled = state.stampsCount > i;
+
+                // 段（行）が変わる区間は、他のマスの上を斜めに横切らないよう、
+                // 段の間のすき間で直角に2回曲がる「カギ型」の道にする
+                const isRowChange = Math.abs(b.y - a.y) > turnThreshold;
+                let points;
+                if (isRowChange) {
+                    const midY = (a.y + b.y) / 2;
+                    points = [a, { x: a.x, y: midY }, { x: b.x, y: midY }, b];
+                } else {
+                    points = [a, b];
+                }
+
+                drawRoadPolyline(svg, points, filled, roadWidth);
+            }
+        }
+
+        // 道の折れ線（1本の場合はまっすぐ、複数点の場合はカギ型）を、太い土台＋二重線で描く。
+        // 折れ線全体を1本のpolylineにして角を丸く結合し、二重線（レール）は直線区間ごとに
+        // 進行方向に垂直な向きへオフセットして描く。
+        function drawRoadPolyline(svg, points, filled, roadWidth) {
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const bedColor = filled ? 'var(--primary-color)' : 'rgba(0,0,0,0.06)';
+            const lineColor = filled ? 'var(--accent-color)' : 'rgba(0,0,0,0.2)';
+
+            const bed = document.createElementNS(svgNS, 'polyline');
+            bed.setAttribute('points', points.map(p => `${p.x},${p.y}`).join(' '));
+            bed.setAttribute('fill', 'none');
+            bed.setAttribute('stroke', bedColor);
+            bed.setAttribute('stroke-width', roadWidth);
+            bed.setAttribute('stroke-linecap', 'round');
+            bed.setAttribute('stroke-linejoin', 'round');
+            svg.appendChild(bed);
+
+            const half = roadWidth / 2;
+            for (let i = 0; i < points.length - 1; i++) {
+                const a = points[i], b = points[i + 1];
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const len = Math.hypot(dx, dy) || 1;
+                const nx = -dy / len, ny = dx / len;
+
+                [-1, 1].forEach(sign => {
+                    const edge = document.createElementNS(svgNS, 'line');
+                    edge.setAttribute('x1', a.x + nx * half * sign);
+                    edge.setAttribute('y1', a.y + ny * half * sign);
+                    edge.setAttribute('x2', b.x + nx * half * sign);
+                    edge.setAttribute('y2', b.y + ny * half * sign);
+                    edge.setAttribute('stroke', lineColor);
+                    edge.setAttribute('stroke-width', 2);
+                    edge.setAttribute('stroke-linecap', 'round');
+                    svg.appendChild(edge);
+                });
+            }
         }
 
         function updateUI() {
@@ -1336,6 +1531,13 @@
             document.getElementById('cfg-stamp-size-val').innerText = state.customStampSize || 85;
             renderGalleryEditor();
 
+            const hint = document.getElementById('layout-mode-hint');
+            if (hint) {
+                hint.innerText = (state.layoutMode === 'free')
+                    ? '現在：自由配置モード（マス数を変えると位置は作り直されます）'
+                    : '現在：グリッド配置（整列）モード';
+            }
+
             const resetZone = document.getElementById('parent-reset-zone');
             if (lockContext === 'goal' || state.stampsCount >= state.maxStamps) {
                 resetZone.style.display = 'block';
@@ -1354,6 +1556,8 @@
 
             if (state.stampsCount > state.maxStamps) state.stampsCount = state.maxStamps;
             if (state.stampRecord.length > state.stampsCount) state.stampRecord.length = state.stampsCount;
+
+            if (state.layoutMode === 'free') ensureFreeLayout(state.maxStamps);
 
             saveData();
             renderCard();
@@ -1395,6 +1599,201 @@
                 state.stampsCount = next;
                 document.getElementById('cfg-count-disp').innerText = state.stampsCount;
             }
+        }
+
+        // --- 自由配置モード：位置と大きさをJS側で管理する ---
+
+        // マス数(n)に対応するfreeLayoutが無い/数が合わない場合、整列した初期配置を作り直す
+        function ensureFreeLayout(n) {
+            if (!Array.isArray(state.freeLayout)) state.freeLayout = [];
+            if (state.freeLayout.length === n) return;
+
+            const cols = Math.ceil(Math.sqrt(n));
+            const rows = Math.ceil(n / cols);
+            const cellW = 100 / cols, cellH = 100 / rows;
+            const boxW = cellW * 0.72, boxH = cellH * 0.72;
+
+            const arr = [];
+            for (let i = 0; i < n; i++) {
+                const col = i % cols, row = Math.floor(i / cols);
+                const cx = col * cellW + cellW / 2, cy = row * cellH + cellH / 2;
+                arr.push({ x: cx - boxW / 2, y: cy - boxH / 2, w: boxW, h: boxH });
+            }
+            state.freeLayout = arr;
+        }
+
+        function openLayoutEditor() {
+            const n = parseInt(document.getElementById('cfg-max-stamps').value, 10) || state.maxStamps;
+            ensureFreeLayout(n);
+            state.layoutMode = 'free';
+            state.maxStamps = n;
+            closeModal('parent-settings-overlay');
+            renderLayoutEditor();
+            document.getElementById('layout-editor-overlay').classList.add('open');
+        }
+
+        function resetFreeLayoutToGrid() {
+            if (confirm('自由配置をやめて、グリッド配置（整列）に戻しますか？')) {
+                state.layoutMode = 'grid';
+                saveData();
+                document.getElementById('layout-editor-overlay').classList.remove('open');
+                renderCard();
+                updateUI();
+            }
+        }
+
+        function closeLayoutEditor() {
+            saveData();
+            document.getElementById('layout-editor-overlay').classList.remove('open');
+            renderCard();
+            updateUI();
+        }
+
+        function renderLayoutEditor() {
+            const canvas = document.getElementById('layout-editor-canvas');
+            canvas.innerHTML = '<svg class="layout-road-svg" id="layout-road-svg"></svg>';
+
+            state.freeLayout.forEach((box, idx) => {
+                const el = document.createElement('div');
+                el.className = 'layout-box';
+                el.style.left = box.x + '%';
+                el.style.top = box.y + '%';
+                el.style.width = box.w + '%';
+                el.style.height = box.h + '%';
+                el.innerText = (idx + 1) === state.freeLayout.length ? (idx + 1) + ' 👑' : (idx + 1);
+
+                const handle = document.createElement('div');
+                handle.className = 'resize-handle';
+                el.appendChild(handle);
+
+                attachLayoutDrag(el, box, canvas);
+                attachLayoutResize(handle, box, el, canvas);
+                attachLayoutPinch(el, box, canvas);
+
+                canvas.appendChild(el);
+            });
+
+            requestAnimationFrame(() => renderLayoutRoad(canvas));
+        }
+
+        // 編集画面用の、点線ガイドとしてのすごろく線（中心どうしを直線でつなぐだけ）
+        function renderLayoutRoad(canvas) {
+            const svg = document.getElementById('layout-road-svg');
+            if (!svg) return;
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+            svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+            svg.innerHTML = '';
+
+            const centers = state.freeLayout.map(b => ({
+                x: (b.x + b.w / 2) / 100 * rect.width,
+                y: (b.y + b.h / 2) / 100 * rect.height
+            }));
+            const avgHpx = state.freeLayout.reduce((sum, b) => sum + (b.h / 100 * rect.height), 0) / state.freeLayout.length;
+            const turnThreshold = avgHpx * 0.6;
+
+            const svgNS = 'http://www.w3.org/2000/svg';
+            for (let i = 0; i < centers.length - 1; i++) {
+                const a = centers[i], b = centers[i + 1];
+                const isRowChange = Math.abs(b.y - a.y) > turnThreshold;
+                const pts = isRowChange
+                    ? [a, { x: a.x, y: (a.y + b.y) / 2 }, { x: b.x, y: (a.y + b.y) / 2 }, b]
+                    : [a, b];
+
+                const line = document.createElementNS(svgNS, 'polyline');
+                line.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
+                line.setAttribute('fill', 'none');
+                line.setAttribute('stroke', '#a0aec0');
+                line.setAttribute('stroke-width', 3);
+                line.setAttribute('stroke-linejoin', 'round');
+                line.setAttribute('stroke-dasharray', '6,5');
+                svg.appendChild(line);
+            }
+        }
+
+        // ドラッグで移動（マウス・タッチ共通のPointer Eventsを使用）
+        function attachLayoutDrag(el, box, canvas) {
+            let start = null;
+            el.addEventListener('pointerdown', (e) => {
+                if (e.target.classList.contains('resize-handle')) return;
+                e.preventDefault();
+                document.querySelectorAll('.layout-box').forEach(b => b.classList.remove('selected'));
+                el.classList.add('selected');
+                el.setPointerCapture(e.pointerId);
+                const rect = canvas.getBoundingClientRect();
+                start = { pointerId: e.pointerId, px: e.clientX, py: e.clientY, bx: box.x, by: box.y, rw: rect.width, rh: rect.height };
+            });
+            el.addEventListener('pointermove', (e) => {
+                if (!start || e.pointerId !== start.pointerId) return;
+                const dxPct = (e.clientX - start.px) / start.rw * 100;
+                const dyPct = (e.clientY - start.py) / start.rh * 100;
+                box.x = Math.min(100 - box.w, Math.max(0, start.bx + dxPct));
+                box.y = Math.min(100 - box.h, Math.max(0, start.by + dyPct));
+                el.style.left = box.x + '%';
+                el.style.top = box.y + '%';
+                renderLayoutRoad(canvas);
+            });
+            const end = (e) => { if (start && e.pointerId === start.pointerId) start = null; };
+            el.addEventListener('pointerup', end);
+            el.addEventListener('pointercancel', end);
+        }
+
+        // 右下ハンドルのドラッグで大きさを変える
+        function attachLayoutResize(handle, box, el, canvas) {
+            let start = null;
+            handle.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handle.setPointerCapture(e.pointerId);
+                const rect = canvas.getBoundingClientRect();
+                start = { pointerId: e.pointerId, px: e.clientX, py: e.clientY, bw: box.w, bh: box.h, rw: rect.width, rh: rect.height };
+            });
+            handle.addEventListener('pointermove', (e) => {
+                if (!start || e.pointerId !== start.pointerId) return;
+                e.stopPropagation();
+                const dwPct = (e.clientX - start.px) / start.rw * 100;
+                const dhPct = (e.clientY - start.py) / start.rh * 100;
+                box.w = Math.max(6, Math.min(100 - box.x, start.bw + dwPct));
+                box.h = Math.max(6, Math.min(100 - box.y, start.bh + dhPct));
+                el.style.width = box.w + '%';
+                el.style.height = box.h + '%';
+                renderLayoutRoad(canvas);
+            });
+            const end = (e) => { if (start && e.pointerId === start.pointerId) { e.stopPropagation(); start = null; } };
+            handle.addEventListener('pointerup', end);
+            handle.addEventListener('pointercancel', end);
+        }
+
+        // 2本指ピンチで、選択中のマスの大きさを変える（タブレット向け）
+        function attachLayoutPinch(el, box, canvas) {
+            let pinchStart = null;
+            el.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const [t1, t2] = e.touches;
+                    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    pinchStart = { dist, bw: box.w, bh: box.h, cx: box.x + box.w / 2, cy: box.y + box.h / 2 };
+                }
+            }, { passive: false });
+            el.addEventListener('touchmove', (e) => {
+                if (pinchStart && e.touches.length === 2) {
+                    e.preventDefault();
+                    const [t1, t2] = e.touches;
+                    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    const scale = dist / (pinchStart.dist || 1);
+                    const nw = Math.max(6, Math.min(60, pinchStart.bw * scale));
+                    const nh = Math.max(6, Math.min(60, pinchStart.bh * scale));
+                    box.w = nw; box.h = nh;
+                    box.x = Math.min(100 - box.w, Math.max(0, pinchStart.cx - nw / 2));
+                    box.y = Math.min(100 - box.h, Math.max(0, pinchStart.cy - nh / 2));
+                    el.style.left = box.x + '%'; el.style.top = box.y + '%';
+                    el.style.width = box.w + '%'; el.style.height = box.h + '%';
+                    renderLayoutRoad(canvas);
+                }
+            }, { passive: false });
+            const end = () => { pinchStart = null; };
+            el.addEventListener('touchend', end);
+            el.addEventListener('touchcancel', end);
         }
 
         function openAlbumModal() {

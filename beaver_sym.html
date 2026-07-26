@@ -373,6 +373,47 @@
     }
     .action-btn:hover { background: #607d8b; }
 
+    .family-btn {
+      background: linear-gradient(180deg, #6d4c41 0%, #4e342e 100%);
+      border: 1px solid #a1887f;
+    }
+    .family-btn:hover { background: #795548; }
+    .family-btn.family-active {
+      background: linear-gradient(180deg, #ef6c00 0%, #e65100 100%);
+      border-color: #ffcc80;
+      box-shadow: 0 0 10px rgba(255, 152, 0, 0.6);
+      animation: familyPulse 1s ease-in-out infinite;
+    }
+    @keyframes familyPulse {
+      0%, 100% { box-shadow: 0 0 6px rgba(255, 152, 0, 0.5); }
+      50%      { box-shadow: 0 0 16px rgba(255, 152, 0, 0.9); }
+    }
+
+    /* --- 家族ビーバー（自動モードで複数同時に泳ぐ）--- */
+    .family-beaver {
+      position: absolute;
+      left: -160px;
+      top: 260px;
+      width: 96px;
+      height: auto;
+      transform: translateY(-50%) scaleX(var(--face, 1));
+      pointer-events: none;
+      z-index: 14;
+      display: none;
+      filter: drop-shadow(0 5px 7px rgba(0,0,0,0.45));
+      transition: left 1.3s cubic-bezier(.42,0,.35,1), top 1.3s cubic-bezier(.42,0,.35,1);
+    }
+    .family-beaver.swim-bob {
+      animation: beaverBob 0.5s ease-in-out infinite;
+    }
+
+    /* ツールバーを一時的に触れなくする（家族が自動で作業中） */
+    #toolbar-mode1.toolbar-disabled {
+      opacity: 0.45;
+      pointer-events: none;
+      filter: grayscale(0.4);
+    }
+
     /* Completion Overlay Screen */
     #completion-banner {
       position: absolute;
@@ -493,6 +534,8 @@
           <span class="metric-title">カメラ視点:</span>
           <span id="camera-mode-text" class="metric-value" style="color:#ffe082;">断面（横から）</span>
         </div>
+
+        <button class="action-btn family-btn" id="family-btn" onclick="toggleFamilyMode()">👪 家族を呼ぶ</button>
       </div>
 
       <div id="status-mode2" style="display:none; gap:14px; align-items:center; flex-wrap:wrap;">
@@ -1468,6 +1511,290 @@ function toggleRotation() {
   chooseOrientation(!isPointyDown);
 }
 
+// ============================================================
+// 「家族を呼ぶ」自動モード：手動だと終わらないので、複数のビーバー(最大5匹)が
+// 同時に上流から泳いできて、材料を運んで自動で設置し続けてくれる。
+// ============================================================
+const FAMILY_LANE_COUNT = 5;
+// レーンごとの縦方向オフセット（画像が重ならないようにY方向をずらす）
+const FAMILY_LANE_OFFSETS = [-104, -52, 0, 52, 104];
+// レーンごとに担当するX位置（ダム設置エリア内、横方向にも重ならないよう分散）
+const FAMILY_LANE_X = [388, 424, 460, 496, 532];
+
+let familyModeActive = false;
+let familyLanes = []; // { el, offset, x, tasks:[], busy:false }
+
+// ダム設置エリアを縦・横に隙間なく埋めるための設置計画を、レーン(＝列)ごとに作る。
+// 太い枝は「川底付近(y>=350)」から積み上げ、隣の材料に密着させることで
+// クリック判定(近くに支えがあるか)を必ず満たすようにしている。
+// ※ここでの座標はあくまで「基準位置」。実際に置くときは familyJitteredPlacement が
+//   ランダムにズラした位置をまず試すので、毎回少しずつ違う場所に置かれる。
+function shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildFamilyColumnPlan() {
+  const rowsBottomToTop = [395, 365, 335, 305, 275, 245];
+  return FAMILY_LANE_X.map(x => {
+    const tasks = [];
+    // 枝は上下の依存関係があるので順番はそのまま(下から上へ)
+    rowsBottomToTop.forEach(y => tasks.push({ tool: 'branch', x, y }));
+    // 小枝・石・泥は同じ場所同士の依存関係がないので、置く順をシャッフルして単調さをなくす
+    shuffleArray(rowsBottomToTop).forEach(y => tasks.push({ tool: 'twig', x, y }));
+    shuffleArray(rowsBottomToTop).forEach(y => tasks.push({ tool: 'stone', x, y }));
+    shuffleArray(rowsBottomToTop).forEach(y => tasks.push({ tool: 'mud', x, y }));
+    return tasks;
+  });
+}
+
+function ensureFamilyBeaverEls() {
+  if (familyLanes.length) return;
+  const container = document.getElementById('viewport-inner');
+  for (let i = 0; i < FAMILY_LANE_COUNT; i++) {
+    const img = document.createElement('img');
+    img.className = 'family-beaver';
+    img.id = 'family-beaver-' + i;
+    img.alt = '';
+    img.style.display = 'none';
+    img.onerror = () => {
+      img.style.background = '#5d4037';
+      img.style.border = '3px dashed #ffe082';
+      img.style.minHeight = '52px';
+    };
+    container.appendChild(img);
+    familyLanes.push({ el: img, offset: FAMILY_LANE_OFFSETS[i], x: FAMILY_LANE_X[i], tasks: [], busy: false });
+  }
+}
+
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+// 家族ビーバーが上流(画面外左)から泳いできて、設置エリア手前で構えるまで
+function familySwimIn(lane, tool) {
+  return new Promise(resolve => {
+    const cfg = MATERIAL_IMAGES[tool];
+    const el = lane.el;
+    const wobble = Math.random() * 16 - 8; // 毎回ちょっとだけ高さが変わる自然なゆらぎ
+    const arriveY = getCarrierArriveY() + lane.offset + wobble;
+    const startY = getSurfaceYAtX(0) + lane.offset + wobble;
+
+    el.style.setProperty('--face', '1'); // 右向き(下流方向)へ泳ぐ
+    el.style.transition = 'none';
+    el.style.left = '-160px';
+    el.style.top = startY + 'px';
+    el.src = cfg.swim;
+    el.style.display = 'block';
+    el.classList.add('swim-bob');
+    void el.offsetWidth;
+    el.style.transition = 'left 1.3s cubic-bezier(.42,0,.35,1), top 1.3s cubic-bezier(.42,0,.35,1)';
+
+    requestAnimationFrame(() => {
+      el.style.left = CARRY_ARRIVE_X + 'px';
+      el.style.top = arriveY + 'px';
+    });
+
+    setTimeout(() => {
+      el.classList.remove('swim-bob');
+      if (tool === 'branch') {
+        isPointyDown = true; // 自動モードは常に正しい向き(尖った方を下)で構える
+        el.src = cfg.place_down;
+      } else {
+        el.src = cfg.place;
+      }
+      resolve();
+    }, 1350);
+  });
+}
+
+// 設置し終えたら、上流(画面外左)へ泳ぎ去って戻っていく
+function familySwimOut(lane) {
+  return new Promise(resolve => {
+    const el = lane.el;
+    el.style.setProperty('--face', '-1'); // 上流(左)へ向きを反転
+    el.style.top = (getSurfaceYAtX(0) + lane.offset) + 'px';
+    el.style.left = '-160px';
+    setTimeout(() => {
+      el.style.display = 'none';
+      el.style.setProperty('--face', '1');
+      resolve();
+    }, 950);
+  });
+}
+
+// 手動クリック時と同じ成立条件で、指定座標に材料を設置する(自動モード用)
+function familyAttemptPlacement(tool, x, y) {
+  let ok = false;
+  if (tool === 'branch') {
+    const isNearBottom = (y >= 350);
+    const isNearOtherLog = placedLogs.some(l => Math.hypot(l.x - x, l.y - y) < 45);
+    if (isNearBottom || isNearOtherLog) {
+      spawnMaterialAnim('branch', true, x, y);
+      placedLogs.push({ x, y, scale: 0.78 + Math.random() * 0.16 });
+      markGrid(x, y, 'log');
+      sfxPlaceLog();
+      ok = true;
+    }
+  } else if (tool === 'twig') {
+    const hasLogSupport = placedLogs.some(l => Math.hypot(l.x - x, l.y - y) < 65);
+    if (hasLogSupport) {
+      spawnMaterialAnim('twig', true, x, y);
+      placedTwigs.push({ x, y, scale: 0.8 + Math.random() * 0.2 });
+      markGrid(x, y, 'twig');
+      sfxPlaceTwig();
+      ok = true;
+    }
+  } else if (tool === 'stone') {
+    const hasTwigSupport = placedTwigs.some(t => Math.hypot(t.x - x, t.y - y) < 45);
+    if (hasTwigSupport) {
+      spawnMaterialAnim('stone', true, x, y);
+      placedStones.push({ x, y, scale: 0.75 + Math.random() * 0.2 });
+      markGrid(x, y, 'stone');
+      sfxPlaceStone();
+      ok = true;
+    }
+  } else if (tool === 'mud') {
+    const hasStructure = placedTwigs.some(t => Math.hypot(t.x - x, t.y - y) < 50) &&
+                          placedStones.some(s => Math.hypot(s.x - x, s.y - y) < 55);
+    if (hasStructure) {
+      spawnMaterialAnim('mud', true, x, y);
+      placedMud.push({ x, y, scale: 0.8 + Math.random() * 0.25, seed: Math.random() * 1000 });
+      markGrid(x, y, 'mud');
+      sfxPlaceMud();
+      ok = true;
+    }
+  }
+  calculateSealAndWater();
+  return ok;
+}
+
+// ランダムに位置をズラしながら設置を試み、成立条件(距離判定など)を満たす場所が
+// 見つかったらそこに置く。生き物が運んでいるような「ちょっとした不揃い感」を出すため。
+// ダメなら少しずつジッターを弱めて再挑戦し、最後は基準位置ぴったりで確実に置く。
+function familyJitteredPlacement(tool, baseX, baseY) {
+  // 材料ごとに許容できるジッター幅を変える(依存判定の距離しきい値より十分小さくする)
+  const JITTER = { branch: { x: 16, y: 9 }, twig: { x: 20, y: 16 }, stone: { x: 16, y: 14 }, mud: { x: 18, y: 15 } };
+  const j = JITTER[tool] || { x: 14, y: 12 };
+  const ATTEMPTS = 5;
+
+  for (let i = 0; i < ATTEMPTS; i++) {
+    const shrink = 1 - i / ATTEMPTS; // 失敗するたびジッターを弱めて成功しやすくする
+    const x = baseX + (Math.random() * 2 - 1) * j.x * shrink;
+    const y = baseY + (Math.random() * 2 - 1) * j.y * shrink;
+    if (familyAttemptPlacement(tool, x, y)) return true;
+  }
+  // 最終手段：基準位置ぴったりに置く(設計上ほぼ確実に成立する)
+  return familyAttemptPlacement(tool, baseX, baseY);
+}
+
+// 1匹のレーンが「泳いでくる→設置する→帰る」をタスクがなくなるまで繰り返す
+async function runFamilyLane(idx) {
+  const lane = familyLanes[idx];
+  if (lane.busy) return;
+  lane.busy = true;
+
+  while (familyModeActive && lane.tasks.length && !isCompleted) {
+    const task = lane.tasks.shift();
+    await familySwimIn(lane, task.tool);
+
+    if (!familyModeActive || isCompleted) {
+      await familySwimOut(lane);
+      break;
+    }
+
+    familyJitteredPlacement(task.tool, task.x, task.y);
+    await sleep(260 + Math.random() * 180);
+    await familySwimOut(lane);
+    await sleep(90 + Math.random() * 150 + idx * 20);
+  }
+
+  lane.busy = false;
+  checkFamilyAllDone();
+}
+
+function checkFamilyAllDone() {
+  if (!familyModeActive) return;
+  const allDone = familyLanes.every(l => !l.busy && l.tasks.length === 0);
+  if (allDone || isCompleted) {
+    endFamilyMode(!isCompleted);
+  }
+}
+
+function setManualToolsEnabled(enabled) {
+  document.getElementById('toolbar-mode1').classList.toggle('toolbar-disabled', !enabled);
+}
+
+function toggleFamilyMode() {
+  if (appMode !== 'MODE1' || cameraView !== 'SIDE' || isCompleted) return;
+  if (familyModeActive) {
+    endFamilyMode(false);
+  } else {
+    startFamilyMode();
+  }
+}
+
+function startFamilyMode() {
+  ensureFamilyBeaverEls();
+  familyModeActive = true;
+
+  const plan = buildFamilyColumnPlan();
+  familyLanes.forEach((lane, i) => { lane.tasks = plan[i].slice(); });
+
+  const btn = document.getElementById('family-btn');
+  btn.textContent = '⏹ 家族を家に帰す';
+  btn.classList.add('family-active');
+  setManualToolsEnabled(false);
+  hideOrientationPopup();
+
+  speak('家族のビーバーたちが手伝いに来てくれたよ！上流からみんなで一気に運んでくるよ！');
+
+  familyLanes.forEach((lane, i) => {
+    setTimeout(() => runFamilyLane(i), i * 260);
+  });
+}
+
+// stillWorking=true の場合は「まだタスクは残っているが呼び戻す(手動に戻す)」、
+// false の場合は「全て運び終わったので静かに終了する」ケースも兼ねる
+function endFamilyMode(stillWorking) {
+  familyModeActive = false;
+  familyLanes.forEach(lane => { lane.tasks = []; });
+
+  const btn = document.getElementById('family-btn');
+  btn.textContent = '👪 家族を呼ぶ';
+  btn.classList.remove('family-active');
+  setManualToolsEnabled(true);
+
+  if (isCompleted) {
+    // 完成演出は calculateSealAndWater 側のセリフに任せる
+  } else if (stillWorking) {
+    speak('家族のビーバーたちはおうちに帰ったよ。続きは自分の手で仕上げよう！');
+  } else {
+    speak('家族のビーバーたちの手伝いが一段落したよ！');
+  }
+}
+
+function resetFamilyMode() {
+  familyModeActive = false;
+  familyLanes.forEach(lane => {
+    lane.tasks = [];
+    lane.busy = false;
+    lane.el.style.transition = 'none';
+    lane.el.style.display = 'none';
+    lane.el.style.left = '-160px';
+    lane.el.style.setProperty('--face', '1');
+    lane.el.classList.remove('swim-bob');
+  });
+  const btn = document.getElementById('family-btn');
+  if (btn) {
+    btn.textContent = '👪 家族を呼ぶ';
+    btn.classList.remove('family-active');
+  }
+  setManualToolsEnabled(true);
+}
+
 let bubbleVisible = true; // ビーバーアイコンをクリックすると吹き出しの表示/非表示が切り替わる
 
 function speak(text) {
@@ -1481,6 +1808,7 @@ function toggleBeaverBubble() {
 }
 
 function resetDam() {
+  resetFamilyMode();
   placedLogs = [];
   placedTwigs = [];
   placedStones = [];
@@ -1541,6 +1869,7 @@ function switchMode(mode) {
     carrierEl.style.left = '-160px';
     carrierEl.style.setProperty('--face', '1');
     carrierEl.classList.remove('swim-bob');
+    resetFamilyMode();
   }
 
   document.getElementById('mode-btn-1').classList.toggle('active', mode === 'MODE1');
