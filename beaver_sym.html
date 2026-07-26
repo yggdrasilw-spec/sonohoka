@@ -1559,14 +1559,19 @@ function shuffleArray(arr) {
 
 function buildFamilyColumnPlan() {
   const rowsBottomToTop = [395, 365, 335, 305, 275, 245];
+  // 「太い枝を数本→小枝→石→泥→また太い枝を数本…」と、層ごとに交互に積み上げる
+  const BRANCH_BATCH_SIZE = 2;
   return FAMILY_LANE_X.map(x => {
     const tasks = [];
-    // 枝は上下の依存関係があるので順番はそのまま(下から上へ)
-    rowsBottomToTop.forEach(y => tasks.push({ tool: 'branch', x, y }));
-    // 小枝・石・泥は同じ場所同士の依存関係がないので、置く順をシャッフルして単調さをなくす
-    shuffleArray(rowsBottomToTop).forEach(y => tasks.push({ tool: 'twig', x, y }));
-    shuffleArray(rowsBottomToTop).forEach(y => tasks.push({ tool: 'stone', x, y }));
-    shuffleArray(rowsBottomToTop).forEach(y => tasks.push({ tool: 'mud', x, y }));
+    for (let i = 0; i < rowsBottomToTop.length; i += BRANCH_BATCH_SIZE) {
+      const batchRows = rowsBottomToTop.slice(i, i + BRANCH_BATCH_SIZE);
+      // 枝は上下の依存関係があるので順番はそのまま(下から上へ)
+      batchRows.forEach(y => tasks.push({ tool: 'branch', x, y }));
+      // 小枝・石・泥は同じ場所同士の依存関係がないので、置く順をシャッフルして単調さをなくす
+      shuffleArray(batchRows).forEach(y => tasks.push({ tool: 'twig', x, y }));
+      shuffleArray(batchRows).forEach(y => tasks.push({ tool: 'stone', x, y }));
+      shuffleArray(batchRows).forEach(y => tasks.push({ tool: 'mud', x, y }));
+    }
     return tasks;
   });
 }
