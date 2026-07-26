@@ -102,7 +102,7 @@
       top: 260px;
       width: 130px;
       height: auto;
-      transform: translateY(-50%);
+      transform: translateY(-50%) scaleX(var(--face, 1));
       pointer-events: none;
       z-index: 15;
       display: none;
@@ -113,8 +113,8 @@
       animation: beaverBob 0.5s ease-in-out infinite;
     }
     @keyframes beaverBob {
-      0%, 100% { transform: translateY(-50%) rotate(-2deg); }
-      50%      { transform: translateY(-46%) rotate(2deg); }
+      0%, 100% { transform: translateY(-50%) scaleX(var(--face, 1)) rotate(-2deg); }
+      50%      { transform: translateY(-46%) scaleX(var(--face, 1)) rotate(2deg); }
     }
 
     /* --- 向き選択ポップアップ --- */
@@ -131,6 +131,7 @@
       padding: 10px;
       box-shadow: 0 6px 18px rgba(0,0,0,0.5);
       animation: popIn 0.25s ease-out;
+      pointer-events: none; /* ポップアップの背景部分はCanvasへのクリックを妨げない */
     }
     @keyframes popIn {
       0%   { transform: scale(0.6); opacity: 0; }
@@ -152,6 +153,7 @@
       color: #fff8e1;
       cursor: pointer;
       white-space: nowrap;
+      pointer-events: auto;
     }
     #orientation-popup button.chosen {
       background: #ff9800;
@@ -710,9 +712,11 @@ const MATERIAL_IMAGES = {
   mud:   { swim: 'img/beaver_swim_mud.png',   place: 'img/beaver_place_mud.png'   }
 };
 
-// ビーバーが設置エリアに到着して待機する座標（設置エリアの目安地点）
-const CARRY_ARRIVE_X = 455;
-const CARRY_ARRIVE_Y = 260;
+// ビーバーが設置エリアに到着して待機するX座標は、DAM_ZONE_LEFTの宣言後に別途定義する（下記参照）
+// 縦方向は固定値ではなく、その時点の「上流側の水面」に中心を合わせる
+function getCarrierArriveY() {
+  return getSurfaceYAtX(CARRY_ARRIVE_X);
+}
 
 // Dam Seal & Water Simulation State
 let damGrid = []; // Grid of dam zone to evaluate continuous sealing across depth/width
@@ -737,6 +741,8 @@ const BASE_WATER_DEPTH = 40;      // 初期水深（左右とも同じ、まだ�
 const MAX_UPSTREAM_DEPTH = 170;   // 上流（左）が満水になった時の最大水深
 const MIN_DOWNSTREAM_DEPTH = 8;   // 下流（右）が干上がる寸前の最小水深
 const DAM_ZONE_LEFT = 370;        // ダム設置エリアの左端（この左側は完全に上流）
+// ビーバーが材料を持って待機するX座標（ダム設置エリアのすぐ左＝上流側）
+const CARRY_ARRIVE_X = DAM_ZONE_LEFT - 30;
 const DAM_ZONE_RIGHT = 540;       // ダム設置エリアの右端（この右側は完全に下流）
 const GROUND_LEFT_BASE_Y = 410;   // 上流側の川底の基準Y
 const GROUND_RIGHT_BASE_Y = 420;  // 下流側の川底の基準Y
@@ -1234,13 +1240,18 @@ function startCarryIn(tool) {
 
   const imgEl = document.getElementById('beaver-carrier');
   const cfg = MATERIAL_IMAGES[tool];
+  const arriveY = getCarrierArriveY();
+  const startY = getSurfaceYAtX(0); // 上流の水面の高さ（画面外の出現位置に合わせる）
+
+  // 泳いでくる向き（右向き）にする
+  imgEl.style.setProperty('--face', '1');
 
   // 現在地から再スタート（既に途中まで泳いでいた場合はそこから続行）
   const wasVisible = imgEl.style.display === 'block';
   imgEl.style.transition = 'none';
   if (!wasVisible) {
     imgEl.style.left = '-160px';
-    imgEl.style.top = CARRY_ARRIVE_Y + 'px';
+    imgEl.style.top = startY + 'px';
   }
   imgEl.src = cfg.swim;
   imgEl.style.display = 'block';
@@ -1259,7 +1270,7 @@ function startCarryIn(tool) {
 
   requestAnimationFrame(() => {
     imgEl.style.left = CARRY_ARRIVE_X + 'px';
-    imgEl.style.top = CARRY_ARRIVE_Y + 'px';
+    imgEl.style.top = arriveY + 'px';
   });
 
   clearTimeout(window.__carryArriveTimer);
@@ -1294,9 +1305,10 @@ function onCarrierArrived(tool) {
 // 向き選択ポップアップをビーバーの近くに表示する
 function showOrientationPopup() {
   const popup = document.getElementById('orientation-popup');
+  const arriveY = getCarrierArriveY();
   popup.style.display = 'flex';
-  popup.style.left = (CARRY_ARRIVE_X + 70) + 'px';
-  popup.style.top = (CARRY_ARRIVE_Y - 70) + 'px';
+  popup.style.left = (CARRY_ARRIVE_X + 90) + 'px';
+  popup.style.top = (arriveY - 70) + 'px';
   updateOrientationButtons();
 }
 
@@ -1326,18 +1338,20 @@ function chooseOrientation(pointyDown) {
     : '「平らな方を下にすると…川底に刺さるかな？試してみよう！」');
 }
 
-// 設置（成功／失敗）が確定したら、ビーバーは離脱してidleに戻る
+// 設置（成功／失敗）が確定したら、ビーバーは上流方向へ泳ぎ去ってidleに戻る
 function retireCarrier() {
   carrySeq++; // 進行中のtimeoutを無効化
   beaverCarryState = 'idle';
   carryTool = null;
   hideOrientationPopup();
   const imgEl = document.getElementById('beaver-carrier');
-  imgEl.style.left = '1040px'; // 画面外（下流方向）へ泳ぎ去る
+  imgEl.style.setProperty('--face', '-1'); // 上流(左)へ向きを反転
+  imgEl.style.top = getSurfaceYAtX(0) + 'px'; // 上流の水面の高さに合わせながら戻る
+  imgEl.style.left = '-160px'; // 画面外（上流方向＝左）へ泳ぎ去る
   clearTimeout(window.__carryRetireTimer);
   window.__carryRetireTimer = setTimeout(() => {
     imgEl.style.display = 'none';
-    imgEl.style.left = '-160px';
+    imgEl.style.setProperty('--face', '1'); // 次回の登場に備えて向きを戻す
   }, 900);
 }
 
@@ -1459,6 +1473,7 @@ function resetDam() {
   carrierEl.style.transition = 'none';
   carrierEl.style.display = 'none';
   carrierEl.style.left = '-160px';
+  carrierEl.style.setProperty('--face', '1');
   carrierEl.classList.remove('swim-bob');
   document.getElementById('anim-layer').innerHTML = '';
 
@@ -1489,6 +1504,7 @@ function switchMode(mode) {
     carrierEl.style.transition = 'none';
     carrierEl.style.display = 'none';
     carrierEl.style.left = '-160px';
+    carrierEl.style.setProperty('--face', '1');
     carrierEl.classList.remove('swim-bob');
   }
 
