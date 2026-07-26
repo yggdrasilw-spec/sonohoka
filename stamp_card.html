@@ -22,6 +22,9 @@
             --gohoubi-bg: none;
             --push-bg: none;
             --mission-bg: none;
+            --mission-off-bg: none;
+            --mission-on-bg: none;
+            --btn-bg: none;
         }
 
         /* --- テーマ定義 --- */
@@ -401,6 +404,49 @@
             background-color: transparent;
         }
 
+        /* 実際の<input>は見た目上は隠し、下のアイコンで状態を表現する（ラベルクリックでのトグル動作はそのまま） */
+        .self-check-cb {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            pointer-events: none;
+        }
+
+        /* チェック状態を表す正方形アイコン（ピルの背景=mission_XXX.pngとは別レイヤー） */
+        .self-check-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            border: 2px solid rgba(0,0,0,0.25);
+            background-color: #fff;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+            transition: all 0.15s ease;
+        }
+        .self-check-icon.checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .self-check-icon.checked::after {
+            content: "✔";
+        }
+        .self-check-icon.has-custom-bg {
+            border: none;
+            background-color: transparent;
+        }
+        .self-check-icon.has-custom-bg::after {
+            content: "";
+        }
+
         /* --- 表紙のスタンプピッカー（今日押すスタンプを複数の中からえらぶ） --- */
         .stamp-picker {
             display: none;
@@ -479,12 +525,6 @@
             line-height: 1;
             cursor: pointer;
         }
-        .self-check-cb {
-            width: 22px;
-            height: 22px;
-            accent-color: var(--primary-color);
-            cursor: pointer;
-        }
         .self-check-label {
             font-size: 15px;
             font-weight: bold;
@@ -520,6 +560,21 @@
             box-shadow: none;
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* PNGが実際に読み込めた時だけボタン画像に差し替える（読み込めない場合は上のグラデーションのまま） */
+        .stamp-btn.has-custom-bg {
+            background-image: var(--btn-bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: transparent;
+        }
+        .stamp-btn.has-custom-bg:disabled {
+            background-color: transparent;
+            color: #edf2f7;
+            filter: grayscale(75%) brightness(0.85);
+            box-shadow: none;
         }
 
         .status-msg {
@@ -659,6 +714,7 @@
 
                     <label class="self-check-container">
                         <input type="checkbox" class="self-check-cb" id="self-check-cb" onchange="toggleStampButton()">
+                        <span class="self-check-icon" id="self-check-icon"></span>
                         <span class="self-check-label">きょうの ミッション できた！</span>
                     </label>
 
@@ -877,7 +933,8 @@
         // --- テーマ背景画像（img/フォルダのPNG）の読み込み確認 ---
         // 各PNGが実際に存在するかを事前チェックし、存在するものだけ背景として使う。
         // 存在しない場合は何もせず、これまで通りの色・枠線によるフォールバック表示のままになる。
-        let themeImgOk = { frame: false, push: false, stamp: false, stampGoal: false, gohoubi: false, mission: false };
+        let themeImgOk = { frame: false, push: false, stamp: false, stampGoal: false, gohoubi: false, mission: false, missionOff: false, missionOn: false, btn: false };
+        let missionUrls = { off: '', on: '' };
 
         function checkImageExists(url) {
             return new Promise((resolve) => {
@@ -890,13 +947,19 @@
 
         async function refreshThemeImages(themeName) {
             const imgKey = themeName.replace(/^theme-/, '');
+            missionUrls.off = `img/mission_off_${imgKey}.png`;
+            missionUrls.on = `img/mission_on_${imgKey}.png`;
+
             const targets = {
-                frame:     { url: `img/frame_${imgKey}.png`,      cssVar: '--frame-bg' },      // 真ん中の枠（台紙全体）
-                push:      { url: `img/push_${imgKey}.png`,       cssVar: '--push-bg' },        // スタンプを押す全体の枠（チェック＋ボタンのパネル）
-                stamp:     { url: `img/stamp_${imgKey}.png`,      cssVar: '--stamp-bg' },        // 通常マス
-                stampGoal: { url: `img/stamp_goal_${imgKey}.png`, cssVar: '--stamp-goal-bg' },   // 最終マス（ゴール）
-                gohoubi:   { url: `img/gohoubi_${imgKey}.png`,    cssVar: '--gohoubi-bg' },      // ご褒美の枠
-                mission:   { url: `img/mission_${imgKey}.png`,    cssVar: '--mission-bg' }       // ミッションのピル
+                frame:      { url: `img/frame_${imgKey}.png`,      cssVar: '--frame-bg' },      // 真ん中の枠（台紙全体）
+                push:       { url: `img/push_${imgKey}.png`,       cssVar: '--push-bg' },        // スタンプを押す全体の枠（チェック＋ボタンのパネル）
+                stamp:      { url: `img/stamp_${imgKey}.png`,      cssVar: '--stamp-bg' },        // 通常マス
+                stampGoal:  { url: `img/stamp_goal_${imgKey}.png`, cssVar: '--stamp-goal-bg' },   // 最終マス（ゴール）
+                gohoubi:    { url: `img/gohoubi_${imgKey}.png`,    cssVar: '--gohoubi-bg' },      // ご褒美の枠
+                mission:    { url: `img/mission_${imgKey}.png`,    cssVar: '--mission-bg' },      // ミッション枠全体（ピルの背景）
+                missionOff: { url: missionUrls.off,                cssVar: '--mission-off-bg' },  // ミッションできたチェックボックスの枠（チェックなし）
+                missionOn:  { url: missionUrls.on,                 cssVar: '--mission-on-bg' },   // ミッションできたチェックボックスの枠（チェックあり）
+                btn:        { url: `img/btn_${imgKey}.png`,        cssVar: '--btn-bg' }           // 「スタンプをおす」ボタン
             };
 
             await Promise.all(Object.keys(targets).map(async (key) => {
@@ -910,12 +973,38 @@
             const rewardEl = document.querySelector('.reward-card');
             const zoneEl = document.querySelector('.interactive-zone');
             const missionEl = document.querySelector('.self-check-container');
+            const btnEl = document.getElementById('push-stamp-btn');
             if (cardEl) cardEl.classList.toggle('has-custom-bg', themeImgOk.frame);
             if (rewardEl) rewardEl.classList.toggle('has-custom-bg', themeImgOk.gohoubi);
             if (zoneEl) zoneEl.classList.toggle('has-custom-bg', themeImgOk.push);
             if (missionEl) missionEl.classList.toggle('has-custom-bg', themeImgOk.mission);
+            if (btnEl) btnEl.classList.toggle('has-custom-bg', themeImgOk.btn);
+
+            updateMissionVisual(); // チェック前／チェック後の見た目を反映
 
             renderCard(); // マス目（通常・ゴール）の背景反映のため再描画
+        }
+
+        // チェック前／チェック後で、小さな正方形アイコンの画像を切り替える。
+        // 対応するPNGが無ければ、これまで通りチェックマーク付きの丸背景で表示する。
+        function updateMissionVisual() {
+            const icon = document.getElementById('self-check-icon');
+            const cb = document.getElementById('self-check-cb');
+            if (!icon || !cb) return;
+
+            const checked = cb.checked;
+            icon.classList.toggle('checked', checked);
+
+            const ok = checked ? themeImgOk.missionOn : themeImgOk.missionOff;
+            const url = checked ? missionUrls.on : missionUrls.off;
+
+            if (ok) {
+                icon.style.backgroundImage = `url('${url}')`;
+                icon.classList.add('has-custom-bg');
+            } else {
+                icon.style.backgroundImage = 'none';
+                icon.classList.remove('has-custom-bg');
+            }
         }
 
         // --- カスタムスタンプ画像の取り込み処理 ---
@@ -1150,6 +1239,8 @@
                 document.getElementById('goal-screen').classList.remove('open');
                 stopConfetti();
             }
+
+            updateMissionVisual();
         }
 
         function toggleStampButton() {
@@ -1167,6 +1258,8 @@
                 btn.disabled = true;
                 msg.innerText = "「ミッションできた」に チェックを入れてね";
             }
+
+            updateMissionVisual();
         }
 
         function handleStampClick() {
