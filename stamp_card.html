@@ -294,11 +294,13 @@
             align-items: center;
             justify-content: center;
             font-size: 32px;
-            animation: stampBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             box-shadow: 0 6px 12px rgba(0,0,0,0.15);
             border: 3px solid #ffffff;
             overflow: hidden;
             aspect-ratio: 1 / 1;
+        }
+        .stamp-mark.pop-in {
+            animation: stampBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
         /* カスタム画像スタンプ用（真円クリップ） */
@@ -713,6 +715,98 @@
             cursor: nwse-resize;
         }
 
+        /* スタンプの丸型切り抜きツール */
+        .crop-stage-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #1a202c;
+            border-radius: 12px;
+            padding: 10px;
+            overflow: auto;
+            max-height: 400px;
+        }
+        #crop-stage {
+            position: relative;
+            touch-action: none;
+            overflow: hidden;
+        }
+        #crop-stage img {
+            display: block;
+            user-select: none;
+            pointer-events: none;
+        }
+        .crop-circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 2000px rgba(0,0,0,0.5);
+            cursor: grab;
+            touch-action: none;
+        }
+        .crop-resize-handle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3182ce;
+            border: 2px solid white;
+            cursor: ew-resize;
+        }
+
+        /* --- スタンプ演出エフェクト --- */
+        #fx-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 70;
+            overflow: hidden;
+        }
+        .fx-particle {
+            position: absolute;
+            border-radius: 50%;
+            will-change: transform, opacity;
+        }
+        .fx-glow {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,220,120,0.65) 35%, rgba(255,220,120,0) 70%);
+            transform: translate(-50%, -50%) scale(0.2);
+            opacity: 0;
+            animation: fxGlowPulse 0.7s ease-out forwards;
+        }
+        @keyframes fxGlowPulse {
+            0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+            30% { opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+        }
+        .fx-bolt { position: absolute; pointer-events: none; }
+        @keyframes fxBoltFlicker {
+            0% { opacity: 0; } 10% { opacity: 1; } 20% { opacity: 0.15; }
+            32% { opacity: 1; } 46% { opacity: 0; } 100% { opacity: 0; }
+        }
+        .fx-flame {
+            position: absolute;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            pointer-events: none;
+        }
+        @keyframes fxFlameRise {
+            0% { transform: translate(-50%, -30%) scale(0.6); opacity: 0.9; }
+            100% { transform: translate(-50%, -170%) scale(0.15); opacity: 0; }
+        }
+        .fx-shake { animation: fxShakeKf 0.4s ease-in-out; }
+        @keyframes fxShakeKf {
+            0% { transform: translate(0,0); }
+            15% { transform: translate(-6px, 3px); }
+            30% { transform: translate(5px, -4px); }
+            45% { transform: translate(-4px, 4px); }
+            60% { transform: translate(4px, -3px); }
+            75% { transform: translate(-2px, 2px); }
+            100% { transform: translate(0,0); }
+        }
+
         /* パターンB：ゴール達成オーバーレイ */
         .goal-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -729,10 +823,12 @@
             100% { transform: translateY(700px) rotate(720deg); opacity: 0; }
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="theme-sakura">
 
     <div class="chromebook-frame">
+        <div id="fx-layer"></div>
         <!-- ヘッダー -->
         <header>
             <div class="header-title">
@@ -919,6 +1015,21 @@
             </div>
         </div>
 
+        <!-- モーダル: スタンプの丸型切り抜き -->
+        <div class="modal-overlay" id="crop-modal">
+            <div class="modal-box" style="max-width: 560px; width: 95%;">
+                <div class="modal-title">✂️ スタンプの切り抜き</div>
+                <p style="font-size: 12px; color: #718096; margin-bottom: 10px;">丸をドラッグして位置を、右のハンドル（タブレットでは2本指ピンチでもOK）で大きさを決めてね。丸の中がそのままスタンプになります。</p>
+                <div class="crop-stage-wrap">
+                    <div id="crop-stage"></div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn-m btn-m-sec" onclick="closeCropModal()">キャンセル</button>
+                    <button class="btn-m btn-m-pri" onclick="confirmCrop()">✂️ 切り抜いて追加</button>
+                </div>
+            </div>
+        </div>
+
         <!-- モーダル: がんばりアルバム -->
         <div class="modal-overlay" id="album-modal">
             <div class="modal-box">
@@ -927,6 +1038,17 @@
                 <div class="album-grid" id="album-list"></div>
                 <div class="btn-row">
                     <button class="btn-m btn-m-sec" onclick="closeModal('album-modal')">とじる</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- モーダル: アルバム写真の拡大表示 -->
+        <div class="modal-overlay" id="album-photo-modal">
+            <div class="modal-box" style="max-width: 520px; width: 92%; text-align: center;">
+                <div class="modal-title">🏅 かんせいカード</div>
+                <img id="album-photo-img" style="width: 100%; border-radius: 12px; border: 2px solid #e2e8f0;" alt="完成したカード" />
+                <div class="btn-row">
+                    <button class="btn-m btn-m-pri" onclick="closeModal('album-photo-modal')">とじる</button>
                 </div>
             </div>
         </div>
@@ -953,6 +1075,7 @@
         let quizAnswer = 0;
         let lockContext = 'normal';
         let dateOffset = 0;
+        let justStampedIndex = null; // 直前に押されたばかりのマス番号（1-index）。演出とアニメーションを「そのマスだけ」に限定するために使う
 
         const themeEmojis = {
             'theme-sakura': '🌸',
@@ -1107,29 +1230,180 @@
         }
 
         // --- カスタムスタンプ画像の取り込み処理 ---
-        // 画像を読み込み、正方形にせず縦横比を保ったまま200px以内に縮小してbase64化する
-        // （表示側はobject-fit:coverの円クリップで真円に整えるため、元画像の比率は保持してよい）
-        function processStampImageSource(src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous";
-                img.onload = () => {
-                    const MAX_SIZE = 200;
-                    let w = img.width, h = img.height;
-                    if (w > h) {
-                        if (w > MAX_SIZE) { h = Math.round((h * MAX_SIZE) / w); w = MAX_SIZE; }
-                    } else {
-                        if (h > MAX_SIZE) { w = Math.round((w * MAX_SIZE) / h); h = MAX_SIZE; }
-                    }
-                    const c = document.createElement('canvas');
-                    c.width = w; c.height = h;
-                    const cctx = c.getContext('2d');
-                    cctx.drawImage(img, 0, 0, w, h);
-                    resolve(c.toDataURL('image/png'));
+        // 自動引き延ばし・自動トリミングはせず、ユーザーが選んだ位置・大きさの円をそのまま切り抜く
+        let cropState = null; // { img, scale, dispW, dispH, cx, cy, r, circleEl, handleEl, stageEl }
+
+        function openCropModal(imgSrc) {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => {
+                const stage = document.getElementById('crop-stage');
+                stage.innerHTML = '';
+
+                const maxW = 480, maxH = 360;
+                let scale = Math.min(maxW / img.width, maxH / img.height, 1);
+                if (!isFinite(scale) || scale <= 0) scale = 1;
+                if (scale < 0.15) scale = 0.15; // 極端に小さい画像は操作しやすいよう少し拡大表示
+                const dispW = img.width * scale, dispH = img.height * scale;
+
+                stage.style.width = dispW + 'px';
+                stage.style.height = dispH + 'px';
+
+                const imgEl = document.createElement('img');
+                imgEl.src = imgSrc;
+                imgEl.style.width = dispW + 'px';
+                imgEl.style.height = dispH + 'px';
+                imgEl.draggable = false;
+                stage.appendChild(imgEl);
+
+                const circle = document.createElement('div');
+                circle.className = 'crop-circle';
+                const handle = document.createElement('div');
+                handle.className = 'crop-resize-handle';
+                circle.appendChild(handle);
+                stage.appendChild(circle);
+
+                const initR = Math.min(dispW, dispH) * 0.35;
+                cropState = {
+                    img, scale, dispW, dispH,
+                    cx: dispW / 2, cy: dispH / 2, r: initR,
+                    circleEl: circle, handleEl: handle, stageEl: stage
                 };
-                img.onerror = () => reject("画像を読み込めませんでした（URLやファイルを確認してください）");
-                img.src = src;
+                updateCropCircleUI();
+                attachCropDrag();
+                attachCropResize();
+                attachCropPinch();
+
+                document.getElementById('crop-modal').classList.add('open');
+            };
+            img.onerror = () => alert("画像を読み込めませんでした（URLやファイルを確認してください）");
+            img.src = imgSrc;
+        }
+
+        function updateCropCircleUI() {
+            if (!cropState) return;
+            const { cx, cy, r, circleEl, handleEl } = cropState;
+            circleEl.style.left = (cx - r) + 'px';
+            circleEl.style.top = (cy - r) + 'px';
+            circleEl.style.width = (r * 2) + 'px';
+            circleEl.style.height = (r * 2) + 'px';
+            handleEl.style.left = (r * 2 - 10) + 'px';
+            handleEl.style.top = (r - 10) + 'px';
+        }
+
+        // 円のドラッグ移動（位置決め）
+        function attachCropDrag() {
+            const { circleEl } = cropState;
+            let start = null;
+            circleEl.addEventListener('pointerdown', (e) => {
+                if (e.target === cropState.handleEl) return;
+                e.preventDefault();
+                circleEl.setPointerCapture(e.pointerId);
+                start = { pointerId: e.pointerId, px: e.clientX, py: e.clientY, cx: cropState.cx, cy: cropState.cy };
             });
+            circleEl.addEventListener('pointermove', (e) => {
+                if (!start || e.pointerId !== start.pointerId) return;
+                const dx = e.clientX - start.px, dy = e.clientY - start.py;
+                const r = cropState.r;
+                cropState.cx = Math.min(cropState.dispW - r, Math.max(r, start.cx + dx));
+                cropState.cy = Math.min(cropState.dispH - r, Math.max(r, start.cy + dy));
+                updateCropCircleUI();
+            });
+            const end = (e) => { if (start && e.pointerId === start.pointerId) start = null; };
+            circleEl.addEventListener('pointerup', end);
+            circleEl.addEventListener('pointercancel', end);
+        }
+
+        // ハンドルのドラッグで大きさ（半径）を変える
+        function attachCropResize() {
+            const { handleEl } = cropState;
+            let start = null;
+            handleEl.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleEl.setPointerCapture(e.pointerId);
+                start = { pointerId: e.pointerId, px: e.clientX, r: cropState.r };
+            });
+            handleEl.addEventListener('pointermove', (e) => {
+                if (!start || e.pointerId !== start.pointerId) return;
+                e.stopPropagation();
+                const dx = e.clientX - start.px;
+                const maxR = Math.min(cropState.dispW, cropState.dispH) / 2;
+                const nr = Math.max(15, Math.min(maxR, start.r + dx));
+                cropState.r = nr;
+                cropState.cx = Math.min(cropState.dispW - nr, Math.max(nr, cropState.cx));
+                cropState.cy = Math.min(cropState.dispH - nr, Math.max(nr, cropState.cy));
+                updateCropCircleUI();
+            });
+            const end = (e) => { if (start && e.pointerId === start.pointerId) { e.stopPropagation(); start = null; } };
+            handleEl.addEventListener('pointerup', end);
+            handleEl.addEventListener('pointercancel', end);
+        }
+
+        // 2本指ピンチで大きさを変える（タブレット向け）
+        function attachCropPinch() {
+            const { circleEl } = cropState;
+            let pinchStart = null;
+            circleEl.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const [t1, t2] = e.touches;
+                    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    pinchStart = { dist, r: cropState.r };
+                }
+            }, { passive: false });
+            circleEl.addEventListener('touchmove', (e) => {
+                if (pinchStart && e.touches.length === 2) {
+                    e.preventDefault();
+                    const [t1, t2] = e.touches;
+                    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    const scale = dist / (pinchStart.dist || 1);
+                    const maxR = Math.min(cropState.dispW, cropState.dispH) / 2;
+                    const nr = Math.max(15, Math.min(maxR, pinchStart.r * scale));
+                    cropState.r = nr;
+                    cropState.cx = Math.min(cropState.dispW - nr, Math.max(nr, cropState.cx));
+                    cropState.cy = Math.min(cropState.dispH - nr, Math.max(nr, cropState.cy));
+                    updateCropCircleUI();
+                }
+            }, { passive: false });
+            const end = () => { pinchStart = null; };
+            circleEl.addEventListener('touchend', end);
+            circleEl.addEventListener('touchcancel', end);
+        }
+
+        function confirmCrop() {
+            if (!cropState) return;
+            try {
+                const { img, scale, cx, cy, r } = cropState;
+                const srcCx = cx / scale, srcCy = cy / scale, srcR = r / scale;
+                const size = Math.max(20, Math.min(Math.round(srcR * 2), 320));
+
+                const c = document.createElement('canvas');
+                c.width = size; c.height = size;
+                const ctx = c.getContext('2d');
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(img, srcCx - srcR, srcCy - srcR, srcR * 2, srcR * 2, 0, 0, size, size);
+                ctx.restore();
+
+                const dataURL = c.toDataURL('image/png');
+                addStampToGalleryImage(dataURL);
+                closeCropModal();
+            } catch (err) {
+                alert("この画像は切り抜けませんでした（外部サイトの画像はサイトの設定により保存できないことがあります）。パソコンやタブレットに保存した画像ファイルを選んでお試しください。");
+            }
+        }
+
+        function closeCropModal() {
+            cropState = null;
+            document.getElementById('crop-modal').classList.remove('open');
+            const fileInput = document.getElementById('cfg-stamp-file');
+            const urlInput = document.getElementById('cfg-stamp-url');
+            if (fileInput) fileInput.value = '';
+            if (urlInput) urlInput.value = '';
         }
 
         // --- スタンプギャラリー（設定画面での複数登録） ---
@@ -1179,10 +1453,7 @@
             const input = document.getElementById('cfg-stamp-url');
             const url = input.value.trim();
             if (!url) return;
-            processStampImageSource(url).then(base64 => {
-                addStampToGalleryImage(base64);
-                input.value = '';
-            }).catch(err => alert(err));
+            openCropModal(url);
         }
 
         document.getElementById('cfg-stamp-file').addEventListener('change', (e) => {
@@ -1190,10 +1461,7 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (evt) => {
-                processStampImageSource(evt.target.result).then(base64 => {
-                    addStampToGalleryImage(base64);
-                    e.target.value = '';
-                }).catch(err => alert(err));
+                openCropModal(evt.target.result);
             };
             reader.readAsDataURL(file);
         });
@@ -1275,6 +1543,7 @@
                     slot.classList.add('active');
                     const mark = document.createElement('div');
                     mark.className = 'stamp-mark';
+                    if (i === justStampedIndex) mark.classList.add('pop-in');
 
                     // 押した瞬間に記録された内容をそのまま使う（＝あとから絵柄が変わらない＝ロック）
                     const rec = (state.stampRecord && state.stampRecord[i - 1]) || null;
@@ -1308,7 +1577,14 @@
                         mark.style.height = diameter + 'px';
                     }
                 });
-                renderRoad();
+
+                // たった今押されたマスだけ、演出（シェイク・光・パーティクル等）を鳴らす
+                const freshMark = document.querySelector('#stamp-grid .stamp-mark.pop-in');
+                if (freshMark) {
+                    triggerStampEffects(freshMark, justStampedIndex === state.maxStamps);
+                }
+
+                renderRoad(); // 内部でjustStampedIndexを読んで道のアニメーションを出し、使い終わったらリセットする
             });
         }
 
@@ -1335,6 +1611,9 @@
 
             const roadWidth = Math.max(8, Math.min(w, h) * 0.03);
 
+            // 今回の描画で「たった今達成された」区間（アニメーションで塗るべき区間）
+            const justFilledSeg = (justStampedIndex !== null) ? (justStampedIndex - 1) : -1;
+
             for (let i = 0; i < centers.length - 1; i++) {
                 const a = centers[i], b = centers[i + 1];
 
@@ -1352,46 +1631,75 @@
                     points = [a, b];
                 }
 
-                drawRoadPolyline(svg, points, filled, roadWidth);
+                if (filled && i === justFilledSeg) {
+                    // 下地（未達成色）を描いてから、達成色をゆっくり「グーッ」と流し込むように重ねる
+                    drawRoadPolyline(svg, points, false, roadWidth);
+                    drawRoadWipe(svg, points, roadWidth);
+                } else {
+                    drawRoadPolyline(svg, points, filled, roadWidth);
+                }
             }
+
+            justStampedIndex = null; // 演出は使い終わったので、次回以降の再描画では繰り返さない
         }
 
-        // 道の折れ線（1本の場合はまっすぐ、複数点の場合はカギ型）を、太い土台＋二重線で描く。
-        // 折れ線全体を1本のpolylineにして角を丸く結合し、二重線（レール）は直線区間ごとに
-        // 進行方向に垂直な向きへオフセットして描く。
-        function drawRoadPolyline(svg, points, filled, roadWidth) {
+        function roadPathD(points) {
+            let d = `M ${points[0].x} ${points[0].y}`;
+            for (let i = 1; i < points.length; i++) d += ` L ${points[i].x} ${points[i].y}`;
+            return d;
+        }
+
+        function makeRoadPathEl(d, stroke, strokeWidth) {
             const svgNS = 'http://www.w3.org/2000/svg';
+            const p = document.createElementNS(svgNS, 'path');
+            p.setAttribute('d', d);
+            p.setAttribute('fill', 'none');
+            p.setAttribute('stroke', stroke);
+            p.setAttribute('stroke-width', strokeWidth);
+            p.setAttribute('stroke-linecap', 'round');
+            p.setAttribute('stroke-linejoin', 'round');
+            return p;
+        }
+
+        // 道の折れ線（1本ならまっすぐ、複数点ならカギ型）を、同じ1本のパスに対して
+        // 「太いフチ色のストローク」→「その上に少し細い道色のストローク」を重ねて描く。
+        // レールを点ごとにオフセット計算する方式（曲がり角で破綻しやすい）ではなく、
+        // 1本のパスの二重ストロークにすることで、直線でも曲がり角でも輪郭が常にきれいに揃う。
+        function drawRoadPolyline(svg, points, filled, roadWidth) {
             const bedColor = filled ? 'var(--primary-color)' : 'rgba(0,0,0,0.06)';
             const lineColor = filled ? 'var(--accent-color)' : 'rgba(0,0,0,0.2)';
+            const d = roadPathD(points);
 
-            const bed = document.createElementNS(svgNS, 'polyline');
-            bed.setAttribute('points', points.map(p => `${p.x},${p.y}`).join(' '));
-            bed.setAttribute('fill', 'none');
-            bed.setAttribute('stroke', bedColor);
-            bed.setAttribute('stroke-width', roadWidth);
-            bed.setAttribute('stroke-linecap', 'round');
-            bed.setAttribute('stroke-linejoin', 'round');
-            svg.appendChild(bed);
+            svg.appendChild(makeRoadPathEl(d, lineColor, roadWidth + 5)); // 外側のフチ
+            svg.appendChild(makeRoadPathEl(d, bedColor, roadWidth));      // 内側の道
+        }
 
-            const half = roadWidth / 2;
-            for (let i = 0; i < points.length - 1; i++) {
-                const a = points[i], b = points[i + 1];
-                const dx = b.x - a.x, dy = b.y - a.y;
-                const len = Math.hypot(dx, dy) || 1;
-                const nx = -dy / len, ny = dx / len;
+        // 「今まさに達成した」区間だけ、達成色をstroke-dashoffsetで少しずつ伸ばして
+        // ゆっくり道が塗られていくように見せる（下地は drawRoadPolyline(..., false, ...) で先に描いておく）
+        function drawRoadWipe(svg, points, roadWidth) {
+            const bedColor = 'var(--primary-color)';
+            const lineColor = 'var(--accent-color)';
+            const d = roadPathD(points);
 
-                [-1, 1].forEach(sign => {
-                    const edge = document.createElementNS(svgNS, 'line');
-                    edge.setAttribute('x1', a.x + nx * half * sign);
-                    edge.setAttribute('y1', a.y + ny * half * sign);
-                    edge.setAttribute('x2', b.x + nx * half * sign);
-                    edge.setAttribute('y2', b.y + ny * half * sign);
-                    edge.setAttribute('stroke', lineColor);
-                    edge.setAttribute('stroke-width', 2);
-                    edge.setAttribute('stroke-linecap', 'round');
-                    svg.appendChild(edge);
-                });
-            }
+            const specs = [
+                { color: lineColor, width: roadWidth + 5 }, // 外側のフチ
+                { color: bedColor, width: roadWidth }        // 内側の道
+            ];
+
+            specs.forEach(spec => {
+                const p = makeRoadPathEl(d, spec.color, spec.width);
+                svg.appendChild(p);
+                let len = 0;
+                try { len = p.getTotalLength(); } catch (e) { len = 0; }
+                if (len > 0) {
+                    p.style.strokeDasharray = String(len);
+                    p.style.strokeDashoffset = String(len);
+                    requestAnimationFrame(() => {
+                        p.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(0.25, 0.7, 0.3, 1)';
+                        p.style.strokeDashoffset = '0';
+                    });
+                }
+            });
         }
 
         function updateUI() {
@@ -1473,6 +1781,7 @@
 
             state.stampsCount++;
             state.lastStampedDate = today;
+            justStampedIndex = state.stampsCount;
 
             playStampSound();
             saveData();
@@ -1495,6 +1804,149 @@
                 osc.start();
                 osc.stop(ctx.currentTime + 0.15);
             } catch(e){}
+        }
+
+        // --- スタンプを押した瞬間の演出エフェクト ---
+        // 画面シェイク・光の輝き・舞う粒子・雷・（ゴール時は）炎を、たった今押されたマスの位置から出す。
+
+        function screenShake() {
+            const frame = document.querySelector('.chromebook-frame');
+            if (!frame) return;
+            frame.classList.remove('fx-shake');
+            void frame.offsetWidth; // reflow: 同じアニメーションを連続で再生できるようにする
+            frame.classList.add('fx-shake');
+            setTimeout(() => frame.classList.remove('fx-shake'), 450);
+        }
+
+        function getFxOrigin(markEl) {
+            const layer = document.getElementById('fx-layer');
+            const mRect = markEl.getBoundingClientRect();
+            const lRect = layer.getBoundingClientRect();
+            return {
+                layer,
+                x: mRect.left - lRect.left + mRect.width / 2,
+                y: mRect.top - lRect.top + mRect.height / 2,
+                size: Math.max(mRect.width, mRect.height)
+            };
+        }
+
+        function spawnGlow(markEl) {
+            const { layer, x, y, size } = getFxOrigin(markEl);
+            if (!layer) return;
+            const glow = document.createElement('div');
+            glow.className = 'fx-glow';
+            const d = size * 2.6;
+            glow.style.width = d + 'px';
+            glow.style.height = d + 'px';
+            glow.style.left = x + 'px';
+            glow.style.top = y + 'px';
+            layer.appendChild(glow);
+            setTimeout(() => glow.remove(), 750);
+        }
+
+        function spawnParticles(markEl, count) {
+            const { layer, x, y, size } = getFxOrigin(markEl);
+            if (!layer) return;
+            const colors = ['#ff6b6b', '#ffd166', '#38ef7d', '#4dabf7', '#e0c3fc', '#ffe066'];
+
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                p.className = 'fx-particle';
+                const s = 5 + Math.random() * 7;
+                p.style.width = s + 'px';
+                p.style.height = s + 'px';
+                p.style.left = x + 'px';
+                p.style.top = y + 'px';
+                p.style.background = colors[Math.floor(Math.random() * colors.length)];
+                layer.appendChild(p);
+
+                const angle = Math.random() * Math.PI * 2;
+                const dist = size * (0.8 + Math.random() * 1.6);
+                const dx = Math.cos(angle) * dist;
+                const dy = Math.sin(angle) * dist - size * 0.4; // 少し上方向にも飛ばす
+                const dur = 500 + Math.random() * 400;
+
+                requestAnimationFrame(() => {
+                    p.style.transition = `transform ${dur}ms cubic-bezier(0.2,0.6,0.3,1), opacity ${dur}ms ease-out`;
+                    p.style.transform = `translate(${dx}px, ${dy}px) scale(0.3) rotate(${Math.random() * 360}deg)`;
+                    p.style.opacity = '0';
+                });
+                setTimeout(() => p.remove(), dur + 80);
+            }
+        }
+
+        function spawnLightning(markEl, count) {
+            const { layer, x, y, size } = getFxOrigin(markEl);
+            if (!layer) return;
+            const svgNS = 'http://www.w3.org/2000/svg';
+
+            for (let i = 0; i < count; i++) {
+                const len = size * (1.0 + Math.random() * 0.8);
+                const ang = Math.random() * Math.PI * 2;
+                const ex = Math.cos(ang) * len, ey = Math.sin(ang) * len;
+                const w = Math.abs(ex) * 2 + 20, h = Math.abs(ey) * 2 + 20;
+
+                const svg = document.createElementNS(svgNS, 'svg');
+                svg.setAttribute('class', 'fx-bolt');
+                svg.setAttribute('width', w);
+                svg.setAttribute('height', h);
+                svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+                svg.style.left = (x - w / 2) + 'px';
+                svg.style.top = (y - h / 2) + 'px';
+
+                const sx = w / 2 - ex / 2, sy = h / 2 - ey / 2;
+                const tx = w / 2 + ex / 2, ty = h / 2 + ey / 2;
+                let d = `M ${sx} ${sy}`;
+                const segs = 4;
+                for (let s = 1; s <= segs; s++) {
+                    const t = s / segs;
+                    const px = sx + (tx - sx) * t + (Math.random() - 0.5) * 14;
+                    const py = sy + (ty - sy) * t + (Math.random() - 0.5) * 14;
+                    d += ` L ${px} ${py}`;
+                }
+                const path = document.createElementNS(svgNS, 'path');
+                path.setAttribute('d', d);
+                path.setAttribute('stroke', '#fff59d');
+                path.setAttribute('stroke-width', '2.5');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                path.style.filter = 'drop-shadow(0 0 4px #fff59d) drop-shadow(0 0 8px #ffd54f)';
+                svg.appendChild(path);
+                svg.style.animation = `fxBoltFlicker ${300 + Math.random() * 150}ms ease-out ${Math.random() * 150}ms`;
+                layer.appendChild(svg);
+                setTimeout(() => svg.remove(), 650);
+            }
+        }
+
+        function spawnFlames(markEl, count) {
+            const { layer, x, y, size } = getFxOrigin(markEl);
+            if (!layer) return;
+
+            for (let i = 0; i < count; i++) {
+                const f = document.createElement('div');
+                f.className = 'fx-flame';
+                const s = size * (0.25 + Math.random() * 0.35);
+                f.style.width = s + 'px';
+                f.style.height = (s * 1.3) + 'px';
+                const spreadX = (Math.random() - 0.5) * size * 0.8;
+                f.style.left = (x + spreadX) + 'px';
+                f.style.top = y + 'px';
+                const hueA = 20 + Math.random() * 20; // オレンジ〜赤系
+                f.style.background = `radial-gradient(circle at 50% 70%, #fff59d 0%, hsl(${hueA},100%,55%) 40%, hsl(${hueA - 10},100%,45%) 70%, transparent 80%)`;
+                const dur = 700 + Math.random() * 400;
+                f.style.animation = `fxFlameRise ${dur}ms ease-out ${Math.random() * 150}ms forwards`;
+                layer.appendChild(f);
+                setTimeout(() => f.remove(), dur + 200);
+            }
+        }
+
+        function triggerStampEffects(markEl, isGoal) {
+            screenShake();
+            spawnGlow(markEl);
+            spawnParticles(markEl, isGoal ? 36 : 18);
+            spawnLightning(markEl, isGoal ? 5 : 2);
+            if (isGoal) spawnFlames(markEl, 20);
         }
 
         function openLockModal(ctx = 'normal') {
@@ -1567,11 +2019,16 @@
         }
 
         function confirmCardReset() {
-            if (confirm("ご褒美を渡して、新しいカードをスタートしますか？")) {
+            if (!confirm("ご褒美を渡して、新しいカードをスタートしますか？")) return;
+
+            const cardEl = document.querySelector('.card-container');
+
+            const finalize = (screenshot) => {
                 state.history.push({
                     date: getTodayStr(),
                     reward: state.rewardText,
-                    stamps: state.maxStamps
+                    stamps: state.maxStamps,
+                    screenshot: screenshot || null
                 });
 
                 state.stampsCount = 0;
@@ -1581,6 +2038,26 @@
                 renderCard();
                 updateUI();
                 closeModal('parent-settings-overlay');
+            };
+
+            // 完成したカード（どの位置にどんなスタンプを押したか）を画像として記録に残す。
+            // 保存容量を圧迫しすぎないよう、そこそこの解像度（最大640px幅）のJPEGに抑える。
+            if (window.html2canvas && cardEl) {
+                html2canvas(cardEl, { scale: 2, backgroundColor: null, useCORS: true }).then(canvas => {
+                    const maxDim = 640;
+                    let outCanvas = canvas;
+                    if (canvas.width > maxDim || canvas.height > maxDim) {
+                        const s = maxDim / Math.max(canvas.width, canvas.height);
+                        const oc = document.createElement('canvas');
+                        oc.width = Math.round(canvas.width * s);
+                        oc.height = Math.round(canvas.height * s);
+                        oc.getContext('2d').drawImage(canvas, 0, 0, oc.width, oc.height);
+                        outCanvas = oc;
+                    }
+                    finalize(outCanvas.toDataURL('image/jpeg', 0.85));
+                }).catch(() => finalize(null));
+            } else {
+                finalize(null);
             }
         }
 
@@ -1808,14 +2285,23 @@
                     card.className = 'album-card-item';
                     card.innerHTML = `
                         <div style="font-weight:bold; color:#2b6cb0;">🏅 クリア #${idx+1}</div>
+                        ${item.screenshot ? `<img class="album-thumb-img" style="width:100%; border-radius:8px; margin:6px 0; cursor:pointer; border:1px solid #e2e8f0;" src="${item.screenshot}" alt="完成したカード" />` : ''}
                         <div style="margin:2px 0;">🎁 ${item.reward}</div>
                         <div style="font-size:10px; color:#718096;">${item.date} 達成</div>
                     `;
+                    const thumb = card.querySelector('.album-thumb-img');
+                    if (thumb) thumb.addEventListener('click', () => viewAlbumPhoto(item.screenshot));
                     list.appendChild(card);
                 });
             }
 
             document.getElementById('album-modal').classList.add('open');
+        }
+
+        function viewAlbumPhoto(src) {
+            if (!src) return;
+            document.getElementById('album-photo-img').src = src;
+            document.getElementById('album-photo-modal').classList.add('open');
         }
 
         function setPresetImg(url) {
@@ -1839,10 +2325,27 @@
         }
 
         function resetAllData() {
-            if (confirm("全データを初期化しますか？")) {
-                localStorage.removeItem('chromebook_stamp_state');
-                location.reload();
-            }
+            if (!confirm(
+                "⚠️ 全データ初期化（1/3）\n\n" +
+                `今のカードの進み具合（現在 ${state.stampsCount} / ${state.maxStamps} コ）が消えます。\n\n` +
+                "本当に続けますか？"
+            )) return;
+
+            if (!confirm(
+                "⚠️ 全データ初期化（2/3）\n\n" +
+                `これまでの「がんばりアルバム」の記録（${state.history.length}件のクリア履歴と、そこに保存された完成カードの写真）も、ぜんぶ消えます。\n\n` +
+                "登録したスタンプ画像、ごほうびの設定、マスの自由配置なども、すべて消えます。\n\n" +
+                "この記録も、あの記録も、ぜんぶ消えて大丈夫ですか？\n（あとから元に戻すことはできません）"
+            )) return;
+
+            if (!confirm(
+                "⚠️ 全データ初期化（3/3・最終確認）\n\n" +
+                "これが最後の確認です。「OK」を押すと、すぐに全部初期化されます。\n\n" +
+                "本当によろしいですか？"
+            )) return;
+
+            localStorage.removeItem('chromebook_stamp_state');
+            location.reload();
         }
 
         let confettiTimer;
