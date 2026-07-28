@@ -1888,12 +1888,19 @@
             }
         }
 
-        document.addEventListener('click', (e) => {
+        // 「click」ではなく「pointerdown」のキャプチャ段階で監視する。
+        // 自由配置エディタのマス移動・拡大縮小は pointerdown で e.preventDefault() を呼んでおり、
+        // タッチ操作ではそれ以降の click が発生しなくなる仕様がある（マウスでは発生する）。
+        // click頼みで閉じていると、タブレットでは道のポップアップだけが開いたまま残り、
+        // 見た目上「消えない・別の場所を触ると出てくる」ように見えてしまうため、
+        // より早い段階で確実に発火する pointerdown を使い、キャプチャ段階で拾うことで
+        // 対象要素側のstopPropagation呼び出しの影響も受けないようにする。
+        document.addEventListener('pointerdown', (e) => {
             const popup = document.getElementById('road-shape-popup');
             if (popup && popup.classList.contains('open') && !popup.contains(e.target)) {
                 closeRoadShapePopup();
             }
-        });
+        }, true);
 
         function roadPathD(points) {
             let d = `M ${points[0].x} ${points[0].y}`;
@@ -1926,6 +1933,11 @@
             svg.appendChild(makeRoadPathEl(d, bedColor, roadWidth));      // 内側の道
         }
 
+        // 道を塗る速さ（px/秒）。秒数を固定にすると短い道は不自然に速く、長い道は不自然に遅く見えるため、
+        // 常にこの速さで塗り進むようにし、かかる時間は道の長さに比例させる（長い道ほど長くかかってOK）。
+        const ROAD_WIPE_SPEED_PX_PER_SEC = 60;
+        const ROAD_WIPE_MIN_SEC = 0.9; // 一瞬で終わって見逃さないよう、短い道でも最低これだけはかける
+
         // 「今まさに達成した」区間だけ、達成色をstroke-dashoffsetで少しずつ伸ばして
         // ゆっくり道が塗られていくように見せる（下地は drawRoadPolyline(..., false, ...) で先に描いておく）
         function drawRoadWipe(svg, points, roadWidth) {
@@ -1944,10 +1956,11 @@
                 let len = 0;
                 try { len = p.getTotalLength(); } catch (e) { len = 0; }
                 if (len > 0) {
+                    const durationSec = Math.max(ROAD_WIPE_MIN_SEC, len / ROAD_WIPE_SPEED_PX_PER_SEC);
                     p.style.strokeDasharray = String(len);
                     p.style.strokeDashoffset = String(len);
                     requestAnimationFrame(() => {
-                        p.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(0.25, 0.7, 0.3, 1)';
+                        p.style.transition = `stroke-dashoffset ${durationSec}s linear`;
                         p.style.strokeDashoffset = '0';
                     });
                 }
