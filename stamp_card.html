@@ -1785,7 +1785,7 @@
 
             // 道の太さは、コンテナ全体の大きさではなく「実際のマスの大きさ（＝マス同士の間隔）」を基準にする。
             // マス数が多くマスが小さいときは道も自動的に細くなり、隣の段とつながって見えなくなるのを防ぐ。
-            const autoRoadWidth = Math.max(4, avgH * 0.26);
+            const autoRoadWidth = Math.max(3, avgH * 0.182);
             const roadWidth = autoRoadWidth * (state.roadWidthScale || 1);
 
             // 今回の描画で「たった今達成された」区間（アニメーションで塗るべき区間）
@@ -2408,12 +2408,34 @@
         const LAYOUT_MIN_CELLS = 1;
         const LAYOUT_MAX_CELLS = 60;
 
-        // マス数(n)個ぶんの、整列したグリッド配置（%座標）を新規に作る
+        // 実際にスタンプカードが表示される .card-container の縦横比（幅÷高さ）を測る。
+        // 自由配置エディタのキャンバスはモーダル都合で card-container と縦横比が違うため、
+        // 「見た目の正方形」はエディタのキャンバスではなく、この実物の比率を基準に計算する。
+        const FALLBACK_CARD_ASPECT = 1.2187; // card-containerが測れない場合のフォールバック値
+        function getCardAspect() {
+            const el = document.querySelector('.card-container');
+            if (el) {
+                const r = el.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) return r.width / r.height;
+            }
+            return FALLBACK_CARD_ASPECT;
+        }
+
+        // マス数(n)個ぶんの、整列したグリッド配置（%座標）を新規に作る。
+        // 各マスは実物のカードの縦横比を基準にした正方形にしつつ、
+        // 隣のマスと重ならないよう、セルの幅・高さ両方に収まる範囲で大きさを自動調整する。
         function buildGridFreeLayout(n) {
+            const cardAspect = getCardAspect();
             const cols = Math.ceil(Math.sqrt(n));
             const rows = Math.ceil(n / cols);
             const cellW = 100 / cols, cellH = 100 / rows;
-            const boxW = cellW * 0.72, boxH = cellH * 0.72;
+
+            // 幅%基準の一辺(side)に対して、高さ% = side * cardAspect となる。
+            // セルの幅・高さそれぞれに収まる最大のsideを求め、小さい方を採用することで重なりを防ぐ。
+            const maxSideByWidth = cellW;
+            const maxSideByHeight = cellH / cardAspect;
+            const side = Math.min(maxSideByWidth, maxSideByHeight) * 0.82; // 余白を残す
+            const boxW = side, boxH = side * cardAspect;
 
             const arr = [];
             for (let i = 0; i < n; i++) {
@@ -2539,26 +2561,26 @@
             });
 
             requestAnimationFrame(() => {
-                squareUpFreeLayout(canvas, boxEls);
+                squareUpFreeLayout(boxEls);
                 renderLayoutRoad(canvas);
             });
         }
 
-        // 自由配置の各マスが、実際のピクセル上で正方形（1:1）に見えるように、
-        // キャンバスの縦横比を考慮して高さ(%)を幅(%)から計算し直す。中心位置はできるだけ変えない。
-        function squareUpFreeLayout(canvas, boxEls) {
-            const rect = canvas.getBoundingClientRect();
-            if (rect.width <= 0 || rect.height <= 0) return;
+        // 自由配置の各マスが、実際にカードに表示した時に正方形（1:1）に見えるように、
+        // card-container実物の縦横比を基準に高さ(%)を幅(%)から計算し直す。中心位置はできるだけ変えない。
+        function squareUpFreeLayout(boxEls) {
+            const cardAspect = getCardAspect();
             boxEls.forEach(({ el, box }) => {
                 const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-                const wPx = box.w / 100 * rect.width;
-                let hPct = wPx / rect.height * 100;
-                hPct = Math.max(3, Math.min(94, hPct));
-                box.h = hPct;
+                let h = Math.max(2, Math.min(96, box.w * cardAspect));
+                const w = h / cardAspect; // クランプで高さが変わった分は、幅の方に反映して正方形を保つ
+                box.w = w;
+                box.h = h;
                 box.y = Math.min(100 - box.h, Math.max(0, cy - box.h / 2));
                 box.x = Math.min(100 - box.w, Math.max(0, cx - box.w / 2));
                 el.style.top = box.y + '%';
                 el.style.left = box.x + '%';
+                el.style.width = box.w + '%';
                 el.style.height = box.h + '%';
             });
         }
@@ -2580,7 +2602,7 @@
             const turnThreshold = avgHpx * 0.6;
 
             const svgNS = 'http://www.w3.org/2000/svg';
-            const previewWidth = Math.max(4, avgHpx * 0.26) * (state.roadWidthScale || 1);
+            const previewWidth = Math.max(3, avgHpx * 0.182) * (state.roadWidthScale || 1);
             for (let i = 0; i < centers.length - 1; i++) {
                 const a = centers[i], b = centers[i + 1];
                 const override = (state.roadShapeOverride && state.roadShapeOverride[i]) || 'auto';
@@ -2632,8 +2654,9 @@
         }
 
         // 右下ハンドルのドラッグで大きさを変える。
-        // キャンバスが正方形とは限らないため、%のまま幅・高さを個別に動かすとマスが歪んでしまう。
-        // そこで実際のpx換算サイズを1つの値として扱い、幅%・高さ%はそこから逆算することで、常に正方形（1:1）を保つ。
+        // キャンバスとcard-container（実際の表示先）は縦横比が違うことがあるため、
+        // 正方形かどうかは常に card-container 実物の縦横比（cardAspect）を基準に判定する。
+        // 幅%を主として動かし、高さ% = 幅% × cardAspect で自動的に揃える。
         function attachLayoutResize(handle, box, el, canvas) {
             let start = null;
             handle.addEventListener('pointerdown', (e) => {
@@ -2641,21 +2664,21 @@
                 e.stopPropagation();
                 handle.setPointerCapture(e.pointerId);
                 const rect = canvas.getBoundingClientRect();
-                const sizePx = (box.w / 100 * rect.width + box.h / 100 * rect.height) / 2;
-                start = { pointerId: e.pointerId, px: e.clientX, py: e.clientY, sizePx, bx: box.x, by: box.y, rw: rect.width, rh: rect.height };
+                start = { pointerId: e.pointerId, px: e.clientX, py: e.clientY, bw: box.w, bx: box.x, by: box.y, rw: rect.width, cardAspect: getCardAspect() };
             });
             handle.addEventListener('pointermove', (e) => {
                 if (!start || e.pointerId !== start.pointerId) return;
                 e.stopPropagation();
-                // 右方向・下方向のドラッグ量の平均を、正方形の一辺の増減量として使う
+                // 右方向・下方向のドラッグ量の平均を、幅(%)の増減量として使う
                 const d = ((e.clientX - start.px) + (e.clientY - start.py)) / 2;
-                const minSizePx = Math.min(start.rw, start.rh) * 0.06;
-                const maxWpx = start.rw - (start.bx / 100 * start.rw);
-                const maxHpx = start.rh - (start.by / 100 * start.rh);
-                let sizePx = Math.max(minSizePx, start.sizePx + d);
-                sizePx = Math.min(sizePx, maxWpx, maxHpx);
-                box.w = sizePx / start.rw * 100;
-                box.h = sizePx / start.rh * 100;
+                const dWPct = d / start.rw * 100;
+                const minW = 2;
+                const maxWByWidth = 100 - start.bx;
+                const maxWByHeight = (100 - start.by) / start.cardAspect;
+                const maxW = Math.min(maxWByWidth, maxWByHeight);
+                const w = Math.max(minW, Math.min(maxW, start.bw + dWPct));
+                box.w = w;
+                box.h = w * start.cardAspect;
                 el.style.width = box.w + '%';
                 el.style.height = box.h + '%';
                 renderLayoutRoad(canvas);
@@ -2673,7 +2696,7 @@
                     e.preventDefault();
                     const [t1, t2] = e.touches;
                     const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-                    pinchStart = { dist, bw: box.w, bh: box.h, cx: box.x + box.w / 2, cy: box.y + box.h / 2 };
+                    pinchStart = { dist, bw: box.w, cx: box.x + box.w / 2, cy: box.y + box.h / 2, cardAspect: getCardAspect() };
                 }
             }, { passive: false });
             el.addEventListener('touchmove', (e) => {
@@ -2682,8 +2705,8 @@
                     const [t1, t2] = e.touches;
                     const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
                     const scale = dist / (pinchStart.dist || 1);
-                    const nw = Math.max(6, Math.min(60, pinchStart.bw * scale));
-                    const nh = Math.max(6, Math.min(60, pinchStart.bh * scale));
+                    const nw = Math.max(2, Math.min(60, pinchStart.bw * scale));
+                    const nh = nw * pinchStart.cardAspect;
                     box.w = nw; box.h = nh;
                     box.x = Math.min(100 - box.w, Math.max(0, pinchStart.cx - nw / 2));
                     box.y = Math.min(100 - box.h, Math.max(0, pinchStart.cy - nh / 2));
