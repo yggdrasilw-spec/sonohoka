@@ -226,6 +226,7 @@
             justify-content: center;
             position: relative;
             z-index: 1;
+            overflow-y: auto;
         }
 
         /* 自由配置モード：グリッドをやめて、各マスをJSで指定した%位置・大きさに絶対配置する */
@@ -248,15 +249,21 @@
 
         .stamp-slot {
             background-color: var(--panel-bg);
-            box-shadow: inset 0 0 0 999px rgba(0,0,0,0.03);
-            border: 3px dashed rgba(0,0,0,0.15);
+            box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--text-color) 8%, transparent);
+            border: 3px dashed color-mix(in srgb, var(--text-color) 38%, transparent);
             border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
             font-weight: bold;
-            color: rgba(0,0,0,0.3);
+            color: #000000;
+            text-shadow:
+                -1.5px -1.5px 0 rgba(255,255,255,0.95),
+                 1.5px -1.5px 0 rgba(255,255,255,0.95),
+                -1.5px  1.5px 0 rgba(255,255,255,0.95),
+                 1.5px  1.5px 0 rgba(255,255,255,0.95),
+                 0 0 3px rgba(255,255,255,0.8);
             position: relative;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             aspect-ratio: 1 / 1;
@@ -267,7 +274,7 @@
         .stamp-slot.active {
             border: 2px solid transparent;
             background-color: var(--panel-bg);
-            box-shadow: inset 0 0 0 999px rgba(255,255,255,0.8);
+            box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--panel-bg) 25%, white 75%);
         }
 
         /* PNGが実際に読み込めたマスだけ、枠線・塗りを画像に置き換える（読み込めない場合は上の通常デザインのまま） */
@@ -301,6 +308,29 @@
         }
         .stamp-mark.pop-in {
             animation: stampBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .stamp-mark.fx-mark-shine {
+            animation: fxMarkShine 0.55s ease-out;
+        }
+        @keyframes fxMarkShine {
+            0% { box-shadow: 0 6px 12px rgba(0,0,0,0.15), 0 0 0 rgba(255,255,255,0); transform: scale(1); filter: brightness(1); }
+            35% { box-shadow: 0 6px 12px rgba(0,0,0,0.15), 0 0 22px 10px rgba(255,240,150,0.9); transform: scale(1.18); filter: brightness(1.35); }
+            100% { box-shadow: 0 6px 12px rgba(0,0,0,0.15), 0 0 0 rgba(255,255,255,0); transform: scale(1); filter: brightness(1); }
+        }
+        .card-container.fx-card-glow::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            background: radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,235,150,0.35) 45%, rgba(255,235,150,0) 75%);
+            animation: fxCardGlowPulse 1s ease-out;
+            z-index: 5;
+        }
+        @keyframes fxCardGlowPulse {
+            0% { opacity: 0; }
+            30% { opacity: 1; }
+            100% { opacity: 0; }
         }
 
         /* カスタム画像スタンプ用（真円クリップ） */
@@ -668,10 +698,28 @@
         .album-card-item { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; font-size: 12px; text-align: center; }
 
         /* 自由配置エディタ */
+        .modal-box.layout-editor-modal-box {
+            width: 96vw;
+            max-width: 1180px;
+            display: flex;
+            gap: 18px;
+            align-items: stretch;
+        }
+        .layout-editor-sidebar-left {
+            flex: 0 0 170px;
+            display: flex;
+            flex-direction: column;
+        }
+        .layout-editor-sidebar-right {
+            flex: 0 0 180px;
+            display: flex;
+            flex-direction: column;
+        }
         .layout-editor-canvas {
             position: relative;
-            width: 100%;
-            aspect-ratio: 4 / 3;
+            flex: 1 1 auto;
+            min-width: 0;
+            height: min(66vh, 560px);
             background: #f7fafc;
             border: 3px dashed #cbd5e0;
             border-radius: 16px;
@@ -713,6 +761,44 @@
             background: #3182ce;
             border: 2px solid white;
             cursor: nwse-resize;
+        }
+        .layout-box .del-btn {
+            position: absolute;
+            left: -10px;
+            top: -10px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #e53e3e;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            border: 2px solid white;
+            cursor: pointer;
+            z-index: 2;
+            touch-action: none;
+        }
+        .layout-box .add-btn {
+            position: absolute;
+            right: -10px;
+            top: -10px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #38a169;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 800;
+            border: 2px solid white;
+            cursor: pointer;
+            z-index: 2;
+            touch-action: none;
         }
 
         /* スタンプの丸型切り抜きツール */
@@ -782,6 +868,25 @@
             30% { opacity: 1; }
             100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
         }
+
+        /* スプライトシート（コマ送り）演出の例：透過PNGを横に8コマ並べたシートを、
+           background-position を steps() でずらしながら再生する（2Dゲームでよくある手法）。
+           img/fx_sparkle.png が見つからない場合は単に何も表示されないだけで、エラーにはならない。 */
+        .fx-sprite {
+            position: absolute;
+            pointer-events: none;
+            background-image: url('img/fx_sparkle.png');
+            background-repeat: no-repeat;
+            background-size: 800% 100%; /* コマ数(8)ぶん */
+        }
+        .fx-sprite.fx-sprite-sparkle {
+            animation: fxSpriteSparkle 0.64s steps(7) forwards;
+        }
+        @keyframes fxSpriteSparkle {
+            from { background-position-x: 0%; }
+            to   { background-position-x: 100%; }
+        }
+
         .fx-bolt { position: absolute; pointer-events: none; }
         @keyframes fxBoltFlicker {
             0% { opacity: 0; } 10% { opacity: 1; } 20% { opacity: 0.15; }
@@ -937,13 +1042,9 @@
                 </div>
 
                 <div class="form-row">
-                    <label>カードのマス数</label>
-                    <select class="form-input" id="cfg-max-stamps">
-                        <option value="5">5マス</option>
-                        <option value="10">10マス</option>
-                        <option value="15">15マス</option>
-                        <option value="20">20マス</option>
-                    </select>
+                    <label>カードのマス数（1〜60個）</label>
+                    <input type="number" class="form-input" id="cfg-max-stamps" min="1" max="60" step="1" value="10">
+                    <p style="font-size: 11px; color: #718096; margin-top: 4px;">20個より多くしたいときも、ここに数を入れて保存すればOKです。「位置と大きさを自分で決める」の中でも、✕やボタンでマスを増減できます。</p>
                 </div>
 
                 <div class="form-row">
@@ -1004,13 +1105,19 @@
 
         <!-- モーダル: 自由配置エディタ -->
         <div class="modal-overlay" id="layout-editor-overlay">
-            <div class="modal-box" style="max-width: 900px; width: 95%;">
-                <div class="modal-title">📐 マスの位置と大きさを決める</div>
-                <p style="font-size: 12px; color: #718096; margin-bottom: 10px;">マスをドラッグして動かせます。右下の青い丸をドラッグすると大きさを変えられます（タブレットでは2本指のピンチでも大きさを変えられます）。すごろくの線は、マスの中心どうしを自動でつなぎます。</p>
+            <div class="modal-box layout-editor-modal-box">
+                <div class="layout-editor-sidebar-left">
+                    <div class="modal-title" style="text-align:left; margin-bottom:8px;">📐 マスの位置と大きさを決める</div>
+                    <p style="font-size: 11px; color: #718096; line-height: 1.6;">マスをドラッグして動かせます。右下の青い丸をドラッグ（タブレットでは2本指ピンチでも）大きさを変えられます。左上の赤い✕でそのマスを消せます。最後のマス（👑）の右上の緑の＋でマスを1つ増やせます。すごろくの線は、マスの中心どうしを自動でつなぎます。</p>
+                </div>
                 <div id="layout-editor-canvas" class="layout-editor-canvas"></div>
-                <div class="btn-row">
-                    <button class="btn-m btn-m-sec" onclick="resetFreeLayoutToGrid()">🔲 グリッド配置に戻す</button>
-                    <button class="btn-m btn-m-pri" onclick="closeLayoutEditor()">保存して閉じる</button>
+                <div class="layout-editor-sidebar-right">
+                    <div class="form-row">
+                        <label style="font-size: 12px;">道の太さ</label>
+                        <input type="range" id="cfg-road-width" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;" oninput="onRoadWidthSliderInput()">
+                    </div>
+                    <button class="btn-m btn-m-sec" style="width:100%; margin-top:auto;" onclick="resetFreeLayoutToGrid()">🔲 グリッド配置に戻す</button>
+                    <button class="btn-m btn-m-pri" style="width:100%; margin-top:8px;" onclick="closeLayoutEditor()">保存して閉じる</button>
                 </div>
             </div>
         </div>
@@ -1069,13 +1176,15 @@
             selectedStampSrc: null,  // 次に押す時に使うスタンプ（ギャラリー内のsrc）。nullならテーマ絵文字
             stampRecord: [],         // 実際に押されたマスごとの記録。押した瞬間に確定し、後から変わらない（ロック）
             layoutMode: 'grid',      // 'grid'（整列）または 'free'（自由配置）
-            freeLayout: []           // 自由配置モードでの各マスの位置・大きさ（%）。[{x,y,w,h}, ...]
+            freeLayout: [],          // 自由配置モードでの各マスの位置・大きさ（%）。[{x,y,w,h}, ...]
+            roadWidthScale: 1        // 道の太さの倍率（自動計算した太さに掛け合わせる）。自由配置エディタのスライダーで調整
         };
 
         let quizAnswer = 0;
         let lockContext = 'normal';
         let dateOffset = 0;
         let justStampedIndex = null; // 直前に押されたばかりのマス番号（1-index）。演出とアニメーションを「そのマスだけ」に限定するために使う
+        let knownToday = getTodayStr(); // 起動時点の「今日」。日をまたいだこと（実際の日付・シミュレート日付どちらも）を検知するために使う
 
         const themeEmojis = {
             'theme-sakura': '🌸',
@@ -1093,9 +1202,36 @@
             renderCard();
             updateUI();
             renderStampPicker();
+            checkForNewDay(); // 起動時に「今日」を確認（前回起動時から日付が変わっていれば反映する）
+
+            // 初回表示直後は、フォント読み込みなどでレイアウトがまだ確定しきっていないことがあるため、
+            // 少し待ってからもう一度マスの実寸を測り直して、道の太さ・位置を正しく描き直す。
+            setTimeout(() => { renderRoad(); }, 200);
         };
 
         window.addEventListener('resize', () => { renderRoad(); });
+
+        // Chromebookを起動しっぱなしのまま日をまたいだ場合にも気づけるよう、
+        // タブが表に戻ったタイミングと、一定時間おきに「今日」をチェックする。
+        window.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkForNewDay();
+        });
+        setInterval(checkForNewDay, 60 * 1000);
+
+        // 実際の日付（またはシミュレート日付）が、前回確認した「今日」から変わっていないかチェックする。
+        // 変わっていたら、「きょうのミッションできた」チェックを必ずオフに戻し、また押せる状態にする。
+        function checkForNewDay() {
+            const today = getTodayStr();
+            if (today === knownToday) return;
+            knownToday = today;
+
+            const cb = document.getElementById('self-check-cb');
+            if (cb) {
+                cb.checked = false;
+                cb.disabled = false;
+            }
+            updateUI();
+        }
 
         function saveData() {
             localStorage.setItem('chromebook_stamp_state', JSON.stringify(state));
@@ -1504,6 +1640,13 @@
             });
         }
 
+        // 20マスまでは今までどおり5列固定。それより多いときは、行数が増えすぎて
+        // カードからはみ出さないよう、マス数に応じて列数を自動的に増やす。
+        function computeGridColumns(n) {
+            if (n <= 20) return 5;
+            return Math.min(10, Math.ceil(Math.sqrt(n * 1.6)));
+        }
+
         function renderCard() {
             const grid = document.getElementById('stamp-grid');
             grid.innerHTML = '';
@@ -1516,7 +1659,7 @@
                 && state.freeLayout.length === state.maxStamps;
 
             grid.classList.toggle('free-mode', isFree);
-            grid.style.gridTemplateColumns = isFree ? '' : `repeat(5, 1fr)`;
+            grid.style.gridTemplateColumns = isFree ? '' : `repeat(${computeGridColumns(state.maxStamps)}, 1fr)`;
 
             for (let i = 1; i <= state.maxStamps; i++) {
                 const slot = document.createElement('div');
@@ -1609,7 +1752,10 @@
             const avgH = rects.reduce((sum, r) => sum + r.height, 0) / rects.length;
             const turnThreshold = avgH * 0.6; // これより縦にずれていたら「段が変わった」とみなす
 
-            const roadWidth = Math.max(8, Math.min(w, h) * 0.03);
+            // 道の太さは、コンテナ全体の大きさではなく「実際のマスの大きさ（＝マス同士の間隔）」を基準にする。
+            // マス数が多くマスが小さいときは道も自動的に細くなり、隣の段とつながって見えなくなるのを防ぐ。
+            const autoRoadWidth = Math.max(4, avgH * 0.26);
+            const roadWidth = autoRoadWidth * (state.roadWidthScale || 1);
 
             // 今回の描画で「たった今達成された」区間（アニメーションで塗るべき区間）
             const justFilledSeg = (justStampedIndex !== null) ? (justStampedIndex - 1) : -1;
@@ -1666,8 +1812,8 @@
         // レールを点ごとにオフセット計算する方式（曲がり角で破綻しやすい）ではなく、
         // 1本のパスの二重ストロークにすることで、直線でも曲がり角でも輪郭が常にきれいに揃う。
         function drawRoadPolyline(svg, points, filled, roadWidth) {
-            const bedColor = filled ? 'var(--primary-color)' : 'rgba(0,0,0,0.06)';
-            const lineColor = filled ? 'var(--accent-color)' : 'rgba(0,0,0,0.2)';
+            const bedColor = filled ? 'var(--primary-color)' : 'color-mix(in srgb, var(--text-color) 22%, transparent)';
+            const lineColor = filled ? 'var(--accent-color)' : 'color-mix(in srgb, var(--text-color) 55%, transparent)';
             const d = roadPathD(points);
 
             svg.appendChild(makeRoadPathEl(d, lineColor, roadWidth + 5)); // 外側のフチ
@@ -1782,11 +1928,54 @@
             state.stampsCount++;
             state.lastStampedDate = today;
             justStampedIndex = state.stampsCount;
+            const isFinalStamp = state.stampsCount >= state.maxStamps;
 
             playStampSound();
             saveData();
             renderCard();
-            updateUI();
+
+            // 最後の1個のときは、連打で二重に進んでしまわないよう先にボタンだけ止めておく
+            // （「ぜんぶたまったよ」画面は、余韻を味わってから playCardCompleteSequence() の中で出す）
+            const btn = document.getElementById('push-stamp-btn');
+            const cb = document.getElementById('self-check-cb');
+            if (isFinalStamp) {
+                if (btn) btn.disabled = true;
+                if (cb) cb.disabled = true;
+                playCardCompleteSequence();
+            } else {
+                updateUI();
+            }
+        }
+
+        // 最後のスタンプを押したときの「余韻」演出：
+        // 押した瞬間の演出が少し落ち着くのを待ってから、今まで押したスタンプが順番に光り、
+        // 最後にカード全体がふわっと輝いて、そのあとで「ぜんぶたまったよ」画面を出す。
+        function playCardCompleteSequence() {
+            const marks = Array.from(document.querySelectorAll('#stamp-grid .stamp-slot.active .stamp-mark'));
+            const card = document.querySelector('.card-container');
+            const stagger = marks.length > 0 ? Math.min(110, 1400 / marks.length) : 0;
+
+            setTimeout(() => {
+                marks.forEach((mark, idx) => {
+                    setTimeout(() => {
+                        mark.classList.add('fx-mark-shine');
+                        setTimeout(() => mark.classList.remove('fx-mark-shine'), 550);
+                    }, idx * stagger);
+                });
+
+                const chaseDuration = marks.length * stagger + 550;
+
+                setTimeout(() => {
+                    if (card) {
+                        card.classList.add('fx-card-glow');
+                        setTimeout(() => card.classList.remove('fx-card-glow'), 1000);
+                    }
+                    // カードが光り終わるのを少し待ってから、ようやく「ぜんぶたまったよ」画面を出す
+                    setTimeout(() => {
+                        updateUI();
+                    }, 900);
+                }, chaseDuration);
+            }, 500); // 押した瞬間の演出（シェイク・光・パーティクル等）が少し落ち着くのを待つ
         }
 
         function playStampSound() {
@@ -1842,6 +2031,32 @@
             glow.style.top = y + 'px';
             layer.appendChild(glow);
             setTimeout(() => glow.remove(), 750);
+        }
+
+        // 2Dゲームでよくある「透過PNGスプライトシートをコマ送り」する方式のサンプル。
+        // img/fx_sparkle.png（128px角のコマが横に8枚並んだシート）を、CSSのsteps()で
+        // 1コマずつ切り替えて再生する。JS側は毎フレーム何もしない（アニメーションはCSSに任せる）ので、
+        // 見た目のリッチさの割に負荷はとても軽い。
+        function spawnSpriteSparkle(markEl, count) {
+            const { layer, x, y, size } = getFxOrigin(markEl);
+            if (!layer) return;
+            const frameSize = Math.max(48, size * 0.85);
+
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('div');
+                el.className = 'fx-sprite fx-sprite-sparkle';
+                el.style.width = frameSize + 'px';
+                el.style.height = frameSize + 'px';
+
+                const angle = Math.random() * Math.PI * 2;
+                const dist = size * (0.1 + Math.random() * 0.55);
+                el.style.left = (x + Math.cos(angle) * dist - frameSize / 2) + 'px';
+                el.style.top = (y + Math.sin(angle) * dist - frameSize / 2) + 'px';
+                el.style.animationDelay = Math.round(Math.random() * 120) + 'ms';
+
+                layer.appendChild(el);
+                setTimeout(() => el.remove(), 900);
+            }
         }
 
         function spawnParticles(markEl, count) {
@@ -1944,6 +2159,7 @@
         function triggerStampEffects(markEl, isGoal) {
             screenShake();
             spawnGlow(markEl);
+            spawnSpriteSparkle(markEl, isGoal ? 6 : 3);
             spawnParticles(markEl, isGoal ? 36 : 18);
             spawnLightning(markEl, isGoal ? 5 : 2);
             if (isGoal) spawnFlames(markEl, 20);
@@ -2001,7 +2217,10 @@
         }
 
         function saveParentSettings() {
-            state.maxStamps = parseInt(document.getElementById('cfg-max-stamps').value, 10);
+            let n = parseInt(document.getElementById('cfg-max-stamps').value, 10);
+            if (isNaN(n)) n = state.maxStamps;
+            n = Math.max(LAYOUT_MIN_CELLS, Math.min(LAYOUT_MAX_CELLS, n));
+            state.maxStamps = n;
             state.rewardText = document.getElementById('cfg-reward-text').value;
             state.rewardImgUrl = document.getElementById('cfg-reward-img').value;
             state.customStampSize = parseInt(document.getElementById('cfg-stamp-size').value, 10) || 85;
@@ -2080,6 +2299,9 @@
 
         // --- 自由配置モード：位置と大きさをJS側で管理する ---
 
+        const LAYOUT_MIN_CELLS = 1;
+        const LAYOUT_MAX_CELLS = 60;
+
         // マス数(n)に対応するfreeLayoutが無い/数が合わない場合、整列した初期配置を作り直す
         function ensureFreeLayout(n) {
             if (!Array.isArray(state.freeLayout)) state.freeLayout = [];
@@ -2105,8 +2327,16 @@
             state.layoutMode = 'free';
             state.maxStamps = n;
             closeModal('parent-settings-overlay');
+            document.getElementById('cfg-road-width').value = state.roadWidthScale || 1;
             renderLayoutEditor();
             document.getElementById('layout-editor-overlay').classList.add('open');
+        }
+
+        function onRoadWidthSliderInput() {
+            const v = parseFloat(document.getElementById('cfg-road-width').value);
+            state.roadWidthScale = isNaN(v) ? 1 : v;
+            const canvas = document.getElementById('layout-editor-canvas');
+            if (canvas) renderLayoutRoad(canvas);
         }
 
         function resetFreeLayoutToGrid() {
@@ -2120,10 +2350,40 @@
         }
 
         function closeLayoutEditor() {
+            // 編集中に✕／＋でマス数を変えていることがあるので、ここで正式に反映する
+            state.maxStamps = state.freeLayout.length;
+            if (state.stampsCount > state.maxStamps) state.stampsCount = state.maxStamps;
+            if (state.stampRecord.length > state.stampsCount) state.stampRecord.length = state.stampsCount;
+
             saveData();
             document.getElementById('layout-editor-overlay').classList.remove('open');
             renderCard();
             updateUI();
+        }
+
+        // 指定したマスを1つ消す（最低1マスは残す）
+        function removeLayoutBox(idx) {
+            if (state.freeLayout.length <= LAYOUT_MIN_CELLS) {
+                alert(`これ以上は減らせません（最低${LAYOUT_MIN_CELLS}マス必要です）。`);
+                return;
+            }
+            if (!confirm(`${idx + 1}番目のマスを消しますか？`)) return;
+            state.freeLayout.splice(idx, 1);
+            renderLayoutEditor();
+        }
+
+        // 最後のマスの近くに、新しいマスを1つ追加する
+        function addLayoutBox() {
+            if (state.freeLayout.length >= LAYOUT_MAX_CELLS) {
+                alert(`マスは最大${LAYOUT_MAX_CELLS}個までです。`);
+                return;
+            }
+            const last = state.freeLayout[state.freeLayout.length - 1];
+            const w = last.w, h = last.h;
+            const x = Math.max(0, Math.min(100 - w, last.x + w * 0.3));
+            const y = Math.max(0, Math.min(100 - h, last.y + h * 0.3));
+            state.freeLayout.push({ x, y, w, h });
+            renderLayoutEditor();
         }
 
         function renderLayoutEditor() {
@@ -2137,7 +2397,26 @@
                 el.style.top = box.y + '%';
                 el.style.width = box.w + '%';
                 el.style.height = box.h + '%';
-                el.innerText = (idx + 1) === state.freeLayout.length ? (idx + 1) + ' 👑' : (idx + 1);
+                const isLast = (idx === state.freeLayout.length - 1);
+                el.innerText = isLast ? (idx + 1) + ' 👑' : String(idx + 1);
+
+                const delBtn = document.createElement('div');
+                delBtn.className = 'del-btn';
+                delBtn.innerText = '✕';
+                delBtn.title = 'このマスを消す';
+                delBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+                delBtn.addEventListener('click', (e) => { e.stopPropagation(); removeLayoutBox(idx); });
+                el.appendChild(delBtn);
+
+                if (isLast) {
+                    const addBtn = document.createElement('div');
+                    addBtn.className = 'add-btn';
+                    addBtn.innerText = '＋';
+                    addBtn.title = 'マスを1つ増やす';
+                    addBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+                    addBtn.addEventListener('click', (e) => { e.stopPropagation(); addLayoutBox(); });
+                    el.appendChild(addBtn);
+                }
 
                 const handle = document.createElement('div');
                 handle.className = 'resize-handle';
@@ -2170,6 +2449,7 @@
             const turnThreshold = avgHpx * 0.6;
 
             const svgNS = 'http://www.w3.org/2000/svg';
+            const previewWidth = Math.max(4, avgHpx * 0.26) * (state.roadWidthScale || 1);
             for (let i = 0; i < centers.length - 1; i++) {
                 const a = centers[i], b = centers[i + 1];
                 const isRowChange = Math.abs(b.y - a.y) > turnThreshold;
@@ -2181,7 +2461,7 @@
                 line.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
                 line.setAttribute('fill', 'none');
                 line.setAttribute('stroke', '#a0aec0');
-                line.setAttribute('stroke-width', 3);
+                line.setAttribute('stroke-width', previewWidth);
                 line.setAttribute('stroke-linejoin', 'round');
                 line.setAttribute('stroke-dasharray', '6,5');
                 svg.appendChild(line);
@@ -2320,8 +2600,8 @@
 
         function simulateTomorrow() {
             dateOffset++;
-            alert("日付を1日進めました！");
-            updateUI();
+            checkForNewDay(); // 「きょうのミッションできた」チェックのオフも含めて、日付が変わった時と同じ処理を行う
+            alert("日付を1日進めました！（ミッションのチェックもリセットされました）");
         }
 
         function resetAllData() {
