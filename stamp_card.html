@@ -218,7 +218,8 @@
 
         .stamp-grid {
             display: grid;
-            gap: 12px;
+            row-gap: 28px;
+            column-gap: 12px;
             width: 100%;
             height: 100%;
             max-height: 480px;
@@ -801,6 +802,35 @@
             touch-action: none;
         }
 
+        /* 道をタップした時に出す、形を選ぶ小さなポップアップメニュー */
+        .road-shape-popup {
+            position: fixed;
+            transform: translate(-50%, -100%);
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            padding: 8px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 500;
+            min-width: 160px;
+        }
+        .road-shape-popup.open { display: flex; }
+        .road-shape-popup button {
+            border: none;
+            background: #edf2f7;
+            color: #2d3748;
+            font-weight: bold;
+            font-size: 13px;
+            padding: 9px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .road-shape-popup button:hover { background: #e2e8f0; }
+        .road-shape-popup button.active { background: #3182ce; color: #fff; }
+
         /* スタンプの丸型切り抜きツール */
         .crop-stage-wrap {
             display: flex;
@@ -1108,7 +1138,7 @@
             <div class="modal-box layout-editor-modal-box">
                 <div class="layout-editor-sidebar-left">
                     <div class="modal-title" style="text-align:left; margin-bottom:8px;">📐 マスの位置と大きさを決める</div>
-                    <p style="font-size: 11px; color: #718096; line-height: 1.6;">マスをドラッグして動かせます。右下の青い丸をドラッグ（タブレットでは2本指ピンチでも）大きさを変えられます。左上の赤い✕でそのマスを消せます。最後のマス（👑）の右上の緑の＋でマスを1つ増やせます。すごろくの線は、マスの中心どうしを自動でつなぎます。</p>
+                    <p style="font-size: 11px; color: #718096; line-height: 1.6;">マスをドラッグして動かせます（大きさは常に正方形のまま）。右下の青い丸をドラッグ（タブレットでは2本指ピンチでも）大きさを変えられます。左上の赤い✕でそのマスを消せます。最後のマス（👑）の右上の緑の＋でマスを1つ増やせます。すごろくの線は自動でつながりますが、線をタップすると「カギ型」「直線」を手動で選ぶこともできます。</p>
                 </div>
                 <div id="layout-editor-canvas" class="layout-editor-canvas"></div>
                 <div class="layout-editor-sidebar-right">
@@ -1177,7 +1207,8 @@
             stampRecord: [],         // 実際に押されたマスごとの記録。押した瞬間に確定し、後から変わらない（ロック）
             layoutMode: 'grid',      // 'grid'（整列）または 'free'（自由配置）
             freeLayout: [],          // 自由配置モードでの各マスの位置・大きさ（%）。[{x,y,w,h}, ...]
-            roadWidthScale: 1        // 道の太さの倍率（自動計算した太さに掛け合わせる）。自由配置エディタのスライダーで調整
+            roadWidthScale: 1,       // 道の太さの倍率（自動計算した太さに掛け合わせる）。自由配置エディタのスライダーで調整
+            roadShapeOverride: {}    // 道の形を手動で指定した区間の記録。キーは区間番号(0始まり)、値は 'l'（カギ型）または 'straight'（直線）。無ければ自動判定
         };
 
         let quizAnswer = 0;
@@ -1767,8 +1798,10 @@
                 const filled = state.stampsCount > i;
 
                 // 段（行）が変わる区間は、他のマスの上を斜めに横切らないよう、
-                // 段の間のすき間で直角に2回曲がる「カギ型」の道にする
-                const isRowChange = Math.abs(b.y - a.y) > turnThreshold;
+                // 段の間のすき間で直角に2回曲がる「カギ型」の道にする（手動で指定していればそちらを優先）
+                const override = (state.roadShapeOverride && state.roadShapeOverride[i]) || 'auto';
+                const autoIsRowChange = Math.abs(b.y - a.y) > turnThreshold;
+                const isRowChange = override === 'auto' ? autoIsRowChange : (override === 'l');
                 let points;
                 if (isRowChange) {
                     const midY = (a.y + b.y) / 2;
@@ -1784,10 +1817,83 @@
                 } else {
                     drawRoadPolyline(svg, points, filled, roadWidth);
                 }
+
+                // タップ／クリックで道の形を選べるように、太めの透明な当たり判定を上に重ねる
+                attachRoadHit(svg, points, roadWidth, i, 'main');
             }
 
             justStampedIndex = null; // 演出は使い終わったので、次回以降の再描画では繰り返さない
         }
+
+        // 道のパスの上に重ねる、タップ判定用の太い透明線。押すと道の形を選ぶポップアップを開く。
+        function attachRoadHit(svg, points, roadWidth, segIndex, context) {
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const hit = document.createElementNS(svgNS, 'path');
+            hit.setAttribute('d', roadPathD(points));
+            hit.setAttribute('fill', 'none');
+            hit.setAttribute('stroke', 'rgba(0,0,0,0.001)');
+            hit.setAttribute('stroke-width', Math.max(roadWidth + 22, 30));
+            hit.setAttribute('pointer-events', 'stroke');
+            hit.style.cursor = 'pointer';
+            hit.addEventListener('click', (e) => openRoadShapePopup(segIndex, e, context));
+            svg.appendChild(hit);
+        }
+
+        let roadShapePopupSeg = null;
+        let roadShapePopupContext = 'main';
+
+        // 道をタップした時に、形を選ぶポップアップを開く
+        function openRoadShapePopup(segIndex, evt, context) {
+            evt.stopPropagation();
+            roadShapePopupSeg = segIndex;
+            roadShapePopupContext = context;
+
+            const popup = document.getElementById('road-shape-popup');
+            if (!popup) return;
+            popup.style.left = evt.clientX + 'px';
+            popup.style.top = Math.max(10, evt.clientY - 10) + 'px';
+
+            const cur = (state.roadShapeOverride && state.roadShapeOverride[segIndex]) || 'auto';
+            document.getElementById('road-shape-btn-l').classList.toggle('active', cur === 'l');
+            document.getElementById('road-shape-btn-straight').classList.toggle('active', cur === 'straight');
+            document.getElementById('road-shape-btn-auto').classList.toggle('active', cur === 'auto');
+
+            popup.classList.add('open');
+        }
+
+        function closeRoadShapePopup() {
+            const popup = document.getElementById('road-shape-popup');
+            if (popup) popup.classList.remove('open');
+            roadShapePopupSeg = null;
+        }
+
+        // ポップアップで「カギ型」「直線」「自動に戻す」のいずれかを選んだ時の処理
+        function chooseRoadShape(shape) {
+            if (roadShapePopupSeg === null) return;
+            if (!state.roadShapeOverride) state.roadShapeOverride = {};
+            if (shape === 'auto') {
+                delete state.roadShapeOverride[roadShapePopupSeg];
+            } else {
+                state.roadShapeOverride[roadShapePopupSeg] = shape;
+            }
+            const context = roadShapePopupContext;
+            closeRoadShapePopup();
+            saveData();
+
+            if (context === 'editor') {
+                const canvas = document.getElementById('layout-editor-canvas');
+                if (canvas) renderLayoutRoad(canvas);
+            } else {
+                renderRoad();
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const popup = document.getElementById('road-shape-popup');
+            if (popup && popup.classList.contains('open') && !popup.contains(e.target)) {
+                closeRoadShapePopup();
+            }
+        });
 
         function roadPathD(points) {
             let d = `M ${points[0].x} ${points[0].y}`;
@@ -2302,11 +2408,8 @@
         const LAYOUT_MIN_CELLS = 1;
         const LAYOUT_MAX_CELLS = 60;
 
-        // マス数(n)に対応するfreeLayoutが無い/数が合わない場合、整列した初期配置を作り直す
-        function ensureFreeLayout(n) {
-            if (!Array.isArray(state.freeLayout)) state.freeLayout = [];
-            if (state.freeLayout.length === n) return;
-
+        // マス数(n)個ぶんの、整列したグリッド配置（%座標）を新規に作る
+        function buildGridFreeLayout(n) {
             const cols = Math.ceil(Math.sqrt(n));
             const rows = Math.ceil(n / cols);
             const cellW = 100 / cols, cellH = 100 / rows;
@@ -2318,7 +2421,14 @@
                 const cx = col * cellW + cellW / 2, cy = row * cellH + cellH / 2;
                 arr.push({ x: cx - boxW / 2, y: cy - boxH / 2, w: boxW, h: boxH });
             }
-            state.freeLayout = arr;
+            return arr;
+        }
+
+        // マス数(n)に対応するfreeLayoutが無い/数が合わない場合、整列した初期配置を作り直す
+        function ensureFreeLayout(n) {
+            if (!Array.isArray(state.freeLayout)) state.freeLayout = [];
+            if (state.freeLayout.length === n) return;
+            state.freeLayout = buildGridFreeLayout(n);
         }
 
         function openLayoutEditor() {
@@ -2340,13 +2450,9 @@
         }
 
         function resetFreeLayoutToGrid() {
-            if (confirm('自由配置をやめて、グリッド配置（整列）に戻しますか？')) {
-                state.layoutMode = 'grid';
-                saveData();
-                document.getElementById('layout-editor-overlay').classList.remove('open');
-                renderCard();
-                updateUI();
-            }
+            if (!confirm('マスの位置と大きさを、グリッド配置（整列）にリセットしますか？\n（このまま「自分で位置と大きさを決めるモード」の編集画面が続きます）')) return;
+            state.freeLayout = buildGridFreeLayout(state.freeLayout.length);
+            renderLayoutEditor();
         }
 
         function closeLayoutEditor() {
@@ -2390,6 +2496,8 @@
             const canvas = document.getElementById('layout-editor-canvas');
             canvas.innerHTML = '<svg class="layout-road-svg" id="layout-road-svg"></svg>';
 
+            const boxEls = [];
+
             state.freeLayout.forEach((box, idx) => {
                 const el = document.createElement('div');
                 el.className = 'layout-box';
@@ -2427,9 +2535,32 @@
                 attachLayoutPinch(el, box, canvas);
 
                 canvas.appendChild(el);
+                boxEls.push({ el, box });
             });
 
-            requestAnimationFrame(() => renderLayoutRoad(canvas));
+            requestAnimationFrame(() => {
+                squareUpFreeLayout(canvas, boxEls);
+                renderLayoutRoad(canvas);
+            });
+        }
+
+        // 自由配置の各マスが、実際のピクセル上で正方形（1:1）に見えるように、
+        // キャンバスの縦横比を考慮して高さ(%)を幅(%)から計算し直す。中心位置はできるだけ変えない。
+        function squareUpFreeLayout(canvas, boxEls) {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+            boxEls.forEach(({ el, box }) => {
+                const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+                const wPx = box.w / 100 * rect.width;
+                let hPct = wPx / rect.height * 100;
+                hPct = Math.max(3, Math.min(94, hPct));
+                box.h = hPct;
+                box.y = Math.min(100 - box.h, Math.max(0, cy - box.h / 2));
+                box.x = Math.min(100 - box.w, Math.max(0, cx - box.w / 2));
+                el.style.top = box.y + '%';
+                el.style.left = box.x + '%';
+                el.style.height = box.h + '%';
+            });
         }
 
         // 編集画面用の、点線ガイドとしてのすごろく線（中心どうしを直線でつなぐだけ）
@@ -2452,7 +2583,9 @@
             const previewWidth = Math.max(4, avgHpx * 0.26) * (state.roadWidthScale || 1);
             for (let i = 0; i < centers.length - 1; i++) {
                 const a = centers[i], b = centers[i + 1];
-                const isRowChange = Math.abs(b.y - a.y) > turnThreshold;
+                const override = (state.roadShapeOverride && state.roadShapeOverride[i]) || 'auto';
+                const autoIsRowChange = Math.abs(b.y - a.y) > turnThreshold;
+                const isRowChange = override === 'auto' ? autoIsRowChange : (override === 'l');
                 const pts = isRowChange
                     ? [a, { x: a.x, y: (a.y + b.y) / 2 }, { x: b.x, y: (a.y + b.y) / 2 }, b]
                     : [a, b];
@@ -2465,6 +2598,9 @@
                 line.setAttribute('stroke-linejoin', 'round');
                 line.setAttribute('stroke-dasharray', '6,5');
                 svg.appendChild(line);
+
+                // タップで、この区間の道の形（カギ型／直線）を選べるようにする
+                attachRoadHit(svg, pts, previewWidth, i, 'editor');
             }
         }
 
@@ -2495,7 +2631,9 @@
             el.addEventListener('pointercancel', end);
         }
 
-        // 右下ハンドルのドラッグで大きさを変える
+        // 右下ハンドルのドラッグで大きさを変える。
+        // キャンバスが正方形とは限らないため、%のまま幅・高さを個別に動かすとマスが歪んでしまう。
+        // そこで実際のpx換算サイズを1つの値として扱い、幅%・高さ%はそこから逆算することで、常に正方形（1:1）を保つ。
         function attachLayoutResize(handle, box, el, canvas) {
             let start = null;
             handle.addEventListener('pointerdown', (e) => {
@@ -2503,15 +2641,21 @@
                 e.stopPropagation();
                 handle.setPointerCapture(e.pointerId);
                 const rect = canvas.getBoundingClientRect();
-                start = { pointerId: e.pointerId, px: e.clientX, py: e.clientY, bw: box.w, bh: box.h, rw: rect.width, rh: rect.height };
+                const sizePx = (box.w / 100 * rect.width + box.h / 100 * rect.height) / 2;
+                start = { pointerId: e.pointerId, px: e.clientX, py: e.clientY, sizePx, bx: box.x, by: box.y, rw: rect.width, rh: rect.height };
             });
             handle.addEventListener('pointermove', (e) => {
                 if (!start || e.pointerId !== start.pointerId) return;
                 e.stopPropagation();
-                const dwPct = (e.clientX - start.px) / start.rw * 100;
-                const dhPct = (e.clientY - start.py) / start.rh * 100;
-                box.w = Math.max(6, Math.min(100 - box.x, start.bw + dwPct));
-                box.h = Math.max(6, Math.min(100 - box.y, start.bh + dhPct));
+                // 右方向・下方向のドラッグ量の平均を、正方形の一辺の増減量として使う
+                const d = ((e.clientX - start.px) + (e.clientY - start.py)) / 2;
+                const minSizePx = Math.min(start.rw, start.rh) * 0.06;
+                const maxWpx = start.rw - (start.bx / 100 * start.rw);
+                const maxHpx = start.rh - (start.by / 100 * start.rh);
+                let sizePx = Math.max(minSizePx, start.sizePx + d);
+                sizePx = Math.min(sizePx, maxWpx, maxHpx);
+                box.w = sizePx / start.rw * 100;
+                box.h = sizePx / start.rh * 100;
                 el.style.width = box.w + '%';
                 el.style.height = box.h + '%';
                 renderLayoutRoad(canvas);
@@ -2647,5 +2791,11 @@
             document.getElementById('confetti-holder').innerHTML = '';
         }
     </script>
+    <!-- 道をタップした時に出す、形を選ぶポップアップ -->
+    <div class="road-shape-popup" id="road-shape-popup">
+        <button id="road-shape-btn-l" onclick="chooseRoadShape('l')">🔀 カギ型にする</button>
+        <button id="road-shape-btn-straight" onclick="chooseRoadShape('straight')">➖ 直線にする</button>
+        <button id="road-shape-btn-auto" onclick="chooseRoadShape('auto')">🔄 自動に戻す</button>
+    </div>
 </body>
 </html>
