@@ -1102,6 +1102,24 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
           <button class="seg-btn" data-style="elegant">エレガント</button>
         </div>
       </div>
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+        <span>🔢 数字の大きさ</span>
+        <div class="seg-toggle" id="clockNumberScaleToggle" style="flex-wrap:wrap;">
+          <button class="seg-btn" data-scale="0.8">小さめ</button>
+          <button class="seg-btn active" data-scale="1">標準</button>
+          <button class="seg-btn" data-scale="1.3">大きめ</button>
+          <button class="seg-btn" data-scale="1.6">特大</button>
+        </div>
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+        <span>➰ 針の太さ</span>
+        <div class="seg-toggle" id="clockHandScaleToggle" style="flex-wrap:wrap;">
+          <button class="seg-btn" data-scale="0.75">細め</button>
+          <button class="seg-btn active" data-scale="1">標準</button>
+          <button class="seg-btn" data-scale="1.4">太め</button>
+          <button class="seg-btn" data-scale="1.8">特太</button>
+        </div>
+      </div>
       <hr class="settings-divider">
       <div class="settings-row">
         <span>🕐 時間を数えるモード：文字盤を透かす</span>
@@ -1217,7 +1235,7 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
       hourTick:'#222222', fiveTick:'#333333', minuteTick:'#bfae86', tickOutline:'#ffffff',
       tickMode:'full', sunburst:false,
       centerOuter:'#222222', centerInner:'#ffffff',
-      handShape:'arrow', handStrokeWidth:4, handOutline:true, handWidthScale:1.35, handDarken:1,
+      handShape:'arrow', handStrokeWidth:5, handOutline:true, handWidthScale:1.7, handDarken:1,
       demoHourColor:'#1c5fa8', demoMinuteColor:'#e0457a', demoWidthScale:1.3
     },
     antique: {
@@ -1227,7 +1245,7 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
       hourTick:'#2b2b2b', fiveTick:'#4a4a4a', minuteTick:'#bbb', tickOutline:'none',
       tickMode:'hourOnly', sunburst:true,
       centerOuter:'#1c1c1c', centerInner:'#9a9a9a',
-      handShape:'filigree', handStrokeWidth:1.6, handOutline:false, handWidthScale:1.3, handDarken:0.5,
+      handShape:'filigree', handStrokeWidth:2.2, handOutline:false, handWidthScale:1.8, handDarken:0.5,
       demoHourColor:'#1c1c1c', demoMinuteColor:'#3a2010', demoWidthScale:1.15
     },
     elegant: {
@@ -1244,6 +1262,8 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
 
 
   let currentClockStyle = 'standard';
+  let clockNumberScale = 1;
+  let clockHandScale = 1;
   const clockStyleRefreshCallbacks = [];
   function onClockStyleRefresh(fn){ clockStyleRefreshCallbacks.push(fn); }
   function getClockStyle(){ return CLOCK_STYLES[currentClockStyle] || CLOCK_STYLES.standard; }
@@ -1284,6 +1304,14 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
     applyClockFaceColors();
     clockStyleRefreshCallbacks.forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } });
   }
+  function setClockNumberScale(scale){
+    clockNumberScale = scale;
+    clockStyleRefreshCallbacks.forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } });
+  }
+  function setClockHandScale(scale){
+    clockHandScale = scale;
+    clockStyleRefreshCallbacks.forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } });
+  }
 
   /* ---- 針の形（矢印／唐草アンティーク／ブレゲ）を上向き（12時方向）基準で作り、
          最後に rotate(角度, CX, CY) で回転させる ---- */
@@ -1312,15 +1340,16 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
   function buildHandShapeMarkup(el, angleDeg, length, baseHalfWidth){
     const st = getClockStyle();
     const baseFill = el.dataset.fill || '#4a3728';
-    const halfWidth = baseHalfWidth * (st.handWidthScale||1);
+    const halfWidth = baseHalfWidth * (st.handWidthScale||1) * clockHandScale;
+    const strokeW = st.handStrokeWidth * clockHandScale;
     let inner;
     if (st.handShape==='filigree'){
-      inner = filigreeHandSVG(length, halfWidth, darkenColorStr(baseFill, st.handDarken), st.handStrokeWidth);
+      inner = filigreeHandSVG(length, halfWidth, darkenColorStr(baseFill, st.handDarken), strokeW);
     } else if (st.handShape==='breguet'){
-      inner = breguetHandSVG(length, halfWidth, darkenColorStr(baseFill, st.handDarken), st.handStrokeWidth);
+      inner = breguetHandSVG(length, halfWidth, darkenColorStr(baseFill, st.handDarken), strokeW);
     } else {
       const strokeColor = st.handOutline ? (el.dataset.stroke||'#ffffff') : null;
-      inner = arrowHandSVG(length, halfWidth, baseFill, strokeColor, st.handStrokeWidth);
+      inner = arrowHandSVG(length, halfWidth, baseFill, strokeColor, strokeW);
     }
     el.innerHTML = `<g transform="rotate(${angleDeg.toFixed(2)} ${CX} ${CY})">${inner}</g>`;
   }
@@ -1364,9 +1393,9 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
         const r=R_CLOCK-46;
         const x=CX+r*Math.cos(rad), y=CY+r*Math.sin(rad);
         const label = st.numeral==='roman' ? ROMAN_NUMERALS[h] : h;
-        const fsize = st.numeral==='roman' ? 22 : 30;
-        const outlineAttr = st.numOutline!=='none' ? `stroke="${st.numOutline}" stroke-width="5" stroke-linejoin="round" paint-order="stroke fill"` : '';
-        html += `<text data-hour="${h}" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fsize}" font-weight="${st.numWeight}" fill="${st.numColor}" ${outlineAttr} style="font-family:inherit;">${label}</text>`;
+        const fsize = (st.numeral==='roman' ? 22 : 30) * clockNumberScale;
+        const outlineAttr = st.numOutline!=='none' ? `stroke="${st.numOutline}" stroke-width="${(5*clockNumberScale).toFixed(1)}" stroke-linejoin="round" paint-order="stroke fill"` : '';
+        html += `<text data-hour="${h}" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fsize.toFixed(1)}" font-weight="${st.numWeight}" fill="${st.numColor}" ${outlineAttr} style="font-family:inherit;">${label}</text>`;
       }
     } else {
       for (let i=0;i<60;i++){
@@ -1384,12 +1413,12 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
       }
       for (let h=1;h<=12;h++){
         const rad = clockDegToRad(h*30);
-        const r=R_CLOCK-36;
+        const r=R_CLOCK-40;
         const x=CX+r*Math.cos(rad), y=CY+r*Math.sin(rad);
         const label = st.numeral==='roman' ? ROMAN_NUMERALS[h] : h;
-        const fsize = st.numeral==='roman' ? 12 : 16;
-        const outlineAttr = st.numOutline!=='none' ? `stroke="${st.numOutline}" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke fill"` : '';
-        html += `<text data-hour="${h}" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fsize}" font-weight="${st.numWeight}" fill="${st.numColor}" ${outlineAttr} style="font-family:inherit;">${label}</text>`;
+        const fsize = (st.numeral==='roman' ? 20 : 24) * clockNumberScale;
+        const outlineAttr = st.numOutline!=='none' ? `stroke="${st.numOutline}" stroke-width="${(4*clockNumberScale).toFixed(1)}" stroke-linejoin="round" paint-order="stroke fill"` : '';
+        html += `<text data-hour="${h}" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fsize.toFixed(1)}" font-weight="${st.numWeight}" fill="${st.numColor}" ${outlineAttr} style="font-family:inherit;">${label}</text>`;
       }
     }
     el.innerHTML = html;
@@ -3033,7 +3062,7 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
         const x2=(100+70*Math.cos(rad)).toFixed(1), y2=(100+70*Math.sin(rad)).toFixed(1);
         ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${st.hourTick}" stroke-width="3" stroke-linecap="round"/>`;
       }
-      const hw = (3.6*st.demoWidthScale).toFixed(1), mw = (3.6*st.demoWidthScale).toFixed(1);
+      const hw = (3.6*st.demoWidthScale*clockHandScale).toFixed(1), mw = (3.6*st.demoWidthScale*clockHandScale).toFixed(1);
       return `<circle cx="100" cy="100" r="90" fill="${st.faceFill}" stroke="${st.ringStroke}" stroke-width="4"/>
         <circle cx="100" cy="100" r="84" fill="none" stroke="${st.dashStroke}" stroke-width="1" stroke-dasharray="4 4"/>
         ${ticks}
@@ -3585,8 +3614,8 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
       const st = getClockStyle();
       return `<g class="sch-clock-group"${grpAttr}>
         <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r}" fill="${st.faceFill}" stroke="${color}" stroke-width="2.6"/>
-        <line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy-hourLen).toFixed(1)}" stroke="${st.demoHourColor}" stroke-width="2.4" stroke-linecap="round" transform="rotate(${hourDeg} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>
-        <line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy-minLen).toFixed(1)}" stroke="${st.demoMinuteColor}" stroke-width="1.8" stroke-linecap="round" transform="rotate(${minDeg} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>
+        <line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy-hourLen).toFixed(1)}" stroke="${st.demoHourColor}" stroke-width="${(2.4*clockHandScale).toFixed(1)}" stroke-linecap="round" transform="rotate(${hourDeg} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>
+        <line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy-minLen).toFixed(1)}" stroke="${st.demoMinuteColor}" stroke-width="${(1.8*clockHandScale).toFixed(1)}" stroke-linecap="round" transform="rotate(${minDeg} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>
         <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2" fill="${st.centerOuter}"/>
       </g>`;
     }
@@ -3664,8 +3693,8 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
         <circle cx="100" cy="100" r="78" fill="none" stroke="${st.dashStroke}" stroke-width="1" stroke-dasharray="4 4"/>
         ${ticks}
         <g id="schMainArcGroup"></g>
-        <line id="schMainHourHand" x1="100" y1="100" x2="100" y2="58" stroke="${st.demoHourColor}" stroke-width="6" stroke-linecap="round"/>
-        <line id="schMainMinuteHand" x1="100" y1="100" x2="100" y2="34" stroke="${COLOR_MAIN}" stroke-width="4.2" stroke-linecap="round"/>
+        <line id="schMainHourHand" x1="100" y1="100" x2="100" y2="58" stroke="${st.demoHourColor}" stroke-width="${(6*clockHandScale).toFixed(1)}" stroke-linecap="round"/>
+        <line id="schMainMinuteHand" x1="100" y1="100" x2="100" y2="34" stroke="${COLOR_MAIN}" stroke-width="${(4.2*clockHandScale).toFixed(1)}" stroke-linecap="round"/>
         <circle cx="100" cy="100" r="6" fill="${st.centerOuter}"/>`;
     }
     function setMainHands(hourDeg, minDeg){
@@ -3944,6 +3973,24 @@ hr.settings-divider{border:none;border-top:1px solid #ead9c5;margin:2px 0;}
     setClockStyle(btn.dataset.style);
   });
   applyClockFaceColors();
+
+  const clockNumberScaleToggle = document.getElementById('clockNumberScaleToggle');
+  clockNumberScaleToggle.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    clockNumberScaleToggle.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    setClockNumberScale(parseFloat(btn.dataset.scale));
+  });
+
+  const clockHandScaleToggle = document.getElementById('clockHandScaleToggle');
+  clockHandScaleToggle.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    clockHandScaleToggle.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    setClockHandScale(parseFloat(btn.dataset.scale));
+  });
 
   const toggleClockTransparent = document.getElementById('toggleClockTransparent');
   const appEl = document.querySelector('.app');
