@@ -712,9 +712,11 @@
             flex-direction: column;
         }
         .layout-editor-sidebar-right {
-            flex: 0 0 180px;
+            flex: 0 0 200px;
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
+            padding-right: 2px;
         }
         .layout-editor-canvas {
             position: relative;
@@ -830,6 +832,7 @@
         }
         .road-shape-popup button:hover { background: #e2e8f0; }
         .road-shape-popup button.active { background: #3182ce; color: #fff; }
+        .curve-style-btn.active { background: #3182ce; color: #fff; }
 
         /* スタンプの丸型切り抜きツール */
         .crop-stage-wrap {
@@ -1146,8 +1149,28 @@
                         <label style="font-size: 12px;">道の太さ</label>
                         <input type="range" id="cfg-road-width" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;" oninput="onRoadWidthSliderInput()">
                     </div>
-                    <button class="btn-m btn-m-sec" style="width:100%; margin-top:auto;" onclick="resetFreeLayoutToGrid()">🔲 グリッド配置に戻す</button>
-                    <button class="btn-m btn-m-pri" style="width:100%; margin-top:8px;" onclick="closeLayoutEditor()">保存して閉じる</button>
+                    <div class="form-row" style="margin-top:14px;">
+                        <label style="font-size: 12px;">全部のマスの大きさ</label>
+                        <input type="range" id="cfg-all-size" min="0.5" max="1.8" step="0.05" value="1" style="width:100%;" oninput="onAllSizeSliderInput()" onchange="onAllSizeSliderCommit()">
+                    </div>
+                    <div class="form-row" style="margin-top:16px;">
+                        <label style="font-size: 12px;">道の曲がり方</label>
+                        <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+                            <button id="curve-style-btn-sharp" class="btn-m btn-m-sec curve-style-btn" style="width:100%; flex:0 0 auto;" onclick="setRoadCurveStyle('sharp')">➖ 直線／カギ型</button>
+                            <button id="curve-style-btn-round" class="btn-m btn-m-sec curve-style-btn" style="width:100%; flex:0 0 auto;" onclick="setRoadCurveStyle('round')">〰️ 角を丸くする</button>
+                            <button id="curve-style-btn-smooth" class="btn-m btn-m-sec curve-style-btn" style="width:100%; flex:0 0 auto;" onclick="setRoadCurveStyle('smooth')">🌊 曲線にする</button>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:16px;">
+                        <label style="font-size: 12px;">並べ方（プリセット）</label>
+                        <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+                            <button class="btn-m btn-m-sec" style="width:100%; flex:0 0 auto;" onclick="applyPresetLayout('grid')">🔲 グリッド配置</button>
+                            <button class="btn-m btn-m-sec" style="width:100%; flex:0 0 auto;" onclick="applyPresetLayout('spiralCW')">🌀 うずまき（右回り）</button>
+                            <button class="btn-m btn-m-sec" style="width:100%; flex:0 0 auto;" onclick="applyPresetLayout('spiralCCW')">🌀 うずまき（左回り）</button>
+                            <button class="btn-m btn-m-sec" style="width:100%; flex:0 0 auto;" onclick="applyPresetLayout('diagonalZigzag')">📐 おりかえし（斜め）</button>
+                        </div>
+                    </div>
+                    <button style="margin-top:16px; align-self:flex-end; font-size:11px; padding:5px 10px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; color:#4a5568; background:#edf2f7;" onclick="closeLayoutEditor()">保存して閉じる</button>
                 </div>
             </div>
         </div>
@@ -1208,7 +1231,8 @@
             layoutMode: 'grid',      // 'grid'（整列）または 'free'（自由配置）
             freeLayout: [],          // 自由配置モードでの各マスの位置・大きさ（%）。[{x,y,w,h}, ...]
             roadWidthScale: 1,       // 道の太さの倍率（自動計算した太さに掛け合わせる）。自由配置エディタのスライダーで調整
-            roadShapeOverride: {}    // 道の形を手動で指定した区間の記録。キーは区間番号(0始まり)、値は 'l'（カギ型）または 'straight'（直線）。無ければ自動判定
+            roadShapeOverride: {},   // 道の形を手動で指定した区間の記録。キーは区間番号(0始まり)、値は 'l'（カギ型）または 'straight'（直線）。無ければ自動判定
+            roadCurveStyle: 'sharp'  // 道の曲がり方。'sharp'（直線／カギ型：今まで通り）、'round'（曲がり角だけ丸める）、'smooth'（全体をなめらかな曲線にする）
         };
 
         let quizAnswer = 0;
@@ -1792,44 +1816,93 @@
             const justFilledSeg = (justStampedIndex !== null) ? (justStampedIndex - 1) : -1;
 
             for (let i = 0; i < centers.length - 1; i++) {
-                const a = centers[i], b = centers[i + 1];
-
                 // i番目のマス（1-indexで i+1）が達成済みなら、次のマスへの道が塗られる
                 const filled = state.stampsCount > i;
 
-                // 段（行）が変わる区間は、他のマスの上を斜めに横切らないよう、
-                // 段の間のすき間で直角に2回曲がる「カギ型」の道にする（手動で指定していればそちらを優先）
-                const override = (state.roadShapeOverride && state.roadShapeOverride[i]) || 'auto';
-                const autoIsRowChange = Math.abs(b.y - a.y) > turnThreshold;
-                const isRowChange = override === 'auto' ? autoIsRowChange : (override === 'l');
-                let points;
-                if (isRowChange) {
-                    const midY = (a.y + b.y) / 2;
-                    points = [a, { x: a.x, y: midY }, { x: b.x, y: midY }, b];
-                } else {
-                    points = [a, b];
-                }
+                // 段（行）が変わる区間は基本「カギ型」、それ以外は直線。手動指定があればそちらを優先。
+                // さらに「道の曲がり方」設定（直線／角丸／曲線）に応じて、実際に描く1本のパスを組み立てる。
+                const d = buildSegmentPathD(centers, i, turnThreshold, roadWidth * 1.6);
 
                 if (filled && i === justFilledSeg) {
                     // 下地（未達成色）を描いてから、達成色をゆっくり「グーッ」と流し込むように重ねる
-                    drawRoadPolyline(svg, points, false, roadWidth);
-                    drawRoadWipe(svg, points, roadWidth);
+                    drawRoadPolyline(svg, d, false, roadWidth);
+                    drawRoadWipe(svg, d, roadWidth);
                 } else {
-                    drawRoadPolyline(svg, points, filled, roadWidth);
+                    drawRoadPolyline(svg, d, filled, roadWidth);
                 }
 
-                // タップ／クリックで道の形を選べるように、太めの透明な当たり判定を上に重ねる
-                attachRoadHit(svg, points, roadWidth, i, 'main');
+                // 表紙画面では「タップして道の形を選ぶ」当たり判定は張らない。
+                // このSVGはposition: absoluteのため、CSSのスタッキングの仕組み上どうしても
+                // 通常配置のボタンより上に来てしまい、特に自由配置モードではマス間の隙間を
+                // この透明な当たり判定が覆って、保護者メニューなど他のボタンのクリックを
+                // 横取りしてしまっていた。道の形を選ぶ機能自体は「📐 位置と大きさを自分で決める」
+                // エディタ（renderLayoutRoad）側でのみ有効にする。
             }
 
             justStampedIndex = null; // 演出は使い終わったので、次回以降の再描画では繰り返さない
         }
 
+        // 区間i（centers[i] → centers[i+1]）を、現在の「道の曲がり方」設定（state.roadCurveStyle）に従って
+        // 実際に描く1本のSVGパス文字列に組み立てる。他のマスの上を斜めに横切らないよう、
+        // 段（行）が変わる区間は基本「カギ型」に、それ以外は直線にする判定はここで共通化している。
+        function buildSegmentPathD(centers, i, turnThreshold, cornerRadius) {
+            const a = centers[i], b = centers[i + 1];
+            const style = state.roadCurveStyle || 'sharp';
+
+            if (style === 'smooth') {
+                // 前後のマスの中心点も使い、Catmull-Rom→3次ベジエ変換でつなぐことで、
+                // 区間ごとに独立したパスのまま（達成演出の区間分けはそのまま）、全体がなめらかな1本の曲線に見える。
+                const prev = centers[i - 1] || a;
+                const next = centers[i + 2] || b;
+                const c1 = { x: a.x + (b.x - prev.x) / 6, y: a.y + (b.y - prev.y) / 6 };
+                const c2 = { x: b.x - (next.x - a.x) / 6, y: b.y - (next.y - a.y) / 6 };
+                return `M ${a.x} ${a.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${b.x} ${b.y}`;
+            }
+
+            const override = (state.roadShapeOverride && state.roadShapeOverride[i]) || 'auto';
+            const autoIsRowChange = Math.abs(b.y - a.y) > turnThreshold;
+            const isRowChange = override === 'auto' ? autoIsRowChange : (override === 'l');
+
+            let points;
+            if (isRowChange) {
+                const midY = (a.y + b.y) / 2;
+                points = [a, { x: a.x, y: midY }, { x: b.x, y: midY }, b];
+            } else {
+                points = [a, b];
+            }
+
+            if (style === 'round' && points.length === 4) {
+                return roundedCornersPathD(points, cornerRadius);
+            }
+            return roadPathD(points);
+        }
+
+        // 折れ線の内側の角を、半径radiusぶん丸めた1本のパス文字列にする（2点だけの直線ならそのまま）。
+        // 各コーナーで、隣り合う辺をradiusぶん手前で止め、コーナー自体を制御点にした2次ベジエでつなぐ。
+        function roundedCornersPathD(points, radius) {
+            if (points.length < 3) return roadPathD(points);
+            let d = `M ${points[0].x} ${points[0].y}`;
+            for (let i = 1; i < points.length - 1; i++) {
+                const prev = points[i - 1], cur = points[i], next = points[i + 1];
+                const toPrev = { x: prev.x - cur.x, y: prev.y - cur.y };
+                const toNext = { x: next.x - cur.x, y: next.y - cur.y };
+                const lenPrev = Math.hypot(toPrev.x, toPrev.y) || 1;
+                const lenNext = Math.hypot(toNext.x, toNext.y) || 1;
+                const r = Math.min(radius, lenPrev / 2, lenNext / 2);
+                const p1 = { x: cur.x + (toPrev.x / lenPrev) * r, y: cur.y + (toPrev.y / lenPrev) * r };
+                const p2 = { x: cur.x + (toNext.x / lenNext) * r, y: cur.y + (toNext.y / lenNext) * r };
+                d += ` L ${p1.x} ${p1.y} Q ${cur.x} ${cur.y} ${p2.x} ${p2.y}`;
+            }
+            const last = points[points.length - 1];
+            d += ` L ${last.x} ${last.y}`;
+            return d;
+        }
+
         // 道のパスの上に重ねる、タップ判定用の太い透明線。押すと道の形を選ぶポップアップを開く。
-        function attachRoadHit(svg, points, roadWidth, segIndex, context) {
+        function attachRoadHit(svg, d, roadWidth, segIndex, context) {
             const svgNS = 'http://www.w3.org/2000/svg';
             const hit = document.createElementNS(svgNS, 'path');
-            hit.setAttribute('d', roadPathD(points));
+            hit.setAttribute('d', d);
             hit.setAttribute('fill', 'none');
             hit.setAttribute('stroke', 'rgba(0,0,0,0.001)');
             hit.setAttribute('stroke-width', Math.max(roadWidth + 22, 30));
@@ -1924,10 +1997,9 @@
         // 「太いフチ色のストローク」→「その上に少し細い道色のストローク」を重ねて描く。
         // レールを点ごとにオフセット計算する方式（曲がり角で破綻しやすい）ではなく、
         // 1本のパスの二重ストロークにすることで、直線でも曲がり角でも輪郭が常にきれいに揃う。
-        function drawRoadPolyline(svg, points, filled, roadWidth) {
+        function drawRoadPolyline(svg, d, filled, roadWidth) {
             const bedColor = filled ? 'var(--primary-color)' : 'color-mix(in srgb, var(--text-color) 22%, transparent)';
             const lineColor = filled ? 'var(--accent-color)' : 'color-mix(in srgb, var(--text-color) 55%, transparent)';
-            const d = roadPathD(points);
 
             svg.appendChild(makeRoadPathEl(d, lineColor, roadWidth + 5)); // 外側のフチ
             svg.appendChild(makeRoadPathEl(d, bedColor, roadWidth));      // 内側の道
@@ -1935,15 +2007,14 @@
 
         // 道を塗る速さ（px/秒）。秒数を固定にすると短い道は不自然に速く、長い道は不自然に遅く見えるため、
         // 常にこの速さで塗り進むようにし、かかる時間は道の長さに比例させる（長い道ほど長くかかってOK）。
-        const ROAD_WIPE_SPEED_PX_PER_SEC = 60;
+        const ROAD_WIPE_SPEED_PX_PER_SEC = 120;
         const ROAD_WIPE_MIN_SEC = 0.9; // 一瞬で終わって見逃さないよう、短い道でも最低これだけはかける
 
         // 「今まさに達成した」区間だけ、達成色をstroke-dashoffsetで少しずつ伸ばして
         // ゆっくり道が塗られていくように見せる（下地は drawRoadPolyline(..., false, ...) で先に描いておく）
-        function drawRoadWipe(svg, points, roadWidth) {
+        function drawRoadWipe(svg, d, roadWidth) {
             const bedColor = 'var(--primary-color)';
             const lineColor = 'var(--accent-color)';
-            const d = roadPathD(points);
 
             const specs = [
                 { color: lineColor, width: roadWidth + 5 }, // 外側のフチ
@@ -2434,13 +2505,20 @@
             return FALLBACK_CARD_ASPECT;
         }
 
-        // マス数(n)個ぶんの、整列したグリッド配置（%座標）を新規に作る。
-        // 各マスは実物のカードの縦横比を基準にした正方形にしつつ、
-        // 隣のマスと重ならないよう、セルの幅・高さ両方に収まる範囲で大きさを自動調整する。
-        function buildGridFreeLayout(n) {
-            const cardAspect = getCardAspect();
+        // マス数(n)に対して、できるだけ正方形に近い「行数×列数」の仮想グリッドを決める。
+        // グリッド配置・うずまき・おりかえし（斜め）など、プリセットは全てこの同じグリッドの上で
+        // 「1〜n をどの順番でセルに割り当てるか」だけが違う、という考え方で統一している。
+        function computeSquareGridDims(n) {
             const cols = Math.ceil(Math.sqrt(n));
             const rows = Math.ceil(n / cols);
+            return { rows, cols };
+        }
+
+        // {row, col} の並び（1番目のマス〜n番目のマスの順）を、実際の%座標のマス配置に変換する。
+        // 各マスは実物のカードの縦横比を基準にした正方形にしつつ、
+        // 隣のマスと重ならないよう、セルの幅・高さ両方に収まる範囲で大きさを自動調整する。
+        function cellOrderToFreeLayout(cellOrder, rows, cols) {
+            const cardAspect = getCardAspect();
             const cellW = 100 / cols, cellH = 100 / rows;
 
             // 幅%基準の一辺(side)に対して、高さ% = side * cardAspect となる。
@@ -2450,13 +2528,116 @@
             const side = Math.min(maxSideByWidth, maxSideByHeight) * 0.82; // 余白を残す
             const boxW = side, boxH = side * cardAspect;
 
-            const arr = [];
-            for (let i = 0; i < n; i++) {
-                const col = i % cols, row = Math.floor(i / cols);
+            return cellOrder.map(({ row, col }) => {
                 const cx = col * cellW + cellW / 2, cy = row * cellH + cellH / 2;
-                arr.push({ x: cx - boxW / 2, y: cy - boxH / 2, w: boxW, h: boxH });
+                return { x: cx - boxW / 2, y: cy - boxH / 2, w: boxW, h: boxH };
+            });
+        }
+
+        // マス数(n)個ぶんの、整列したグリッド配置（%座標）を新規に作る。
+        // 左上から右へ、右端まで行ったら次の行の左端へ…という通常の順番。
+        function buildGridFreeLayout(n) {
+            const { rows, cols } = computeSquareGridDims(n);
+            const cellOrder = [];
+            for (let i = 0; i < n; i++) {
+                cellOrder.push({ row: Math.floor(i / cols), col: i % cols });
             }
-            return arr;
+            return cellOrderToFreeLayout(cellOrder, rows, cols);
+        }
+
+        // マス数(n)個ぶんの、うずまき配置（%座標）を新規に作る。
+        // clockwise=true なら時計回り（左上から右へ→右端を下へ→下端を左へ→左端を上へ…と1周ごとに1マス内側へ）、
+        // false なら反時計回り（左上から下へ→下端を右へ→右端を上へ→上端を左へ…）。
+        function buildSpiralFreeLayout(n, clockwise) {
+            const { rows, cols } = computeSquareGridDims(n);
+            const cellOrder = [];
+            let top = 0, bottom = rows - 1, left = 0, right = cols - 1;
+
+            while (cellOrder.length < n && top <= bottom && left <= right) {
+                if (clockwise) {
+                    for (let c = left; c <= right && cellOrder.length < n; c++) cellOrder.push({ row: top, col: c });
+                    top++;
+                    for (let r = top; r <= bottom && cellOrder.length < n; r++) cellOrder.push({ row: r, col: right });
+                    right--;
+                    if (top <= bottom) {
+                        for (let c = right; c >= left && cellOrder.length < n; c--) cellOrder.push({ row: bottom, col: c });
+                        bottom--;
+                    }
+                    if (left <= right) {
+                        for (let r = bottom; r >= top && cellOrder.length < n; r--) cellOrder.push({ row: r, col: left });
+                        left++;
+                    }
+                } else {
+                    for (let r = top; r <= bottom && cellOrder.length < n; r++) cellOrder.push({ row: r, col: left });
+                    left++;
+                    for (let c = left; c <= right && cellOrder.length < n; c++) cellOrder.push({ row: bottom, col: c });
+                    bottom--;
+                    if (left <= right) {
+                        for (let r = bottom; r >= top && cellOrder.length < n; r--) cellOrder.push({ row: r, col: right });
+                        right--;
+                    }
+                    if (top <= bottom) {
+                        for (let c = right; c >= left && cellOrder.length < n; c--) cellOrder.push({ row: top, col: c });
+                        top++;
+                    }
+                }
+            }
+            return cellOrderToFreeLayout(cellOrder, rows, cols);
+        }
+
+        // マス数(n)個ぶんの、おりかえし（斜め）配置（%座標）を新規に作る。
+        // 「row + col が同じセル（斜めの列＝対角線）」ごとにグループ分けし、
+        // 対角線ごとに上→下／下→上と交互に向きを反転させながら進む（JPEGのジグザグスキャンと同じ考え方）。
+        // 向きが対角線ごとに折り返されるので、線でつなぐと斜めにジグザグする道になる。
+        function buildDiagonalZigzagFreeLayout(n) {
+            const { rows, cols } = computeSquareGridDims(n);
+            const cellOrder = [];
+            const maxD = rows + cols - 2;
+            for (let d = 0; d <= maxD && cellOrder.length < n; d++) {
+                const cells = [];
+                for (let row = 0; row < rows; row++) {
+                    const col = d - row;
+                    if (col >= 0 && col < cols) cells.push({ row, col });
+                }
+                if (d % 2 === 1) cells.reverse(); // 奇数番目の対角線は逆向き（下→上）に折り返す
+                for (const cell of cells) {
+                    if (cellOrder.length >= n) break;
+                    cellOrder.push(cell);
+                }
+            }
+            return cellOrderToFreeLayout(cellOrder, rows, cols);
+        }
+
+        const LAYOUT_PRESET_LABELS = {
+            grid: 'グリッド配置（整列）',
+            spiralCW: 'うずまき（時計回り）',
+            spiralCCW: 'うずまき（反時計回り）',
+            diagonalZigzag: 'おりかえし（斜め）'
+        };
+
+        function buildPresetFreeLayout(kind, n) {
+            if (kind === 'spiralCW') return buildSpiralFreeLayout(n, true);
+            if (kind === 'spiralCCW') return buildSpiralFreeLayout(n, false);
+            if (kind === 'diagonalZigzag') return buildDiagonalZigzagFreeLayout(n);
+            return buildGridFreeLayout(n);
+        }
+
+        // レイアウトエディタの「並べ方」ボタンから呼ばれる。マス数はそのままに、並び順だけ選び直す。
+        function applyPresetLayout(kind) {
+            const label = LAYOUT_PRESET_LABELS[kind] || kind;
+            if (!confirm(`マスの位置と大きさを、「${label}」に並べ直しますか？\n（このまま「自分で位置と大きさを決めるモード」の編集画面が続きます）`)) return;
+            const n = state.freeLayout.length;
+            state.freeLayout = buildPresetFreeLayout(kind, n);
+
+            // 道の形（カギ型／直線）の手動指定は、並べ方が変わると意味が変わってしまうので一旦リセットする。
+            // 「おりかえし（斜め）」は、段が変わる区間でも斜めの直線でつながないと見た目が崩れるため、
+            // 自動判定に任せず全区間を「直線」に固定する。
+            state.roadShapeOverride = {};
+            if (kind === 'diagonalZigzag') {
+                for (let i = 0; i < n - 1; i++) state.roadShapeOverride[i] = 'straight';
+            }
+
+            renderLayoutEditor();
         }
 
         // マス数(n)に対応するfreeLayoutが無い/数が合わない場合、整列した初期配置を作り直す
@@ -2473,6 +2654,9 @@
             state.maxStamps = n;
             closeModal('parent-settings-overlay');
             document.getElementById('cfg-road-width').value = state.roadWidthScale || 1;
+            document.getElementById('cfg-all-size').value = 1;
+            freeSizeSliderSnapshot = null;
+            updateCurveStyleButtons();
             renderLayoutEditor();
             document.getElementById('layout-editor-overlay').classList.add('open');
         }
@@ -2484,10 +2668,49 @@
             if (canvas) renderLayoutRoad(canvas);
         }
 
-        function resetFreeLayoutToGrid() {
-            if (!confirm('マスの位置と大きさを、グリッド配置（整列）にリセットしますか？\n（このまま「自分で位置と大きさを決めるモード」の編集画面が続きます）')) return;
-            state.freeLayout = buildGridFreeLayout(state.freeLayout.length);
+        // 「全部のマスの大きさ」スライダー用。ドラッグを始めた瞬間のマス配置(freeSizeSliderSnapshot)を基準に、
+        // 各マスの中心位置は変えずに、大きさだけをスライダーの倍率ぶん一律で拡大・縮小する。
+        let freeSizeSliderSnapshot = null;
+
+        function onAllSizeSliderInput() {
+            if (!freeSizeSliderSnapshot) {
+                freeSizeSliderSnapshot = state.freeLayout.map(b => ({ ...b }));
+            }
+            const scale = parseFloat(document.getElementById('cfg-all-size').value) || 1;
+            state.freeLayout = freeSizeSliderSnapshot.map(b => {
+                const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+                const w = b.w * scale, h = b.h * scale;
+                return { x: cx - w / 2, y: cy - h / 2, w, h };
+            });
             renderLayoutEditor();
+        }
+
+        // スライダーを離したら、その時点の大きさを新しい基準にして、スライダー自体は真ん中(倍率1)に戻す。
+        // こうすることで、何度でも「今の大きさから、さらに拡大・縮小」を繰り返せる。
+        function onAllSizeSliderCommit() {
+            freeSizeSliderSnapshot = null;
+            const slider = document.getElementById('cfg-all-size');
+            if (slider) slider.value = 1;
+        }
+
+        // 道の曲がり方（直線／角丸／曲線）を切り替える。自由配置エディタとカード本体、両方に反映する。
+        function setRoadCurveStyle(style) {
+            state.roadCurveStyle = style;
+            updateCurveStyleButtons();
+            saveData();
+            const canvas = document.getElementById('layout-editor-canvas');
+            if (canvas) renderLayoutRoad(canvas);
+            renderRoad();
+        }
+
+        function updateCurveStyleButtons() {
+            const cur = state.roadCurveStyle || 'sharp';
+            const sharpBtn = document.getElementById('curve-style-btn-sharp');
+            const roundBtn = document.getElementById('curve-style-btn-round');
+            const smoothBtn = document.getElementById('curve-style-btn-smooth');
+            if (sharpBtn) sharpBtn.classList.toggle('active', cur === 'sharp');
+            if (roundBtn) roundBtn.classList.toggle('active', cur === 'round');
+            if (smoothBtn) smoothBtn.classList.toggle('active', cur === 'smooth');
         }
 
         function closeLayoutEditor() {
@@ -2498,6 +2721,16 @@
 
             saveData();
             document.getElementById('layout-editor-overlay').classList.remove('open');
+
+            // 道の当たり判定（pointer-events="stroke" を要素に直接指定したSVGパス）は、
+            // 「モーダルを閉じている時はpointer-events:noneにして全部素通りさせる」という
+            // 親要素側のCSSルールを、要素ごとの指定で上書きしてしまう性質がある。
+            // そのままにしておくと、エディタを閉じた後も見えない当たり判定だけが画面上に残り続け、
+            // 保護者メニューのボタンなど他の要素の下に隠れていてもタップに反応してしまうため、
+            // 閉じるタイミングで中身を空にして確実に消す。
+            const layoutRoadSvg = document.getElementById('layout-road-svg');
+            if (layoutRoadSvg) layoutRoadSvg.innerHTML = '';
+
             renderCard();
             updateUI();
         }
@@ -2617,25 +2850,20 @@
             const svgNS = 'http://www.w3.org/2000/svg';
             const previewWidth = Math.max(3, avgHpx * 0.182) * (state.roadWidthScale || 1);
             for (let i = 0; i < centers.length - 1; i++) {
-                const a = centers[i], b = centers[i + 1];
-                const override = (state.roadShapeOverride && state.roadShapeOverride[i]) || 'auto';
-                const autoIsRowChange = Math.abs(b.y - a.y) > turnThreshold;
-                const isRowChange = override === 'auto' ? autoIsRowChange : (override === 'l');
-                const pts = isRowChange
-                    ? [a, { x: a.x, y: (a.y + b.y) / 2 }, { x: b.x, y: (a.y + b.y) / 2 }, b]
-                    : [a, b];
+                const d = buildSegmentPathD(centers, i, turnThreshold, previewWidth * 1.6);
 
-                const line = document.createElementNS(svgNS, 'polyline');
-                line.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
+                const line = document.createElementNS(svgNS, 'path');
+                line.setAttribute('d', d);
                 line.setAttribute('fill', 'none');
                 line.setAttribute('stroke', '#a0aec0');
                 line.setAttribute('stroke-width', previewWidth);
                 line.setAttribute('stroke-linejoin', 'round');
+                line.setAttribute('stroke-linecap', 'round');
                 line.setAttribute('stroke-dasharray', '6,5');
                 svg.appendChild(line);
 
                 // タップで、この区間の道の形（カギ型／直線）を選べるようにする
-                attachRoadHit(svg, pts, previewWidth, i, 'editor');
+                attachRoadHit(svg, d, previewWidth, i, 'editor');
             }
         }
 
