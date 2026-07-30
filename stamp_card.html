@@ -116,10 +116,14 @@
         }
 
         .chromebook-frame {
-            width: 100%;
-            height: 100%;
-            max-width: 1280px;
-            max-height: 720px; /* 16:9 アスペクト比にフィット */
+            /* 画面の解像度・縦横比が機器ごとに違っても常にきっちり16:9になるようにする。
+               以前は width:100%; height:100% を別々に指定していたため、ビューポートの
+               縦横比がそのまま枠の縦横比になってしまい（家庭のPCとChromebookで画面比が違うと
+               枠の中の背景PNGなど「一部の枠」の縦横比までずれて見える原因になっていた）。
+               aspect-ratio を効かせるには width と height を同時に固定値指定しないことが必要なので、
+               height は指定せず、width だけを「画面に収まる最大の16:9サイズ」として計算する。 */
+            width: min(1280px, 100%, calc((100vh - 24px) * 16 / 9));
+            aspect-ratio: 16 / 9;
             background: var(--card-bg);
             backdrop-filter: blur(10px);
             border-radius: 20px;
@@ -496,7 +500,12 @@
             content: "✔";
         }
 
-        /* --- 表紙のスタンプピッカー（今日押すスタンプを複数の中からえらぶ） --- */
+        /* --- 表紙のスタンプピッカー（今日押すスタンプを複数の中からえらぶ） ---
+           以前はスタンプが増えるほど折り返して行数が増え、どんどん縮小されて
+           スタイリッシュではなかったため、常に1行・中央3個くらいがはっきり見える
+           「コンベア（コーンベア／カルーセル）」表示に変更。
+           左右にスワイプ（またはドラッグ／矢印ボタン）して選ぶ。中央＝選択中で赤枠になり、
+           両端に行くほど縮小・半透明のフェードがかかる。 */
         .stamp-picker {
             display: none;
             flex-direction: column;
@@ -510,16 +519,59 @@
             color: var(--text-color);
             opacity: 0.65;
         }
-        .stamp-picker-list {
+        .stamp-carousel {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            align-items: center;
+            gap: 2px;
+            width: 100%;
+            max-width: 280px;
+        }
+        .stamp-carousel-arrow {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.08);
+            color: var(--text-color);
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
             justify-content: center;
-            max-width: 100%;
+            transition: background 0.15s ease;
+        }
+        .stamp-carousel-arrow:hover {
+            background: rgba(0,0,0,0.16);
+        }
+        .stamp-carousel-viewport {
+            flex: 1;
+            min-width: 0;
+            height: 60px;
+            overflow: hidden;
+            position: relative;
+        }
+        .stamp-carousel-track {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            touch-action: none;
+            cursor: grab;
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .stamp-carousel-track.dragging {
+            transition: none;
+            cursor: grabbing;
         }
         .stamp-picker-item {
             width: 44px;
             height: 44px;
+            margin: 0 6px;
             border-radius: 50%;
             border: 3px solid rgba(0,0,0,0.12);
             overflow: hidden;
@@ -530,12 +582,11 @@
             cursor: pointer;
             background: #fff;
             flex-shrink: 0;
-            transition: all 0.15s ease;
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
-        .stamp-picker-item.active {
+        .stamp-picker-item.is-center {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(255,107,107,0.25);
-            transform: scale(1.08);
         }
         .stamp-picker-item img {
             width: 100%;
@@ -543,36 +594,45 @@
             object-fit: fill;
         }
 
-        /* --- 保護者設定：スタンプギャラリー編集用サムネイル --- */
+
+        /* --- 保護者設定：スタンプギャラリー編集用サムネイル ---
+           以前は .gallery-thumb 自体に overflow:hidden + border-radius:50% を付けていたため、
+           右上に置いた✕ボタンが丸の外周ではみ出た部分ごと切り抜かれてしまっていた。
+           丸く見せるのは img 側の border-radius だけにして、親要素からは overflow:hidden を外し、
+           ✕ボタンは丸の外側（右上）に完全にはみ出す形で配置する。 */
         .gallery-thumb {
             position: relative;
             width: 48px;
             height: 48px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 2px solid #cbd5e0;
-            background: #fff;
+            margin: 6px 8px 6px 0; /* 外側にはみ出す✕ボタン分の余白 */
         }
         .gallery-thumb img {
+            display: block;
             width: 100%;
             height: 100%;
             object-fit: fill;
+            border-radius: 50%;
+            border: 2px solid #cbd5e0;
+            background: #fff;
         }
         .gallery-thumb .del-btn {
             position: absolute;
-            top: 0;
-            right: 0;
-            background: rgba(220, 53, 69, 0.9);
+            top: -7px;
+            right: -7px;
+            background: rgba(220, 53, 69, 0.95);
             color: #fff;
-            font-size: 10px;
-            width: 16px;
-            height: 16px;
+            font-size: 11px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             line-height: 1;
             cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            z-index: 2;
         }
         .self-check-label {
             font-size: 15px;
@@ -873,6 +933,65 @@
             cursor: ew-resize;
         }
 
+        /* --- 切り抜きモード切り替えタブ（丸で切り抜く／背景色を消す） --- */
+        .crop-mode-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .crop-mode-btn {
+            flex: 1;
+            padding: 8px 6px;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f7fafc;
+            color: #4a5568;
+            cursor: pointer;
+        }
+        .crop-mode-btn.active {
+            border-color: #3182ce;
+            background: #ebf8ff;
+            color: #2b6cb0;
+        }
+        /* 色抜きモード：画像タップで色を拾うための透明な当たり判定レイヤー */
+        .crop-pick-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            cursor: crosshair;
+        }
+        /* 透明部分が分かるよう市松模様の背景にする */
+        .crop-checker-bg {
+            background-image:
+                linear-gradient(45deg, #ccc 25%, transparent 25%),
+                linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #ccc 75%),
+                linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+            background-color: #fff;
+        }
+        #crop-color-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #crop-color-controls span {
+            font-size: 12px;
+            color: #718096;
+            white-space: nowrap;
+        }
+        #crop-color-swatch {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid #cbd5e0;
+            flex-shrink: 0;
+        }
+
         /* --- スタンプ演出エフェクト --- */
         #fx-layer {
             position: absolute;
@@ -1008,7 +1127,13 @@
                 <div class="interactive-zone">
                     <div id="stamp-picker" class="stamp-picker">
                         <div class="stamp-picker-label">きょう おすスタンプをえらぼう</div>
-                        <div id="stamp-picker-list" class="stamp-picker-list"></div>
+                        <div class="stamp-carousel">
+                            <button type="button" class="stamp-carousel-arrow" onclick="stampCarouselStep(-1)" aria-label="まえのスタンプ">‹</button>
+                            <div class="stamp-carousel-viewport" id="stamp-picker-viewport">
+                                <div id="stamp-picker-list" class="stamp-carousel-track"></div>
+                            </div>
+                            <button type="button" class="stamp-carousel-arrow" onclick="stampCarouselStep(1)" aria-label="つぎのスタンプ">›</button>
+                        </div>
                     </div>
 
                     <label class="self-check-container">
@@ -1179,9 +1304,19 @@
         <div class="modal-overlay" id="crop-modal">
             <div class="modal-box" style="max-width: 560px; width: 95%;">
                 <div class="modal-title">✂️ スタンプの切り抜き</div>
-                <p style="font-size: 12px; color: #718096; margin-bottom: 10px;">丸をドラッグして位置を、右のハンドル（タブレットでは2本指ピンチでもOK）で大きさを決めてね。丸の中がそのままスタンプになります。</p>
+                <div class="crop-mode-tabs">
+                    <button type="button" class="crop-mode-btn active" id="crop-mode-btn-circle" onclick="setCropMode('circle')">⭕ 丸く切り抜く</button>
+                    <button type="button" class="crop-mode-btn" id="crop-mode-btn-color" onclick="setCropMode('color')">🎨 背景色を消して使う</button>
+                </div>
+                <p id="crop-hint-circle" style="font-size: 12px; color: #718096; margin-bottom: 10px;">丸をドラッグして位置を、右のハンドル（タブレットでは2本指ピンチでもOK）で大きさを決めてね。丸の中がそのままスタンプになります。</p>
+                <p id="crop-hint-color" style="display:none; font-size: 12px; color: #718096; margin-bottom: 10px;">消したい背景の色を画像の上でタップしてね。似た色がぜんぶ透明になって、画像全体を使えます。「消す強さ」で範囲を調整できます。</p>
                 <div class="crop-stage-wrap">
                     <div id="crop-stage"></div>
+                </div>
+                <div id="crop-color-controls" style="display:none;">
+                    <span>消す強さ</span>
+                    <input type="range" id="crop-color-tolerance" min="5" max="120" value="45" style="flex:1;">
+                    <div id="crop-color-swatch"></div>
                 </div>
                 <div class="btn-row">
                     <button class="btn-m btn-m-sec" onclick="closeCropModal()">キャンセル</button>
@@ -1454,21 +1589,153 @@
                 circle.appendChild(handle);
                 stage.appendChild(circle);
 
+                // --- 背景色を消して使うモード用の要素 ---
+                // タップで色を拾うための透明な当たり判定レイヤー
+                const pickOverlay = document.createElement('div');
+                pickOverlay.className = 'crop-pick-overlay';
+                pickOverlay.style.display = 'none';
+                stage.appendChild(pickOverlay);
+
+                // 色を消した結果のプレビュー（市松模様背景の上に透過PNGを重ねて見せる）
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = img.width;
+                previewCanvas.height = img.height;
+                previewCanvas.style.width = dispW + 'px';
+                previewCanvas.style.height = dispH + 'px';
+                previewCanvas.style.display = 'none';
+                stage.appendChild(previewCanvas);
+
+                // 色のサンプリング・最終書き出し用に、元画像をフル解像度で1枚だけ描いておく
+                const fullCanvas = document.createElement('canvas');
+                fullCanvas.width = img.width;
+                fullCanvas.height = img.height;
+                const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
+                fullCtx.drawImage(img, 0, 0);
+                let fullData = null;
+                try { fullData = fullCtx.getImageData(0, 0, img.width, img.height); } catch (e) { fullData = null; }
+
                 const initR = Math.min(dispW, dispH) * 0.35;
                 cropState = {
                     img, scale, dispW, dispH,
                     cx: dispW / 2, cy: dispH / 2, r: initR,
-                    circleEl: circle, handleEl: handle, stageEl: stage
+                    circleEl: circle, handleEl: handle, stageEl: stage,
+                    imgEl, pickOverlay, previewCanvas, fullData,
+                    mode: 'circle', pick: null, tolerance: 45
                 };
                 updateCropCircleUI();
                 attachCropDrag();
                 attachCropResize();
                 attachCropPinch();
+                attachColorPick();
+
+                const tolInput = document.getElementById('crop-color-tolerance');
+                if (tolInput) tolInput.value = 45;
+                const swatch = document.getElementById('crop-color-swatch');
+                if (swatch) swatch.style.background = '#fff';
+                setCropMode('circle');
 
                 document.getElementById('crop-modal').classList.add('open');
             };
             img.onerror = () => alert("画像を読み込めませんでした（URLやファイルを確認してください）");
             img.src = imgSrc;
+        }
+
+        // --- 切り抜きモードの切り替え（⭕丸く切り抜く／🎨背景色を消して使う） ---
+        function setCropMode(mode) {
+            if (!cropState) return;
+            if (mode === 'color' && !cropState.fullData) {
+                alert("この画像は色を調べられませんでした（外部サイトの画像はサイトの設定により読み取れないことがあります）。パソコンやタブレットに保存した画像ファイルを選んでお試しください。");
+                mode = 'circle';
+            }
+            cropState.mode = mode;
+
+            const btnCircle = document.getElementById('crop-mode-btn-circle');
+            const btnColor = document.getElementById('crop-mode-btn-color');
+            if (btnCircle) btnCircle.classList.toggle('active', mode === 'circle');
+            if (btnColor) btnColor.classList.toggle('active', mode === 'color');
+            const hintCircle = document.getElementById('crop-hint-circle');
+            const hintColor = document.getElementById('crop-hint-color');
+            if (hintCircle) hintCircle.style.display = mode === 'circle' ? '' : 'none';
+            if (hintColor) hintColor.style.display = mode === 'color' ? '' : 'none';
+            const colorControls = document.getElementById('crop-color-controls');
+            if (colorControls) colorControls.style.display = mode === 'color' ? 'flex' : 'none';
+
+            const { circleEl, imgEl, pickOverlay, previewCanvas, pick } = cropState;
+            if (mode === 'circle') {
+                circleEl.style.display = '';
+                pickOverlay.style.display = 'none';
+                imgEl.style.display = '';
+                previewCanvas.style.display = 'none';
+                previewCanvas.classList.remove('crop-checker-bg');
+            } else {
+                circleEl.style.display = 'none';
+                pickOverlay.style.display = '';
+                if (pick) {
+                    imgEl.style.display = 'none';
+                    previewCanvas.style.display = '';
+                    previewCanvas.classList.add('crop-checker-bg');
+                } else {
+                    imgEl.style.display = '';
+                    previewCanvas.style.display = 'none';
+                    previewCanvas.classList.remove('crop-checker-bg');
+                }
+            }
+        }
+
+        // 画像タップで背景色を1点サンプリングする
+        function attachColorPick() {
+            const { pickOverlay } = cropState;
+            pickOverlay.addEventListener('pointerdown', (e) => {
+                if (!cropState || cropState.mode !== 'color' || !cropState.fullData) return;
+                e.preventDefault();
+                const rect = pickOverlay.getBoundingClientRect();
+                const relX = (e.clientX - rect.left) / rect.width;
+                const relY = (e.clientY - rect.top) / rect.height;
+                const w = cropState.fullData.width, h = cropState.fullData.height;
+                const nx = Math.max(0, Math.min(w - 1, Math.round(relX * w)));
+                const ny = Math.max(0, Math.min(h - 1, Math.round(relY * h)));
+                const idx = (ny * w + nx) * 4;
+                const d = cropState.fullData.data;
+                cropState.pick = { r: d[idx], g: d[idx + 1], b: d[idx + 2] };
+
+                const swatch = document.getElementById('crop-color-swatch');
+                if (swatch) swatch.style.background = `rgb(${cropState.pick.r},${cropState.pick.g},${cropState.pick.b})`;
+
+                cropState.imgEl.style.display = 'none';
+                cropState.previewCanvas.style.display = '';
+                cropState.previewCanvas.classList.add('crop-checker-bg');
+                updateColorCropPreview();
+            });
+        }
+
+        // 指定した色に近いピクセルを透明にした ImageData を作る（境界は少しぼかして自然にする）
+        function buildColorKeyedImageData(pick, tolerance) {
+            const src = cropState.fullData;
+            const out = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+            const d = out.data;
+            const feather = 30;
+            for (let i = 0; i < d.length; i += 4) {
+                const dr = d[i] - pick.r, dg = d[i + 1] - pick.g, db = d[i + 2] - pick.b;
+                const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+                if (dist <= tolerance) {
+                    d[i + 3] = 0;
+                } else if (dist < tolerance + feather) {
+                    const ratio = (dist - tolerance) / feather;
+                    d[i + 3] = Math.round(d[i + 3] * ratio);
+                }
+            }
+            return out;
+        }
+
+        function updateColorCropPreview() {
+            if (!cropState || cropState.mode !== 'color' || !cropState.pick) return;
+            const tolInput = document.getElementById('crop-color-tolerance');
+            const tolerance = parseInt(tolInput && tolInput.value, 10) || 45;
+            cropState.tolerance = tolerance;
+            const keyed = buildColorKeyedImageData(cropState.pick, tolerance);
+            const ctx = cropState.previewCanvas.getContext('2d');
+            ctx.clearRect(0, 0, cropState.previewCanvas.width, cropState.previewCanvas.height);
+            ctx.putImageData(keyed, 0, 0);
         }
 
         function updateCropCircleUI() {
@@ -1564,6 +1831,10 @@
 
         function confirmCrop() {
             if (!cropState) return;
+            if (cropState.mode === 'color') {
+                confirmColorCrop();
+                return;
+            }
             try {
                 const { img, scale, cx, cy, r } = cropState;
                 const srcCx = cx / scale, srcCy = cy / scale, srcR = r / scale;
@@ -1579,6 +1850,66 @@
                 ctx.clip();
                 ctx.drawImage(img, srcCx - srcR, srcCy - srcR, srcR * 2, srcR * 2, 0, 0, size, size);
                 ctx.restore();
+
+                const dataURL = c.toDataURL('image/png');
+                addStampToGalleryImage(dataURL);
+                closeCropModal();
+            } catch (err) {
+                alert("この画像は切り抜けませんでした（外部サイトの画像はサイトの設定により保存できないことがあります）。パソコンやタブレットに保存した画像ファイルを選んでお試しください。");
+            }
+        }
+
+        // 「背景色を消して使う」モードの書き出し：
+        // 選んだ色に近いピクセルを透明にしたうえで、残った絵柄部分の外接矩形だけを
+        // 切り出す（＝丸に収まらない縦長・横長の画像でも全体をムダなく使える）。
+        function confirmColorCrop() {
+            if (!cropState.pick) {
+                alert("先に消したい背景の色を、画像の上でタップして選んでね。");
+                return;
+            }
+            try {
+                const tolerance = cropState.tolerance;
+                const keyed = buildColorKeyedImageData(cropState.pick, tolerance);
+                const w = keyed.width, h = keyed.height;
+                const d = keyed.data;
+
+                let minX = w, minY = h, maxX = -1, maxY = -1;
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const a = d[(y * w + x) * 4 + 3];
+                        if (a > 10) {
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+                if (maxX < 0) {
+                    alert("選んだ色で画像全体が消えてしまいました。「消す強さ」を弱くするか、別の場所をタップしてみてね。");
+                    return;
+                }
+
+                const pad = Math.round(Math.max(maxX - minX, maxY - minY) * 0.06);
+                minX = Math.max(0, minX - pad);
+                minY = Math.max(0, minY - pad);
+                maxX = Math.min(w - 1, maxX + pad);
+                maxY = Math.min(h - 1, maxY + pad);
+                const cropW = maxX - minX + 1, cropH = maxY - minY + 1;
+
+                const srcCanvas = document.createElement('canvas');
+                srcCanvas.width = w; srcCanvas.height = h;
+                srcCanvas.getContext('2d').putImageData(keyed, 0, 0);
+
+                const maxOut = 320;
+                const outScale = Math.min(1, maxOut / Math.max(cropW, cropH));
+                const outW = Math.max(20, Math.round(cropW * outScale));
+                const outH = Math.max(20, Math.round(cropH * outScale));
+
+                const c = document.createElement('canvas');
+                c.width = outW; c.height = outH;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(srcCanvas, minX, minY, cropW, cropH, 0, 0, outW, outH);
 
                 const dataURL = c.toDataURL('image/png');
                 addStampToGalleryImage(dataURL);
@@ -1661,12 +1992,18 @@
             document.getElementById('cfg-stamp-size-val').innerText = e.target.value;
         });
 
-        // --- 表紙のスタンプピッカー（今日押すスタンプを複数の中から選ぶ） ---
+        document.getElementById('crop-color-tolerance').addEventListener('input', updateColorCropPreview);
+
+        // --- 表紙のスタンプピッカー：1行のスワイプ式カルーセル ---
+        // 「中央にあるもの＝今日選んでいるスタンプ」という考え方にして、
+        // 左右にスワイプ／ドラッグ／矢印ボタンで選ぶと同時に選択も切り替わるようにする。
+        let stampCarouselIndex = 0;
+        const STAMP_ITEM_STEP = 56; // .stamp-picker-item の幅(44px) + 左右マージン(6px×2)
+
         function renderStampPicker() {
             const wrap = document.getElementById('stamp-picker');
             const list = document.getElementById('stamp-picker-list');
             if (!wrap || !list) return;
-            list.innerHTML = '';
 
             if (!state.stampGallery || state.stampGallery.length === 0) {
                 wrap.style.display = 'none';
@@ -1675,24 +2012,106 @@
             wrap.style.display = 'flex';
 
             const emoji = themeEmojis[state.theme] || '🌸';
+            // 先頭はテーマの絵文字（src:null）、続けてギャラリーの画像
+            const items = [{ src: null, emoji }].concat(state.stampGallery.map(src => ({ src })));
 
-            // デフォルト（テーマ絵文字）
-            const defItem = document.createElement('div');
-            defItem.className = 'stamp-picker-item' + (state.selectedStampSrc ? '' : ' active');
-            defItem.innerText = emoji;
-            defItem.title = 'テーマの絵文字';
-            defItem.onclick = () => { state.selectedStampSrc = null; saveData(); renderStampPicker(); };
-            list.appendChild(defItem);
+            let idx = items.findIndex(it => it.src === (state.selectedStampSrc || null));
+            if (idx < 0) idx = 0;
+            stampCarouselIndex = idx;
 
-            state.stampGallery.forEach((src) => {
+            list.innerHTML = '';
+            items.forEach((it, i) => {
                 const item = document.createElement('div');
-                item.className = 'stamp-picker-item' + (state.selectedStampSrc === src ? ' active' : '');
-                const img = document.createElement('img');
-                img.src = src;
-                item.appendChild(img);
-                item.onclick = () => { state.selectedStampSrc = src; saveData(); renderStampPicker(); };
+                item.className = 'stamp-picker-item';
+                if (it.src) {
+                    const img = document.createElement('img');
+                    img.src = it.src;
+                    item.appendChild(img);
+                } else {
+                    item.innerText = it.emoji;
+                    item.title = 'テーマの絵文字';
+                }
+                item.onclick = () => {
+                    if (stampCarouselSuppressClick) return;
+                    if (i === stampCarouselIndex) return;
+                    state.selectedStampSrc = it.src || null;
+                    saveData();
+                    renderStampPicker();
+                };
                 list.appendChild(item);
             });
+
+            updateStampCarouselVisual();
+            attachStampCarouselDrag();
+        }
+
+        // 中央（＝選択中）からの距離に応じて、位置・大きさ・透明度を更新する
+        function updateStampCarouselVisual() {
+            const list = document.getElementById('stamp-picker-list');
+            if (!list) return;
+            const idx = stampCarouselIndex;
+            list.style.transform = `translateX(${-(idx * STAMP_ITEM_STEP + STAMP_ITEM_STEP / 2)}px)`;
+
+            Array.from(list.children).forEach((el, i) => {
+                const dist = Math.abs(i - idx);
+                const scale = Math.max(0.5, 1 - dist * 0.2);
+                const opacity = Math.max(0, 1 - dist * 0.35);
+                el.style.transform = `scale(${scale})`;
+                el.style.opacity = opacity;
+                el.style.pointerEvents = dist > 4 ? 'none' : '';
+                el.classList.toggle('is-center', i === idx);
+            });
+        }
+
+        // 矢印ボタン（クリック／タップ）で1つずつ選び直す
+        function stampCarouselStep(dir) {
+            const list = document.getElementById('stamp-picker-list');
+            if (!list || !state.stampGallery) return;
+            const count = state.stampGallery.length + 1;
+            const idx = Math.max(0, Math.min(count - 1, stampCarouselIndex + dir));
+            if (idx === stampCarouselIndex) return;
+            state.selectedStampSrc = idx === 0 ? null : state.stampGallery[idx - 1];
+            saveData();
+            renderStampPicker();
+        }
+
+        // 左右スワイプ／マウスドラッグで滑らかに選ぶ
+        let stampCarouselDrag = null;
+        let stampCarouselSuppressClick = false;
+        function attachStampCarouselDrag() {
+            const list = document.getElementById('stamp-picker-list');
+            if (!list) return;
+
+            list.addEventListener('pointerdown', (e) => {
+                stampCarouselDrag = { startX: e.clientX, moved: false, pointerId: e.pointerId };
+                list.classList.add('dragging');
+                try { list.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+            list.addEventListener('pointermove', (e) => {
+                if (!stampCarouselDrag || e.pointerId !== stampCarouselDrag.pointerId) return;
+                const dx = e.clientX - stampCarouselDrag.startX;
+                if (Math.abs(dx) > 4) stampCarouselDrag.moved = true;
+                const base = -(stampCarouselIndex * STAMP_ITEM_STEP + STAMP_ITEM_STEP / 2);
+                list.style.transform = `translateX(${base + dx}px)`;
+            });
+            const endDrag = (e) => {
+                if (!stampCarouselDrag || (e.pointerId !== undefined && e.pointerId !== stampCarouselDrag.pointerId)) return;
+                const dx = e.clientX - stampCarouselDrag.startX;
+                const moved = stampCarouselDrag.moved;
+                list.classList.remove('dragging');
+                stampCarouselDrag = null;
+                if (moved) {
+                    stampCarouselSuppressClick = true;
+                    setTimeout(() => { stampCarouselSuppressClick = false; }, 50);
+                }
+                if (Math.abs(dx) > STAMP_ITEM_STEP / 3) {
+                    stampCarouselStep(dx > 0 ? -1 : 1);
+                } else {
+                    updateStampCarouselVisual();
+                }
+            };
+            list.addEventListener('pointerup', endDrag);
+            list.addEventListener('pointercancel', endDrag);
         }
 
         // 20マスまでは今までどおり5列固定。それより多いときは、行数が増えすぎて
