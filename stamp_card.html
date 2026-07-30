@@ -568,6 +568,9 @@
             transition: none;
             cursor: grabbing;
         }
+        .stamp-carousel-track.dragging .stamp-picker-item {
+            transition: none;
+        }
         .stamp-picker-item {
             width: 44px;
             height: 44px;
@@ -2045,22 +2048,31 @@
             attachStampCarouselDrag();
         }
 
-        // 中央（＝選択中）からの距離に応じて、位置・大きさ・透明度を更新する
-        function updateStampCarouselVisual() {
+        // 中央（＝選択中）からの距離に応じて、大きさ・透明度・赤枠を更新する。
+        // centerPos は整数（確定位置）だけでなく、ドラッグ中は小数（例: 1.3個ぶん）も渡せるようにして、
+        // スワイプ中も指の動きにあわせて連続的に大きさが変わるようにする。
+        function applyStampCarouselStyles(centerPos) {
             const list = document.getElementById('stamp-picker-list');
             if (!list) return;
-            const idx = stampCarouselIndex;
-            list.style.transform = `translateX(${-(idx * STAMP_ITEM_STEP + STAMP_ITEM_STEP / 2)}px)`;
-
+            const nearest = Math.round(centerPos); // ある程度動いたら赤枠がここで切り替わる
             Array.from(list.children).forEach((el, i) => {
-                const dist = Math.abs(i - idx);
+                const dist = Math.abs(i - centerPos);
                 const scale = Math.max(0.5, 1 - dist * 0.2);
                 const opacity = Math.max(0, 1 - dist * 0.35);
                 el.style.transform = `scale(${scale})`;
                 el.style.opacity = opacity;
                 el.style.pointerEvents = dist > 4 ? 'none' : '';
-                el.classList.toggle('is-center', i === idx);
+                el.classList.toggle('is-center', i === nearest);
             });
+        }
+
+        // 確定位置（stampCarouselIndex）に合わせて、トラックの位置と見た目を更新する
+        function updateStampCarouselVisual() {
+            const list = document.getElementById('stamp-picker-list');
+            if (!list) return;
+            const idx = stampCarouselIndex;
+            list.style.transform = `translateX(${-(idx * STAMP_ITEM_STEP + STAMP_ITEM_STEP / 2)}px)`;
+            applyStampCarouselStyles(idx);
         }
 
         // 矢印ボタン（クリック／タップ）で1つずつ選び直す
@@ -2093,6 +2105,9 @@
                 if (Math.abs(dx) > 4) stampCarouselDrag.moved = true;
                 const base = -(stampCarouselIndex * STAMP_ITEM_STEP + STAMP_ITEM_STEP / 2);
                 list.style.transform = `translateX(${base + dx}px)`;
+                // 指の位置ぶんだけ「今どのへんが中央か」を小数で計算し、大きさもその場で連動させる
+                const centerPos = stampCarouselIndex - dx / STAMP_ITEM_STEP;
+                applyStampCarouselStyles(centerPos);
             });
             const endDrag = (e) => {
                 if (!stampCarouselDrag || (e.pointerId !== undefined && e.pointerId !== stampCarouselDrag.pointerId)) return;
