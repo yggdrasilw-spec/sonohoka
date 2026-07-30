@@ -2037,15 +2037,13 @@
                 item.onclick = () => {
                     if (stampCarouselSuppressClick) return;
                     if (i === stampCarouselIndex) return;
-                    state.selectedStampSrc = it.src || null;
-                    saveData();
-                    renderStampPicker();
+                    setStampCarouselIndex(i);
                 };
                 list.appendChild(item);
             });
 
             updateStampCarouselVisual();
-            attachStampCarouselDrag();
+            attachStampCarouselDrag(); // 内部でガード済みなので、再描画のたびに呼んでも二重登録されない
         }
 
         // 中央（＝選択中）からの距離に応じて、大きさ・透明度・赤枠を更新する。
@@ -2075,16 +2073,22 @@
             applyStampCarouselStyles(idx);
         }
 
-        // 矢印ボタン（クリック／タップ）で1つずつ選び直す
-        function stampCarouselStep(dir) {
-            const list = document.getElementById('stamp-picker-list');
-            if (!list || !state.stampGallery) return;
+        // 選択インデックスを確定させて保存し、見た目を更新する
+        // （矢印ボタン・タップ・スワイプ確定のすべてがここを通る共通の出口）
+        function setStampCarouselIndex(idx) {
+            if (!state.stampGallery) return;
             const count = state.stampGallery.length + 1;
-            const idx = Math.max(0, Math.min(count - 1, stampCarouselIndex + dir));
-            if (idx === stampCarouselIndex) return;
+            idx = Math.max(0, Math.min(count - 1, idx));
+            stampCarouselIndex = idx;
             state.selectedStampSrc = idx === 0 ? null : state.stampGallery[idx - 1];
             saveData();
-            renderStampPicker();
+            updateStampCarouselVisual();
+        }
+
+        // 矢印ボタン（クリック／タップ）で1つずつ選び直す
+        function stampCarouselStep(dir) {
+            if (!state.stampGallery) return;
+            setStampCarouselIndex(stampCarouselIndex + dir);
         }
 
         // 左右スワイプ／マウスドラッグで滑らかに選ぶ
@@ -2092,7 +2096,8 @@
         let stampCarouselSuppressClick = false;
         function attachStampCarouselDrag() {
             const list = document.getElementById('stamp-picker-list');
-            if (!list) return;
+            if (!list || list.dataset.dragBound === '1') return; // 再描画のたびに呼ばれても二重登録しない
+            list.dataset.dragBound = '1';
 
             list.addEventListener('pointerdown', (e) => {
                 stampCarouselDrag = { startX: e.clientX, moved: false, pointerId: e.pointerId };
@@ -2113,17 +2118,29 @@
                 if (!stampCarouselDrag || (e.pointerId !== undefined && e.pointerId !== stampCarouselDrag.pointerId)) return;
                 const dx = e.clientX - stampCarouselDrag.startX;
                 const moved = stampCarouselDrag.moved;
-                list.classList.remove('dragging');
                 stampCarouselDrag = null;
                 if (moved) {
                     stampCarouselSuppressClick = true;
                     setTimeout(() => { stampCarouselSuppressClick = false; }, 50);
                 }
-                if (Math.abs(dx) > STAMP_ITEM_STEP / 3) {
-                    stampCarouselStep(dx > 0 ? -1 : 1);
-                } else {
-                    updateStampCarouselVisual();
-                }
+
+                // 赤枠のハイライトと同じ計算式（四捨五入）で確定先を決める。
+                // 以前は「1/3以上動いたら1個だけ隣へ」という別の基準で確定していたため、
+                // 大きく・速くスワイプしたときに「見た目の赤枠」と「実際に選ばれる項目」が
+                // ズレてしまう（指を離すと1つ前の画像が選ばれる）ことがあった。
+                const rawTarget = stampCarouselIndex - dx / STAMP_ITEM_STEP;
+                const count = (state.stampGallery ? state.stampGallery.length : 0) + 1;
+                const targetIdx = Math.max(0, Math.min(count - 1, Math.round(rawTarget)));
+
+                // class の付け外しと同じフレーム内で transform も変えてしまうと、ブラウザが
+                // 変化をまとめてしまいアニメーションが省略される（＝一瞬でパッと中央に移動する）
+                // ことがあるため、1フレーム待って強制的にレイアウトを確定させてから目標位置へ動かす。
+                // これにより、指を離した後も勢いを保ったまま、ゆっくり中央へ吸い込まれるように動く。
+                requestAnimationFrame(() => {
+                    list.classList.remove('dragging');
+                    void list.offsetWidth; // 強制リフロー：直前の位置をアニメーションの開始点として確定させる
+                    setStampCarouselIndex(targetIdx);
+                });
             };
             list.addEventListener('pointerup', endDrag);
             list.addEventListener('pointercancel', endDrag);
