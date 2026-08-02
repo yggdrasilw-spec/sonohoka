@@ -2091,51 +2091,92 @@
             setStampCarouselIndex(stampCarouselIndex + dir);
         }
 
-        // 左右スワイプ／マウスドラッグで滑らかに選ぶ
+        // 左右スワイプ／マウスドラッグで滑らかに選ぶ。
+        //
+        // 「勢いよく」動かす仕組み（iOS/Androidの標準的なフリック処理と同じ考え方）：
+        // 指を離した瞬間の位置(dx)だけでなく、離す直前の「速度」も計算し、
+        // 速度ぶんだけ未来の位置を先読み（投影）してから、一番近いマスに吸着させる。
+        // これにより、移動距離(dx)は小さくても、速く弾くように動かせば
+        // 一気に何個も先へ進む＝実際のスマホのカルーセルと同じ動きになる。
+        const FLING_VELOCITY_WINDOW_MS = 80;  // 直近何msぶんの動きから速度を計算するか
+        const FLING_PROJECTION_MS = 260;      // 離した瞬間の速度で、何msぶん先の位置まで先読みするか
+        const MOVE_THRESHOLD_PX = 4;          // これ以上動いたら「クリックではなくドラッグ」とみなす
         let stampCarouselDrag = null;
         let stampCarouselSuppressClick = false;
+
         function attachStampCarouselDrag() {
             const list = document.getElementById('stamp-picker-list');
             if (!list || list.dataset.dragBound === '1') return; // 再描画のたびに呼ばれても二重登録しない
             list.dataset.dragBound = '1';
 
             list.addEventListener('pointerdown', (e) => {
-                stampCarouselDrag = { startX: e.clientX, moved: false, pointerId: e.pointerId };
+                const now = performance.now();
+                stampCarouselDrag = {
+                    startX: e.clientX,
+                    moved: false,
+                    pointerId: e.pointerId,
+                    samples: [{ x: e.clientX, t: now }], // 速度計算用の位置＋時刻の履歴
+                };
                 list.classList.add('dragging');
                 try { list.setPointerCapture(e.pointerId); } catch (err) {}
             });
+
             list.addEventListener('pointermove', (e) => {
-                if (!stampCarouselDrag || e.pointerId !== stampCarouselDrag.pointerId) return;
-                const dx = e.clientX - stampCarouselDrag.startX;
-                if (Math.abs(dx) > 4) stampCarouselDrag.moved = true;
+                const drag = stampCarouselDrag;
+                if (!drag || e.pointerId !== drag.pointerId) return;
+                const now = performance.now();
+                const dx = e.clientX - drag.startX;
+                if (Math.abs(dx) > MOVE_THRESHOLD_PX) drag.moved = true;
+
+                // 速度計算用に直近の位置を記録し、古すぎるサンプル（窓の外）は捨てていく
+                drag.samples.push({ x: e.clientX, t: now });
+                while (drag.samples.length > 2 && now - drag.samples[0].t > FLING_VELOCITY_WINDOW_MS) {
+                    drag.samples.shift();
+                }
+
                 const base = -(stampCarouselIndex * STAMP_ITEM_STEP + STAMP_ITEM_STEP / 2);
                 list.style.transform = `translateX(${base + dx}px)`;
                 // 指の位置ぶんだけ「今どのへんが中央か」を小数で計算し、大きさもその場で連動させる
                 const centerPos = stampCarouselIndex - dx / STAMP_ITEM_STEP;
                 applyStampCarouselStyles(centerPos);
             });
+
             const endDrag = (e) => {
-                if (!stampCarouselDrag || (e.pointerId !== undefined && e.pointerId !== stampCarouselDrag.pointerId)) return;
-                const dx = e.clientX - stampCarouselDrag.startX;
-                const moved = stampCarouselDrag.moved;
+                const drag = stampCarouselDrag;
+                if (!drag || (e.pointerId !== undefined && e.pointerId !== drag.pointerId)) return;
+                const dx = e.clientX - drag.startX;
+                const moved = drag.moved;
                 stampCarouselDrag = null;
                 if (moved) {
                     stampCarouselSuppressClick = true;
                     setTimeout(() => { stampCarouselSuppressClick = false; }, 50);
                 }
 
-                // 赤枠のハイライトと同じ計算式（四捨五入）で確定先を決める。
-                // 以前は「1/3以上動いたら1個だけ隣へ」という別の基準で確定していたため、
-                // 大きく・速くスワイプしたときに「見た目の赤枠」と「実際に選ばれる項目」が
-                // ズレてしまう（指を離すと1つ前の画像が選ばれる）ことがあった。
-                const rawTarget = stampCarouselIndex - dx / STAMP_ITEM_STEP;
+                // 直近サンプルの最初と最後から「指を離す直前の速度」を求める（px/ms）
+                const samples = drag.samples;
+                const first = samples[0];
+                const last = samples[samples.length - 1];
+                const dt = last.t - first.t;
+                const velocity = dt > 0 ? (last.x - first.x) / dt : 0;
+
+                // 「今の位置」に「速度で先読みした距離」を足してから、一番近いマスに丸める。
+                // これが赤枠のハイライトと同じ四捨五入の式なので、見た目と確定結果が必ず一致する。
+                const projectedDx = dx + velocity * FLING_PROJECTION_MS;
+                const rawTarget = stampCarouselIndex - projectedDx / STAMP_ITEM_STEP;
                 const count = (state.stampGallery ? state.stampGallery.length : 0) + 1;
                 const targetIdx = Math.max(0, Math.min(count - 1, Math.round(rawTarget)));
+
+                // 遠くまで（＝複数マス）弾んだときほど、移動アニメーションを少し長めにして自然に見せる
+                const steps = Math.abs(targetIdx - stampCarouselIndex);
+                const duration = Math.min(0.6, 0.28 + steps * 0.045);
+                list.style.transitionDuration = `${duration}s`;
+                list.addEventListener('transitionend', () => {
+                    list.style.transitionDuration = ''; // 次回以降はCSS既定値(0.35s)に戻す
+                }, { once: true });
 
                 // class の付け外しと同じフレーム内で transform も変えてしまうと、ブラウザが
                 // 変化をまとめてしまいアニメーションが省略される（＝一瞬でパッと中央に移動する）
                 // ことがあるため、1フレーム待って強制的にレイアウトを確定させてから目標位置へ動かす。
-                // これにより、指を離した後も勢いを保ったまま、ゆっくり中央へ吸い込まれるように動く。
                 requestAnimationFrame(() => {
                     list.classList.remove('dragging');
                     void list.offsetWidth; // 強制リフロー：直前の位置をアニメーションの開始点として確定させる
