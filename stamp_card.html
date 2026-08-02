@@ -101,7 +101,9 @@
             user-select: none;
         }
 
-        /* 16:9 Chromebook 画面ぴったり配置 */
+        /* 画面全体（スマホ・タブレット・Chromebook・PC、縦画面／横画面すべて）を、
+           アプリを表示するための「土台（ビューポート）」として扱う。
+           土台自体はただ画面いっぱいに広がって、中の .chromebook-frame を中央に置くだけ。 */
         body {
             width: 100vw;
             height: 100vh;
@@ -116,14 +118,23 @@
         }
 
         .chromebook-frame {
-            /* 画面の解像度・縦横比が機器ごとに違っても常にきっちり16:9になるようにする。
-               以前は width:100%; height:100% を別々に指定していたため、ビューポートの
-               縦横比がそのまま枠の縦横比になってしまい（家庭のPCとChromebookで画面比が違うと
-               枠の中の背景PNGなど「一部の枠」の縦横比までずれて見える原因になっていた）。
-               aspect-ratio を効かせるには width と height を同時に固定値指定しないことが必要なので、
-               height は指定せず、width だけを「画面に収まる最大の16:9サイズ」として計算する。 */
-            width: min(1280px, 100%, calc((100vh - 24px) * 16 / 9));
-            aspect-ratio: 16 / 9;
+            /* 以前は width を「画面に収まる最大の16:9サイズ」として vw/vh から計算していたが、
+               画面が縦長（スマホの縦画面など）になると横幅がとても狭くなり、その狭い枠の中で
+               ヘッダーの文字やボタンのpaddingなど「元々px固定で決めている細部」だけは縮まないため、
+               枠の中の行数や折り返しが変わってしまい、結果としてミッションのチェックボックスや
+               ボタンの画像（縦横比100%固定で貼り付けているPNG）が枠ごとに歪んで見えることがあった。
+
+               そこで、この枠は常に「1280×720（16:9）」という決まったデザイン上のサイズで組み立て、
+               そのサイズのまま丸ごと transform: scale(...) で拡大縮小して画面に収める方式に変更した。
+               こうすると、画面がどんな大きさ・縦横比（スマホの縦画面／横画面、タブレット、PCなど）
+               であっても、枠の中の配置・行数・折り返し・画像の縦横比はいつも完全に同じになり、
+               「大きく見えるか小さく見えるか」だけが変わる。スケール（拡大縮小の倍率）は
+               updateStageScale()（JS）が画面サイズに合わせて自動計算し、リサイズや画面回転のたびに
+               再計算する。 */
+            width: 1280px;
+            height: 720px;
+            flex-shrink: 0;
+            transform-origin: center center;
             background: var(--card-bg);
             backdrop-filter: blur(10px);
             border-radius: 20px;
@@ -737,7 +748,7 @@
             max-width: 480px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             color: #2d3748;
-            max-height: 90vh;
+            max-height: 90%;
             overflow-y: auto;
         }
 
@@ -763,7 +774,7 @@
 
         /* 自由配置エディタ */
         .modal-box.layout-editor-modal-box {
-            width: 96vw;
+            width: 96%;
             max-width: 1180px;
             display: flex;
             gap: 18px;
@@ -785,7 +796,7 @@
             position: relative;
             flex: 1 1 auto;
             min-width: 0;
-            height: min(66vh, 560px);
+            height: 400px;
             background: #f7fafc;
             border: 3px dashed #cbd5e0;
             border-radius: 16px;
@@ -867,9 +878,14 @@
             touch-action: none;
         }
 
-        /* 道をタップした時に出す、形を選ぶ小さなポップアップメニュー */
+        /* 道をタップした時に出す、形を選ぶ小さなポップアップメニュー
+           以前は画面全体基準の position:fixed だったが、.chromebook-frame を
+           transform:scale で拡大縮小する方式にしたことで、fixed のままだと
+           拡大縮小されたフレームの中で位置がズレてしまう。フレームの中に置いた
+           position:absolute にして、フレームと一緒に拡大縮小されるようにする
+           （座標の計算は openRoadShapePopup() 側で対応）。 */
         .road-shape-popup {
-            position: fixed;
+            position: absolute;
             transform: translate(-50%, -100%);
             background: #ffffff;
             border-radius: 14px;
@@ -1351,6 +1367,13 @@
             </div>
         </div>
 
+        <!-- 道をタップした時に出す、形を選ぶポップアップ -->
+        <div class="road-shape-popup" id="road-shape-popup">
+            <button id="road-shape-btn-l" onclick="chooseRoadShape('l')">🔀 カギ型にする</button>
+            <button id="road-shape-btn-straight" onclick="chooseRoadShape('straight')">➖ 直線にする</button>
+            <button id="road-shape-btn-auto" onclick="chooseRoadShape('auto')">🔄 自動に戻す</button>
+        </div>
+
     </div>
 
     <script>
@@ -1389,6 +1412,27 @@
             'theme-simple': '⭐'
         };
 
+        // --- 画面サイズ・向きに関わらず、いつも同じ見た目で表示するための拡大縮小 ---
+        // .chromebook-frame は常に「1280×720（16:9）」という決まったデザイン上のサイズで
+        // 組み立てられている（CSS側）。この関数は、今の画面（スマホの縦画面／横画面、
+        // タブレット、PCなど何でも）にちょうど収まる最大の倍率を計算し、
+        // transform: scale(...) でフレーム全体を丸ごと拡大縮小する。
+        // フレームの中の配置・行数・文字サイズ・画像の縦横比は一切変わらないので、
+        // 「小さく／大きく見える」だけで、崩れたり一部が見切れたりすることがなくなる。
+        const STAGE_DESIGN_W = 1280;
+        const STAGE_DESIGN_H = 720;
+        function updateStageScale() {
+            const frameEl = document.querySelector('.chromebook-frame');
+            if (!frameEl) return;
+            // body の padding（12px×2辺）ぶんは、周囲に余白として残す
+            const availW = window.innerWidth - 24;
+            const availH = window.innerHeight - 24;
+            // 画面がとても大きい場合（デスクトップの大画面など）でも、
+            // 元のデザインサイズより拡大しすぎて文字がぼやけないよう、倍率は最大1倍までに留める。
+            const scale = Math.max(0.1, Math.min(availW / STAGE_DESIGN_W, availH / STAGE_DESIGN_H, 1));
+            frameEl.style.transform = `scale(${scale})`;
+        }
+
         window.onload = function() {
             loadData();
             applyTheme(state.theme);
@@ -1396,13 +1440,22 @@
             updateUI();
             renderStampPicker();
             checkForNewDay(); // 起動時に「今日」を確認（前回起動時から日付が変わっていれば反映する）
+            updateStageScale();
 
             // 初回表示直後は、フォント読み込みなどでレイアウトがまだ確定しきっていないことがあるため、
             // 少し待ってからもう一度マスの実寸を測り直して、道の太さ・位置を正しく描き直す。
             setTimeout(() => { renderRoad(); }, 200);
         };
 
-        window.addEventListener('resize', () => { renderRoad(); });
+        // ページを読み込んだ直後（window.onload前）にも、レイアウトが崩れて一瞬見えてしまわないよう、
+        // わかった時点ですぐに一度計算しておく。
+        updateStageScale();
+
+        window.addEventListener('resize', () => { updateStageScale(); renderRoad(); });
+        window.addEventListener('orientationchange', () => {
+            // 画面回転の直後はまだ innerWidth/innerHeight が更新されていないことがあるため、少し待って再計算する。
+            setTimeout(() => { updateStageScale(); renderRoad(); }, 150);
+        });
 
         // Chromebookを起動しっぱなしのまま日をまたいだ場合にも気づけるよう、
         // タブが表に戻ったタイミングと、一定時間おきに「今日」をチェックする。
@@ -2418,8 +2471,21 @@
 
             const popup = document.getElementById('road-shape-popup');
             if (!popup) return;
-            popup.style.left = evt.clientX + 'px';
-            popup.style.top = Math.max(10, evt.clientY - 10) + 'px';
+            // popupは.chromebook-frame（transform:scaleで拡大縮小される）の内側に置かれているため、
+            // evt.clientX/Yという「画面上の生座標」をそのまま使うと、フレームが縮小・拡大されている時に
+            // ズレてしまう。フレームの実際の表示上のサイズ（rect.width）と、フレーム本来のデザイン上の
+            // 幅（1280px）を比べて今の拡大縮小率を求め、それで割ることでフレーム内のローカル座標に変換する。
+            const frameEl = document.querySelector('.chromebook-frame');
+            const frameRect = frameEl ? frameEl.getBoundingClientRect() : { left: 0, top: 0, width: 1280 };
+            const stageScale = frameRect.width / 1280;
+            let localX = (evt.clientX - frameRect.left) / stageScale;
+            let localY = (evt.clientY - frameRect.top) / stageScale - 10;
+            // ポップアップ自体（幅約160px、高さ約130px）がフレームの外にはみ出て
+            // overflow:hidden で見切れてしまわないよう、フレーム内に収まるように位置を調整する。
+            localX = Math.min(Math.max(localX, 90), 1280 - 90);
+            localY = Math.min(Math.max(localY, 140), 720 - 10);
+            popup.style.left = localX + 'px';
+            popup.style.top = localY + 'px';
 
             const cur = (state.roadShapeOverride && state.roadShapeOverride[segIndex]) || 'auto';
             document.getElementById('road-shape-btn-l').classList.toggle('active', cur === 'l');
@@ -3550,11 +3616,5 @@
             document.getElementById('confetti-holder').innerHTML = '';
         }
     </script>
-    <!-- 道をタップした時に出す、形を選ぶポップアップ -->
-    <div class="road-shape-popup" id="road-shape-popup">
-        <button id="road-shape-btn-l" onclick="chooseRoadShape('l')">🔀 カギ型にする</button>
-        <button id="road-shape-btn-straight" onclick="chooseRoadShape('straight')">➖ 直線にする</button>
-        <button id="road-shape-btn-auto" onclick="chooseRoadShape('auto')">🔄 自動に戻す</button>
-    </div>
 </body>
 </html>
