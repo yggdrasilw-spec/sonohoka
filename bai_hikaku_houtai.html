@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>どっちが よく のびる？ ―包帯の のび方 しらべ―</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gauze:#FAF6ED;
+    --kraft:#EFE4CB;
+    --kraft-dark:#DCCBA0;
+    --ink:#3A3226;
+    --ink-soft:#7A6F5C;
+    --after-dark:#3E8FB0;
+    --cross:#D64545;
+    --cross-dark:#A93030;
+    --a-badge:#D9704F;
+    --b-badge:#3E8FA0;
+    --line:#C9BCA0;
+    --paper:#FFFDF7;
+    --shadow: 0 6px 18px rgba(58,50,38,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0; height:auto;}
+  body{
+    background:
+      radial-gradient(circle at 15% 8%, rgba(217,112,79,0.06), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(62,143,160,0.07), transparent 45%),
+      var(--gauze);
+    font-family:"Zen Kaku Gothic New", sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    padding:10px 16px 20px;
+    display:flex;
+  }
+  .wrap{max-width:none; width:100%; margin:0; display:flex; flex-direction:column; min-height:100vh;}
+
+  header.hero{
+    display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
+    gap:8px 14px; margin-bottom:6px; flex:0 0 auto;
+  }
+  .stamp{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--paper); border:2px solid var(--cross); color:var(--cross-dark);
+    font-family:"Zen Maru Gothic", sans-serif; font-weight:700; font-size:12px;
+    padding:3px 12px; border-radius:999px; transform:rotate(-2deg);
+    box-shadow:var(--shadow);
+  }
+  h1{
+    font-family:"Zen Maru Gothic", sans-serif; font-weight:900;
+    font-size:clamp(17px,2.4vw,24px); margin:0; letter-spacing:0.02em;
+  }
+  h1 .accent{color:var(--cross);}
+  .sub{font-size:12px; color:var(--ink-soft); margin:0;}
+
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:16px; flex:1 1 auto; min-height:58vh;}
+  @media(max-width:760px){ .cards{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--paper); border:2px solid var(--kraft-dark); border-radius:18px;
+    padding:12px 16px 14px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+    display:flex; flex-direction:column; min-height:0;
+  }
+  .card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:6px;}
+  .head-left{display:flex; align-items:center; gap:8px;}
+  .badge{
+    font-family:"Zen Maru Gothic", sans-serif; font-weight:700; font-size:15px; color:#fff;
+    padding:4px 14px; border-radius:999px; letter-spacing:0.03em;
+  }
+  .badge.a{background:var(--a-badge);}
+  .badge.b{background:var(--b-badge);}
+
+  .mode-switch{
+    display:inline-flex; background:var(--kraft); border-radius:999px; padding:2px;
+    border:1px solid var(--kraft-dark);
+  }
+  .mode-btn{
+    font-family:"Zen Maru Gothic", sans-serif; font-size:11px; font-weight:700;
+    padding:3px 10px; border-radius:999px; border:none; background:none;
+    color:var(--ink-soft); cursor:pointer; transition:all 0.2s ease;
+  }
+  .mode-btn.active{
+    background:var(--paper); color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,0.15);
+  }
+
+  .reset-btn{
+    background:none; border:1.5px solid var(--line); color:var(--ink-soft); font-family:inherit;
+    font-size:12px; padding:4px 10px; border-radius:999px; cursor:pointer;
+  }
+  .reset-btn:hover{border-color:var(--ink-soft);}
+
+  .stage-msg{font-size:13px; color:var(--ink-soft); min-height:16px; margin:2px 0 2px; flex:0 0 auto;}
+  .stage-msg.hot{color:var(--cross-dark); font-weight:700;}
+
+  svg.track{width:100%; display:block; touch-action:none; flex:1 1 auto; min-height:0;}
+
+  .controls{display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; flex:0 0 auto;}
+  .btn{
+    font-family:"Zen Maru Gothic", sans-serif; font-weight:700; font-size:13px; border:none;
+    border-radius:10px; padding:9px 14px; cursor:pointer; color:#fff; background:var(--kraft-dark);
+    box-shadow:0 3px 0 rgba(58,50,38,0.2); transition:transform .08s ease, opacity .15s ease;
+  }
+  .btn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(58,50,38,0.2);}
+  .btn.primary{background:var(--after-dark);}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; box-shadow:none;}
+
+  .callout{
+    margin-top:6px; font-family:"Zen Maru Gothic", sans-serif; font-size:13.5px;
+    border-radius:10px; padding:6px 12px; display:flex; align-items:baseline; gap:6px;
+    opacity:0; transform:translateY(4px); transition:opacity .35s ease, transform .35s ease;
+    flex:0 0 auto;
+  }
+  .callout.show{opacity:1; transform:translateY(0);}
+  .callout.stripe{background:#FBEAE7; color:var(--cross-dark);}
+  .callout.ratio{background:var(--kraft); color:var(--ink);}
+  .callout .num{font-size:20px; font-weight:900; color:var(--cross-dark);}
+
+  .reveal-row{
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    margin-top:12px; flex:0 0 auto; flex-wrap:wrap;
+  }
+  .reveal-btn{
+    font-family:"Zen Maru Gothic", sans-serif; font-weight:700; font-size:14px;
+    padding:9px 22px; border-radius:999px;
+  }
+  .reveal-caution{font-size:12px; color:var(--ink-soft);}
+
+  .compare-banner{
+    margin-top:10px; background:var(--paper); border:2px dashed var(--cross); border-radius:16px;
+    padding:14px 20px; text-align:center; font-family:"Zen Maru Gothic", sans-serif;
+    flex:0 0 auto; display:none;
+  }
+  .compare-banner.open{display:block;}
+  .compare-banner h2{margin:0 0 6px; font-size:16px; color:var(--cross-dark);}
+  .compare-banner p{margin:2px 0; font-size:14px;}
+  .compare-banner .winner{font-size:18px; font-weight:900; color:var(--after-dark); margin-top:4px;}
+
+  .footnote{text-align:center; font-size:11px; color:var(--ink-soft); margin-top:10px; margin-bottom:4px; flex:0 0 auto;}
+
+  @keyframes wobble{
+    0%{transform:translateX(0) rotate(0);}
+    20%{transform:translateX(3px) rotate(0.6deg);}
+    40%{transform:translateX(-3px) rotate(-0.6deg);}
+    60%{transform:translateX(2px) rotate(0.3deg);}
+    80%{transform:translateX(-1px) rotate(-0.2deg);}
+    100%{transform:translateX(0) rotate(0);}
+  }
+  .wobble{animation:wobble .38s ease;}
+
+  @media (prefers-reduced-motion: reduce){ .wobble{animation:none;} .callout, .compare-banner{transition:none;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="stamp">✚ 4年 倍の見方</div>
+    <h1>どっちが <span class="accent">よく のびる</span>？</h1>
+    <p class="sub">包帯を　指でひっぱって、のび方や　太さの変化を　よく　見てみよう。</p>
+  </header>
+
+  <div class="cards">
+    <!-- CARD A -->
+    <div class="card" id="cardA">
+      <div class="card-head">
+        <div class="head-left">
+          <span class="badge a">包帯 A</span>
+          <div class="mode-switch">
+            <button class="mode-btn" data-card="A" data-mode="stripe">カラフル</button>
+            <button class="mode-btn active" data-card="A" data-mode="gauze">包帯</button>
+          </div>
+        </div>
+        <button class="reset-btn" data-reset="A">🔄 やりなおす</button>
+      </div>
+      <div class="stage-msg" id="msgA">ゆびの マークを 右へ ひっぱってみよう</div>
+      <svg class="track" id="svgA" viewBox="0 0 620 240"></svg>
+      <div class="controls">
+        <button class="btn primary" id="tapeBtnA" disabled>数直線・倍で 表す</button>
+      </div>
+      <div class="callout stripe" id="stripeMsgA">どこも 同じように のびているね！ 1cm が&nbsp;<span class="num">―</span>&nbsp;cm に なったよ</div>
+      <div class="callout ratio" id="ansA">もとの長さを<b>&nbsp;1&nbsp;</b>と みると、のびた後は&nbsp;<span class="num">―</span>&nbsp;に あたる</div>
+    </div>
+
+    <!-- CARD B -->
+    <div class="card" id="cardB">
+      <div class="card-head">
+        <div class="head-left">
+          <span class="badge b">包帯 B</span>
+          <div class="mode-switch">
+            <button class="mode-btn" data-card="B" data-mode="stripe">カラフル</button>
+            <button class="mode-btn active" data-card="B" data-mode="gauze">包帯</button>
+          </div>
+        </div>
+        <button class="reset-btn" data-reset="B">🔄 やりなおす</button>
+      </div>
+      <div class="stage-msg" id="msgB">ゆびの マークを 右へ ひっぱってみよう</div>
+      <svg class="track" id="svgB" viewBox="0 0 620 240"></svg>
+      <div class="controls">
+        <button class="btn primary" id="tapeBtnB" disabled>数直線・倍で 表す</button>
+      </div>
+      <div class="callout stripe" id="stripeMsgB">どこも 同じように のびているね！ 1cm が&nbsp;<span class="num">―</span>&nbsp;cm に なったよ</div>
+      <div class="callout ratio" id="ansB">もとの長さを<b>&nbsp;1&nbsp;</b>と みると、のびた後は&nbsp;<span class="num">―</span>&nbsp;に あたる</div>
+    </div>
+  </div>
+
+  <div class="reveal-row">
+    <button class="btn primary reveal-btn" id="revealBtn">けっか発表</button>
+    <span class="reveal-caution">自分で かんがえてから 見てね</span>
+  </div>
+
+  <div class="compare-banner" id="compareBanner">
+    <h2>けっか発表！</h2>
+    <p>包帯Aは、もとの長さを1とみると <b>2</b> に のびた。</p>
+    <p>包帯Bは、もとの長さを1とみると <b>3</b> に のびた。</p>
+    <div class="winner">同じ 20cm のびても、包帯B の ほうが よく のびる！</div>
+  </div>
+
+  <p class="footnote">もとの 長さの どこを とっても、いつも 同じ 倍で のびているね。</p>
+</div>
+
+<script>
+(function(){
+  const NS = "http://www.w3.org/2000/svg";
+  const SCALE = 8; // px per cm（旧5→8。A/Bとも同じ値を使うので2本の縮尺比は変わらない）
+  const STRIPE_COLORS = ['#e15b4d','#3f8fd9','#f2c94c','#3fae62','#ffffff'];
+  const HANDLE_OFFSET_X = 30; // 包帯の右端から指マークまでの間隔(px)
+
+  function el(tag, attrs, parent){
+    const e = document.createElementNS(NS, tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    if(parent) parent.appendChild(e);
+    return e;
+  }
+
+  class BandageCard{
+    constructor(key, before, after){
+      this.key = key;
+      this.before = before;      // もとの長さ (cm)
+      this.after = after;        // のばした後の限界 (cm)
+      this.ratio = after / before;
+
+      this.svg = document.getElementById('svg'+key);
+      this.msg = document.getElementById('msg'+key);
+      this.tapeBtn = document.getElementById('tapeBtn'+key);
+      this.ansLine = document.getElementById('ans'+key);
+      this.stripeMsg = document.getElementById('stripeMsg'+key);
+
+      this.originX = 104;
+      this.row1CenterY = 65;     // のびる包帯の基準Y中心線
+      this.baseH = 42;           // 基本の包帯の太さ(高) ※もとの長さ側(row2H)と同じ値に揃える
+      this.row2Y = 136; this.row2H = 42;
+
+      this.length = before;
+      this.mode = 'gauze';      // 'stripe' (カラフル) or 'gauze' (リアル包帯)
+      this.stage = 'drag';       // drag -> limited -> tape
+      this.dragging = false;
+
+      this.build();
+      this.bind();
+      this.render();
+    }
+
+    build(){
+      this.svg.innerHTML = '';
+
+      const defs = el('defs', {}, this.svg);
+
+      // 包帯モード時の固定ベースパターン（下段用）
+      const patStatic = el('pattern', {
+        id:'gauze-static-'+this.key, width:8, height:8, patternUnits:'userSpaceOnUse'
+      }, defs);
+      el('rect', {width:8, height:8, fill:'#FAF8F5'}, patStatic);
+      el('line', {x1:0, y1:4, x2:8, y2:4, stroke:'#DCD2C0', 'stroke-width':1.1}, patStatic);
+      el('line', {x1:4, y1:0, x2:4, y2:8, stroke:'#E0D4B2', 'stroke-width':1.3, 'stroke-dasharray':'3,2'}, patStatic);
+
+      const sideLabelX = this.originX - 40;
+
+      // --- row 2: もとの長さ (参照用・固定) ---
+      const beforeW = this.before * SCALE;
+      const row2CenterY = this.row2Y + this.row2H/2;
+      el('text', {x:sideLabelX, y:row2CenterY-6, 'text-anchor':'middle', 'font-family':'Zen Maru Gothic, sans-serif', 'font-weight':700, 'font-size':14, fill:'var(--ink-soft)'}, this.svg).textContent = 'もと';
+      el('text', {x:sideLabelX, y:row2CenterY+10, 'text-anchor':'middle', 'font-family':'Zen Maru Gothic, sans-serif', 'font-weight':700, 'font-size':14, fill:'var(--ink-soft)'}, this.svg).textContent = 'の長さ';
+      this.archBracket(this.svg, this.originX, this.originX+beforeW, this.row2Y-18, this.row2Y-8);
+      el('text', {x:this.originX+beforeW/2, y:this.row2Y-24, 'text-anchor':'middle', 'font-family':'Zen Maru Gothic, sans-serif', 'font-weight':700, 'font-size':15, fill:'var(--ink)'}, this.svg).textContent = this.before+' cm';
+
+      this.row2Base = el('rect', {x:this.originX, y:this.row2Y, width:beforeW, height:this.row2H, rx:4, stroke:'var(--kraft-dark)', 'stroke-width':2}, this.svg);
+      this.row2Stripes = el('g', {}, this.svg);
+
+      // --- row 1: のばす部分 ---
+      this.archTop1 = this.archBracket(this.svg, this.originX, this.originX+this.before*SCALE, 26, 36);
+      this.lenLabel = el('text', {x:this.originX, y:20, 'text-anchor':'middle', 'font-family':'Zen Maru Gothic, sans-serif', 'font-weight':700, 'font-size':15, fill:'var(--ink)'}, this.svg);
+
+      // 包帯本体・テクスチャ描画用グループ
+      this.strip = el('rect', {x:this.originX, y:this.row1CenterY-this.baseH/2, height:this.baseH, rx:4, stroke:'var(--kraft-dark)', 'stroke-width':2.2}, this.svg);
+      this.stripeGroup = el('g', {}, this.svg);
+
+      // 「のばす」ラベルは帯本体より後(=上のレイヤー)に描画し、帯の左端(originX)と重ならない位置に置く。
+      // row2側の「もと/の長さ」と同じx座標(sideLabelX)にそろえ、帯のちょうど左・中央に配置する
+      el('text', {x:sideLabelX, y:this.row1CenterY+5, 'text-anchor':'middle', 'font-family':'Zen Maru Gothic, sans-serif', 'font-weight':700, 'font-size':14, fill:'var(--ink-soft)'}, this.svg).textContent = 'のばす';
+
+      // 数直線グループ
+      this.axisGroup = el('g', {opacity:0}, this.svg);
+
+      // --- 指・手マークハンドル ---
+      this.handleGroup = el('g', {style:'cursor:grab;'}, this.svg);
+      
+      this.connectorLine = el('line', {stroke:'var(--cross)', 'stroke-width':2, 'stroke-dasharray':'2,2', opacity:0.6}, this.handleGroup);
+      this.handleGlow = el('circle', {r:26, fill:'var(--cross)', opacity:0}, this.handleGroup);
+
+      // 通常時の手
+      this.handOpen = el('g', {class:'hand-icon'}, this.handleGroup);
+      el('circle', {r:19, fill:'#FFF', stroke:'var(--cross)', 'stroke-width':3}, this.handOpen);
+      el('path', {
+        d: 'M -6 -1 L 0 -1 L 0 -6 L 8 0 L 0 6 L 0 1 L -6 1 Z',
+        fill: 'var(--cross)'
+      }, this.handOpen);
+      el('path', {
+        d: 'M -9 9 C -9 3, -1 1, 4 5 C 8 1, 12 5, 10 10 C 9 14, 1 14, -9 9 Z',
+        fill: 'var(--ink)'
+      }, this.handOpen);
+
+      // つまみ時の手
+      this.handPinch = el('g', {class:'hand-icon', opacity:0}, this.handleGroup);
+      el('circle', {r:19, fill:'var(--cross)', stroke:'#FFF', 'stroke-width':2.5}, this.handPinch);
+      el('path', {
+        d: 'M -6 4 C -8 -1, -3 -8, 3 -6 C 7 -5, 8 -1, 4 4 Z M 3 -6 C 7 -10, 12 -6, 9 -3 Z',
+        fill: '#FFF'
+      }, this.handPinch);
+    }
+
+    archBracket(parent, x1, x2, yTop, yBottom){
+      const d = 'M '+x1+' '+yBottom+' L '+x1+' '+yTop+' L '+x2+' '+yTop+' L '+x2+' '+yBottom;
+      return el('path', {d:d, fill:'none', stroke:'var(--ink-soft)', 'stroke-width':1.8, 'stroke-dasharray':'3,3'}, parent);
+    }
+
+    // シマシマ模様の描画（カラフルモード）
+    drawStripes(group, y, h, totalLenCm){
+      group.innerHTML = '';
+      const n = this.before;
+      const w = (totalLenCm / n) * SCALE;
+      for(let i=0; i<n; i++){
+        const attrs = {x:this.originX + i*w, y:y, width:w+0.5, height:h, fill:STRIPE_COLORS[i%5]};
+        if(STRIPE_COLORS[i%5] === '#ffffff'){ attrs.stroke = '#ddd3bd'; attrs['stroke-width'] = 0.5; }
+        el('rect', attrs, group);
+      }
+    }
+
+    // 動的包帯テクスチャの描画（縦方向圧縮＋横方向拡大）
+    drawGauzeMesh(group, y, h, totalLenCm){
+      group.innerHTML = '';
+      const stretchRatio = totalLenCm / this.before; // 横の伸び率
+
+      const basePitchX = 10;
+      const basePitchY = 8;
+
+      const pitchX = basePitchX * stretchRatio;      // 横方向：拡大
+      const pitchY = basePitchY / Math.sqrt(stretchRatio); // 縦方向：圧縮
+
+      const w = totalLenCm * SCALE;
+      const endX = this.originX + w;
+
+      // 1. 横糸
+      const numYLines = Math.floor(h / pitchY);
+      const startY = y + (h - (numYLines - 1) * pitchY) / 2;
+      for(let i = 0; i < numYLines; i++){
+        const ly = startY + i * pitchY;
+        el('line', {
+          x1: this.originX, y1: ly, x2: endX, y2: ly,
+          stroke: '#DCD2C0', 'stroke-width': 1.1
+        }, group);
+      }
+
+      // 2. 縦糸
+      const numXLines = Math.floor(w / pitchX);
+      for(let i = 0; i <= numXLines; i++){
+        const lx = this.originX + i * pitchX;
+        if(lx <= endX){
+          el('line', {
+            x1: lx, y1: y, x2: lx, y2: y + h,
+            stroke: '#E0D4B2', 'stroke-width': 1.3,
+            'stroke-dasharray': `${pitchY*0.6},${pitchY*0.4}`
+          }, group);
+        }
+      }
+    }
+
+    bind(){
+      const moveDrag = (clientX)=>{
+        if(!this.dragging) return;
+        const rect = this.svg.getBoundingClientRect();
+        const scaleX = 620 / rect.width;
+        const svgX = (clientX - rect.left) * scaleX;
+        let cm = (svgX - HANDLE_OFFSET_X - this.originX) / SCALE;
+        cm = Math.max(this.before, Math.min(this.after, cm));
+        this.length = cm;
+        this.render();
+        if(this.length >= this.after - 0.05 && this.stage === 'drag'){
+          this.hitLimit();
+        }
+      };
+
+      this.handleGroup.addEventListener('pointerdown', (e)=>{
+        if(this.stage === 'tape') return;
+        e.preventDefault();
+        this.dragging = true;
+        this.handleGroup.style.cursor = 'grabbing';
+        this.handOpen.setAttribute('opacity', 0);
+        this.handPinch.setAttribute('opacity', 1);
+      });
+
+      window.addEventListener('pointermove', (e)=> moveDrag(e.clientX));
+      window.addEventListener('pointerup', ()=>{
+        this.dragging = false;
+        this.handleGroup.style.cursor = 'grab';
+        this.handOpen.setAttribute('opacity', 1);
+        this.handPinch.setAttribute('opacity', 0);
+      });
+
+      this.tapeBtn.addEventListener('click', ()=> this.morphToTape());
+      document.querySelector('[data-reset="'+this.key+'"]').addEventListener('click', ()=> this.reset());
+    }
+
+    hitLimit(){
+      this.stage = 'limited';
+      this.length = this.after;
+      this.render();
+      this.svg.classList.remove('wobble'); void this.svg.offsetWidth; this.svg.classList.add('wobble');
+      this.handleGlow.setAttribute('opacity', 0.35);
+      this.msg.textContent = 'もう のびない！（' + this.after + 'cm で ストップ）';
+      this.msg.classList.add('hot');
+      this.tapeBtn.disabled = false;
+
+      this.stripeMsg.querySelector('.num').textContent = this.ratio;
+      requestAnimationFrame(()=> this.stripeMsg.classList.add('show'));
+    }
+
+    morphToTape(){
+      if(this.stage !== 'limited') return;
+      this.stage = 'tape';
+      this.msg.textContent = this.before + 'cm を 1 と みると、' + this.after + 'cm は ' + this.ratio + ' に あたる';
+      this.msg.classList.remove('hot');
+
+      const count = Math.round(this.ratio);
+      const axisY = 198;
+      const g = this.axisGroup;
+      g.innerHTML = '';
+      el('line', {x1:this.originX, y1:axisY, x2:this.originX+this.after*SCALE+20, y2:axisY, stroke:'var(--ink)', 'stroke-width':2.5}, g);
+      for(let i=0;i<=count;i++){
+        const x = this.originX + this.before*i*SCALE;
+        el('line', {x1:x, y1:axisY-9, x2:x, y2:axisY+9, stroke:'var(--ink)', 'stroke-width':2.5}, g);
+        el('text', {x:x, y:axisY+26, 'text-anchor':'middle', 'font-size':15, fill:'var(--ink)', 'font-family':"'Zen Kaku Gothic New', sans-serif"}, g).textContent = i;
+      }
+      el('text', {x:this.originX+this.after*SCALE+34, y:axisY+7, 'font-size':15, fill:'var(--ink-soft)'}, g).textContent = '倍';
+      g.style.transition = 'opacity .4s ease';
+      requestAnimationFrame(()=> g.setAttribute('opacity', 1));
+
+      this.handleGroup.style.transition = 'opacity .3s ease';
+      this.handleGroup.setAttribute('opacity', 0);
+
+      this.ansLine.querySelector('.num').textContent = this.ratio;
+      requestAnimationFrame(()=> this.ansLine.classList.add('show'));
+
+      window.dispatchEvent(new CustomEvent('bandage-tape-done'));
+    }
+
+    setMode(mode){
+      this.mode = mode;
+      this.render();
+    }
+
+    render(){
+      const stripW = this.length * SCALE;
+      const stretchFactor = this.length / this.before; // 伸び率
+
+      // 上段（のばす包帯）の高さ（弾性変形：縦幅縮小）
+      const currentH = this.baseH * Math.sqrt(1 / stretchFactor);
+      const currentY = this.row1CenterY - currentH / 2;
+
+      this.strip.setAttribute('width', Math.max(stripW, 4));
+      this.strip.setAttribute('height', currentH);
+      this.strip.setAttribute('y', currentY);
+
+      if(this.mode === 'gauze'){
+        // --- 包帯モード ---
+        // 上段の描画
+        this.strip.setAttribute('fill', '#FAF8F5');
+        this.stripeGroup.setAttribute('opacity', 1);
+        this.drawGauzeMesh(this.stripeGroup, currentY, currentH, this.length);
+
+        // 下段（もとの長さ）も包帯テクスチャに変更
+        this.row2Base.setAttribute('fill', 'url(#gauze-static-'+this.key+')');
+        this.row2Stripes.innerHTML = '';
+      } else {
+        // --- カラフルモード ---
+        // 上段の描画
+        this.strip.setAttribute('fill', '#ffffff');
+        this.stripeGroup.setAttribute('opacity', 0.65);
+        this.drawStripes(this.stripeGroup, currentY, currentH, this.length);
+
+         // 下段（もとの長さ）もカラフルシマシマに変更
+        this.row2Base.setAttribute('fill', '#ffffff');
+        this.row2Stripes.setAttribute('opacity', 0.65);
+        this.drawStripes(this.row2Stripes, this.row2Y, this.row2H, this.before);
+      }
+
+      // 上部ラベル・ブラケット更新
+      this.lenLabel.textContent = Math.round(this.length*10)/10 + ' cm';
+      this.lenLabel.setAttribute('x', this.originX + stripW/2);
+      this.archTop1.setAttribute('d', 'M '+this.originX+' 36 L '+this.originX+' 26 L '+(this.originX+stripW)+' 26 L '+(this.originX+stripW)+' 36');
+
+      // ハンドル位置更新（右へオフセット）
+      const hx = this.originX + stripW + HANDLE_OFFSET_X;
+      const hy = this.row1CenterY;
+      this.handleGroup.setAttribute('transform', 'translate('+hx+','+hy+')');
+
+      // コネクター破線更新
+      this.connectorLine.setAttribute('x1', -HANDLE_OFFSET_X);
+      this.connectorLine.setAttribute('y1', 0);
+      this.connectorLine.setAttribute('x2', -15);
+      this.connectorLine.setAttribute('y2', 0);
+    }
+
+    reset(){
+      this.stage = 'drag';
+      this.length = this.before;
+      this.build();
+      this.render();
+      this.msg.textContent = 'ゆびの マークを 右へ ひっぱってみよう';
+      this.msg.classList.remove('hot');
+      this.tapeBtn.disabled = true;
+      this.ansLine.classList.remove('show');
+      this.stripeMsg.classList.remove('show');
+      this.bind();
+    }
+  }
+
+  const cardA = new BandageCard('A', 20, 40);
+  const cardB = new BandageCard('B', 10, 30);
+
+  // モード切り替えボタン
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const cardKey = e.target.getAttribute('data-card');
+      const mode = e.target.getAttribute('data-mode');
+
+      const parent = e.target.parentElement;
+      parent.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+
+      if(cardKey === 'A') cardA.setMode(mode);
+      if(cardKey === 'B') cardB.setMode(mode);
+    });
+  });
+
+  document.getElementById('revealBtn').addEventListener('click', ()=>{
+    const banner = document.getElementById('compareBanner');
+    const btn = document.getElementById('revealBtn');
+    const open = banner.classList.toggle('open');
+    btn.textContent = open ? 'とじる' : 'けっか発表';
+    if(open) banner.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+})();
+</script>
+</body>
+</html>
