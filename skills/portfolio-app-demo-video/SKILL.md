@@ -57,6 +57,11 @@ Choose only the primary workflow. Avoid touring every setting, waiting on unreli
 
 ## 6. Version control
 
-Only commit or push when the user explicitly asks. Before committing, inspect `git status`, include the portfolio change, media, scripts, and any intentionally preserved storyboard assets, and use a focused commit message. After pushing, report the commit hash, branch, remote, and whether the worktree is clean.
+After the video, thumbnail, portfolio, and storyboard changes are verified, prepare to commit and push them as the final delivery step. Always ask the user for explicit permission immediately before running Git mutations, even if they previously requested the videos or have authorized GitHub access in general.
+
+- Before asking, inspect `git status`, the current branch, and the configured remote; summarize the exact files and destination that would be changed.
+- After permission, stage only the files belonging to this task, use a focused commit message, and push to the intended remote and branch. Do not reset, checkout, force-push, or overwrite unrelated work.
+- After pushing, verify `git status` and report the commit hash, branch, remote, push result, and whether the worktree is clean.
+- If permission is not granted, leave the changes uncommitted and report the exact next Git command that remains.
 
 For the detailed timing and caption checklist, read [references/recording-and-encoding.md](references/recording-and-encoding.md).
