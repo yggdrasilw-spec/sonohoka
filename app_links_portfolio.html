@@ -199,6 +199,35 @@
     .top{
       padding:22px 20px 0;
     }
+    .card-media{
+      position:relative;
+      aspect-ratio:16/9;
+      margin:18px 18px 0;
+      overflow:hidden;
+      border-radius:16px;
+      background:linear-gradient(135deg,#dbeafe,#ede9fe 55%,#ccfbf1);
+      cursor:pointer;
+      isolation:isolate;
+    }
+    .card-media img,.card-media video{
+      position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+      transition:opacity .25s ease;
+    }
+    .card-media video{opacity:0;background:#111;}
+    .card-media.is-hover video{opacity:1;}
+    .card-media.is-hover img{opacity:0;}
+    .card-media::after{
+      content:"▶ 動画を見る";position:absolute;right:10px;bottom:10px;
+      padding:5px 9px;border-radius:999px;background:rgba(15,23,42,.72);
+      color:#fff;font-size:12px;font-weight:700;opacity:.9;pointer-events:none;
+    }
+    .media-fallback{display:grid;place-items:center;height:100%;padding:18px;text-align:center;color:#334155;font-weight:800;font-size:16px;}
+    .media-modal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.78);}
+    .media-modal.open{display:flex;}
+    .media-modal-panel{position:relative;width:min(960px,100%);padding:14px;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.35);}
+    .media-modal video{display:block;width:100%;max-height:80vh;background:#111;border-radius:12px;}
+    .media-modal-close{position:absolute;right:8px;top:8px;width:36px;height:36px;border:0;border-radius:50%;background:#fff;color:#1f2937;font-size:24px;line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.2);}
+    @media (hover:none){.card-media::after{content:"タップで動画を見る"}.card-media.is-hover video{opacity:0}.card-media.is-hover img{opacity:1}}
     .meta{
       display:flex;
       flex-wrap:wrap;
@@ -1138,10 +1167,50 @@
 </article>
 </div>
 </section>
+<div class="media-modal" id="mediaModal" aria-hidden="true" role="dialog" aria-label="アプリ操作動画">
+  <div class="media-modal-panel">
+    <button class="media-modal-close" type="button" aria-label="閉じる">×</button>
+    <video controls playsinline></video>
+  </div>
+</div>
 <footer>© 2026 学習アプリ作品集</footer>
 </main>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  const mediaRoot = 'media/';
+  const slugFor = (url) => url.replace(/^https?:\/\//, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 120);
+  const modal = document.getElementById('mediaModal');
+  const modalVideo = modal?.querySelector('video');
+  const closeModal = () => { if (!modal) return; modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); modalVideo?.pause(); if (modalVideo) modalVideo.removeAttribute('src'); };
+  modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  modal?.querySelector('.media-modal-close')?.addEventListener('click', closeModal);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+  document.querySelectorAll('.grid .card').forEach((card) => {
+    const link = card.querySelector('.actions a.btn.primary');
+    if (!link) return;
+    const url = link.href;
+    const slug = slugFor(url);
+    const media = document.createElement('div');
+    media.className = 'card-media';
+    media.setAttribute('role','button');
+    media.setAttribute('tabindex','0');
+    media.setAttribute('aria-label','操作動画を再生');
+    const img = document.createElement('img');
+    img.src = `${mediaRoot}${slug}.png`;
+    img.alt = `${card.querySelector('h3')?.textContent.trim() || 'アプリ'} スクリーンショット`;
+    img.loading = 'lazy';
+    img.onerror = () => { img.remove(); const f=document.createElement('div'); f.className='media-fallback'; f.textContent=card.querySelector('h3')?.textContent.trim() || 'アプリ'; media.prepend(f); };
+    const video = document.createElement('video');
+    video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'none';
+    video.dataset.src = `${mediaRoot}${slug}.mp4`;
+    const loadVideo = () => { if (!video.src) { video.src = video.dataset.src; video.load(); } };
+    const preview = () => { loadVideo(); video.play().catch(() => {}); media.classList.add('is-hover'); };
+    const stopPreview = () => { media.classList.remove('is-hover'); video.pause(); };
+    media.addEventListener('mouseenter', preview); media.addEventListener('mouseleave', stopPreview);
+    const openModal = () => { loadVideo(); if (!modal || !modalVideo) return; modalVideo.src = video.src; modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); modalVideo.muted = false; modalVideo.play().catch(() => {}); };
+    media.addEventListener('click', openModal); media.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(); } });
+    media.append(img, video); card.insertBefore(media, card.querySelector('.top'));
+  });
   const buttons = Array.from(document.querySelectorAll('.grade-filter-btn'));
   const sortSelect = document.getElementById('sortSelect');
   const grid = document.querySelector('.grid');
