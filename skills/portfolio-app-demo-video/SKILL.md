@@ -1,11 +1,13 @@
 ---
 name: portfolio-app-demo-video
-description: Create a short, captioned MP4 demo for a web app listed in a portfolio, using its published GitHub Pages app when available, then integrate the result into the matching card.
+description: Canonical project workflow for creating a short, captioned MP4 demo for a web app listed in this portfolio, using its published GitHub Pages app when available and integrating the result into the matching card.
 ---
 
 # Portfolio App Demo Video
 
 Use this skill when a portfolio card needs a compact introduction video. The output should communicate one useful story without sound: start the activity, perform its central action, and show the meaningful result.
+
+This is the project-specific canonical workflow. It incorporates the generic app-demo requirements for timing, captions, browser compatibility, poster selection, and card opt-in behavior. When both this skill and a generic demo-video skill are available, follow this skill for this repository.
 
 ## 1. Identify the exact app
 
@@ -34,6 +36,8 @@ Write a small storyboard before capturing frames. Prefer 5–6 states totaling 1
 
 Choose only the primary workflow. Avoid touring every setting, waiting on unreliable external AI, or showing controls that do not explain the app’s value. Keep captions to three or fewer short Japanese sentences when possible; use a stable semi-transparent lower-third band and never cover the main result.
 
+Use the following compact timing target unless the app needs a small adjustment: 0.0–1.0s title/value, 1.0–3.0s start or selection, 3.0–7.0s central action, 7.0–9.0s result, and 9.0–10.0s final hold. Keep each source state normally to 1–3 seconds, remove loading and hesitation, and use at most one or two subtle highlights. Captions should describe the action or learning benefit rather than repeat visible labels.
+
 ## 3. Capture real states
 
 - Use the browser-control skill for remote or interactive pages. Inspect a DOM snapshot after each meaningful action and take screenshots only after the state is visually stable.
@@ -45,6 +49,7 @@ Choose only the primary workflow. Avoid touring every setting, waiting on unreli
 
 - Use a deterministic caption-rendering script. Sharp or an equivalent image compositor can burn Japanese captions into each source frame; escape XML text before embedding it in SVG.
 - Encode the captioned frame sequence as a browser-compatible MP4: H.264 video, AAC audio (silent is fine), `yuv420p`, fast-start metadata, and 10 seconds or less. Holding frames for planned durations is acceptable for a card preview.
+- Use a 16:9 composition that remains legible in a card preview; keep the video muted by default in the portfolio and include `playsinline` behavior.
 - Place outputs in `media/<slug>-intro.mp4` and `media/<slug>-intro.png`. Choose a thumbnail with a clear app state, not a loading or transition frame.
 - Preserve the source frames, captioned frames, and storyboard if repository size permits; they make later review and regeneration possible.
 
@@ -53,6 +58,7 @@ Choose only the primary workflow. Avoid touring every setting, waiting on unreli
 - Add `data-video="<slug>-intro.mp4"` only to the intended `article.card`. Do not add video behavior to cards without a valid asset. Let the portfolio’s existing poster convention resolve the matching PNG unless a different poster is explicitly needed.
 - Verify duration, dimensions, frame rate, codec, captions, and the last-frame hold. Visually inspect at least the opening, input, key-action, result, and poster frames.
 - Check the card’s preview/modal logic in the portfolio HTML or local browser so the new asset is requested only for the matching card.
+- Confirm that cards without a valid `data-video` asset do not enter hover-preview behavior or request a missing file.
 - Keep an explicit storyboard and source-to-frame mapping next to the generated intermediates.
 
 ## 6. Version control
