@@ -15,7 +15,7 @@ const urls = [...new Set([...html.matchAll(/href="(https?:[^\"]+)"/g)].map((m) =
 (async () => {
   await fs.mkdir(outputDir, { recursive: true });
   const browser = await chromium.launch({ headless: true, executablePath: chromePath });
-  const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   const failures = [];
   for (const url of urls) {
@@ -24,7 +24,7 @@ const urls = [...new Set([...html.matchAll(/href="(https?:[^\"]+)"/g)].map((m) =
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForTimeout(900);
-        await page.screenshot({ path: path.join(outputDir, `${slugFor(url)}.png`), clip: { x: 0, y: 0, width: 1024, height: 768 } });
+        await page.screenshot({ path: path.join(outputDir, `${slugFor(url)}.png`), clip: { x: 0, y: 0, width: 1280, height: 720 } });
         done = true;
       } catch (error) {
         if (attempt === 3) failures.push({ url, error: String(error) });
