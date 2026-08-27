@@ -461,7 +461,7 @@
 <a class="btn primary" href="https://yggdrasilw-spec.github.io/hiragana-ninshiki/" rel="noopener" target="_blank">開く</a>
 </div>
 </div>
-</article><article class="card" data-category="算数" data-grades="1" data-main-grade="1" data-register-order="2">
+</article><article class="card" data-video="100dama-soroban-intro.mp4" data-category="算数" data-grades="1" data-main-grade="1" data-register-order="2">
 <div class="top">
 <div class="meta"><span class="badge green">授業向け</span></div>
 <h3>② 百玉そろばんアプリ</h3>
@@ -1188,21 +1188,27 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.grid .card').forEach((card) => {
     const link = card.querySelector('.actions a.btn.primary');
     if (!link) return;
-    const url = link.href;
-    const slug = slugFor(url);
+    const slug = slugFor(link.href);
+    const videoFile = card.dataset.video;
+    const posterFile = card.dataset.poster || (videoFile ? videoFile.replace(/\.(mp4|webm)$/i, '.png') : `${slug}.png`);
     const media = document.createElement('div');
     media.className = 'card-media';
-    media.setAttribute('role','button');
-    media.setAttribute('tabindex','0');
-    media.setAttribute('aria-label','操作動画を再生');
     const img = document.createElement('img');
-    img.src = `${mediaRoot}${slug}.png`;
+    img.src = `${mediaRoot}${posterFile}`;
     img.alt = `${card.querySelector('h3')?.textContent.trim() || 'アプリ'} スクリーンショット`;
     img.loading = 'lazy';
     img.onerror = () => { img.remove(); const f=document.createElement('div'); f.className='media-fallback'; f.textContent=card.querySelector('h3')?.textContent.trim() || 'アプリ'; media.prepend(f); };
+    if (!videoFile) {
+      media.append(img);
+      card.insertBefore(media, card.querySelector('.top'));
+      return;
+    }
+    media.setAttribute('role','button');
+    media.setAttribute('tabindex','0');
+    media.setAttribute('aria-label','操作動画を再生');
     const video = document.createElement('video');
     video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'none';
-    video.dataset.src = `${mediaRoot}${slug}.mp4`;
+    video.dataset.src = `${mediaRoot}${videoFile}`;
     const loadVideo = () => { if (!video.src) { video.src = video.dataset.src; video.load(); } };
     const preview = () => { loadVideo(); video.play().catch(() => {}); media.classList.add('is-hover'); };
     const stopPreview = () => { media.classList.remove('is-hover'); video.pause(); };
