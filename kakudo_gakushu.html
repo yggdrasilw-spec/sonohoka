@@ -1,0 +1,3939 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>かくのおおきさ たんけん</title>
+<style>
+  :root{
+    --bg:#EAF6FB;
+    --panel:#FFFFFF;
+    --ink:#2E3A59;
+    --sub:#6B7A99;
+    --green:#3FAE7A;
+    --green-d:#2C8F63;
+    --orange:#FFA53E;
+    --orange-d:#E88A1F;
+    --pink:#FF6E7F;
+    --pink-d:#E5525F;
+    --blue:#4C8DFF;
+    --blue-d:#3670D6;
+    --yellow:#FFD54B;
+    --line:#D9E6F0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;}
+  body{
+    font-family:"UD Digi Kyokasho NP-R","Hiragino Maru Gothic ProN","Yu Gothic Rounded","Hiragino Sans",sans-serif;
+    background:#1B2436;
+    color:var(--ink);
+  }
+  #viewport{
+    width:100vw;height:100vh;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #stage{
+    width:1280px;height:720px;
+    position:relative;
+    background:
+      radial-gradient(circle at 10% 6%, #FFFFFF 0%, transparent 40%),
+      radial-gradient(circle at 92% 88%, #D8F0FF 0%, transparent 45%),
+      var(--bg);
+    overflow:hidden;
+    border-radius:20px;
+    box-shadow:0 30px 80px rgba(0,0,0,.4);
+    transform-origin:center center;
+    flex:none;
+  }
+  .screen{
+    position:absolute; inset:0;
+    display:none;
+    padding:34px 50px;
+  }
+  .screen.active{display:block;}
+
+  /* ---------- Portal ---------- */
+  #portal .hero{text-align:center;padding:6px 0 4px;}
+  #portal .hero h1{font-size:50px;margin:0;letter-spacing:.02em;}
+  #portal .hero h1 .deco{color:var(--orange);}
+  #portal .hero p{color:var(--sub);margin:6px 0 0;font-size:18px;}
+  .menu-grid{
+    max-width:1120px;margin:26px auto 0;
+    display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;
+  }
+  .menu-btn{
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    background:var(--panel);border:none;border-radius:24px;
+    padding:26px 18px;
+    box-shadow:0 8px 0 var(--btn-shadow,#CBD9E6), 0 14px 22px rgba(46,58,89,.08);
+    cursor:pointer;transition:transform .12s ease;font-family:inherit;
+    height:200px;justify-content:center;
+  }
+  .menu-btn:active{transform:translateY(5px);box-shadow:0 3px 0 var(--btn-shadow,#CBD9E6);}
+  .menu-btn .num{
+    width:58px;height:58px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:26px;color:#fff;background:var(--num-bg,var(--blue));
+  }
+  .menu-btn .t1{font-weight:700;font-size:20px;}
+  .menu-btn .t2{font-size:14px;color:var(--sub);}
+  .menu-btn.placeholder{opacity:.55;}
+  .menu-btn.placeholder .num{background:#B9C3D6;}
+
+  /* ---------- shared ---------- */
+  .topbar{display:flex;align-items:center;gap:16px;max-width:1180px;margin:0 auto 14px;}
+  .back-btn{border:none;background:var(--panel);width:48px;height:48px;border-radius:50%;
+    box-shadow:0 5px 0 #CBD9E6;font-size:20px;cursor:pointer;}
+  .back-btn:active{transform:translateY(4px);box-shadow:none;}
+
+  /* ---------- Sound toggle ---------- */
+  #sound-toggle-btn{
+    position:absolute; top:14px; right:16px; z-index:999;
+    width:46px;height:46px;border-radius:50%;border:none;
+    background:var(--panel); box-shadow:0 5px 0 #CBD9E6;
+    font-size:22px; line-height:1; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    filter:none; opacity:1;
+    transition:filter .15s ease, opacity .15s ease, transform .12s ease;
+  }
+  #sound-toggle-btn:active{transform:translateY(4px);box-shadow:none;}
+  #sound-toggle-btn.off{filter:grayscale(1); opacity:.45;}
+  .topbar h2{font-size:24px;margin:0;flex:1;}
+  .card{max-width:1180px;margin:0 auto;background:var(--panel);border-radius:24px;
+    padding:22px 30px;box-shadow:0 14px 30px rgba(46,58,89,.07);height:600px;position:relative;}
+  .prompt{text-align:center;font-size:21px;font-weight:700;margin:2px 0 10px;}
+  .sub-note{text-align:center;font-size:15px;color:var(--sub);margin-top:6px;}
+  .action-btn{display:block;margin:14px auto 0;background:var(--orange);color:#fff;border:none;
+    font-weight:700;font-size:17px;padding:13px 30px;border-radius:999px;
+    box-shadow:0 6px 0 var(--orange-d);cursor:pointer;font-family:inherit;}
+  .action-btn:active{transform:translateY(5px);box-shadow:none;}
+  .action-btn[disabled]{background:#C7D0DE;box-shadow:0 6px 0 #AEB9CB;cursor:default;}
+  .action-btn.blue{background:var(--blue);box-shadow:0 6px 0 var(--blue-d);}
+  .action-btn.pink{background:var(--pink);box-shadow:0 6px 0 var(--pink-d);}
+
+  /* ---------- Section 1 ---------- */
+  #s1 .wani-row{display:flex;align-items:center;justify-content:center;gap:6px;padding:44px 6px 6px;
+    max-width:1100px;margin:0 auto;overflow:visible;}
+  .wani-slot{cursor:pointer;padding:8px;border-radius:18px;border:3px solid transparent;flex:none;
+    transition:border-color .15s ease, background .15s ease, transform .15s ease;}
+  .wani-slot.selected{border-color:var(--blue);background:#EAF2FF;}
+  .wani-slot .label{text-align:center;font-size:14px;color:var(--sub);margin-top:2px;}
+  #s1-compare-wrap{display:none;height:100%;}
+  #s1-compare-wrap.active{display:block;}
+  #s1-result{text-align:center;font-size:19px;font-weight:700;min-height:26px;margin-top:2px;}
+
+  /* ---------- Section 2 / 6 shared chip ---------- */
+  .chip-btn{border:none;border-radius:999px;padding:12px 20px;font-family:inherit;font-weight:700;
+    font-size:16px;color:#fff;background:var(--blue);box-shadow:0 5px 0 var(--blue-d);cursor:pointer;}
+  .chip-btn:active{transform:translateY(4px);box-shadow:none;}
+  .chip-btn.done{background:var(--green);box-shadow:0 5px 0 var(--green-d);}
+  #s2 .stage-buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:6px;}
+  #s2-readout{text-align:center;font-size:34px;font-weight:800;color:var(--blue-d);margin:2px 0;}
+  #s2 .layout{display:flex;align-items:center;gap:10px;}
+
+  /* ---------- Section 3 ---------- */
+  #s3 .layout{display:flex;gap:26px;height:520px;}
+  #s3 .left-col{flex:0 0 300px;display:flex;flex-direction:column;align-items:center;}
+  #s3 .right-col{flex:1;overflow-y:auto;padding-right:4px;}
+  #s3 .n-buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-top:8px;max-width:280px;}
+  #s3 .n-buttons button{border:none;border-radius:12px;width:42px;height:38px;font-family:inherit;
+    font-weight:800;font-size:14px;color:var(--ink);background:#DFF3E7;box-shadow:0 3px 0 #BEE0CC;cursor:pointer;}
+  #s3 .n-buttons button.active{background:var(--green-d);color:#fff;box-shadow:0 3px 0 #1F6B49;}
+  #s3 .n-buttons button.bad{background:#FFE3DE;}
+  #s3 .n-buttons button.bad.active{background:#FF9E8F;color:var(--ink);box-shadow:0 3px 0 #E0725E;}
+  #s3-note{text-align:center;font-size:14px;margin-top:8px;min-height:40px;padding:0 6px;}
+  .section-block{background:#F7FAFD;border-radius:16px;padding:14px 16px;margin-bottom:14px;}
+  .section-block h3{margin:0 0 6px;font-size:15px;color:var(--ink);}
+  #s3-history-btn{margin:4px auto 0;}
+  #s3-history-box{display:none;background:#FFF6E4;border-radius:14px;padding:14px 16px;font-size:13.5px;
+    line-height:1.7;color:#5A4A28;margin-top:10px;}
+
+  /* ---------- Section 6 ---------- */
+  #s6 .layout{display:flex;gap:20px;height:560px;}
+  #s6 .left-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;}
+  #s6 .right-col{flex:0 0 340px;display:flex;flex-direction:column;align-items:center;}
+  #s6 .trick-buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px;}
+  #s6 .trick-buttons button{border:none;border-radius:12px;padding:10px 15px;font-family:inherit;
+    font-weight:800;font-size:14px;color:#fff;background:var(--pink);box-shadow:0 4px 0 var(--pink-d);cursor:pointer;}
+  #s6 .trick-buttons button:active{transform:translateY(3px);box-shadow:none;}
+  #s6 input[type=range]{width:280px;margin-top:16px;accent-color:var(--pink);}
+  #s6-dial-readout{text-align:center;margin-top:8px;}
+  #s6-dial-readout .deg{font-size:30px;font-weight:800;color:var(--pink-d);}
+  #s6-dial-readout .name{font-size:15px;color:var(--sub);margin-top:2px;}
+
+  .stub-msg{text-align:center;color:var(--sub);font-size:18px;padding:60px 10px;}
+  svg text{font-family:inherit;user-select:none;}
+
+  .s4-wrap {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 14px;
+    user-select: none;
+    width: 100%;
+    height: 100%;
+  }
+  #s4-info-panel {
+    flex: 0 0 250px;
+    width: 250px;
+    max-width: 250px;
+    background: #fff;
+    padding: 14px 14px;
+    margin-top: 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  #s4-instruction {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 8px;
+  }
+  #s4-sub-instruction {
+    font-size: 0.95rem;
+    color: #7f8c8d;
+    min-height: 1.4em;
+  }
+  .s4-formula-badge {
+    font-size: 1.05rem;
+    color: #c0392b;
+    font-weight: bold;
+    margin-top: 6px;
+    min-height: 1.4em;
+  }
+  #s4-stage-container {
+    position: relative;
+    margin-top: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #s4-stage-container svg {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+  }
+  svg {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: default;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #s4-protractor line,
+  #s4-protractor text {
+    pointer-events: none;
+  }
+  #s4-protractor {
+    will-change: transform;
+  }
+  .highlight-text {
+    fill: #e74c3c !important;
+    font-weight: bold;
+    font-size: 20px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .highlight-zero {
+    fill: #e67e22 !important;
+    font-weight: bold;
+    font-size: 18px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .highlight-text-blue {
+    fill: #3498db !important;
+    font-weight: bold;
+    font-size: 20px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .highlight-zero-blue {
+    fill: #2980b9 !important;
+    font-weight: bold;
+    font-size: 18px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .btn {
+    padding: 8px 12px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-top: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .btn:hover {
+    background: #2980b9;
+  }
+  .btn.secondary {
+    background: #7f8c8d;
+  }
+  .btn.secondary:hover {
+    background: #636e72;
+  }
+  #s4-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    margin-top: 10px;
+  }
+  #s4-customAngleInput {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  #s4-method-buttons, #s4-extend-line-buttons {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    margin-top: 8px;
+  }
+  .dynamic-angle-label {
+    fill: #e74c3c;
+    font-weight: bold;
+    font-size: 16px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+  .dynamic-angle-label-blue {
+    fill: #3498db;
+    font-weight: bold;
+    font-size: 16px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+  .line-ray-label {
+    font-weight: bold;
+    font-size: 17px;
+    fill: #2c3e50;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+  }
+  #s4-sector-target-blink {
+    pointer-events: none;
+    animation: blinkTargetSector 1s ease-in-out infinite;
+  }
+  @keyframes blinkTargetSector {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.75; }
+  }
+  #s4-sector-360-blink {
+    pointer-events: none;
+    opacity: 0;
+  }
+  #s4-sector-360-blink.blink-360 {
+    animation: blink360 0.9s ease-in-out infinite;
+  }
+  @keyframes blink360 {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.8; }
+  }
+  .arc-confirm-label {
+    font-weight: bold;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+    pointer-events: none;
+  }
+
+
+  .s5-wrap {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 14px;
+    user-select: none;
+    width: 100%;
+    height: 100%;
+  }
+  #s5-info-panel {
+    flex: 0 0 250px;
+    width: 250px;
+    max-width: 250px;
+    background: #fff;
+    padding: 14px 14px;
+    margin-top: 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  #s5-instruction {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 8px;
+  }
+  #s5-sub-instruction {
+    font-size: 0.95rem;
+    color: #7f8c8d;
+    min-height: 1.4em;
+  }
+  .s5-formula-badge {
+    font-size: 1.05rem;
+    color: #c0392b;
+    font-weight: bold;
+    margin-top: 6px;
+    min-height: 1.4em;
+  }
+  #s5-stage-container {
+    position: relative;
+    margin-top: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #s5-stage-container svg {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+  }
+  svg {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: default;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #s5-protractor line,
+  #s5-protractor text {
+    pointer-events: none;
+  }
+  #s5-protractor {
+    will-change: transform;
+  }
+  .highlight-text {
+    fill: #e74c3c !important;
+    font-weight: bold;
+    font-size: 20px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .highlight-zero {
+    fill: #e67e22 !important;
+    font-weight: bold;
+    font-size: 18px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .highlight-text-blue {
+    fill: #3498db !important;
+    font-weight: bold;
+    font-size: 20px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .highlight-zero-blue {
+    fill: #2980b9 !important;
+    font-weight: bold;
+    font-size: 18px !important;
+    transition-property: fill, font-size;
+    transition-timing-function: ease;
+    transition-duration: 0.3s;
+  }
+  .btn {
+    padding: 8px 12px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-top: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .btn:hover {
+    background: #2980b9;
+  }
+  .btn.secondary {
+    background: #7f8c8d;
+  }
+  .btn.secondary:hover {
+    background: #636e72;
+  }
+  #s5-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    margin-top: 10px;
+  }
+  #s5-customAngleInput {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  #s5-method-buttons, #s5-extend-line-buttons {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    margin-top: 8px;
+  }
+  .dynamic-angle-label {
+    fill: #e74c3c;
+    font-weight: bold;
+    font-size: 16px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+  .dynamic-angle-label-blue {
+    fill: #3498db;
+    font-weight: bold;
+    font-size: 16px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+  .line-ray-label {
+    font-weight: bold;
+    font-size: 17px;
+    fill: #2c3e50;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+  }
+  #s5-sector-target-blink {
+    pointer-events: none;
+    animation: blinkTargetSector 1s ease-in-out infinite;
+  }
+  @keyframes blinkTargetSector {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.75; }
+  }
+  #s5-sector-360-blink {
+    pointer-events: none;
+    opacity: 0;
+  }
+  #s5-sector-360-blink.blink-360 {
+    animation: blink360 0.9s ease-in-out infinite;
+  }
+  @keyframes blink360 {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.8; }
+  }
+  .arc-confirm-label {
+    font-weight: bold;
+    text-anchor: middle;
+    dominant-baseline: central;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+    pointer-events: none;
+  }
+
+  /* ---------- Section 4 / 5: 分度器アプリ埋め込み用 ---------- */
+  #s4 .card, #s5 .card{ overflow:hidden; display:flex; flex-direction:column; }
+  .s4-scalebox, .s5-scalebox{ width:100%; flex:1 1 auto; min-height:0; overflow:hidden; }
+  #s5-extend-ray-buttons{ display:flex; flex-direction:column; gap:8px; align-items:stretch; margin-top:8px; }
+
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+
+<button id="sound-toggle-btn" onclick="toggleSound()" aria-label="おとの オン・オフ" aria-pressed="false" title="おとの オン・オフ">🔊</button>
+
+<!-- ================= PORTAL ================= -->
+<div class="screen active" id="portal">
+  <div class="hero">
+    <h1>かくの<span class="deco">おおきさ</span>たんけん</h1>
+    <p>すきなところから すすめてみよう</p>
+  </div>
+  <div class="menu-grid">
+    <button class="menu-btn" style="--num-bg:var(--green)" onclick="goTo('s1')">
+      <div class="num">①</div><div class="t1">ワニの くちくらべ</div><div class="t2">どっちが おおきく あけてる？</div>
+    </button>
+    <button class="menu-btn" style="--num-bg:var(--blue)" onclick="goTo('s2')">
+      <div class="num">②</div><div class="t1">ちょっかく・ちょくせん・1しゅう</div><div class="t2">90°・180°・270°・360°</div>
+    </button>
+    <button class="menu-btn" style="--num-bg:var(--orange)" onclick="goTo('s3')">
+      <div class="num">③</div><div class="t1">なぜ360という かずなの？</div><div class="t2">れきしと わりきれる ひみつ</div>
+    </button>
+    <button class="menu-btn" style="--num-bg:var(--blue)" onclick="goTo('s4')">
+      <div class="num">④</div><div class="t1">ぶんどきの つかいかた</div><div class="t2">かくどを はかってみよう</div>
+    </button>
+    <button class="menu-btn" style="--num-bg:var(--green)" onclick="goTo('s5')">
+      <div class="num">⑤</div><div class="t1">みじかい せんの かく</div><div class="t2">のばして はかろう</div>
+    </button>
+    <button class="menu-btn" style="--num-bg:var(--pink)" onclick="goTo('s6')">
+      <div class="num">⑥</div><div class="t1">かいてんと かくど</div><div class="t2">360°より おおきいと…？</div>
+    </button>
+  </div>
+</div>
+
+<!-- ================= SECTION 1 ================= -->
+<div class="screen" id="s1">
+  <div class="topbar"><button class="back-btn" onclick="goTo('portal')">←</button><h2>① ワニの くちくらべ</h2></div>
+  <div class="card">
+    <div id="s1-list-view">
+      <div class="prompt">どのワニが いちばん おおきく くちを あけているかな？</div>
+      <div class="wani-row" id="wani-row"></div>
+      <div class="sub-note">2ひき タップして えらんでね（<span id="s1-count">0</span>/2）</div>
+    </div>
+    <div id="s1-compare-wrap">
+      <div class="prompt" id="s1-compare-title">くらべてみよう</div>
+      <svg id="s1-compare-svg" viewBox="0 0 1160 480" style="width:100%;height:430px;display:block;"></svg>
+      <div style="text-align:center;">
+        <button class="action-btn blue" id="s1-fan-btn" onclick="showFans()">くちに あなをだす</button>
+        <button class="action-btn" onclick="resetS1()" style="display:none" id="s1-again-btn">もういちど えらぶ</button>
+      </div>
+      <div id="s1-result"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SECTION 2 ================= -->
+<div class="screen" id="s2">
+  <div class="topbar"><button class="back-btn" onclick="goTo('portal')">←</button><h2>② ちょっかく〜1しゅう</h2></div>
+  <div class="card">
+    <div class="prompt">せんが くるっと まわると かくが どんどん おおきくなるよ</div>
+    <div class="layout">
+      <svg id="s2-svg" viewBox="0 0 600 600" style="width:520px;height:480px;flex:none;"></svg>
+      <div style="flex:1;">
+        <div id="s2-readout">0°</div>
+        <div class="stage-buttons">
+          <button class="chip-btn" id="s2-btn-90" onclick="s2GoTo(90)">ちょっかく 90°</button>
+          <button class="chip-btn" id="s2-btn-180" onclick="s2GoTo(180)">ちょくせん 180°</button>
+          <button class="chip-btn" id="s2-btn-270" onclick="s2GoTo(270)">3ちょっかく 270°</button>
+          <button class="chip-btn" id="s2-btn-360" onclick="s2GoTo(360)">1しゅう 360°</button>
+          <button class="chip-btn" style="background:#B9C3D6;box-shadow:0 5px 0 #98A4BA" onclick="s2GoTo(0)">はじめから</button>
+        </div>
+        <div class="sub-note" style="margin-top:18px;max-width:260px;">かどの マークが 4つ あつまると… せいほうけいに なるね</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SECTION 3 ================= -->
+<div class="screen" id="s3">
+  <div class="topbar"><button class="back-btn" onclick="goTo('portal')">←</button><h2>③ なぜ360なの？</h2></div>
+  <div class="card">
+    <div class="layout">
+      <div class="left-col">
+        <div class="prompt" style="font-size:18px;">360を わってみよう</div>
+        <svg id="s3-svg" viewBox="0 0 300 300" style="width:260px;height:260px;"></svg>
+        <div class="n-buttons" id="s3-buttons"></div>
+        <div id="s3-note"></div>
+      </div>
+      <div class="right-col">
+        <div class="section-block">
+          <h3>もし1しゅうが 100°だったら…？</h3>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <svg id="s3-bad-svg" viewBox="0 0 220 220" style="width:170px;height:170px;flex:none;"></svg>
+            <div style="flex:1;">
+              <div class="n-buttons" id="s3-bad-buttons"></div>
+              <div id="s3-bad-note" class="sub-note" style="text-align:left;"></div>
+            </div>
+          </div>
+        </div>
+        <button class="action-btn pink" id="s3-history-btn" onclick="toggleHistory()">こぼれ話：むかしのひとの はなし</button>
+        <div id="s3-history-box"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SECTION 4 ================= -->
+<div class="screen" id="s4">
+  <div class="topbar"><button class="back-btn" onclick="goTo('portal')">←</button><h2>④ ぶんどきの つかいかた</h2></div>
+  <div class="card">
+    <div class="s4-scalebox"><div class="s4-wrap">
+
+
+<div id="s4-stage-container">
+  <svg id="s4-stage" width="800" height="550" viewBox="0 0 800 550">
+    <defs>
+      <g id="s4-rotate-guide">
+        <path d="M -30 0 A 30 30 0 0 1 30 0" fill="none" stroke="#27ae60" stroke-width="4" stroke-dasharray="4 4" />
+        <polygon points="25,-8 35,-2 28,8" fill="#27ae60" />
+        <polygon points="-25,-8 -35,-2 -28,8" fill="#27ae60" />
+      </g>
+    </defs>
+
+    <g id="s4-target-angle-group">
+      <path id="s4-sector-target-blink" fill="rgba(155, 89, 182, 0.5)" stroke="#8e44ad" stroke-width="2.5" d="" />
+      <path id="s4-sector-360-blink" fill="rgba(241, 196, 15, 0.4)" stroke="#f39c12" stroke-width="2.5" d="" />
+      <path id="s4-sector-180" fill="rgba(241, 196, 15, 0.35)" stroke="#f39c12" stroke-width="2" d="" />
+      <path id="s4-sector-correct" fill="rgba(231, 76, 60, 0.35)" stroke="#e74c3c" stroke-width="2" d="" />
+      <path id="s4-sector-wrong" fill="rgba(52, 152, 219, 0.35)" stroke="#3498db" stroke-width="2" d="" />
+
+      <line id="s4-line-base" stroke="#2c3e50" stroke-width="4" stroke-linecap="round" />
+      <line id="s4-line-terminal" stroke="#2c3e50" stroke-width="4" stroke-linecap="round" />
+      <line id="s4-line-extended" stroke="#f39c12" stroke-width="2.5" stroke-dasharray="6 5" stroke-linecap="round" style="opacity:0;" />
+      <circle id="s4-vertex-point" r="5" fill="#e74c3c" />
+      <text id="s4-line-label-base" class="line-ray-label"></text>
+      <text id="s4-line-label-term" class="line-ray-label"></text>
+      <g id="s4-method-arc-labels"></g>
+    </g>
+
+    <g id="s4-protractor" transform="translate(150, 420) rotate(0)">
+    </g>
+  </svg>
+</div>
+
+<div id="s4-info-panel">
+  <div id="s4-instruction">Step 1: 分度器の中心（＋マーク）を、角の頂点に重ねよう！</div>
+  <div id="s4-sub-instruction">分度器をドラッグして移動させてね。</div>
+  <div id="s4-formula-badge" class="s4-formula-badge"></div>
+
+  <div id="s4-method-buttons">
+    <button class="btn secondary" onclick="showMethod1_S4()">方法1: 180°＋残り</button>
+    <button class="btn secondary" onclick="chooseMethod2_S4()">方法2: 360°から引く</button>
+  </div>
+
+  <div id="s4-extend-line-buttons">
+    <button class="btn secondary" onclick="extendLineChoice_S4('base')">線アを延長する</button>
+    <button class="btn secondary" onclick="extendLineChoice_S4('term')">線イを延長する</button>
+  </div>
+
+  <div id="s4-controls">
+    <button class="btn" onclick="fullReset_S4()">やり直す（同じ角度）</button>
+    <button class="btn secondary" onclick="regenerateProblem_S4(false)">🎲 ランダム出題</button>
+    <button class="btn secondary" onclick="regenerateProblem_S4(true)">🎲 優角(180°超)で出題</button>
+    <input type="number" id="s4-customAngleInput" min="1" max="359" value="65">
+    <button class="btn secondary" onclick="useCustomAngle_S4()">この角度で出題</button>
+  </div>
+</div>
+
+
+    </div></div>
+  </div>
+</div>
+
+<!-- ================= SECTION 5 ================= -->
+<div class="screen" id="s5">
+  <div class="topbar"><button class="back-btn" onclick="goTo('portal')">←</button><h2>⑤ みじかい せんの かく</h2></div>
+  <div class="card">
+    <div class="s5-scalebox"><div class="s5-wrap">
+
+
+<div id="s5-stage-container">
+  <svg id="s5-stage" width="800" height="550" viewBox="0 0 800 550">
+    <defs>
+      <g id="s5-rotate-guide">
+        <path d="M -30 0 A 30 30 0 0 1 30 0" fill="none" stroke="#27ae60" stroke-width="4" stroke-dasharray="4 4" />
+        <polygon points="25,-8 35,-2 28,8" fill="#27ae60" />
+        <polygon points="-25,-8 -35,-2 -28,8" fill="#27ae60" />
+      </g>
+    </defs>
+
+    <g id="s5-target-angle-group">
+      <path id="s5-sector-target-blink" fill="rgba(155, 89, 182, 0.5)" stroke="#8e44ad" stroke-width="2.5" d="" />
+      <path id="s5-sector-360-blink" fill="rgba(241, 196, 15, 0.4)" stroke="#f39c12" stroke-width="2.5" d="" />
+      <path id="s5-sector-180" fill="rgba(241, 196, 15, 0.35)" stroke="#f39c12" stroke-width="2" d="" />
+      <path id="s5-sector-correct" fill="rgba(231, 76, 60, 0.35)" stroke="#e74c3c" stroke-width="2" d="" />
+      <path id="s5-sector-wrong" fill="rgba(52, 152, 219, 0.35)" stroke="#3498db" stroke-width="2" d="" />
+
+      <line id="s5-line-base" stroke="#2c3e50" stroke-width="4" stroke-linecap="round" />
+      <line id="s5-line-terminal" stroke="#2c3e50" stroke-width="4" stroke-linecap="round" />
+      <line id="s5-line-base-ext" stroke="#16a085" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round" style="opacity:0;" />
+      <line id="s5-line-term-ext" stroke="#16a085" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round" style="opacity:0;" />
+      <line id="s5-line-extended" stroke="#f39c12" stroke-width="2.5" stroke-dasharray="6 5" stroke-linecap="round" style="opacity:0;" />
+      <circle id="s5-vertex-point" r="5" fill="#e74c3c" />
+      <text id="s5-line-label-base" class="line-ray-label"></text>
+      <text id="s5-line-label-term" class="line-ray-label"></text>
+      <g id="s5-method-arc-labels"></g>
+    </g>
+
+    <g id="s5-protractor" transform="translate(150, 420) rotate(0)">
+    </g>
+  </svg>
+</div>
+
+<div id="s5-info-panel">
+  <div id="s5-instruction">Step 1: 分度器の中心（＋マーク）を、角の頂点に重ねよう！</div>
+  <div id="s5-sub-instruction">分度器をドラッグして移動させてね。</div>
+  <div id="s5-formula-badge" class="s5-formula-badge"></div>
+
+  <div id="s5-extend-ray-buttons" style="display:flex; flex-direction:column; gap:8px; align-items:stretch; margin-top:8px;">
+    <button class="btn secondary" onclick="extendBothRays_S5()">📏 直線をのばす</button>
+  </div>
+
+  <div id="s5-controls">
+    <button class="btn" onclick="fullReset_S5()">やり直す（同じ角度）</button>
+    <button class="btn secondary" onclick="regenerateProblem_S5()">🎲 ランダム出題</button>
+    <input type="number" id="s5-customAngleInput" min="1" max="179" value="65">
+    <button class="btn secondary" onclick="useCustomAngle_S5()">この角度で出題</button>
+  </div>
+</div>
+
+
+    </div></div>
+  </div>
+</div>
+
+<!-- ================= SECTION 6 ================= -->
+<div class="screen" id="s6">
+  <div class="topbar"><button class="back-btn" onclick="goTo('portal')">←</button><h2>⑥ かいてんと かくど</h2></div>
+  <div class="card">
+    <div class="layout">
+      <div class="left-col">
+        <div class="prompt" id="s6-prompt" style="font-size:18px;">かくは「ひらきぐあい」だけど「かいてん」とも いえるよ</div>
+        <svg id="s6-svg" viewBox="0 0 560 560" style="width:420px;height:420px;"></svg>
+        <button class="action-btn blue" id="s6-switch-btn" onclick="s6SwitchView()">かいてんの みかたに かえる</button>
+      </div>
+      <div class="right-col" id="s6-tricks" style="display:none;">
+        <div class="prompt" style="font-size:17px;">わざの なまえで まわしてみよう</div>
+        <div class="trick-buttons" id="s6-trick-buttons"></div>
+        <input type="range" id="s6-dial" min="0" max="1440" value="0" step="10">
+        <div id="s6-dial-readout"><div class="deg" id="s6-dial-deg">0°</div><div class="name" id="s6-dial-name">まわしてみよう</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div></div>
+
+<script>
+/* ============================================================
+   効果音・音声読み上げ システム
+   ============================================================ */
+let soundOn = true;
+let audioCtx = null;
+
+function ensureAudioCtx(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioCtx=null; }
+  }
+  if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
+  return audioCtx;
+}
+
+/* ---- 効果音（WebAudioで生成。外部音源ファイルは不要） ---- */
+const SE_PATTERNS = {
+  tap:       [{f:660,  t:0,    d:0.07, g:0.13, type:'sine'}],
+  select:    [{f:520,  t:0,    d:0.08, g:0.14, type:'sine'},{f:780, t:0.06, d:0.10, g:0.12, type:'sine'}],
+  correct:   [{f:660,  t:0,    d:0.10, g:0.16, type:'sine'},{f:880, t:0.10, d:0.10, g:0.16, type:'sine'},{f:1175,t:0.20,d:0.20,g:0.18,type:'sine'}],
+  open:      [{f:440,  t:0,    d:0.09, g:0.12, type:'triangle'},{f:660,t:0.07,d:0.12,g:0.12,type:'triangle'}],
+  transition:[{f:392,  t:0,    d:0.08, g:0.10, type:'sine'},{f:523, t:0.06, d:0.10, g:0.10, type:'sine'}],
+};
+function playSE(type){
+  if(!soundOn) return;
+  const ctx = ensureAudioCtx();
+  if(!ctx) return;
+  const now = ctx.currentTime;
+  const seq = SE_PATTERNS[type] || SE_PATTERNS.tap;
+  seq.forEach(note=>{
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = note.type;
+    osc.frequency.value = note.f;
+    gain.gain.setValueAtTime(0.0001, now+note.t);
+    gain.gain.exponentialRampToValueAtTime(note.g, now+note.t+0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+note.t+note.d);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now+note.t);
+    osc.stop(now+note.t+note.d+0.03);
+  });
+}
+
+/* ---- 数字 → ひらがな読み ---- */
+const YOMI_1_9      = ['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+const YOMI_1_9_SOLO  = ['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+const YOMI_JUU  = {1:'じゅう',2:'にじゅう',3:'さんじゅう',4:'よんじゅう',5:'ごじゅう',6:'ろくじゅう',7:'ななじゅう',8:'はちじゅう',9:'きゅうじゅう'};
+const YOMI_HYAKU= {1:'ひゃく',2:'にひゃく',3:'さんびゃく',4:'よんひゃく',5:'ごひゃく',6:'ろっぴゃく',7:'ななひゃく',8:'はっぴゃく',9:'きゅうひゃく'};
+const YOMI_SEN  = {1:'せん',2:'にせん',3:'さんぜん',4:'よんせん',5:'ごせん',6:'ろくせん',7:'ななせん',8:'はっせん',9:'きゅうせん'};
+function numberToYomi(numStr){
+  let n = parseInt(numStr,10);
+  if(isNaN(n)) return numStr;
+  if(n===0) return 'ぜろ';
+  let neg='';
+  if(n<0){ neg='マイナス'; n=-n; }
+  let result='';
+  const man = Math.floor(n/10000); n%=10000;
+  const sen = Math.floor(n/1000);  n%=1000;
+  const hyaku= Math.floor(n/100);  n%=100;
+  const juu = Math.floor(n/10);    n%=10;
+  const ichi = n;
+  if(man>0) result += (man===1?'':numberToYomi(String(man))) + 'まん';
+  if(sen>0) result += YOMI_SEN[sen];
+  if(hyaku>0) result += YOMI_HYAKU[hyaku];
+  if(juu>0) result += YOMI_JUU[juu];
+  if(ichi>0) result += YOMI_1_9[ichi];
+  return neg+result;
+}
+
+/* ---- 算数用語・記号 → ひらがな読み変換辞書（長い語句から順に置換） ---- */
+const KANJI_YOMI = [
+  ['（＋マーク）','の プラスマーク'],
+  ['残りの角度','のこりの かくど'],
+  ['角度','かくど'],
+  ['分度器','ぶんどき'],
+  ['延長して','えんちょうして'],
+  ['延長する','えんちょうする'],
+  ['延長線','えんちょうせん'],
+  ['延長','えんちょう'],
+  ['頂点','ちょうてん'],
+  ['直線','ちょくせん'],
+  ['半分','はんぶん'],
+  ['一周','いっしゅう'],
+  ['優角','ゆうかく'],
+  ['引いて','ひいて'],
+  ['引くと','ひくと'],
+  ['引く','ひく'],
+  ['求めたい','もとめたい'],
+  ['求めよう','もとめよう'],
+  ['求める','もとめる'],
+  ['続き','つづき'],
+  ['届く','とどく'],
+  ['移動させて','いどうさせて'],
+  ['移動','いどう'],
+  ['確認しよう','かくにんしよう'],
+  ['確認','かくにん'],
+  ['超えている','こえている'],
+  ['超える','こえる'],
+  ['測れません','はかれません'],
+  ['測れる','はかれる'],
+  ['測ろう','はかろう'],
+  ['測れ','はかれ'],
+  ['点線','てんせん'],
+  ['点滅している','てんめつしている'],
+  ['点滅','てんめつ'],
+  ['選んで','えらんで'],
+  ['大きさ','おおきさ'],
+  ['合わせよう','あわせよう'],
+  ['合わせられます','あわせられます'],
+  ['重ねよう','かさねよう'],
+  ['方法','ほうほう'],
+  ['向こう側','むこうがわ'],
+  ['下の','したの'],
+  ['色のついた','いろのついた'],
+  ['部分','ぶぶん'],
+  ['中心','ちゅうしん'],
+  ['回転させて','かいてんさせて'],
+  ['回転','かいてん'],
+  ['回して','まわして'],
+  ['読み取ろう','よみとろう'],
+  ['読み取る','よみとる'],
+  ['直接','ちょくせつ'],
+  ['考え方','かんがえかた'],
+  ['作る','つくる'],
+  ['目もり','めもり'],
+  ['人たち','ひとたち'],
+  ['年','ねん'],
+  ['日','にち'],
+  ['天','てん'],
+  ['空','そら'],
+  ['星','ほし'],
+  ['線','せん'],
+  ['右','みぎ'],
+  ['左','ひだり'],
+  ['角','かく'],
+];
+
+function toYomi(str){
+  if(!str) return '';
+  let s = String(str);
+  s = s.replace(/Step\s*(\d+)\s*[:：]/gi, (m,n)=> 'すてっぷ' + numberToYomi(n) + '、');
+  KANJI_YOMI.forEach(([k,v])=>{ if(s.indexOf(k)>-1) s = s.split(k).join(v); });
+  s = s.replace(/(\d+)\.(\d+)/g, (m,a,b)=> numberToYomi(a) + 'てん' + b.split('').map(d=>YOMI_1_9_SOLO[+d]).join(''));
+  s = s.replace(/(\d+)\s*\/\s*(\d+)/g, (m,a,b)=> numberToYomi(b) + 'ぶんの' + numberToYomi(a));
+  s = s.replace(/°/g, 'ど');
+  s = s.replace(/[×＊]/g, 'かける');
+  s = s.replace(/÷/g, 'わる');
+  s = s.replace(/＋/g, 'たす');
+  s = s.replace(/[−]/g, 'ひく');
+  s = s.replace(/[＝=]/g, 'は');
+  s = s.replace(/①/g,'いち').replace(/②/g,'に').replace(/③/g,'さん').replace(/④/g,'よん').replace(/⑤/g,'ご').replace(/⑥/g,'ろく');
+  s = s.replace(/[「」（）()]/g, '、');
+  s = s.replace(/、{2,}/g, '、');
+  s = s.replace(/\d+/g, (m)=> numberToYomi(m));
+  s = s.replace(/[…\*]/g, '');
+  s = s.replace(/<br\s*\/?>/gi, '。');
+  s = s.replace(/\s{2,}/g, ' ');
+  return s.trim();
+}
+
+/* ---- 音声読み上げ ---- */
+let speechWarmed = false;
+function warmupSpeech(){
+  if(speechWarmed) return;
+  if(!('speechSynthesis' in window)) return;
+  try{
+    window.speechSynthesis.getVoices();
+    const u = new SpeechSynthesisUtterance('。');
+    u.lang = 'ja-JP';
+    u.volume = 0;
+    u.rate = 10;
+    window.speechSynthesis.speak(u);
+    speechWarmed = true;
+  }catch(e){}
+}
+if('speechSynthesis' in window){
+  window.speechSynthesis.onvoiceschanged = ()=>{ window.speechSynthesis.getVoices(); };
+}
+window.addEventListener('load', ()=>{ warmupSpeech(); });
+document.addEventListener('pointerdown', function firstTouch(){
+  warmupSpeech();
+  ensureAudioCtx();
+  document.removeEventListener('pointerdown', firstTouch);
+}, {once:true});
+
+function speak(text, opts){
+  opts = opts || {};
+  if(!soundOn) return;
+  if(!('speechSynthesis' in window)) return;
+  const yomi = toYomi(text);
+  if(!yomi) return;
+  if(opts.interrupt) window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(yomi);
+  u.lang = 'ja-JP';
+  u.rate = 0.95;
+  u.pitch = 1.05;
+  const voices = window.speechSynthesis.getVoices();
+  const jaVoice = voices.find(v=>v.lang && v.lang.indexOf('ja')===0);
+  if(jaVoice) u.voice = jaVoice;
+  window.speechSynthesis.speak(u);
+}
+
+/* ---- 音のオン・オフボタン ---- */
+function toggleSound(){
+  soundOn = !soundOn;
+  const btn = document.getElementById('sound-toggle-btn');
+  if(btn){
+    btn.classList.toggle('off', !soundOn);
+    btn.setAttribute('aria-pressed', String(!soundOn));
+  }
+  if(soundOn){
+    ensureAudioCtx();
+    playSE('select');
+  } else if('speechSynthesis' in window){
+    window.speechSynthesis.cancel();
+  }
+}
+
+/* ---- ボタン類のタップ効果音（イベント委譲） ---- */
+document.addEventListener('pointerdown', (e)=>{
+  const t = e.target.closest('button, .wani-slot, .n-buttons button, .trick-buttons button');
+  if(t && t.id !== 'sound-toggle-btn') playSE('tap');
+}, {capture:true});
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.tagName==='INPUT' && e.target.type==='range') playSE('select');
+});
+
+/* ---- 動画面のテキスト変化を自動で読み上げる（複数箇所の変化はまとめて読む） ---- */
+const SPEAK_TARGETS = [
+  's1-result','s2-readout','s3-note','s3-bad-note','s3-history-box',
+  's4-instruction','s4-sub-instruction','s4-formula-badge',
+  's5-instruction','s5-sub-instruction','s5-formula-badge',
+  's6-dial-deg','s6-dial-name'
+];
+const lastSpokenText = {};
+let speakBatchTimer = null;
+const pendingSpeakIds = new Set();
+function scheduleSpeakBatch(id){
+  pendingSpeakIds.add(id);
+  clearTimeout(speakBatchTimer);
+  speakBatchTimer = setTimeout(flushSpeakBatch, 420);
+}
+function flushSpeakBatch(){
+  const parts = [];
+  SPEAK_TARGETS.forEach(id=>{
+    if(!pendingSpeakIds.has(id)) return;
+    const el = document.getElementById(id);
+    if(!el) return;
+    const txt = el.textContent.replace(/\s+/g,' ').trim();
+    if(!txt) return;
+    if(lastSpokenText[id] === txt) return;
+    lastSpokenText[id] = txt;
+    parts.push(txt);
+  });
+  pendingSpeakIds.clear();
+  if(parts.length){
+    playSE('select');
+    speak(parts.join('。'), {interrupt:true});
+  }
+}
+SPEAK_TARGETS.forEach(id=>{
+  const el = document.getElementById(id);
+  if(!el) return;
+  const obs = new MutationObserver(()=> scheduleSpeakBatch(id));
+  obs.observe(el, {childList:true, characterData:true, subtree:true});
+});
+
+/* ============ STAGE SCALE ============ */
+function fitStage(){
+  const stage = document.getElementById('stage');
+  const sx = window.innerWidth/1280, sy = window.innerHeight/720;
+  const s = Math.min(sx,sy);
+  stage.style.transform = `scale(${s})`;
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+
+/* ============ NAV ============ */
+function goTo(id){
+  playSE('transition');
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='s1' && !window.__s1init){ initS1(); window.__s1init=true; }
+  if(id==='s2' && !window.__s2init){ initS2(); window.__s2init=true; }
+  if(id==='s3' && !window.__s3init){ initS3(); window.__s3init=true; }
+  if(id==='s4' && !window.__s4init){ init_S4(); window.__s4init=true; }
+  if(id==='s5' && !window.__s5init){ init_S5(); window.__s5init=true; }
+  if(id==='s6' && !window.__s6init){ initS6(); window.__s6init=true; }
+  setTimeout(()=>{
+    const screenEl = document.getElementById(id);
+    if(!screenEl) return;
+    let introText;
+    if(id==='portal'){
+      introText = 'かくの おおきさ たんけん。すきなところから すすめてみよう';
+    } else {
+      const h2 = screenEl.querySelector('h2');
+      const prompt = screenEl.querySelector('.prompt');
+      introText = [h2?h2.textContent:'', prompt?prompt.textContent:''].filter(Boolean).join('。');
+    }
+    speak(introText, {interrupt:true});
+  }, 260);
+}
+
+function polar(cx,cy,r,deg){
+  const rad=(deg-90)*Math.PI/180;
+  return {x:cx+r*Math.cos(rad), y:cy+r*Math.sin(rad)};
+}
+function arcPath(cx,cy,r,startDeg,endDeg){
+  const s=polar(cx,cy,r,startDeg), e=polar(cx,cy,r,endDeg);
+  const large=(endDeg-startDeg)>180?1:0;
+  return `M ${cx} ${cy} L ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y} Z`;
+}
+
+/* ============ SECTION 1: WANI ============ */
+const WANIS = [
+  {id:0, size:0.62, mouth:56, body:'#3FAE7A', name:'ちいさい'},
+  {id:1, size:0.78, mouth:26, body:'#4CAE3F', name:'ちいさめ'},
+  {id:2, size:1.0,  mouth:34, body:'#3FAE7A', name:'ふつう'},
+  {id:3, size:1.25, mouth:22, body:'#2C8F63', name:'おおきめ'},
+  {id:4, size:1.5,  mouth:18, body:'#2C8F63', name:'おおきい'},
+];
+let s1Selected = [];
+
+function toothTri(hx,hy,tipx,tipy,t1,t2,side,size){
+  const dx=tipx-hx, dy=tipy-hy;
+  const bx=hx+dx*t1, by=hy+dy*t1;
+  const ex=hx+dx*t2, ey=hy+dy*t2;
+  const len=Math.hypot(dx,dy)||1, ux=dx/len, uy=dy/len, px=-uy*side, py=ux*side;
+  const mx=(bx+ex)/2+px*size, my=(by+ey)/2+py*size;
+  return `${bx},${by} ${mx},${my} ${ex},${ey}`;
+}
+
+/* returns inner markup (already includes an internal translate(10,6)) plus local hinge point
+   BEFORE that internal translate (so caller adds 10,6 when computing world hinge) */
+function wanternParts(w){
+  const W=132, H=84;
+  const bodyColor=w.body;
+  const bodyCx=W*0.34, bodyCy=H*0.60, bodyRx=W*0.24, bodyRy=H*0.23;
+  const tailTip={x:-W*0.03,y:H*0.56};
+  const headCx=bodyCx+bodyRx*0.98, headCy=bodyCy-bodyRy*0.30, headR=H*0.235;
+  const eyeCx=headCx-headR*0.05, eyeCy=headCy-headR*0.85;
+  const hinge={x:headCx+headR*0.62, y:headCy+headR*0.28};
+  const snoutLen=W*0.46;
+  const upA=-w.mouth/2*Math.PI/180, loA=w.mouth/2*Math.PI/180;
+  const upperTip={x:hinge.x+snoutLen*Math.cos(upA), y:hinge.y+snoutLen*Math.sin(upA)};
+  const lowerTip={x:hinge.x+snoutLen*Math.cos(loA), y:hinge.y+snoutLen*Math.sin(loA)};
+  const thick=H*0.13;
+  const markup = `
+    <g class="wani-body" transform="translate(10,6)">
+      <polygon points="${tailTip.x},${tailTip.y} ${bodyCx-bodyRx*0.5},${bodyCy-bodyRy*0.55} ${bodyCx-bodyRx*0.5},${bodyCy+bodyRy*0.6}" fill="${bodyColor}"/>
+      <ellipse cx="${bodyCx-bodyRx*0.32}" cy="${bodyCy+bodyRy*0.82}" rx="${W*0.05}" ry="${H*0.06}" fill="${bodyColor}"/>
+      <ellipse cx="${bodyCx+bodyRx*0.42}" cy="${bodyCy+bodyRy*0.82}" rx="${W*0.05}" ry="${H*0.06}" fill="${bodyColor}"/>
+      <ellipse cx="${bodyCx}" cy="${bodyCy}" rx="${bodyRx}" ry="${bodyRy}" fill="${bodyColor}"/>
+      <polygon points="${bodyCx-bodyRx*0.3},${bodyCy-bodyRy*0.9} ${bodyCx-bodyRx*0.1},${bodyCy-bodyRy*1.35} ${bodyCx+bodyRx*0.1},${bodyCy-bodyRy*0.9}" fill="${bodyColor}"/>
+      <polygon points="${bodyCx+bodyRx*0.15},${bodyCy-bodyRy*0.95} ${bodyCx+bodyRx*0.35},${bodyCy-bodyRy*1.4} ${bodyCx+bodyRx*0.55},${bodyCy-bodyRy*0.95}" fill="${bodyColor}"/>
+      <circle cx="${headCx}" cy="${headCy}" r="${headR}" fill="${bodyColor}"/>
+      <g class="jaw-lower" data-hx="${hinge.x}" data-hy="${hinge.y}">
+        <polygon points="${hinge.x},${hinge.y-thick*0.3} ${hinge.x},${hinge.y+thick} ${lowerTip.x},${lowerTip.y+thick*0.35} ${lowerTip.x},${lowerTip.y-thick*0.15}" fill="#FFD8CE" stroke="#1F6E4A" stroke-width="1.3"/>
+        <polygon points="${toothTri(hinge.x,hinge.y+thick*0.5,lowerTip.x,lowerTip.y+thick*0.1,0.35,0.55,-1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
+        <polygon points="${toothTri(hinge.x,hinge.y+thick*0.5,lowerTip.x,lowerTip.y+thick*0.1,0.65,0.85,-1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
+      </g>
+      <g class="jaw-upper" data-hx="${hinge.x}" data-hy="${hinge.y}">
+        <polygon points="${hinge.x},${hinge.y-thick} ${hinge.x},${hinge.y+thick*0.3} ${upperTip.x},${upperTip.y+thick*0.15} ${upperTip.x},${upperTip.y-thick*0.35}" fill="${bodyColor}" stroke="#1F6E4A" stroke-width="1.3"/>
+        <polygon points="${toothTri(hinge.x,hinge.y-thick*0.5,upperTip.x,upperTip.y-thick*0.1,0.35,0.55,1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
+        <polygon points="${toothTri(hinge.x,hinge.y-thick*0.5,upperTip.x,upperTip.y-thick*0.1,0.65,0.85,1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
+      </g>
+      <circle cx="${eyeCx}" cy="${eyeCy}" r="${headR*0.34}" fill="#fff" stroke="#1F6E4A" stroke-width="1"/>
+      <circle cx="${eyeCx+headR*0.06}" cy="${eyeCy}" r="${headR*0.17}" fill="#2E3A59"/>
+    </g>`;
+  return {markup, hinge:{x:10+hinge.x, y:6+hinge.y}, W:W+22, H:H+30};
+}
+
+function wanternSVG(w, scaleMul){
+  const p = wanternParts(w);
+  const s = w.size*(scaleMul||1);
+  return `<svg width="${p.W*s}" height="${p.H*s}" viewBox="0 0 ${p.W} ${p.H}" class="wani-idle" style="overflow:visible">${p.markup}</svg>`;
+}
+
+/* 一列に並べる表示順（あえて大きさ順にしない = 互い違い）と、
+   16:9ステージ(1280x720)のカード内にきっちり収まるスケール。
+   ※ワニの からだの おおきさ(w.size)は そのまま比べさせたいので、
+   ここでは「並べる順番」と「ぜんたいの縮尺」だけ調整し、個体ごとに
+   縮尺を変えたりはしない（そうすると口の扇形の辺の長さの比較にも影響するため）。*/
+const S1_DISPLAY_ORDER=[0,4,1,3,2]; // 小・大・小・大・中 のジグザグ
+const S1_SCALE=1.3;
+function initS1(){
+  const row=document.getElementById('wani-row');
+  row.innerHTML='';
+  S1_DISPLAY_ORDER.forEach((id,idx)=>{
+    const w=WANIS.find(x=>x.id===id);
+    const slot=document.createElement('div');
+    slot.className='wani-slot idle-anim';
+    slot.dataset.id=w.id;
+    slot.style.transform = `translateY(${idx%2===0 ? '16px' : '-16px'})`;
+    slot.innerHTML = wanternSVG(w,S1_SCALE) + `<div class="label">${w.name}</div>`;
+    slot.onclick=()=>toggleSelect(w.id, slot);
+    row.appendChild(slot);
+  });
+  injectIdleCSS();
+}
+function injectIdleCSS(){
+  if(document.getElementById('idle-style')) return;
+  const st=document.createElement('style');
+  st.id='idle-style';
+  st.textContent=`
+    @keyframes pakuUpper{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-6deg);}}
+    @keyframes pakuLower{0%,100%{transform:rotate(0deg);}50%{transform:rotate(6deg);}}
+    .idle-anim .jaw-upper{transform-origin:var(--hx,0) var(--hy,0);animation:pakuUpper 1.4s ease-in-out infinite;}
+    .idle-anim .jaw-lower{transform-origin:var(--hx,0) var(--hy,0);animation:pakuLower 1.4s ease-in-out infinite;}
+  `;
+  document.head.appendChild(st);
+  document.querySelectorAll('.jaw-upper,.jaw-lower').forEach(g=>{
+    g.style.setProperty('--hx', g.dataset.hx+'px');
+    g.style.setProperty('--hy', g.dataset.hy+'px');
+  });
+}
+function toggleSelect(id, slot){
+  const idx=s1Selected.indexOf(id);
+  if(idx>-1){ s1Selected.splice(idx,1); slot.classList.remove('selected'); }
+  else{
+    if(s1Selected.length>=2) return;
+    s1Selected.push(id); slot.classList.add('selected');
+  }
+  document.getElementById('s1-count').textContent=s1Selected.length;
+  if(s1Selected.length===2) setTimeout(enterCompare,350);
+}
+
+let s1FanState = null;
+const S1_VERTEX = {x:580, y:440}; // 2匹の口の扇形を重ねてくらべる、共通の頂点
+function enterCompare(){
+  document.getElementById('s1-list-view').style.display='none';
+  document.getElementById('s1-compare-wrap').classList.add('active');
+  const svg=document.getElementById('s1-compare-svg');
+  svg.innerHTML='';
+  const NS='http://www.w3.org/2000/svg';
+  const positions=[{x:70,y:10,S:1.5},{x:650,y:10,S:1.5}];
+  const fanColors=['#3670D6','#E5525F'];
+  s1FanState=[];
+  s1Selected.forEach((id,i)=>{
+    const w=WANIS.find(x=>x.id===id);
+    const p=wanternParts(w);
+    const S=positions[i].S*w.size;
+    const X=positions[i].x, Y=positions[i].y;
+    const dot=document.createElementNS(NS,'circle');
+    dot.setAttribute('cx',X+10); dot.setAttribute('cy',Y-6); dot.setAttribute('r','9');
+    dot.setAttribute('fill',fanColors[i]);
+    svg.appendChild(dot);
+    const g=document.createElementNS(NS,'g');
+    g.setAttribute('transform',`translate(${X},${Y}) scale(${S})`);
+    g.innerHTML=p.markup;
+    svg.appendChild(g);
+    const hingeWorld={x:X+S*p.hinge.x, y:Y+S*p.hinge.y};
+    /* 2匹とも同じ頂点(S1_VERTEX)に、同じ半径(R_DEST)で重ねる。
+       からだの大きさで辺の長さを変えたりはしない＝比べるのは角度だけ。 */
+    s1FanState.push({w, hingeWorld, destX: S1_VERTEX.x, destY: S1_VERTEX.y});
+  });
+  const vx=S1_VERTEX.x, vy=S1_VERTEX.y;
+  svg.innerHTML += `<line x1="${vx-170}" y1="${vy}" x2="${vx+170}" y2="${vy}" stroke="#D9E6F0" stroke-width="3" stroke-dasharray="4 5"/>
+    <text x="${vx}" y="${vy+26}" text-anchor="middle" font-size="14" fill="#6B7A99">おなじ ちょうてんに あわせて くらべるよ</text>`;
+  document.getElementById('s1-result').textContent='';
+  document.getElementById('s1-again-btn').style.display='none';
+  document.getElementById('s1-fan-btn').style.display='inline-block';
+  document.getElementById('s1-fan-btn').disabled=false;
+}
+
+function fanPathLocal(mouthDeg,R){
+  const upA=-mouthDeg/2*Math.PI/180, loA=mouthDeg/2*Math.PI/180;
+  const p1={x:R*Math.cos(upA), y:R*Math.sin(upA)};
+  const p2={x:R*Math.cos(loA), y:R*Math.sin(loA)};
+  const large=mouthDeg>180?1:0;
+  return `M0,0 L${p1.x},${p1.y} A${R},${R} 0 ${large} 1 ${p2.x},${p2.y} Z`;
+}
+
+function showFans(){
+  document.getElementById('s1-fan-btn').disabled=true;
+  const svg=document.getElementById('s1-compare-svg');
+  const NS='http://www.w3.org/2000/svg';
+  const colors=['#3670D6','#E5525F'];
+  const R_LOCAL=64, R_DEST=140;
+  s1FanState.forEach((st,i)=>{
+    const d=fanPathLocal(st.w.mouth, R_LOCAL);
+    const orig=document.createElementNS(NS,'path');
+    orig.setAttribute('d',d);
+    orig.setAttribute('fill',colors[i]);
+    orig.setAttribute('opacity','0');
+    orig.setAttribute('transform',`translate(${st.hingeWorld.x},${st.hingeWorld.y}) rotate(0) scale(1)`);
+    svg.appendChild(orig);
+    requestAnimationFrame(()=>{ orig.style.transition='opacity .4s ease'; orig.setAttribute('opacity','0.85'); });
+    st.origEl=orig;
+  });
+  setTimeout(()=>flyFans(R_LOCAL,R_DEST,colors), 650);
+}
+
+function flyFans(R_LOCAL,R_DEST,colors){
+  const svg=document.getElementById('s1-compare-svg');
+  const NS='http://www.w3.org/2000/svg';
+  const k=R_DEST/R_LOCAL; // 2匹とも同じ倍率＝辺の長さ(半径)は最後まで同じにそろえる
+  /* 角度が大きいほうを先に(下に)、小さいほうをあとで(上に)描くと、
+     同じ頂点・同じ半径で重ねたときに小さい扇形の輪郭までちゃんと見える */
+  const order = [0,1].sort((a,b)=> s1FanState[b].w.mouth - s1FanState[a].w.mouth);
+  const clones={};
+  order.forEach(i=>{
+    const st=s1FanState[i];
+    const clone=st.origEl.cloneNode();
+    clone.setAttribute('opacity','0.72');
+    clone.setAttribute('stroke','#fff');
+    clone.setAttribute('stroke-width','2.5');
+    svg.appendChild(clone);
+    clones[i]=clone;
+  });
+  const dur=900, t0=performance.now();
+  function ease(p){ return 1-Math.pow(1-p,3); }
+  function step(now){
+    const p=ease(Math.min(1,(now-t0)/dur));
+    s1FanState.forEach((st,i)=>{
+      const tx = st.hingeWorld.x + (st.destX-st.hingeWorld.x)*p;
+      const ty = st.hingeWorld.y + (st.destY-st.hingeWorld.y)*p;
+      const rot = -90*p;
+      const sc = 1 + (k-1)*p; // どちらの扇形も同じsc＝辺の長さを勝手に変えない
+      clones[i].setAttribute('transform',`translate(${tx},${ty}) rotate(${rot}) scale(${sc})`);
+    });
+    if(p<1) requestAnimationFrame(step);
+    else { drawFanLabels(R_DEST); setTimeout(revealResult,300); }
+  }
+  requestAnimationFrame(step);
+}
+function drawFanLabels(R_DEST){
+  const svg=document.getElementById('s1-compare-svg');
+  const NS='http://www.w3.org/2000/svg';
+  const colors=['#3670D6','#E5525F'];
+  const vx=S1_VERTEX.x, vy=S1_VERTEX.y;
+  s1FanState.forEach((st,i)=>{
+    const half=st.w.mouth/2;
+    const R=R_DEST*0.78;
+    // 片方の辺の少し外側にラベルを置く（重なり回避のため左右にずらす）
+    const sign = i===0 ? -1 : 1;
+    const tx = vx + sign*(20+ R*Math.sin(half*Math.PI/180));
+    const ty = vy - R*Math.cos(half*Math.PI/180);
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',tx); t.setAttribute('y',ty);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-size','16'); t.setAttribute('font-weight','800');
+    t.setAttribute('fill',colors[i]);
+    t.textContent = st.w.mouth+'°';
+    svg.appendChild(t);
+  });
+}
+
+function revealResult(){
+  const [A,B] = s1FanState.map(s=>s.w);
+  const winner = A.mouth>B.mouth?A:B;
+  const result=document.getElementById('s1-result');
+  result.innerHTML=`「${winner.name}」ワニのほうが おおきく くちを あけていた！<br><span style="font-weight:400;font-size:15px;color:#6B7A99;">からだの おおきさは かんけいなかったね</span>`;
+  document.getElementById('s1-again-btn').style.display='inline-block';
+  document.getElementById('s1-fan-btn').style.display='none';
+}
+
+function resetS1(){
+  s1Selected=[];
+  document.getElementById('s1-count').textContent='0';
+  document.getElementById('s1-compare-wrap').classList.remove('active');
+  document.getElementById('s1-list-view').style.display='block';
+  document.querySelectorAll('#wani-row .wani-slot').forEach(s=>s.classList.remove('selected'));
+}
+
+/* ============ SECTION 2 ============ */
+let s2Angle=0;
+function rightAngleMark(cx,cy,aDeg,d){
+  const p1=polar(cx,cy,d,aDeg);
+  const p2=polar(cx,cy,d,aDeg+90);
+  const corner={x:p1.x+(p2.x-cx), y:p1.y+(p2.y-cy)};
+  return `M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`;
+}
+function s2Draw(angle){
+  const cx=300, cy=320, R=220;
+  const svg=document.getElementById('s2-svg');
+  const fixed=polar(cx,cy,R,0);
+  const moving=polar(cx,cy,R,angle);
+  let marks='';
+  for(let k=0;k<4;k++){
+    if(angle>=(k+1)*90){
+      marks += `<path d="${rightAngleMark(cx,cy,k*90,34)}" fill="none" stroke="#2C8F63" stroke-width="4" stroke-linejoin="round"/>`;
+    }
+  }
+  svg.innerHTML=`
+    <path d="${arcPath(cx,cy,R,0,angle)}" fill="#4C8DFF" opacity="0.22"/>
+    <line x1="${cx}" y1="${cy}" x2="${fixed.x}" y2="${fixed.y}" stroke="#2E3A59" stroke-width="5"/>
+    <line x1="${cx}" y1="${cy}" x2="${moving.x}" y2="${moving.y}" stroke="#FF6E7F" stroke-width="5"/>
+    ${marks}
+    <circle cx="${cx}" cy="${cy}" r="5" fill="#2E3A59"/>
+  `;
+  document.getElementById('s2-readout').textContent=Math.round(angle)+'°';
+  ['90','180','270','360'].forEach(v=>{
+    document.getElementById('s2-btn-'+v).classList.toggle('done', angle>=parseInt(v));
+  });
+}
+function initS2(){ s2Draw(0); }
+function s2GoTo(target){
+  const start=s2Angle;
+  const dur=Math.max(280, Math.abs(target-start)*4);
+  const t0=performance.now();
+  function step(now){
+    const p=Math.min(1,(now-t0)/dur);
+    s2Draw(start+(target-start)*p);
+    if(p<1) requestAnimationFrame(step); else s2Angle=target;
+  }
+  requestAnimationFrame(step);
+}
+
+/* ============ SECTION 3 ============ */
+const S3_COLORS=['#4C8DFF','#FF6E7F','#FFA53E','#3FAE7A','#B36CFF','#FFD54B','#39B6C4','#E5525F','#7AC943','#6C9EFF','#FF8FB3'];
+function initS3(){
+  const wrap=document.getElementById('s3-buttons');
+  [2,3,4,5,6,7,8,9,10,11,12].forEach(n=>{
+    const b=document.createElement('button');
+    b.textContent=n;
+    if(360%n!==0) b.classList.add('bad');
+    b.onclick=()=>s3Divide(n,b);
+    wrap.appendChild(b);
+  });
+  s3Divide(4, wrap.children[2]);
+
+  const badWrap=document.getElementById('s3-bad-buttons');
+  for(let n=2;n<=12;n++){
+    const b=document.createElement('button');
+    b.textContent=n;
+    if(100%n!==0) b.classList.add('bad');
+    b.onclick=()=>s3DrawBad(n,b);
+    badWrap.appendChild(b);
+  }
+  s3DrawBad(3, badWrap.children[1]);
+}
+function s3Divide(n, btnEl){
+  document.querySelectorAll('#s3-buttons button').forEach(b=>b.classList.remove('active'));
+  if(btnEl) btnEl.classList.add('active');
+  const cx=150, cy=150, R=120;
+  const svg=document.getElementById('s3-svg');
+  const per=360/n;
+  let content='';
+  for(let i=0;i<n;i++){
+    const startA=i*per, endA=(i+1)*per;
+    content += `<path d="${arcPath(cx,cy,R,startA,endA)}" fill="${S3_COLORS[i%S3_COLORS.length]}" opacity="0" stroke="#fff" stroke-width="2">
+      <animate attributeName="opacity" from="0" to="0.85" begin="${i*60}ms" dur="280ms" fill="freeze"/>
+    </path>`;
+    const mid=polar(cx,cy,R*0.62,(startA+endA)/2);
+    const label = per%1===0 ? per : per.toFixed(1);
+    content += `<text x="${mid.x}" y="${mid.y}" font-size="12" font-weight="700" fill="#2E3A59" text-anchor="middle" opacity="0">${label}°
+      <animate attributeName="opacity" from="0" to="1" begin="${i*60+130}ms" dur="220ms" fill="freeze"/>
+    </text>`;
+  }
+  svg.innerHTML=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="#F0F5FA"/>`+content;
+  const note=document.getElementById('s3-note');
+  if(360%n===0){
+    note.innerHTML=`360 ÷ ${n} = <b>${360/n}°</b> ぴったり わりきれた！`;
+    note.style.color='#2C8F63';
+  } else {
+    note.innerHTML=`360 ÷ ${n} = <b>${(360/n).toFixed(2)}…</b> ぴったり わりきれないね`;
+    note.style.color='#E5525F';
+  }
+}
+function s3DrawBad(n, btnEl){
+  document.querySelectorAll('#s3-bad-buttons button').forEach(b=>b.classList.remove('active'));
+  if(btnEl) btnEl.classList.add('active');
+  const cx=110, cy=110, R=90;
+  const svg=document.getElementById('s3-bad-svg');
+  const per=360/n; // draw as full-circle slices (visual proxy for "100 split n ways")
+  const val=100/n; // 扇形にのせる「100を n で わった数字」
+  const valLabel = val%1===0 ? val : val.toFixed(1);
+  let content='';
+  for(let i=0;i<n;i++){
+    const startA=i*per, endA=(i+1)*per;
+    content += `<path d="${arcPath(cx,cy,R,startA,endA)}" fill="${S3_COLORS[i%S3_COLORS.length]}" opacity="0" stroke="#fff" stroke-width="2">
+      <animate attributeName="opacity" from="0" to="0.75" begin="${i*60}ms" dur="280ms" fill="freeze"/>
+    </path>`;
+    const mid=polar(cx,cy,R*0.6,(startA+endA)/2);
+    content += `<text x="${mid.x}" y="${mid.y}" font-size="11" font-weight="700" fill="#2E3A59" text-anchor="middle" opacity="0">${valLabel}
+      <animate attributeName="opacity" from="0" to="1" begin="${i*60+130}ms" dur="220ms" fill="freeze"/>
+    </text>`;
+  }
+  svg.innerHTML=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="#F0F5FA"/>`+content;
+  const note=document.getElementById('s3-bad-note');
+  if(100%n===0){
+    note.innerHTML=`100 ÷ ${n} = <b>${100/n}°</b> これは ぴったり わりきれるね`;
+  } else {
+    note.innerHTML=`100 ÷ ${n} = <b>${(100/n).toFixed(2)}…</b> ぴったり わりきれない`;
+  }
+}
+function toggleHistory(){
+  const box=document.getElementById('s3-history-box');
+  const show=box.style.display!=='block';
+  box.style.display=show?'block':'none';
+  document.getElementById('s3-history-btn').textContent = show?'とじる':'こぼれ話：むかしのひとの はなし';
+  if(show){
+    box.innerHTML = `むかし むかし、いまの イラクの あたりに「メソポタミア」という くにが あったよ。
+    そこに すんでいた 人たちは、1、2、3…ではなく「60」を ひとまとまりに する かぞえかたを つかっていたんだ。
+    空の 星を ずっと かんさつして、1年が だいたい 360日 くらいだと きづいた 人たちが、
+    まるい 天の めぐりを 360の パーツに わけて かんがえるようになった、と いわれているよ。
+    だから いまでも 1しゅうは 360°なんだね。`;
+  }
+}
+
+/* ============ SECTION 6 ============ */
+let s6Mode='open';
+const TRICKS=[
+  {deg:360,name:'360（ワンさん）'},
+  {deg:540,name:'540（ファイブテン）'},
+  {deg:720,name:'720（ワンタイティ）'},
+  {deg:900,name:'900'},
+  {deg:1080,name:'1080'},
+];
+function s6DrawOpen(angle){
+  const cx=280, cy=460, R=210;
+  const svg=document.getElementById('s6-svg');
+  const fixed=polar(cx,cy,R,0);
+  const rem=angle%360;
+  const moving=polar(cx,cy,R, rem);
+  const turns=Math.floor(angle/360);
+  let ringPaths='';
+  for(let t=0;t<turns;t++){
+    ringPaths += `<circle cx="${cx}" cy="${cy}" r="${R-12-t*16}" fill="none" stroke="#FFD54B" stroke-width="5" opacity="0.6"/>`;
+  }
+  svg.innerHTML=`
+    <path d="${arcPath(cx,cy,R,0,rem||angle)}" fill="#4C8DFF" opacity="0.2"/>
+    ${ringPaths}
+    <line x1="${cx}" y1="${cy}" x2="${fixed.x}" y2="${fixed.y}" stroke="#2E3A59" stroke-width="5"/>
+    <line x1="${cx}" y1="${cy}" x2="${moving.x}" y2="${moving.y}" stroke="#FF6E7F" stroke-width="5"/>
+    <circle cx="${cx}" cy="${cy}" r="5" fill="#2E3A59"/>
+    <text x="${cx}" y="30" text-anchor="middle" font-size="15" fill="#6B7A99">${s6Mode==='open'?'ひらきぐあい':'かいてんりょう'}</text>
+  `;
+}
+function snowboarderMarkup(){
+  return `
+    <g id="s6-boarder">
+      <rect x="-14" y="-95" width="28" height="190" rx="14" fill="#F5B942" stroke="#B9821F" stroke-width="3"/>
+      <ellipse cx="0" cy="-58" rx="26" ry="34" fill="#4C8DFF"/>
+      <circle cx="0" cy="-96" r="20" fill="#FFD8B0" stroke="#C98A55" stroke-width="2"/>
+      <rect x="-34" y="-70" width="24" height="14" rx="7" fill="#4C8DFF"/>
+      <rect x="10" y="-70" width="24" height="14" rx="7" fill="#4C8DFF"/>
+      <rect x="-10" y="6" width="8" height="26" fill="#2E3A59"/>
+      <rect x="2" y="6" width="8" height="26" fill="#2E3A59"/>
+    </g>`;
+}
+function s6DrawTrickScene(deg){
+  const cx=280, cy=280;
+  const svg=document.getElementById('s6-svg');
+  const turns=deg/360;
+  let ring='';
+  for(let r=70;r<=210;r+=35){
+    ring += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#D9E6F0" stroke-width="1.5"/>`;
+  }
+  svg.innerHTML=`
+    ${ring}
+    <line x1="${cx-210}" y1="${cy}" x2="${cx+210}" y2="${cy}" stroke="#EAF0F6" stroke-width="2"/>
+    <line x1="${cx}" y1="${cy-210}" x2="${cx}" y2="${cy+210}" stroke="#EAF0F6" stroke-width="2"/>
+    <g transform="translate(${cx},${cy}) rotate(${-deg})">${snowboarderMarkup()}</g>
+    <text x="${cx}" y="30" text-anchor="middle" font-size="15" fill="#6B7A99">${turns.toFixed(2)} かいてん</text>
+  `;
+}
+function initS6(){
+  s6DrawOpen(70);
+  const tb=document.getElementById('s6-trick-buttons');
+  TRICKS.forEach(tr=>{
+    const b=document.createElement('button');
+    b.textContent=tr.name.split('（')[0]+'°';
+    b.onclick=()=>s6PlayTrick(tr);
+    tb.appendChild(b);
+  });
+  const dial=document.getElementById('s6-dial');
+  dial.addEventListener('input',()=>{
+    const v=parseInt(dial.value);
+    s6DrawTrickScene(v);
+    document.getElementById('s6-dial-deg').textContent=v+'°';
+    document.getElementById('s6-dial-name').textContent=nearestTrickName(v);
+  });
+}
+function nearestTrickName(v){
+  let best=null, bd=Infinity;
+  TRICKS.forEach(tr=>{ const d=Math.abs(tr.deg-v); if(d<bd){bd=d; best=tr;} });
+  if(bd<=25) return best.name+' に ちかいよ';
+  return 'わざの とちゅう…';
+}
+function s6PlayTrick(tr){
+  const dial=document.getElementById('s6-dial');
+  const start=parseInt(dial.value);
+  const t0=performance.now(), dur=1000;
+  function step(now){
+    const p=Math.min(1,(now-t0)/dur);
+    const cur=start+(tr.deg-start)*p;
+    s6DrawTrickScene(cur);
+    dial.value=Math.round(cur);
+    document.getElementById('s6-dial-deg').textContent=Math.round(cur)+'°';
+    if(p<1) requestAnimationFrame(step);
+    else document.getElementById('s6-dial-name').textContent=tr.name+' の かんせい！';
+  }
+  requestAnimationFrame(step);
+}
+function s6SwitchView(){
+  s6Mode = s6Mode==='open' ? 'rotate' : 'open';
+  document.getElementById('s6-prompt').innerHTML = s6Mode==='rotate'
+    ? '1本の せんが「くるっと まわった」とかんがえても おなじ かたちに なるよ'
+    : 'かくは「ひらきぐあい」だけど「かいてん」とも いえるよ';
+  document.getElementById('s6-switch-btn').textContent = s6Mode==='rotate' ? 'ひらきぐあいの みかたに もどす' : 'かいてんの みかたに かえる';
+  document.getElementById('s6-tricks').style.display = s6Mode==='rotate' ? 'flex' : 'none';
+  const dial=document.getElementById('s6-dial');
+  if(s6Mode==='rotate'){
+    dial.value=0;
+    s6DrawTrickScene(0);
+    document.getElementById('s6-dial-deg').textContent='0°';
+    const t0=performance.now(), dur=700, target=360;
+    function step(now){
+      const p=Math.min(1,(now-t0)/dur);
+      const cur=target*p;
+      s6DrawTrickScene(cur);
+      dial.value=Math.round(cur);
+      document.getElementById('s6-dial-deg').textContent=Math.round(cur)+'°';
+      if(p<1) requestAnimationFrame(step);
+      else document.getElementById('s6-dial-name').textContent=nearestTrickName(cur);
+    }
+    requestAnimationFrame(step);
+  } else {
+    s6DrawOpen(70);
+  }
+}
+
+/* ===================================================
+   SECTION 4: 分度器の使い方（埋め込み版）
+=================================================== */
+
+// ==========================================
+// 設定・状態管理
+// ==========================================
+let VERTEX_S4 = { x: 400, y: 300 };
+let TARGET_ANGLE_S4 = 65;
+let BASE_LINE_ROT_S4 = -20;
+let isExtended_S4 = false;
+
+let step_S4 = 1;
+let protractorState_S4 = { x: 150, y: 450, rot: 0 };
+let isDragging_S4 = false;
+let dragStartPos_S4 = { x: 0, y: 0 };
+let rotGrabOffset_S4 = 0;
+
+let readPattern_S4 = 'A';
+let animationToken_S4 = 0;
+let chosenMethod_S4 = null; // 優角(180°超)のとき: 'method1' | 'method2' | null（未選択）
+
+// 方法1で「延長した180°の続きの残りの角度」を分度器で実測するためのモード
+// 'target'（通常：TARGET_ANGLE_S4/BASE_LINE_ROTを測る） / 'remainder'（延長後の残りの角度を測る）
+let MEASURE_MODE_S4 = 'target';
+let MEASURE_BASE_ROT_S4 = null;
+let MEASURE_ANGLE_S4 = null;
+
+const MAIN_DURATION_S4 = 2200;
+const SUB_DURATION_S4 = 1500;
+
+// ==========================================
+// 色の統一ルール：
+// 内側0°(パターンA・反時計回り＝左回転)で読む角 → 赤（扇形・数字とも）
+// 外側0°(パターンC・時計回り＝右回転)で読む角 → 青（扇形・数字とも）
+// 「正しい／間違い」ではなく「回転の向き」で色を決める。
+// ==========================================
+const SECTOR_COLORS_S4 = {
+  red:  { fill: 'rgba(231, 76, 60, 0.35)',  stroke: '#e74c3c' },
+  blue: { fill: 'rgba(52, 152, 219, 0.35)', stroke: '#3498db' }
+};
+
+function patternColor_S4(pattern) {
+  return pattern === 'A' ? 'red' : 'blue';
+}
+
+function patternColorHex_S4(pattern) {
+  return pattern === 'A' ? '#e74c3c' : '#3498db';
+}
+
+function colorNameToHex_S4(color) {
+  return color === 'blue' ? '#3498db' : '#e74c3c';
+}
+
+function setSectorColor_S4(elId, color) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const c = SECTOR_COLORS_S4[color] || SECTOR_COLORS_S4.red;
+  el.setAttribute('fill', c.fill);
+  el.setAttribute('stroke', c.stroke);
+}
+
+// ==========================================
+// 初期化＆分度器SVGの動的生成
+// ==========================================
+function init_S4() {
+  drawTargetAngle_S4();
+  drawBlinkTargetSector_S4();
+  buildSVGProtractor_S4();
+  updateProtractorTransform_S4();
+  setupEvents_S4();
+}
+
+function drawTargetAngle_S4() {
+  const len = 220;
+  const rad1 = BASE_LINE_ROT_S4 * Math.PI / 180;
+  const rad2 = (BASE_LINE_ROT_S4 - TARGET_ANGLE_S4) * Math.PI / 180;
+
+  const lineBase = document.getElementById('s4-line-base');
+  lineBase.setAttribute('x1', VERTEX_S4.x);
+  lineBase.setAttribute('y1', VERTEX_S4.y);
+  lineBase.setAttribute('x2', VERTEX_S4.x + len * Math.cos(rad1));
+  lineBase.setAttribute('y2', VERTEX_S4.y + len * Math.sin(rad1));
+
+  const lineTerm = document.getElementById('s4-line-terminal');
+  lineTerm.setAttribute('x1', VERTEX_S4.x);
+  lineTerm.setAttribute('y1', VERTEX_S4.y);
+  lineTerm.setAttribute('x2', VERTEX_S4.x + len * Math.cos(rad2));
+  lineTerm.setAttribute('y2', VERTEX_S4.y + len * Math.sin(rad2));
+
+  const vertex = document.getElementById('s4-vertex-point');
+  vertex.setAttribute('cx', VERTEX_S4.x);
+  vertex.setAttribute('cy', VERTEX_S4.y);
+
+  // 優角(180°超)のときだけ、2本の直線に「ア」「イ」のラベルを付ける
+  // （180°に足す方法でどちらの直線を延長するか選ぶときの目印）
+  const labelBase = document.getElementById('s4-line-label-base');
+  const labelTerm = document.getElementById('s4-line-label-term');
+  if (isExtended_S4) {
+    const labelLen = len + 18;
+    labelBase.setAttribute('x', VERTEX_S4.x + labelLen * Math.cos(rad1));
+    labelBase.setAttribute('y', VERTEX_S4.y + labelLen * Math.sin(rad1));
+    labelBase.textContent = 'ア';
+    labelBase.style.opacity = 1;
+
+    labelTerm.setAttribute('x', VERTEX_S4.x + labelLen * Math.cos(rad2));
+    labelTerm.setAttribute('y', VERTEX_S4.y + labelLen * Math.sin(rad2));
+    labelTerm.textContent = 'イ';
+    labelTerm.style.opacity = 1;
+  } else {
+    labelBase.textContent = '';
+    labelTerm.textContent = '';
+  }
+}
+
+// Step1の最初に「この部分の角度を求めてね」を示す点滅扇形を描画する
+// 180°未満でも優角(180°超)でも、求めたい角度(TARGET_ANGLE_S4)そのものの領域を表示する
+// startDeg/angle を省略した場合は通常どおり TARGET_ANGLE_S4 全体を示す。
+// 方法1で「残りの角度」を測る場面では、その残りの角度だけを指定して呼び出す。
+function drawBlinkTargetSector_S4(startDeg = BASE_LINE_ROT_S4, angle = TARGET_ANGLE_S4) {
+  const path = document.getElementById('s4-sector-target-blink');
+  if (!path) return;
+  const radius = 170;
+  const endDeg = startDeg - angle;
+  const rad1 = startDeg * Math.PI / 180;
+  const rad2 = endDeg * Math.PI / 180;
+  const x1 = VERTEX_S4.x + radius * Math.cos(rad1);
+  const y1 = VERTEX_S4.y + radius * Math.sin(rad1);
+  const x2 = VERTEX_S4.x + radius * Math.cos(rad2);
+  const y2 = VERTEX_S4.y + radius * Math.sin(rad2);
+  const largeArc = angle > 180 ? 1 : 0;
+  const sweep = 0;
+  const d = `M ${VERTEX_S4.x} ${VERTEX_S4.y} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x2} ${y2} Z`;
+  path.setAttribute('d', d);
+}
+
+function clearBlinkTargetSector_S4() {
+  const path = document.getElementById('s4-sector-target-blink');
+  if (path) path.setAttribute('d', '');
+}
+
+function buildSVGProtractor_S4() {
+  const group = document.getElementById('s4-protractor');
+  const R = 180;
+  const baseH = 20;
+  let html = '';
+
+  const outerPath = `M ${-R - 10} 0 A ${R + 10} ${R + 10} 0 0 1 ${R + 10} 0 v ${baseH} h ${-(2 * (R + 10))} Z`;
+  html += `<path d="${outerPath}" fill="none" stroke="#2c3e50" stroke-width="2"/>`;
+
+  html += `<line x1="${-R - 10}" y1="0" x2="${R + 10}" y2="0" stroke="#2c3e50" stroke-width="2"/>`;
+
+  html += `<line x1="-12" y1="0" x2="12" y2="0" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="0" y1="-12" x2="0" y2="12" stroke="#e74c3c" stroke-width="2"/>`;
+
+  for (let deg = 0; deg <= 180; deg++) {
+    const rad = (180 - deg) * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    let tickLen = 6;
+    if (deg % 10 === 0) tickLen = 16;
+    else if (deg % 5 === 0) tickLen = 11;
+
+    const x1 = R * cos;
+    const y1 = -R * sin;
+    const x2 = (R - tickLen) * cos;
+    const y2 = -(R - tickLen) * sin;
+
+    html += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2c3e50" stroke-width="${deg % 5 === 0 ? 1.5 : 0.8}"/>`;
+
+    if (deg % 10 === 0) {
+      const txOuter = (R - 26) * cos;
+      const tyOuter = -(R - 26) * sin;
+      html += `<text x="${txOuter}" y="${tyOuter}" class="s4-num-outer s4-deg-${deg}" font-size="11" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#2c3e50" stroke="#ffffff" stroke-width="3" paint-order="stroke fill">${deg}</text>`;
+
+      const txInner = (R - 44) * cos;
+      const tyInner = -(R - 44) * sin;
+      html += `<text x="${txInner}" y="${tyInner}" class="s4-num-inner s4-deg-${180 - deg}" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#7f8c8d" stroke="#ffffff" stroke-width="3" paint-order="stroke fill">${180 - deg}</text>`;
+    }
+  }
+
+  html += `<g id="s4-dynamic-angle-labels"></g>`;
+  html += `<g id="s4-rot-guide-ui" transform="translate(0, -${R + 25})" style="display:none;"><use href="#s4-rotate-guide"/></g>`;
+
+  group.innerHTML = html;
+}
+
+// ==========================================
+// 乱数ユーティリティ
+// ==========================================
+function randInt_S4(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randMultipleOf10_S4(min, max) {
+  const lo = Math.ceil(min / 10);
+  const hi = Math.floor(max / 10);
+  return randInt_S4(lo, hi) * 10;
+}
+
+// ==========================================
+// 角度計算ユーティリティ
+// ==========================================
+function normalizeDeg_S4(deg) {
+  return ((deg % 360) + 360) % 360;
+}
+
+function angleDiff_S4(a, b) {
+  return ((a - b + 540) % 360) - 180;
+}
+
+// ==========================================
+// 出題の生成
+// ==========================================
+function regenerateProblem_S4(extended) {
+  isExtended_S4 = extended;
+  BASE_LINE_ROT_S4 = randInt_S4(0, 359);
+  VERTEX_S4.x = randInt_S4(280, 560);
+  VERTEX_S4.y = randInt_S4(210, 390);
+
+  if (extended) {
+    const remainder = randMultipleOf10_S4(10, 170);
+    TARGET_ANGLE_S4 = 180 + remainder;
+  } else {
+    TARGET_ANGLE_S4 = randMultipleOf10_S4(20, 160);
+  }
+
+  document.getElementById('s4-customAngleInput').value = TARGET_ANGLE_S4;
+  fullReset_S4();
+}
+
+function useCustomAngle_S4() {
+  let v = parseInt(document.getElementById('s4-customAngleInput').value, 10);
+  if (isNaN(v)) v = 65;
+  v = Math.max(1, Math.min(359, v));
+
+  TARGET_ANGLE_S4 = v;
+  isExtended_S4 = v > 180;
+  BASE_LINE_ROT_S4 = randInt_S4(0, 359);
+  VERTEX_S4.x = randInt_S4(280, 560);
+  VERTEX_S4.y = randInt_S4(210, 390);
+
+  document.getElementById('s4-customAngleInput').value = v;
+  fullReset_S4();
+}
+
+// ==========================================
+// 読み取りパターン判定
+// ==========================================
+function determineReadPattern_S4(protractorRot) {
+  const { targetRight, targetLeft } = getSnapTargets_S4();
+
+  const diffRight = Math.abs(angleDiff_S4(protractorRot, targetRight));
+  const diffLeft = Math.abs(angleDiff_S4(protractorRot, targetLeft));
+
+  return (diffRight <= diffLeft) ? 'A' : 'C';
+}
+
+// 180°未満／優角(180°超)で吸い付き先(パターンA/Cの正しい0°ライン)を切り替える
+// 優角のとき、画面上に見える「小さい隙間」は底辺線から見て逆側にできるため、
+// パターンA(内側目盛り0°)とパターンC(外側目盛り0°)の吸い付き先を入れ替える。
+function getSnapTargets_S4() {
+  // 方法1：延長してできた残りの角度を測っている最中は、その角度専用の吸い付き先を使う
+  if (MEASURE_MODE_S4 === 'remainder') {
+    return {
+      targetRight: MEASURE_BASE_ROT_S4,
+      targetLeft: (MEASURE_BASE_ROT_S4 - MEASURE_ANGLE_S4) - 180
+    };
+  }
+
+  const baseRay = BASE_LINE_ROT_S4;                 // 底辺の線の向き
+  const termRay = BASE_LINE_ROT_S4 - TARGET_ANGLE_S4;   // 終端の線の向き
+
+  if (!isExtended_S4) {
+    return {
+      targetRight: baseRay,       // パターンA：内側0°を底辺に合わせる
+      targetLeft: termRay - 180   // パターンC：外側0°を終端に合わせる
+    };
+  } else {
+    return {
+      targetRight: termRay,       // パターンA：内側0°を終端に合わせる
+      targetLeft: baseRay - 180   // パターンC：外側0°を底辺に合わせる
+    };
+  }
+}
+
+function getReadAngle_S4() {
+  if (!isExtended_S4) {
+    return TARGET_ANGLE_S4;
+  } else {
+    return 360 - TARGET_ANGLE_S4;
+  }
+}
+
+// ==========================================
+// 扇形表示角度の計算（修正版）
+// ==========================================
+function getSectorAngles_S4(pattern, readAngle, forExtendedFull = false) {
+  // 方法1：延長してできた残りの角度を測っている最中は、その角度を基準に計算する
+  let baseRay, termRay, extendedLike;
+  if (MEASURE_MODE_S4 === 'remainder') {
+    baseRay = MEASURE_BASE_ROT_S4;
+    termRay = MEASURE_BASE_ROT_S4 - MEASURE_ANGLE_S4;
+    extendedLike = false;
+  } else {
+    baseRay = BASE_LINE_ROT_S4;                 // 底辺の線の向き
+    termRay = BASE_LINE_ROT_S4 - TARGET_ANGLE_S4;   // 終端の線の向き
+    extendedLike = isExtended_S4;
+  }
+
+  // forExtendedFull = true の場合、優角の全角度(TARGET_ANGLE_S4)を使う
+  const angleToUse = forExtendedFull ? TARGET_ANGLE_S4 : readAngle;
+
+  if (pattern === 'A') {
+    // 右線(内側0°)スタート。反時計回り(数学的)に読む
+    // 優角のときは右線が終端の線に合わさっているので、開始位置を入れ替える
+    const rightLineRot = extendedLike ? termRay : baseRay;
+    return {
+      start: rightLineRot,
+      end: rightLineRot - angleToUse,
+      sweep: 0 // SVGでは反時計回り
+    };
+  } else {
+    // 左線(外側0°)スタート。反時計回り(数学的)に読む
+    // 優角のときは左線が底辺の線に合わさっているので、開始位置を入れ替える
+    const leftLineRot = extendedLike ? baseRay : termRay;
+    return {
+      start: leftLineRot,
+      end: leftLineRot + angleToUse,
+      sweep: 1 // end > start（角度が増える）なのでSVG上は時計回り＝sweep:1
+    };
+  }
+}
+
+// ==========================================
+// イベントハンドラ・インタラクション
+// ==========================================
+function setupEvents_S4() {
+  const stageEl = document.getElementById('s4-stage');
+
+  stageEl.addEventListener('pointerdown', (e) => {
+    if (step_S4 === 3 || step_S4 === 0) return;
+    e.preventDefault();
+    clearBlinkTargetSector_S4();
+    isDragging_S4 = true;
+    try { stageEl.setPointerCapture(e.pointerId); } catch (err) {}
+    const pt = getSVGPoint_S4(e);
+    dragStartPos_S4 = { x: pt.x - protractorState_S4.x, y: pt.y - protractorState_S4.y };
+    if (step_S4 === 2) {
+      // 回転ドラッグ開始時：つかんだ場所の角度と、現在の回転角のズレを覚えておく。
+      // これがないと「つかんだ場所」に関係なく、常にカーソル自体の角度が
+      // そのまま新しい回転角になってしまい、遠い場所をつかむほど大きく飛ぶ。
+      const grabAngle = Math.atan2(pt.y - VERTEX_S4.y, pt.x - VERTEX_S4.x) * 180 / Math.PI;
+      rotGrabOffset_S4 = grabAngle - protractorState_S4.rot;
+    }
+  }, { passive: false });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging_S4) return;
+    e.preventDefault();
+    const pt = getSVGPoint_S4(e);
+
+    if (step_S4 === 1) {
+      protractorState_S4.x = pt.x - dragStartPos_S4.x;
+      protractorState_S4.y = pt.y - dragStartPos_S4.y;
+
+      const dist = Math.hypot(protractorState_S4.x - VERTEX_S4.x, protractorState_S4.y - VERTEX_S4.y);
+      if (dist < 25) {
+        protractorState_S4.x = VERTEX_S4.x;
+        protractorState_S4.y = VERTEX_S4.y;
+        step_S4 = 2;
+        isDragging_S4 = false; // 吸い付いたらこのドラッグは打ち切り。回転は次に掴み直したときから
+        try { stageEl.releasePointerCapture(e.pointerId); } catch (err) {}
+        document.getElementById('s4-instruction').innerText = "Step 2: 分度器を回して、0°の線を角に合わせよう！";
+        document.getElementById('s4-sub-instruction').innerText = "分度器をつかんでくるっと回転させてね。右の線でも左の線でも、どちらでも合わせられます。";
+        document.getElementById('s4-rot-guide-ui').style.display = "block";
+      }
+    } else if (step_S4 === 2) {
+      const dx = pt.x - VERTEX_S4.x;
+      const dy = pt.y - VERTEX_S4.y;
+      let angle = Math.atan2(dy, dx) * 180 / Math.PI - rotGrabOffset_S4;
+
+      const { targetRight, targetLeft } = getSnapTargets_S4();
+
+      const diffRight = Math.abs(angleDiff_S4(angle, targetRight));
+      const diffLeft = Math.abs(angleDiff_S4(angle, targetLeft));
+
+      const threshold = 5;
+
+      if (diffRight < threshold && diffRight <= diffLeft) {
+        angle = targetRight;
+        protractorState_S4.rot = angle;
+        readPattern_S4 = 'A';
+        updateProtractorTransform_S4();
+        isDragging_S4 = false;
+        triggerStep3_S4();
+        return;
+      } else if (diffLeft < threshold && diffLeft < diffRight) {
+        angle = targetLeft;
+        protractorState_S4.rot = angle;
+        readPattern_S4 = 'C';
+        updateProtractorTransform_S4();
+        isDragging_S4 = false;
+        triggerStep3_S4();
+        return;
+      }
+      protractorState_S4.rot = angle;
+    }
+    updateProtractorTransform_S4();
+  }, { passive: false });
+
+  window.addEventListener('pointerup', (e) => {
+    isDragging_S4 = false;
+    try { stageEl.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
+}
+
+function updateProtractorTransform_S4() {
+  const p = document.getElementById('s4-protractor');
+  p.setAttribute('transform', `translate(${protractorState_S4.x}, ${protractorState_S4.y}) rotate(${protractorState_S4.rot})`);
+}
+
+function getSVGPoint_S4(e) {
+  const svg = document.getElementById('s4-stage');
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX;
+  pt.y = e.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// ==========================================
+// Step 3: アニメーション＆解説機能
+// ==========================================
+function triggerStep3_S4() {
+  step_S4 = 3;
+  animationToken_S4++;
+  const myToken = animationToken_S4;
+
+  document.getElementById('s4-rot-guide-ui').style.display = "none";
+
+  if (MEASURE_MODE_S4 === 'remainder') {
+    // 方法1：延長してできた180°の続きの「残りの角度」を、実際に分度器で測る
+    document.getElementById('s4-instruction').innerText = `Step 3: 残りの角度を読み取ろう！`;
+    performDirectRead_S4(MEASURE_BASE_ROT_S4, MEASURE_ANGLE_S4, readPattern_S4, () => {
+      if (myToken !== animationToken_S4) return;
+      addArcLabel_S4(MEASURE_BASE_ROT_S4, MEASURE_BASE_ROT_S4 - MEASURE_ANGLE_S4, `${MEASURE_ANGLE_S4}°`, patternColorHex_S4(readPattern_S4));
+      document.getElementById('s4-formula-badge').innerHTML =
+        `<span style="color:#f39c12">180°</span> ＋ <span style="color:${patternColorHex_S4(readPattern_S4)}">${MEASURE_ANGLE_S4}°</span> = ${TARGET_ANGLE_S4}°`;
+    }, myToken);
+    return;
+  }
+
+  const readAngle = getReadAngle_S4();
+
+  if (!isExtended_S4) {
+    document.getElementById('s4-instruction').innerText = `Step 3: 角度を読み取ろう！ 角の大きさは ${TARGET_ANGLE_S4}° です。`;
+    performDirectRead_S4(BASE_LINE_ROT_S4, TARGET_ANGLE_S4, readPattern_S4, () => {
+      if (myToken !== animationToken_S4) return;
+      addArcLabel_S4(BASE_LINE_ROT_S4, BASE_LINE_ROT_S4 - TARGET_ANGLE_S4, `${TARGET_ANGLE_S4}°`, patternColorHex_S4(readPattern_S4));
+    }, myToken);
+  } else {
+    // 優角(180°超)：方法の選択はすでにStep 1で済んでいるので、選ばれた方法に沿って読み取りを進める
+    if (chosenMethod_S4 === 'method2') {
+      document.getElementById('s4-instruction').innerText = `Step 3: 分度器で直接測れる角度を読み取ろう！`;
+      showMethod2_S4();
+    } else {
+      // 万一、方法が未選択のままここに来た場合の保険（通常は発生しない）
+      document.getElementById('s4-instruction').innerText = `Step 3: この角は ${TARGET_ANGLE_S4}°（180°を超える「優角」）です！`;
+      document.getElementById('s4-sub-instruction').innerText = `この角は分度器で直接は測れません。どちらの考え方で求めるか、下のボタンから選んでね。`;
+      document.getElementById('s4-formula-badge').innerText = '';
+      document.getElementById('s4-method-buttons').style.display = 'flex';
+    }
+  }
+}
+
+// 分度器に合わせた角度(baseRot〜baseRot-angle)を実際に読み取る共通処理。
+// 読み方の色は「正しいか間違いか」ではなく「回転の向き」で決める：
+//   内側0°(パターンA・反時計回り/左回転) → 赤　／　外側0°(パターンC・時計回り/右回転) → 青
+// 逆側の0°から読んでしまった「間違いの読み方」は、一度表示したあと砕け散るアニメーションで消す。
+// formulaCallback は、読み取りの解説がすべて終わった後に呼ばれる（数式バッジの表示などに使う）。
+function performDirectRead_S4(baseRot, angle, pattern, formulaCallback, token, forcePrimaryColor) {
+  const myToken = token;
+  const primaryColor = forcePrimaryColor || patternColor_S4(pattern);
+  const primaryColorName = primaryColor === 'red' ? '赤' : '青';
+
+  document.getElementById('s4-sub-instruction').innerText = `${pattern === 'A' ? '内側' : '外側'}の0°から順番に目盛りを${primaryColorName}色で読んでいきます。`;
+
+  // 直接読める角は、その回転の向きに対応する色で 0° から順に強調表示する
+  animateSequentialHighlights_S4(0, angle, MAIN_DURATION_S4, pattern, myToken, primaryColor);
+
+  setSectorColor_S4('s4-sector-wrong', primaryColor);
+  const sector = getSectorAngles_S4(pattern, angle);
+  animateSector_S4('s4-sector-wrong', sector.start, sector.end, sector.sweep, MAIN_DURATION_S4, () => {
+    if (myToken !== animationToken_S4) return;
+    setTimeout(() => {
+      if (myToken !== animationToken_S4) return;
+      const wrongDeg = 180 - angle;
+      const wrongPattern = (pattern === 'A') ? 'C' : 'A';
+      const secondaryColor = forcePrimaryColor ? (primaryColor === 'blue' ? 'red' : 'blue') : patternColor_S4(wrongPattern);
+      const secondaryColorName = secondaryColor === 'red' ? '赤' : '青';
+      document.getElementById('s4-sub-instruction').innerText += ` ※逆の0°（${wrongPattern === 'A' ? '内側' : '外側'}）から読むと ${wrongDeg}° になってしまうので注意！`;
+
+      // 「逆側の0°」は、実際に分度器が置かれている0°(sector.start)の
+      // ちょうど反対側（180°反転した位置）。読み取る対象の線自体(sector.end)は変わらない。
+      // ※ baseRot（線アの向き）をそのまま使うと、優角(方法2)でパターンAの0°が
+      //   実際には線イ(termRay)に重なっているケースとズレてしまうため、
+      //   必ず sector（getSectorAnglesの結果＝実際の分度器の向き）を基準にする。
+      // ※ wrongStart を単純に「sector.start - 180」の生値のまま使うと、パターン
+      //   （A/C）によっては sector.end との数値差が実際の弧の角度(wrongDeg)と
+      //   一致せず、扇形が本来より大幅に大きい・崩れた形で描画されてしまっていた
+      //   （例：時計回りパターンのとき、本来130°で済むはずが230°分の弧として
+      //   計算されてしまい、扇形として破綻していた）。
+      //   そこで必ず「wrongEnd を基準に、正しい向き(wrongSweep)へ wrongDeg 分だけ」
+      //   進んだ位置として wrongStart を算出し、常に短い正しい扇形になるようにする。
+      const wrongEnd = sector.end;
+      const wrongSweep = sector.sweep === 0 ? 1 : 0;
+      const wrongStart = (wrongSweep === 1) ? (wrongEnd - wrongDeg) : (wrongEnd + wrongDeg);
+      setSectorColor_S4('s4-sector-correct', secondaryColor);
+      animateSector_S4('s4-sector-correct', wrongStart, wrongEnd, wrongSweep, SUB_DURATION_S4, () => {
+        if (myToken !== animationToken_S4) return;
+        // 間違いの読み方をひとしきり見せたら、砕け散らせて画面から完全に消す
+        setTimeout(() => {
+          if (myToken !== animationToken_S4) return;
+          shatterWrongReading_S4(secondaryColor, myToken, () => {
+            if (myToken !== animationToken_S4) return;
+            if (formulaCallback) formulaCallback();
+          });
+        }, 650);
+      }, myToken);
+      // 間違えやすい方（逆側の0°から読んだ角度）の数字も、その回転の向きに対応する色で順番に強調表示する
+      animateSequentialHighlights_S4(0, wrongDeg, SUB_DURATION_S4, wrongPattern, myToken, secondaryColor);
+    }, 700);
+  }, myToken);
+}
+
+// ==========================================
+// 「間違いの読み方」の扇形・数字を、砕け散るアニメーションで完全に消す
+// ==========================================
+function shatterWrongReading_S4(color, token, callback) {
+  const numSelector = color === 'red'
+    ? '.highlight-text, .highlight-zero'
+    : '.highlight-text-blue, .highlight-zero-blue';
+  const targets = Array.from(document.querySelectorAll(numSelector));
+
+  const sectorEl = document.getElementById('s4-sector-correct');
+  if (sectorEl && sectorEl.getAttribute('d')) targets.push(sectorEl);
+
+  if (targets.length === 0) {
+    if (callback) callback();
+    return;
+  }
+
+  let pending = targets.length;
+  const done = () => {
+    pending--;
+    if (pending <= 0 && callback) callback();
+  };
+  targets.forEach(el => spawnShatterFragments_S4(el, token, done));
+}
+
+// 指定したSVG要素（扇形パスや数字ラベル）を、その場で細かい破片に分解して
+// 飛び散らせながらフェードアウトさせ、最後に元の要素を消す/元に戻す。
+function spawnShatterFragments_S4(el, token, onDone) {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const container = el.parentNode;
+  let bbox = null;
+  try { bbox = el.getBBox(); } catch (e) { bbox = null; }
+
+  if (!container || !bbox || (bbox.width < 0.5 && bbox.height < 0.5)) {
+    finalizeShatterTarget_S4(el);
+    if (onDone) onDone();
+    return;
+  }
+
+  const fillColor = (el.tagName === 'text')
+    ? getComputedStyle(el).fill
+    : (el.getAttribute('stroke') || '#e74c3c');
+
+  const fragCount = 9;
+  const frags = [];
+  for (let i = 0; i < fragCount; i++) {
+    const fw = Math.max(3, bbox.width / 3);
+    const fh = Math.max(3, bbox.height / 3);
+    const fx = bbox.x + Math.random() * Math.max(1, bbox.width - fw);
+    const fy = bbox.y + Math.random() * Math.max(1, bbox.height - fh);
+    const frag = document.createElementNS(svgNS, 'rect');
+    frag.setAttribute('class', 'shatter-frag');
+    frag.setAttribute('x', fx);
+    frag.setAttribute('y', fy);
+    frag.setAttribute('width', fw);
+    frag.setAttribute('height', fh);
+    frag.setAttribute('fill', fillColor);
+    frag.setAttribute('opacity', '0.95');
+    frag.style.transformBox = 'fill-box';
+    frag.style.transformOrigin = 'center';
+    frag.style.transition = 'transform 0.55s cubic-bezier(.3,.7,.4,1), opacity 0.55s ease-out';
+    container.appendChild(frag);
+    frags.push(frag);
+  }
+
+  // 元の要素はここで即座に隠す／消す（見た目上は破片が引き継ぐ）
+  finalizeShatterTarget_S4(el);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (token !== animationToken_S4) return;
+      frags.forEach(frag => {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 35 + Math.random() * 65;
+        const dx = Math.cos(ang) * dist;
+        const dy = Math.sin(ang) * dist;
+        const rot = (Math.random() * 480 - 240);
+        frag.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(0.15)`;
+        frag.style.opacity = '0';
+      });
+    });
+  });
+
+  setTimeout(() => {
+    frags.forEach(f => f.remove());
+    if (onDone) onDone();
+  }, 600);
+}
+
+// 破片を飛ばした後の元要素の後始末：
+// 動的に作られたラベルはDOMから削除、分度器に印刷済みの固定目盛りラベルは
+// ハイライト用クラスだけ外して通常の見た目に戻す。扇形パスは d を空にする。
+function finalizeShatterTarget_S4(el) {
+  if (!el) return;
+  if (el.tagName === 'path') {
+    el.setAttribute('d', '');
+    return;
+  }
+  if (el.closest('#s4-dynamic-angle-labels')) {
+    el.remove();
+  } else {
+    el.classList.remove('highlight-text', 'highlight-zero', 'highlight-text-blue', 'highlight-zero-blue');
+  }
+}
+
+// 10の倍数で刻み、最後に目的の角度を追加（修正版）
+// color: 'red'(既定・最終的な答えの色) か 'blue'(分度器で直接読める角の色)
+function animateSequentialHighlights_S4(startAngle, endAngle, totalDuration, pattern, token, color = 'red') {
+  const angles = [];
+  const step_S4 = (endAngle > startAngle) ? 10 : -10;
+  let current = startAngle;
+
+  while (true) {
+    angles.push(current);
+    if (Math.abs(current - endAngle) < 0.01) break;
+
+    const next = current + step_S4;
+    if ((step_S4 > 0 && next > endAngle) || (step_S4 < 0 && next < endAngle)) {
+      current = endAngle;
+    } else {
+      current = next;
+    }
+  }
+
+  const stepDuration = totalDuration / angles.length;
+  angles.forEach((angle, index) => {
+    setTimeout(() => {
+      if (token !== animationToken_S4) return;
+      highlightDegree_S4(angle, pattern, stepDuration, token, color);
+    }, index * stepDuration);
+  });
+}
+
+// highlightDegree_S4 修正版
+function highlightDegree_S4(angle, pattern, durationMs, token, color = 'red') {
+  const norm = normalizeDeg_S4(angle);
+  const isInner = (pattern === 'A');
+  const localAngle = norm; // 両スケールとも直接値を読む（修正）
+
+  const isMultipleOf10 = (Math.abs(localAngle % 10) < 0.1);
+
+  let el = null;
+  if (isMultipleOf10) {
+    const lookup = Math.round(localAngle);
+    if (isInner) {
+      el = document.querySelector(`.s4-num-inner.s4-deg-${lookup}`);
+    } else {
+      el = document.querySelector(`.s4-num-outer.s4-deg-${lookup}`);
+    }
+  }
+
+  if (!el) {
+    el = createDynamicAngleLabel_S4(localAngle, isInner, color);
+  }
+
+  if (el) {
+    el.style.transitionDuration = durationMs + 'ms';
+    const isZero = Math.abs(angle - 0) < 0.1 || Math.abs(angle - 180) < 0.1;
+    if (color === 'blue') {
+      el.classList.add(isZero ? 'highlight-zero-blue' : 'highlight-text-blue');
+    } else {
+      el.classList.add(isZero ? 'highlight-zero' : 'highlight-text');
+    }
+  }
+}
+
+// createDynamicAngleLabel_S4 修正版（内側スケールの位置計算を修正）
+function createDynamicAngleLabel_S4(localAngle, isInner, color = 'red') {
+  const R = 180;
+  const container = document.getElementById('s4-dynamic-angle-labels');
+  if (!container) return null;
+
+  let rad;
+  if (isInner) {
+    // 内側スケール：右端(+x方向)が0°、反時計回り(数学的)に増加
+    rad = localAngle * Math.PI / 180;
+  } else {
+    // 外側スケール：左端(-x方向)が0°、反時計回り(数学的)に増加
+    rad = (180 - localAngle) * Math.PI / 180;
+  }
+
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  const radius = isInner ? (R - 44) : (R - 26);
+  const x = radius * cos;
+  const y = -radius * sin;
+
+  const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  textEl.setAttribute('x', x);
+  textEl.setAttribute('y', y);
+  textEl.setAttribute('class', color === 'blue' ? 'dynamic-angle-label-blue' : 'dynamic-angle-label');
+  textEl.setAttribute('font-size', '16');
+  textEl.setAttribute('font-weight', 'bold');
+  textEl.setAttribute('text-anchor', 'middle');
+  textEl.setAttribute('dominant-baseline', 'central');
+  textEl.setAttribute('fill', color === 'blue' ? '#3498db' : '#e74c3c');
+  textEl.setAttribute('stroke', '#ffffff');
+  textEl.setAttribute('stroke-width', '3');
+  textEl.setAttribute('paint-order', 'stroke fill');
+  textEl.textContent = Math.round(localAngle);
+  textEl.style.opacity = '1';
+  textEl.style.transitionDuration = '0.3s';
+
+  container.appendChild(textEl);
+  return textEl;
+}
+
+// ==========================================
+// 発展：180°を超える角（優角）の2つの考え方
+// ==========================================
+// 方法1（180°＋残り）：まずどちらの直線(ア/イ)を延長するかを選んでもらう
+function showMethod1_S4() {
+  chosenMethod_S4 = 'method1';
+  MEASURE_MODE_S4 = 'target';
+  MEASURE_BASE_ROT_S4 = null;
+  MEASURE_ANGLE_S4 = null;
+  animationToken_S4++;
+  const myToken = animationToken_S4;
+
+  clearBlinkTargetSector_S4();
+  document.getElementById('s4-method-buttons').style.display = 'none';
+  document.getElementById('s4-extend-line-buttons').style.display = 'none';
+  document.getElementById('s4-line-extended').style.opacity = 0;
+  document.getElementById('s4-sector-correct').setAttribute('d', '');
+  document.getElementById('s4-sector-wrong').setAttribute('d', '');
+  document.getElementById('s4-sector-180').setAttribute('d', '');
+  document.getElementById('s4-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s4-sector-360-blink').style.opacity = 0;
+  document.getElementById('s4-sector-360-blink').setAttribute('d', '');
+  clearHighlights_S4();
+  clearArcLabels_S4();
+
+  document.getElementById('s4-instruction').innerText = `方法1: 180°＋残りの角度で求めよう！`;
+  document.getElementById('s4-sub-instruction').innerText = `方法1: 直線ア・イのどちらを延長して、まっすぐな180°の線を作る？`;
+  document.getElementById('s4-formula-badge').innerText = '';
+
+  document.getElementById('s4-extend-line-buttons').style.display = 'flex';
+}
+
+// 方法1で「どちらの直線を延長するか」が選ばれた後の処理
+// which: 'base'（直線ア）または 'term'（直線イ）
+function extendLineChoice_S4(which) {
+  animationToken_S4++;
+  const myToken = animationToken_S4;
+
+  document.getElementById('s4-extend-line-buttons').style.display = 'none';
+  document.getElementById('s4-sector-correct').setAttribute('d', '');
+  document.getElementById('s4-sector-wrong').setAttribute('d', '');
+  document.getElementById('s4-sector-180').setAttribute('d', '');
+  clearHighlights_S4();
+  clearArcLabels_S4();
+
+  const baseRay = BASE_LINE_ROT_S4;
+  const termRay = BASE_LINE_ROT_S4 - TARGET_ANGLE_S4;
+  const remainder = TARGET_ANGLE_S4 - 180;
+
+  let extAngle, sector180Start, sector180End, sector180Sweep, remStart, remEnd, remSweep, rayLabel;
+  if (which === 'base') {
+    // 直線ア（底辺）を延長する
+    extAngle = baseRay - 180;
+    sector180Start = baseRay; sector180End = baseRay - 180; sector180Sweep = 0;
+    remStart = baseRay - 180; remEnd = termRay; remSweep = 0;
+    rayLabel = 'ア';
+  } else {
+    // 直線イ（終端）を延長する
+    extAngle = termRay + 180;
+    sector180Start = termRay; sector180End = termRay + 180; sector180Sweep = 1;
+    remStart = termRay + 180; remEnd = baseRay; remSweep = 1;
+    rayLabel = 'イ';
+  }
+
+  document.getElementById('s4-sub-instruction').innerText = `直線${rayLabel}を、頂点の向こう側にまっすぐ点線でのばすよ。`;
+  document.getElementById('s4-formula-badge').innerText = '';
+
+  const lineExt = document.getElementById('s4-line-extended');
+  lineExt.setAttribute('x1', VERTEX_S4.x);
+  lineExt.setAttribute('y1', VERTEX_S4.y);
+  lineExt.setAttribute('x2', VERTEX_S4.x);
+  lineExt.setAttribute('y2', VERTEX_S4.y);
+  lineExt.style.opacity = 1;
+
+  // 延長線の基準（"base"を延長したときはその延長線、"term"を延長したときは元の底辺）から
+  // 残りの角度分だけ引くと、もう一方のもとの線に到達するように基準を揃えておく
+  const measureBaseRotLocal = (which === 'base') ? remStart : remEnd;
+
+  // 点線が頂点からすーっと伸びるアニメーション
+  animateLineGrowth_S4(lineExt, extAngle, 900, () => {
+    if (myToken !== animationToken_S4) return;
+    document.getElementById('s4-sub-instruction').innerText = `直線${rayLabel}がまっすぐになったね。これで半分（180°）ができたよ。`;
+
+    animateSector_S4('s4-sector-180', sector180Start, sector180End, sector180Sweep, SUB_DURATION_S4, () => {
+      if (myToken !== animationToken_S4) return;
+      addArcLabel_S4(sector180Start, sector180End, '180°', '#f39c12');
+
+      // 残りの角度はまだ測っていないので、赤扇形を自動表示せず、
+      // 紫色の点滅で「ここを測ろう」と示してから、実際に分度器で測ってもらう
+      MEASURE_MODE_S4 = 'remainder';
+      MEASURE_BASE_ROT_S4 = measureBaseRotLocal;
+      MEASURE_ANGLE_S4 = remainder;
+      drawBlinkTargetSector_S4(MEASURE_BASE_ROT_S4, MEASURE_ANGLE_S4);
+
+      document.getElementById('s4-instruction').innerText = `Step 1: 残りの角度を分度器で測ろう！`;
+      document.getElementById('s4-sub-instruction').innerText = `色のついた部分（点滅している角）が、残りの角度だよ。分度器の中心（＋マーク）を、角の頂点に重ねよう！`;
+      step_S4 = 1;
+    }, myToken);
+  }, myToken);
+}
+
+// 方法2が選ばれた直後（Step1の時点）の処理：ここではまだ角度は明かさず、
+// 分度器を頂点に合わせて実際に測ってもらう通常のStep1/Step2に進む
+function chooseMethod2_S4() {
+  chosenMethod_S4 = 'method2';
+  MEASURE_MODE_S4 = 'target';
+  MEASURE_BASE_ROT_S4 = null;
+  MEASURE_ANGLE_S4 = null;
+  animationToken_S4++;
+
+  clearBlinkTargetSector_S4();
+  document.getElementById('s4-method-buttons').style.display = 'none';
+  document.getElementById('s4-extend-line-buttons').style.display = 'none';
+  document.getElementById('s4-formula-badge').innerText = '';
+  document.getElementById('s4-sector-correct').setAttribute('d', '');
+  document.getElementById('s4-sector-wrong').setAttribute('d', '');
+  document.getElementById('s4-sector-180').setAttribute('d', '');
+  document.getElementById('s4-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s4-sector-360-blink').style.opacity = 0;
+  document.getElementById('s4-sector-360-blink').setAttribute('d', '');
+  clearHighlights_S4();
+  clearArcLabels_S4();
+
+  step_S4 = 1;
+  document.getElementById('s4-instruction').innerText = "Step 1: 分度器の中心（＋マーク）を、角の頂点に重ねよう！";
+  document.getElementById('s4-sub-instruction').innerText = "方法2: 一周360°から、分度器で直接測れる角度を引いて求めるよ。まずは分度器をドラッグして移動させてね。";
+}
+
+// 方法2：分度器が正しく合わせ終わった後（Step3到達時）に呼ばれ、実際の角度を明かして解説する
+function showMethod2_S4() {
+  animationToken_S4++;
+  const myToken = animationToken_S4;
+  const smallAngle = 360 - TARGET_ANGLE_S4;
+
+  document.getElementById('s4-extend-line-buttons').style.display = 'none';
+  document.getElementById('s4-line-extended').style.opacity = 0;
+  document.getElementById('s4-sector-180').setAttribute('d', '');
+  document.getElementById('s4-sector-correct').setAttribute('d', '');
+  document.getElementById('s4-sector-wrong').setAttribute('d', '');
+  document.getElementById('s4-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s4-sector-360-blink').style.opacity = 0;
+  document.getElementById('s4-sector-360-blink').setAttribute('d', '');
+  document.getElementById('s4-formula-badge').innerHTML = '';
+
+  clearHighlights_S4();
+  clearArcLabels_S4();
+
+  // まず一周＝360°であることを、黄色い円の点滅と"360°"の表示で確認する
+  document.getElementById('s4-sub-instruction').innerText = `方法2: まずは一周（ぐるっと1回転）が 360° であることを確認しよう！`;
+
+  showFullCircleIntro_S4(myToken, 1600, () => {
+    if (myToken !== animationToken_S4) return;
+
+    // 分度器で直接測れる部分は青色で表示する（これは「間違い」ではなく方法2の一部なので消さずに残す）。
+    // 逆側の0°から読んでしまった場合の間違った扇形・数字も一度見せてから砕け散らせて消す。
+    performDirectRead_S4(BASE_LINE_ROT_S4, smallAngle, readPattern_S4, () => {
+      if (myToken !== animationToken_S4) return;
+      // ※ ここで表示する「小さい方の角（分度器で直接測れる角）」のラベル位置は、
+      //   実際に描かれた扇形（getSectorAngles_S4 の結果）に合わせて算出する。
+      //   優角(方法2)では rightLineRot/leftLineRot が底辺⇔終端で入れ替わるため、
+      //   単純に「BASE_LINE_ROT_S4, BASE_LINE_ROT_S4 - smallAngle」を使うとパターン
+      //   （A/C）によっては実際の扇形と全く違う位置にラベルがずれてしまっていた。
+      const smallSector = getSectorAngles_S4(readPattern_S4, smallAngle);
+      addArcLabel_S4(smallSector.start, smallSector.end, `${smallAngle}°`, '#3498db');
+
+      setTimeout(() => {
+        if (myToken !== animationToken_S4) return;
+        document.getElementById('s4-sub-instruction').innerText = `360°から、測れた${smallAngle}°を引くと、求めたい角度になるよ。`;
+        document.getElementById('s4-formula-badge').innerHTML =
+          `<span style="color:#f39c12">360°</span> − <span style="color:#3498db">${smallAngle}°</span> = <span style="color:#e74c3c">${TARGET_ANGLE_S4}°</span>`;
+
+        // 優角の全体(TARGET_ANGLE_S4)を表す扇形はパターンA/Cどちらでも同じ形（底辺→終端）。赤で表示する。
+        const correctStart = BASE_LINE_ROT_S4;
+        const correctEnd = BASE_LINE_ROT_S4 - TARGET_ANGLE_S4; // TARGET_ANGLE_S4>180なのでend<start（減少）→sweep:0
+        const correctSweep = 0;
+        setSectorColor_S4('s4-sector-correct', 'red');
+        animateSector_S4('s4-sector-correct', correctStart, correctEnd, correctSweep, SUB_DURATION_S4 - 300, () => {
+          if (myToken !== animationToken_S4) return;
+          // 引き算の結果である優角(TARGET_ANGLE_S4)自体も、扇形の色（赤）に合わせて
+          // 強調した数字テキストで示す。半径は「180°」等の途中経過ラベルより少し
+          // 外側にして、最終的な答えであることが視覚的に区別できるようにする。
+          addArcLabel_S4(correctStart, correctEnd, `${TARGET_ANGLE_S4}°`, '#e74c3c', 120, 24);
+        }, myToken);
+      }, 350);
+    }, myToken, 'blue');
+  });
+}
+
+function clearHighlights_S4() {
+  document.querySelectorAll('.highlight-text, .highlight-zero, .highlight-text-blue, .highlight-zero-blue').forEach(e => {
+    e.classList.remove('highlight-text', 'highlight-zero', 'highlight-text-blue', 'highlight-zero-blue');
+  });
+  document.getElementById('s4-dynamic-angle-labels').innerHTML = '';
+  document.querySelectorAll('.shatter-frag').forEach(f => f.remove());
+}
+
+// 点線(延長線)が頂点からまっすぐ伸びていくアニメーション
+function animateLineGrowth_S4(lineEl, angleDeg, duration, callback, token) {
+  const myToken = (token !== undefined) ? token : animationToken_S4;
+  const startTime = performance.now();
+  const rad = angleDeg * Math.PI / 180;
+  const fullLen = 220;
+
+  function stepAnim(time) {
+    if (myToken !== animationToken_S4) return;
+
+    let progress = (time - startTime) / duration;
+    if (progress > 1) progress = 1;
+
+    const len = fullLen * progress;
+    lineEl.setAttribute('x2', VERTEX_S4.x + len * Math.cos(rad));
+    lineEl.setAttribute('y2', VERTEX_S4.y + len * Math.sin(rad));
+
+    if (progress < 1) {
+      requestAnimationFrame(stepAnim);
+    } else if (callback) {
+      callback();
+    }
+  }
+  requestAnimationFrame(stepAnim);
+}
+
+// 扇形の弧の中央あたりに角度のラベル（180°・残りの角度・確定した角度など）を置く
+// radius を既定より中心寄りにすることで、分度器の目盛り数字との干渉を避ける。
+// fontSize は強調のため既定を大きめにしてある。
+function addArcLabel_S4(startDeg, endDeg, text, colorHex, radius = 92, fontSize = 22) {
+  const container = document.getElementById('s4-method-arc-labels');
+  if (!container) return;
+
+  const mid = (startDeg + endDeg) / 2;
+  const rad = mid * Math.PI / 180;
+  const x = VERTEX_S4.x + radius * Math.cos(rad);
+  const y = VERTEX_S4.y + radius * Math.sin(rad);
+
+  const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  textEl.setAttribute('x', x);
+  textEl.setAttribute('y', y);
+  textEl.setAttribute('class', 'arc-confirm-label');
+  textEl.setAttribute('font-size', String(fontSize));
+  textEl.setAttribute('fill', colorHex);
+  textEl.textContent = text;
+  container.appendChild(textEl);
+  return textEl;
+}
+
+// 一周(360°)全体を頂点中心の円として点滅させ、"360°"のラベルを添えて示す。
+// durationMs 後に自動的に消えて callback を呼ぶ。
+function showFullCircleIntro_S4(token, durationMs, callback) {
+  const path = document.getElementById('s4-sector-360-blink');
+  const radius = 170;
+  const d = `M ${VERTEX_S4.x - radius} ${VERTEX_S4.y} A ${radius} ${radius} 0 1 1 ${VERTEX_S4.x + radius} ${VERTEX_S4.y} A ${radius} ${radius} 0 1 1 ${VERTEX_S4.x - radius} ${VERTEX_S4.y} Z`;
+  path.setAttribute('d', d);
+  path.style.opacity = 1;
+  path.classList.add('blink-360');
+
+  addArcLabel_S4(-90, -90, '360°', '#f39c12', 190, 24);
+
+  setTimeout(() => {
+    if (token !== animationToken_S4) return;
+    path.classList.remove('blink-360');
+    path.style.opacity = 0;
+    path.setAttribute('d', '');
+    clearArcLabels_S4();
+    if (callback) callback();
+  }, durationMs);
+}
+
+function clearArcLabels_S4() {
+  const container = document.getElementById('s4-method-arc-labels');
+  if (container) container.innerHTML = '';
+}
+
+// animateSector_S4 修正版（sweep パラメータ対応、トークンによるキャンセル対応）
+function animateSector_S4(elementId, startDeg, endDeg, sweepFlag, duration, callback, token) {
+  const myToken = (token !== undefined) ? token : animationToken_S4;
+  const path = document.getElementById(elementId);
+  const startTime = performance.now();
+  const radius = 170;
+  const sweep = (sweepFlag !== undefined) ? sweepFlag : (endDeg < startDeg ? 0 : 1);
+
+  function stepAnim(time) {
+    if (myToken !== animationToken_S4) {
+      path.setAttribute('d', '');
+      return;
+    }
+
+    let progress = (time - startTime) / duration;
+    if (progress > 1) progress = 1;
+
+    const currentDeg = startDeg + (endDeg - startDeg) * progress;
+    const rad1 = startDeg * Math.PI / 180;
+    const rad2 = currentDeg * Math.PI / 180;
+
+    const x1 = VERTEX_S4.x + radius * Math.cos(rad1);
+    const y1 = VERTEX_S4.y + radius * Math.sin(rad1);
+    const x2 = VERTEX_S4.x + radius * Math.cos(rad2);
+    const y2 = VERTEX_S4.y + radius * Math.sin(rad2);
+
+    const largeArc = Math.abs(currentDeg - startDeg) > 180 ? 1 : 0;
+
+    const d = `M ${VERTEX_S4.x} ${VERTEX_S4.y} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x2} ${y2} Z`;
+    path.setAttribute('d', d);
+
+    if (progress < 1) {
+      requestAnimationFrame(stepAnim);
+    } else if (callback) {
+      callback();
+    }
+  }
+  requestAnimationFrame(stepAnim);
+}
+
+// ==========================================
+// リセット（アニメーション完全停止対応）
+// ==========================================
+function fullReset_S4() {
+  animationToken_S4++; // すべての進行中アニメーションをキャンセル
+
+  protractorState_S4 = { x: 150, y: 450, rot: 0 };
+  readPattern_S4 = 'A';
+  chosenMethod_S4 = null;
+  MEASURE_MODE_S4 = 'target';
+  MEASURE_BASE_ROT_S4 = null;
+  MEASURE_ANGLE_S4 = null;
+  updateProtractorTransform_S4();
+
+  ['s4-sector-correct', 's4-sector-wrong', 's4-sector-180', 's4-sector-360-blink'].forEach(id => {
+    document.getElementById(id).setAttribute('d', '');
+  });
+  document.getElementById('s4-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s4-sector-360-blink').style.opacity = 0;
+  document.getElementById('s4-line-extended').style.opacity = 0;
+
+  clearHighlights_S4();
+  clearArcLabels_S4();
+
+  document.getElementById('s4-extend-line-buttons').style.display = 'none';
+  document.getElementById('s4-formula-badge').innerText = '';
+
+  if (isExtended_S4) {
+    // 優角(180°超)：分度器を動かす前のStep1の時点で「180°までしか測れないよ、どちらの方法で測る？」を提示する
+    step_S4 = 0;
+    document.getElementById('s4-method-buttons').style.display = 'flex';
+    document.getElementById('s4-instruction').innerText = "Step 1: この角は180°を超えているよ！分度器では180°までしか測れないので、どちらの方法で求めるか選んでね。";
+    document.getElementById('s4-sub-instruction').innerText = "色のついた部分（点滅している角）が、求めたい角度だよ。下のボタンから方法を選んでね。";
+  } else {
+    step_S4 = 1;
+    document.getElementById('s4-method-buttons').style.display = 'none';
+    document.getElementById('s4-instruction').innerText = "Step 1: 分度器の中心（＋マーク）を、角の頂点に重ねよう！";
+    document.getElementById('s4-sub-instruction').innerText = "色のついた部分（点滅している角）の大きさを求めよう！分度器をドラッグして移動させてね。";
+  }
+
+  drawTargetAngle_S4();
+  drawBlinkTargetSector_S4();
+}
+
+
+
+/* ===================================================
+   SECTION 5: みじかい線の角（延長して測る・④のロジック再利用）
+=================================================== */
+
+// ==========================================
+// 設定・状態管理
+// ==========================================
+let VERTEX_S5 = { x: 400, y: 300 };
+let TARGET_ANGLE_S5 = 65;
+let BASE_LINE_ROT_S5 = -20;
+let isExtended_S5 = false;
+
+let step_S5 = 1;
+let protractorState_S5 = { x: 150, y: 450, rot: 0 };
+let isDragging_S5 = false;
+let dragStartPos_S5 = { x: 0, y: 0 };
+let rotGrabOffset_S5 = 0;
+
+let readPattern_S5 = 'A';
+let animationToken_S5 = 0;
+let chosenMethod_S5 = null; // 優角(180°超)のとき: 'method1' | 'method2' | null（未選択）
+
+// 方法1で「延長した180°の続きの残りの角度」を分度器で実測するためのモード
+// 'target'（通常：TARGET_ANGLE_S5/BASE_LINE_ROTを測る） / 'remainder'（延長後の残りの角度を測る）
+let MEASURE_MODE_S5 = 'target';
+let MEASURE_BASE_ROT_S5 = null;
+let MEASURE_ANGLE_S5 = null;
+
+const MAIN_DURATION_S5 = 2200;
+const SUB_DURATION_S5 = 1500;
+
+// ⑤専用：みじかい直線を「延長」してから測る学習用の状態
+let raysExtended_S5 = false;
+let shortLen_S5 = 75;
+
+// ==========================================
+// 色の統一ルール：
+// 内側0°(パターンA・反時計回り＝左回転)で読む角 → 赤（扇形・数字とも）
+// 外側0°(パターンC・時計回り＝右回転)で読む角 → 青（扇形・数字とも）
+// 「正しい／間違い」ではなく「回転の向き」で色を決める。
+// ==========================================
+const SECTOR_COLORS_S5 = {
+  red:  { fill: 'rgba(231, 76, 60, 0.35)',  stroke: '#e74c3c' },
+  blue: { fill: 'rgba(52, 152, 219, 0.35)', stroke: '#3498db' }
+};
+
+function patternColor_S5(pattern) {
+  return pattern === 'A' ? 'red' : 'blue';
+}
+
+function patternColorHex_S5(pattern) {
+  return pattern === 'A' ? '#e74c3c' : '#3498db';
+}
+
+function colorNameToHex_S5(color) {
+  return color === 'blue' ? '#3498db' : '#e74c3c';
+}
+
+function setSectorColor_S5(elId, color) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const c = SECTOR_COLORS_S5[color] || SECTOR_COLORS_S5.red;
+  el.setAttribute('fill', c.fill);
+  el.setAttribute('stroke', c.stroke);
+}
+
+// ==========================================
+// 初期化＆分度器SVGの動的生成
+// ==========================================
+function init_S5() {
+  drawTargetAngle_S5();
+  drawBlinkTargetSector_S5();
+  buildSVGProtractor_S5();
+  updateProtractorTransform_S5();
+  setupEvents_S5();
+  fullReset_S5(); // ⑤は最初から「直線がみじかい」状態のプロンプトを出す
+}
+
+function drawTargetAngle_S5() {
+  // ⑤では直線は最初「みじかく」表示する（分度器の目もり半径180に届かない長さ）。
+  // 延長ボタンが押されて raysExtended_S5 が true になったら、続きの点線部分(*-ext)を伸ばす。
+  const len = shortLen_S5;
+  const fullLen = 220;
+  const rad1 = BASE_LINE_ROT_S5 * Math.PI / 180;
+  const rad2 = (BASE_LINE_ROT_S5 - TARGET_ANGLE_S5) * Math.PI / 180;
+
+  const lineBase = document.getElementById('s5-line-base');
+  lineBase.setAttribute('x1', VERTEX_S5.x);
+  lineBase.setAttribute('y1', VERTEX_S5.y);
+  lineBase.setAttribute('x2', VERTEX_S5.x + len * Math.cos(rad1));
+  lineBase.setAttribute('y2', VERTEX_S5.y + len * Math.sin(rad1));
+
+  const lineTerm = document.getElementById('s5-line-terminal');
+  lineTerm.setAttribute('x1', VERTEX_S5.x);
+  lineTerm.setAttribute('y1', VERTEX_S5.y);
+  lineTerm.setAttribute('x2', VERTEX_S5.x + len * Math.cos(rad2));
+  lineTerm.setAttribute('y2', VERTEX_S5.y + len * Math.sin(rad2));
+
+  const vertex = document.getElementById('s5-vertex-point');
+  vertex.setAttribute('cx', VERTEX_S5.x);
+  vertex.setAttribute('cy', VERTEX_S5.y);
+
+  // 延長した部分（点線）：まだ延長していないときは長さ0で隠しておく
+  const lineBaseExt = document.getElementById('s5-line-base-ext');
+  const lineTermExt = document.getElementById('s5-line-term-ext');
+  const extLen = raysExtended_S5 ? fullLen : len;
+  lineBaseExt.setAttribute('x1', VERTEX_S5.x + len * Math.cos(rad1));
+  lineBaseExt.setAttribute('y1', VERTEX_S5.y + len * Math.sin(rad1));
+  lineBaseExt.setAttribute('x2', VERTEX_S5.x + extLen * Math.cos(rad1));
+  lineBaseExt.setAttribute('y2', VERTEX_S5.y + extLen * Math.sin(rad1));
+  lineBaseExt.style.opacity = raysExtended_S5 ? 1 : 0;
+
+  lineTermExt.setAttribute('x1', VERTEX_S5.x + len * Math.cos(rad2));
+  lineTermExt.setAttribute('y1', VERTEX_S5.y + len * Math.sin(rad2));
+  lineTermExt.setAttribute('x2', VERTEX_S5.x + extLen * Math.cos(rad2));
+  lineTermExt.setAttribute('y2', VERTEX_S5.y + extLen * Math.sin(rad2));
+  lineTermExt.style.opacity = raysExtended_S5 ? 1 : 0;
+
+  // 2本の直線には常に「ア」「イ」のラベルを付ける（延長する直線を選ぶときの目印）
+  const labelBase = document.getElementById('s5-line-label-base');
+  const labelTerm = document.getElementById('s5-line-label-term');
+  const labelLen = fullLen + 18;
+  labelBase.setAttribute('x', VERTEX_S5.x + labelLen * Math.cos(rad1));
+  labelBase.setAttribute('y', VERTEX_S5.y + labelLen * Math.sin(rad1));
+  labelBase.textContent = 'ア';
+  labelBase.style.opacity = 1;
+
+  labelTerm.setAttribute('x', VERTEX_S5.x + labelLen * Math.cos(rad2));
+  labelTerm.setAttribute('y', VERTEX_S5.y + labelLen * Math.sin(rad2));
+  labelTerm.textContent = 'イ';
+  labelTerm.style.opacity = 1;
+}
+
+// 「直線をのばす」ボタンで、ア・イ両方の直線を点線でぐーっと延長するアニメーション。
+// 延長し終わったら、通常のStep1（分度器を頂点に合わせる）に進める。
+function extendBothRays_S5() {
+  animationToken_S5++;
+  const myToken = animationToken_S5;
+  document.getElementById('s5-extend-ray-buttons').style.display = 'none';
+  document.getElementById('s5-instruction').innerText = 'Step 1: 直線を のばしているよ…';
+  document.getElementById('s5-sub-instruction').innerText = 'もとの直線(じっせん)の続きを、点線でまっすぐ のばすよ。';
+
+  const rad1 = BASE_LINE_ROT_S5 * Math.PI / 180;
+  const rad2 = (BASE_LINE_ROT_S5 - TARGET_ANGLE_S5) * Math.PI / 180;
+  const lineBaseExt = document.getElementById('s5-line-base-ext');
+  const lineTermExt = document.getElementById('s5-line-term-ext');
+  lineBaseExt.style.opacity = 1;
+  lineTermExt.style.opacity = 1;
+
+  const duration = 900;
+  const startTime = performance.now();
+  function stepAnim(time) {
+    if (myToken !== animationToken_S5) return;
+    let progress = (time - startTime) / duration;
+    if (progress > 1) progress = 1;
+    const curLen = shortLen_S5 + (220 - shortLen_S5) * progress;
+
+    lineBaseExt.setAttribute('x2', VERTEX_S5.x + curLen * Math.cos(rad1));
+    lineBaseExt.setAttribute('y2', VERTEX_S5.y + curLen * Math.sin(rad1));
+    lineTermExt.setAttribute('x2', VERTEX_S5.x + curLen * Math.cos(rad2));
+    lineTermExt.setAttribute('y2', VERTEX_S5.y + curLen * Math.sin(rad2));
+
+    if (progress < 1) {
+      requestAnimationFrame(stepAnim);
+    } else {
+      raysExtended_S5 = true;
+      step_S5 = 1;
+      document.getElementById('s5-instruction').innerText = 'Step 2: 分度器の中心（＋マーク）を、角の頂点に重ねよう！';
+      document.getElementById('s5-sub-instruction').innerText = '直線がのびて、分度器の目もりまで とどくようになったね！分度器をドラッグして移動させてね。';
+      drawBlinkTargetSector_S5();
+    }
+  }
+  requestAnimationFrame(stepAnim);
+}
+
+// Step1の最初に「この部分の角度を求めてね」を示す点滅扇形を描画する
+// 180°未満でも優角(180°超)でも、求めたい角度(TARGET_ANGLE_S5)そのものの領域を表示する
+// startDeg/angle を省略した場合は通常どおり TARGET_ANGLE_S5 全体を示す。
+// 方法1で「残りの角度」を測る場面では、その残りの角度だけを指定して呼び出す。
+function drawBlinkTargetSector_S5(startDeg = BASE_LINE_ROT_S5, angle = TARGET_ANGLE_S5) {
+  const path = document.getElementById('s5-sector-target-blink');
+  if (!path) return;
+  const radius = 170;
+  const endDeg = startDeg - angle;
+  const rad1 = startDeg * Math.PI / 180;
+  const rad2 = endDeg * Math.PI / 180;
+  const x1 = VERTEX_S5.x + radius * Math.cos(rad1);
+  const y1 = VERTEX_S5.y + radius * Math.sin(rad1);
+  const x2 = VERTEX_S5.x + radius * Math.cos(rad2);
+  const y2 = VERTEX_S5.y + radius * Math.sin(rad2);
+  const largeArc = angle > 180 ? 1 : 0;
+  const sweep = 0;
+  const d = `M ${VERTEX_S5.x} ${VERTEX_S5.y} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x2} ${y2} Z`;
+  path.setAttribute('d', d);
+}
+
+function clearBlinkTargetSector_S5() {
+  const path = document.getElementById('s5-sector-target-blink');
+  if (path) path.setAttribute('d', '');
+}
+
+function buildSVGProtractor_S5() {
+  const group = document.getElementById('s5-protractor');
+  const R = 180;
+  const baseH = 20;
+  let html = '';
+
+  const outerPath = `M ${-R - 10} 0 A ${R + 10} ${R + 10} 0 0 1 ${R + 10} 0 v ${baseH} h ${-(2 * (R + 10))} Z`;
+  html += `<path d="${outerPath}" fill="none" stroke="#2c3e50" stroke-width="2"/>`;
+
+  html += `<line x1="${-R - 10}" y1="0" x2="${R + 10}" y2="0" stroke="#2c3e50" stroke-width="2"/>`;
+
+  html += `<line x1="-12" y1="0" x2="12" y2="0" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="0" y1="-12" x2="0" y2="12" stroke="#e74c3c" stroke-width="2"/>`;
+
+  for (let deg = 0; deg <= 180; deg++) {
+    const rad = (180 - deg) * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    let tickLen = 6;
+    if (deg % 10 === 0) tickLen = 16;
+    else if (deg % 5 === 0) tickLen = 11;
+
+    const x1 = R * cos;
+    const y1 = -R * sin;
+    const x2 = (R - tickLen) * cos;
+    const y2 = -(R - tickLen) * sin;
+
+    html += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2c3e50" stroke-width="${deg % 5 === 0 ? 1.5 : 0.8}"/>`;
+
+    if (deg % 10 === 0) {
+      const txOuter = (R - 26) * cos;
+      const tyOuter = -(R - 26) * sin;
+      html += `<text x="${txOuter}" y="${tyOuter}" class="s5-num-outer s5-deg-${deg}" font-size="11" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#2c3e50" stroke="#ffffff" stroke-width="3" paint-order="stroke fill">${deg}</text>`;
+
+      const txInner = (R - 44) * cos;
+      const tyInner = -(R - 44) * sin;
+      html += `<text x="${txInner}" y="${tyInner}" class="s5-num-inner s5-deg-${180 - deg}" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#7f8c8d" stroke="#ffffff" stroke-width="3" paint-order="stroke fill">${180 - deg}</text>`;
+    }
+  }
+
+  html += `<g id="s5-dynamic-angle-labels"></g>`;
+  html += `<g id="s5-rot-guide-ui" transform="translate(0, -${R + 25})" style="display:none;"><use href="#s5-rotate-guide"/></g>`;
+
+  group.innerHTML = html;
+}
+
+// ==========================================
+// 乱数ユーティリティ
+// ==========================================
+function randInt_S5(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randMultipleOf10_S5(min, max) {
+  const lo = Math.ceil(min / 10);
+  const hi = Math.floor(max / 10);
+  return randInt_S5(lo, hi) * 10;
+}
+
+// ==========================================
+// 角度計算ユーティリティ
+// ==========================================
+function normalizeDeg_S5(deg) {
+  return ((deg % 360) + 360) % 360;
+}
+
+function angleDiff_S5(a, b) {
+  return ((a - b + 540) % 360) - 180;
+}
+
+// ==========================================
+// 出題の生成
+// ==========================================
+function regenerateProblem_S5() {
+  isExtended_S5 = false;
+  BASE_LINE_ROT_S5 = randInt_S5(0, 359);
+  VERTEX_S5.x = randInt_S5(280, 560);
+  VERTEX_S5.y = randInt_S5(210, 390);
+  shortLen_S5 = randInt_S5(55, 90);
+
+  TARGET_ANGLE_S5 = randMultipleOf10_S5(20, 160);
+
+  document.getElementById('s5-customAngleInput').value = TARGET_ANGLE_S5;
+  fullReset_S5();
+}
+
+function useCustomAngle_S5() {
+  let v = parseInt(document.getElementById('s5-customAngleInput').value, 10);
+  if (isNaN(v)) v = 65;
+  v = Math.max(1, Math.min(179, v));
+
+  TARGET_ANGLE_S5 = v;
+  isExtended_S5 = false;
+  BASE_LINE_ROT_S5 = randInt_S5(0, 359);
+  VERTEX_S5.x = randInt_S5(280, 560);
+  VERTEX_S5.y = randInt_S5(210, 390);
+  shortLen_S5 = randInt_S5(55, 90);
+
+  document.getElementById('s5-customAngleInput').value = v;
+  fullReset_S5();
+}
+
+// ==========================================
+// 読み取りパターン判定
+// ==========================================
+function determineReadPattern_S5(protractorRot) {
+  const { targetRight, targetLeft } = getSnapTargets_S5();
+
+  const diffRight = Math.abs(angleDiff_S5(protractorRot, targetRight));
+  const diffLeft = Math.abs(angleDiff_S5(protractorRot, targetLeft));
+
+  return (diffRight <= diffLeft) ? 'A' : 'C';
+}
+
+// 180°未満／優角(180°超)で吸い付き先(パターンA/Cの正しい0°ライン)を切り替える
+// 優角のとき、画面上に見える「小さい隙間」は底辺線から見て逆側にできるため、
+// パターンA(内側目盛り0°)とパターンC(外側目盛り0°)の吸い付き先を入れ替える。
+function getSnapTargets_S5() {
+  // 方法1：延長してできた残りの角度を測っている最中は、その角度専用の吸い付き先を使う
+  if (MEASURE_MODE_S5 === 'remainder') {
+    return {
+      targetRight: MEASURE_BASE_ROT_S5,
+      targetLeft: (MEASURE_BASE_ROT_S5 - MEASURE_ANGLE_S5) - 180
+    };
+  }
+
+  const baseRay = BASE_LINE_ROT_S5;                 // 底辺の線の向き
+  const termRay = BASE_LINE_ROT_S5 - TARGET_ANGLE_S5;   // 終端の線の向き
+
+  if (!isExtended_S5) {
+    return {
+      targetRight: baseRay,       // パターンA：内側0°を底辺に合わせる
+      targetLeft: termRay - 180   // パターンC：外側0°を終端に合わせる
+    };
+  } else {
+    return {
+      targetRight: termRay,       // パターンA：内側0°を終端に合わせる
+      targetLeft: baseRay - 180   // パターンC：外側0°を底辺に合わせる
+    };
+  }
+}
+
+function getReadAngle_S5() {
+  if (!isExtended_S5) {
+    return TARGET_ANGLE_S5;
+  } else {
+    return 360 - TARGET_ANGLE_S5;
+  }
+}
+
+// ==========================================
+// 扇形表示角度の計算（修正版）
+// ==========================================
+function getSectorAngles_S5(pattern, readAngle, forExtendedFull = false) {
+  // 方法1：延長してできた残りの角度を測っている最中は、その角度を基準に計算する
+  let baseRay, termRay, extendedLike;
+  if (MEASURE_MODE_S5 === 'remainder') {
+    baseRay = MEASURE_BASE_ROT_S5;
+    termRay = MEASURE_BASE_ROT_S5 - MEASURE_ANGLE_S5;
+    extendedLike = false;
+  } else {
+    baseRay = BASE_LINE_ROT_S5;                 // 底辺の線の向き
+    termRay = BASE_LINE_ROT_S5 - TARGET_ANGLE_S5;   // 終端の線の向き
+    extendedLike = isExtended_S5;
+  }
+
+  // forExtendedFull = true の場合、優角の全角度(TARGET_ANGLE_S5)を使う
+  const angleToUse = forExtendedFull ? TARGET_ANGLE_S5 : readAngle;
+
+  if (pattern === 'A') {
+    // 右線(内側0°)スタート。反時計回り(数学的)に読む
+    // 優角のときは右線が終端の線に合わさっているので、開始位置を入れ替える
+    const rightLineRot = extendedLike ? termRay : baseRay;
+    return {
+      start: rightLineRot,
+      end: rightLineRot - angleToUse,
+      sweep: 0 // SVGでは反時計回り
+    };
+  } else {
+    // 左線(外側0°)スタート。反時計回り(数学的)に読む
+    // 優角のときは左線が底辺の線に合わさっているので、開始位置を入れ替える
+    const leftLineRot = extendedLike ? baseRay : termRay;
+    return {
+      start: leftLineRot,
+      end: leftLineRot + angleToUse,
+      sweep: 1 // end > start（角度が増える）なのでSVG上は時計回り＝sweep:1
+    };
+  }
+}
+
+// ==========================================
+// イベントハンドラ・インタラクション
+// ==========================================
+function setupEvents_S5() {
+  const stageEl = document.getElementById('s5-stage');
+
+  stageEl.addEventListener('pointerdown', (e) => {
+    if (step_S5 === 3 || step_S5 === 0) return;
+    e.preventDefault();
+    clearBlinkTargetSector_S5();
+    isDragging_S5 = true;
+    try { stageEl.setPointerCapture(e.pointerId); } catch (err) {}
+    const pt = getSVGPoint_S5(e);
+    dragStartPos_S5 = { x: pt.x - protractorState_S5.x, y: pt.y - protractorState_S5.y };
+    if (step_S5 === 2) {
+      // 回転ドラッグ開始時：つかんだ場所の角度と、現在の回転角のズレを覚えておく。
+      const grabAngle = Math.atan2(pt.y - VERTEX_S5.y, pt.x - VERTEX_S5.x) * 180 / Math.PI;
+      rotGrabOffset_S5 = grabAngle - protractorState_S5.rot;
+    }
+  }, { passive: false });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging_S5) return;
+    e.preventDefault();
+    const pt = getSVGPoint_S5(e);
+
+    if (step_S5 === 1) {
+      protractorState_S5.x = pt.x - dragStartPos_S5.x;
+      protractorState_S5.y = pt.y - dragStartPos_S5.y;
+
+      const dist = Math.hypot(protractorState_S5.x - VERTEX_S5.x, protractorState_S5.y - VERTEX_S5.y);
+      if (dist < 25) {
+        protractorState_S5.x = VERTEX_S5.x;
+        protractorState_S5.y = VERTEX_S5.y;
+        step_S5 = 2;
+        isDragging_S5 = false; // 吸い付いたらこのドラッグは打ち切り。回転は次に掴み直したときから
+        try { stageEl.releasePointerCapture(e.pointerId); } catch (err) {}
+        document.getElementById('s5-instruction').innerText = "Step 2: 分度器を回して、0°の線を角に合わせよう！";
+        document.getElementById('s5-sub-instruction').innerText = "分度器をつかんでくるっと回転させてね。右の線でも左の線でも、どちらでも合わせられます。";
+        document.getElementById('s5-rot-guide-ui').style.display = "block";
+      }
+    } else if (step_S5 === 2) {
+      const dx = pt.x - VERTEX_S5.x;
+      const dy = pt.y - VERTEX_S5.y;
+      let angle = Math.atan2(dy, dx) * 180 / Math.PI - rotGrabOffset_S5;
+
+      const { targetRight, targetLeft } = getSnapTargets_S5();
+
+      const diffRight = Math.abs(angleDiff_S5(angle, targetRight));
+      const diffLeft = Math.abs(angleDiff_S5(angle, targetLeft));
+
+      const threshold = 5;
+
+      if (diffRight < threshold && diffRight <= diffLeft) {
+        angle = targetRight;
+        protractorState_S5.rot = angle;
+        readPattern_S5 = 'A';
+        updateProtractorTransform_S5();
+        isDragging_S5 = false;
+        triggerStep3_S5();
+        return;
+      } else if (diffLeft < threshold && diffLeft < diffRight) {
+        angle = targetLeft;
+        protractorState_S5.rot = angle;
+        readPattern_S5 = 'C';
+        updateProtractorTransform_S5();
+        isDragging_S5 = false;
+        triggerStep3_S5();
+        return;
+      }
+      protractorState_S5.rot = angle;
+    }
+    updateProtractorTransform_S5();
+  }, { passive: false });
+
+  window.addEventListener('pointerup', (e) => {
+    isDragging_S5 = false;
+    try { stageEl.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
+}
+
+function updateProtractorTransform_S5() {
+  const p = document.getElementById('s5-protractor');
+  p.setAttribute('transform', `translate(${protractorState_S5.x}, ${protractorState_S5.y}) rotate(${protractorState_S5.rot})`);
+}
+
+function getSVGPoint_S5(e) {
+  const svg = document.getElementById('s5-stage');
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX;
+  pt.y = e.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// ==========================================
+// Step 3: アニメーション＆解説機能
+// ==========================================
+function triggerStep3_S5() {
+  step_S5 = 3;
+  animationToken_S5++;
+  const myToken = animationToken_S5;
+
+  document.getElementById('s5-rot-guide-ui').style.display = "none";
+
+  if (MEASURE_MODE_S5 === 'remainder') {
+    // 方法1：延長してできた180°の続きの「残りの角度」を、実際に分度器で測る
+    document.getElementById('s5-instruction').innerText = `Step 3: 残りの角度を読み取ろう！`;
+    performDirectRead_S5(MEASURE_BASE_ROT_S5, MEASURE_ANGLE_S5, readPattern_S5, () => {
+      if (myToken !== animationToken_S5) return;
+      addArcLabel_S5(MEASURE_BASE_ROT_S5, MEASURE_BASE_ROT_S5 - MEASURE_ANGLE_S5, `${MEASURE_ANGLE_S5}°`, patternColorHex_S5(readPattern_S5));
+      document.getElementById('s5-formula-badge').innerHTML =
+        `<span style="color:#f39c12">180°</span> ＋ <span style="color:${patternColorHex_S5(readPattern_S5)}">${MEASURE_ANGLE_S5}°</span> = ${TARGET_ANGLE_S5}°`;
+    }, myToken);
+    return;
+  }
+
+  const readAngle = getReadAngle_S5();
+
+  if (!isExtended_S5) {
+    document.getElementById('s5-instruction').innerText = `Step 3: 角度を読み取ろう！ 角の大きさは ${TARGET_ANGLE_S5}° です。`;
+    performDirectRead_S5(BASE_LINE_ROT_S5, TARGET_ANGLE_S5, readPattern_S5, () => {
+      if (myToken !== animationToken_S5) return;
+      addArcLabel_S5(BASE_LINE_ROT_S5, BASE_LINE_ROT_S5 - TARGET_ANGLE_S5, `${TARGET_ANGLE_S5}°`, patternColorHex_S5(readPattern_S5));
+    }, myToken);
+  } else {
+    // 優角(180°超)：方法の選択はすでにStep 1で済んでいるので、選ばれた方法に沿って読み取りを進める
+    if (chosenMethod_S5 === 'method2') {
+      document.getElementById('s5-instruction').innerText = `Step 3: 分度器で直接測れる角度を読み取ろう！`;
+      showMethod2_S5();
+    } else {
+      // 万一、方法が未選択のままここに来た場合の保険（通常は発生しない）
+      document.getElementById('s5-instruction').innerText = `Step 3: この角は ${TARGET_ANGLE_S5}°（180°を超える「優角」）です！`;
+      document.getElementById('s5-sub-instruction').innerText = `この角は分度器で直接は測れません。どちらの考え方で求めるか、下のボタンから選んでね。`;
+      document.getElementById('s5-formula-badge').innerText = '';
+      document.getElementById('s5-method-buttons').style.display = 'flex';
+    }
+  }
+}
+
+// 分度器に合わせた角度(baseRot〜baseRot-angle)を実際に読み取る共通処理。
+// 読み方の色は「正しいか間違いか」ではなく「回転の向き」で決める：
+//   内側0°(パターンA・反時計回り/左回転) → 赤　／　外側0°(パターンC・時計回り/右回転) → 青
+// 逆側の0°から読んでしまった「間違いの読み方」は、一度表示したあと砕け散るアニメーションで消す。
+// formulaCallback は、読み取りの解説がすべて終わった後に呼ばれる（数式バッジの表示などに使う）。
+function performDirectRead_S5(baseRot, angle, pattern, formulaCallback, token, forcePrimaryColor) {
+  const myToken = token;
+  const primaryColor = forcePrimaryColor || patternColor_S5(pattern);
+  const primaryColorName = primaryColor === 'red' ? '赤' : '青';
+
+  document.getElementById('s5-sub-instruction').innerText = `${pattern === 'A' ? '内側' : '外側'}の0°から順番に目盛りを${primaryColorName}色で読んでいきます。`;
+
+  // 直接読める角は、その回転の向きに対応する色で 0° から順に強調表示する
+  animateSequentialHighlights_S5(0, angle, MAIN_DURATION_S5, pattern, myToken, primaryColor);
+
+  setSectorColor_S5('s5-sector-wrong', primaryColor);
+  const sector = getSectorAngles_S5(pattern, angle);
+  animateSector_S5('s5-sector-wrong', sector.start, sector.end, sector.sweep, MAIN_DURATION_S5, () => {
+    if (myToken !== animationToken_S5) return;
+    setTimeout(() => {
+      if (myToken !== animationToken_S5) return;
+      const wrongDeg = 180 - angle;
+      const wrongPattern = (pattern === 'A') ? 'C' : 'A';
+      const secondaryColor = forcePrimaryColor ? (primaryColor === 'blue' ? 'red' : 'blue') : patternColor_S5(wrongPattern);
+      const secondaryColorName = secondaryColor === 'red' ? '赤' : '青';
+      document.getElementById('s5-sub-instruction').innerText += ` ※逆の0°（${wrongPattern === 'A' ? '内側' : '外側'}）から読むと ${wrongDeg}° になってしまうので注意！`;
+
+      // 「逆側の0°」は、実際に分度器が置かれている0°(sector.start)の
+      // ちょうど反対側（180°反転した位置）。読み取る対象の線自体(sector.end)は変わらない。
+      // ※ baseRot（線アの向き）をそのまま使うと、優角(方法2)でパターンAの0°が
+      //   実際には線イ(termRay)に重なっているケースとズレてしまうため、
+      //   必ず sector（getSectorAnglesの結果＝実際の分度器の向き）を基準にする。
+      // ※ wrongStart を単純に「sector.start - 180」の生値のまま使うと、パターン
+      //   （A/C）によっては sector.end との数値差が実際の弧の角度(wrongDeg)と
+      //   一致せず、扇形が本来より大幅に大きい・崩れた形で描画されてしまっていた
+      //   （例：時計回りパターンのとき、本来130°で済むはずが230°分の弧として
+      //   計算されてしまい、扇形として破綻していた）。
+      //   そこで必ず「wrongEnd を基準に、正しい向き(wrongSweep)へ wrongDeg 分だけ」
+      //   進んだ位置として wrongStart を算出し、常に短い正しい扇形になるようにする。
+      const wrongEnd = sector.end;
+      const wrongSweep = sector.sweep === 0 ? 1 : 0;
+      const wrongStart = (wrongSweep === 1) ? (wrongEnd - wrongDeg) : (wrongEnd + wrongDeg);
+      setSectorColor_S5('s5-sector-correct', secondaryColor);
+      animateSector_S5('s5-sector-correct', wrongStart, wrongEnd, wrongSweep, SUB_DURATION_S5, () => {
+        if (myToken !== animationToken_S5) return;
+        // 間違いの読み方をひとしきり見せたら、砕け散らせて画面から完全に消す
+        setTimeout(() => {
+          if (myToken !== animationToken_S5) return;
+          shatterWrongReading_S5(secondaryColor, myToken, () => {
+            if (myToken !== animationToken_S5) return;
+            if (formulaCallback) formulaCallback();
+          });
+        }, 650);
+      }, myToken);
+      // 間違えやすい方（逆側の0°から読んだ角度）の数字も、その回転の向きに対応する色で順番に強調表示する
+      animateSequentialHighlights_S5(0, wrongDeg, SUB_DURATION_S5, wrongPattern, myToken, secondaryColor);
+    }, 700);
+  }, myToken);
+}
+
+// ==========================================
+// 「間違いの読み方」の扇形・数字を、砕け散るアニメーションで完全に消す
+// ==========================================
+function shatterWrongReading_S5(color, token, callback) {
+  const numSelector = color === 'red'
+    ? '.highlight-text, .highlight-zero'
+    : '.highlight-text-blue, .highlight-zero-blue';
+  const targets = Array.from(document.querySelectorAll(numSelector));
+
+  const sectorEl = document.getElementById('s5-sector-correct');
+  if (sectorEl && sectorEl.getAttribute('d')) targets.push(sectorEl);
+
+  if (targets.length === 0) {
+    if (callback) callback();
+    return;
+  }
+
+  let pending = targets.length;
+  const done = () => {
+    pending--;
+    if (pending <= 0 && callback) callback();
+  };
+  targets.forEach(el => spawnShatterFragments_S5(el, token, done));
+}
+
+// 指定したSVG要素（扇形パスや数字ラベル）を、その場で細かい破片に分解して
+// 飛び散らせながらフェードアウトさせ、最後に元の要素を消す/元に戻す。
+function spawnShatterFragments_S5(el, token, onDone) {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const container = el.parentNode;
+  let bbox = null;
+  try { bbox = el.getBBox(); } catch (e) { bbox = null; }
+
+  if (!container || !bbox || (bbox.width < 0.5 && bbox.height < 0.5)) {
+    finalizeShatterTarget_S5(el);
+    if (onDone) onDone();
+    return;
+  }
+
+  const fillColor = (el.tagName === 'text')
+    ? getComputedStyle(el).fill
+    : (el.getAttribute('stroke') || '#e74c3c');
+
+  const fragCount = 9;
+  const frags = [];
+  for (let i = 0; i < fragCount; i++) {
+    const fw = Math.max(3, bbox.width / 3);
+    const fh = Math.max(3, bbox.height / 3);
+    const fx = bbox.x + Math.random() * Math.max(1, bbox.width - fw);
+    const fy = bbox.y + Math.random() * Math.max(1, bbox.height - fh);
+    const frag = document.createElementNS(svgNS, 'rect');
+    frag.setAttribute('class', 'shatter-frag');
+    frag.setAttribute('x', fx);
+    frag.setAttribute('y', fy);
+    frag.setAttribute('width', fw);
+    frag.setAttribute('height', fh);
+    frag.setAttribute('fill', fillColor);
+    frag.setAttribute('opacity', '0.95');
+    frag.style.transformBox = 'fill-box';
+    frag.style.transformOrigin = 'center';
+    frag.style.transition = 'transform 0.55s cubic-bezier(.3,.7,.4,1), opacity 0.55s ease-out';
+    container.appendChild(frag);
+    frags.push(frag);
+  }
+
+  // 元の要素はここで即座に隠す／消す（見た目上は破片が引き継ぐ）
+  finalizeShatterTarget_S5(el);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (token !== animationToken_S5) return;
+      frags.forEach(frag => {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 35 + Math.random() * 65;
+        const dx = Math.cos(ang) * dist;
+        const dy = Math.sin(ang) * dist;
+        const rot = (Math.random() * 480 - 240);
+        frag.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(0.15)`;
+        frag.style.opacity = '0';
+      });
+    });
+  });
+
+  setTimeout(() => {
+    frags.forEach(f => f.remove());
+    if (onDone) onDone();
+  }, 600);
+}
+
+// 破片を飛ばした後の元要素の後始末：
+// 動的に作られたラベルはDOMから削除、分度器に印刷済みの固定目盛りラベルは
+// ハイライト用クラスだけ外して通常の見た目に戻す。扇形パスは d を空にする。
+function finalizeShatterTarget_S5(el) {
+  if (!el) return;
+  if (el.tagName === 'path') {
+    el.setAttribute('d', '');
+    return;
+  }
+  if (el.closest('#s5-dynamic-angle-labels')) {
+    el.remove();
+  } else {
+    el.classList.remove('highlight-text', 'highlight-zero', 'highlight-text-blue', 'highlight-zero-blue');
+  }
+}
+
+// 10の倍数で刻み、最後に目的の角度を追加（修正版）
+// color: 'red'(既定・最終的な答えの色) か 'blue'(分度器で直接読める角の色)
+function animateSequentialHighlights_S5(startAngle, endAngle, totalDuration, pattern, token, color = 'red') {
+  const angles = [];
+  const step_S5 = (endAngle > startAngle) ? 10 : -10;
+  let current = startAngle;
+
+  while (true) {
+    angles.push(current);
+    if (Math.abs(current - endAngle) < 0.01) break;
+
+    const next = current + step_S5;
+    if ((step_S5 > 0 && next > endAngle) || (step_S5 < 0 && next < endAngle)) {
+      current = endAngle;
+    } else {
+      current = next;
+    }
+  }
+
+  const stepDuration = totalDuration / angles.length;
+  angles.forEach((angle, index) => {
+    setTimeout(() => {
+      if (token !== animationToken_S5) return;
+      highlightDegree_S5(angle, pattern, stepDuration, token, color);
+    }, index * stepDuration);
+  });
+}
+
+// highlightDegree_S5 修正版
+function highlightDegree_S5(angle, pattern, durationMs, token, color = 'red') {
+  const norm = normalizeDeg_S5(angle);
+  const isInner = (pattern === 'A');
+  const localAngle = norm; // 両スケールとも直接値を読む（修正）
+
+  const isMultipleOf10 = (Math.abs(localAngle % 10) < 0.1);
+
+  let el = null;
+  if (isMultipleOf10) {
+    const lookup = Math.round(localAngle);
+    if (isInner) {
+      el = document.querySelector(`.s5-num-inner.s5-deg-${lookup}`);
+    } else {
+      el = document.querySelector(`.s5-num-outer.s5-deg-${lookup}`);
+    }
+  }
+
+  if (!el) {
+    el = createDynamicAngleLabel_S5(localAngle, isInner, color);
+  }
+
+  if (el) {
+    el.style.transitionDuration = durationMs + 'ms';
+    const isZero = Math.abs(angle - 0) < 0.1 || Math.abs(angle - 180) < 0.1;
+    if (color === 'blue') {
+      el.classList.add(isZero ? 'highlight-zero-blue' : 'highlight-text-blue');
+    } else {
+      el.classList.add(isZero ? 'highlight-zero' : 'highlight-text');
+    }
+  }
+}
+
+// createDynamicAngleLabel_S5 修正版（内側スケールの位置計算を修正）
+function createDynamicAngleLabel_S5(localAngle, isInner, color = 'red') {
+  const R = 180;
+  const container = document.getElementById('s5-dynamic-angle-labels');
+  if (!container) return null;
+
+  let rad;
+  if (isInner) {
+    // 内側スケール：右端(+x方向)が0°、反時計回り(数学的)に増加
+    rad = localAngle * Math.PI / 180;
+  } else {
+    // 外側スケール：左端(-x方向)が0°、反時計回り(数学的)に増加
+    rad = (180 - localAngle) * Math.PI / 180;
+  }
+
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  const radius = isInner ? (R - 44) : (R - 26);
+  const x = radius * cos;
+  const y = -radius * sin;
+
+  const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  textEl.setAttribute('x', x);
+  textEl.setAttribute('y', y);
+  textEl.setAttribute('class', color === 'blue' ? 'dynamic-angle-label-blue' : 'dynamic-angle-label');
+  textEl.setAttribute('font-size', '16');
+  textEl.setAttribute('font-weight', 'bold');
+  textEl.setAttribute('text-anchor', 'middle');
+  textEl.setAttribute('dominant-baseline', 'central');
+  textEl.setAttribute('fill', color === 'blue' ? '#3498db' : '#e74c3c');
+  textEl.setAttribute('stroke', '#ffffff');
+  textEl.setAttribute('stroke-width', '3');
+  textEl.setAttribute('paint-order', 'stroke fill');
+  textEl.textContent = Math.round(localAngle);
+  textEl.style.opacity = '1';
+  textEl.style.transitionDuration = '0.3s';
+
+  container.appendChild(textEl);
+  return textEl;
+}
+
+// ==========================================
+// 発展：180°を超える角（優角）の2つの考え方
+// ==========================================
+// 方法1（180°＋残り）：まずどちらの直線(ア/イ)を延長するかを選んでもらう
+function showMethod1_S5() {
+  chosenMethod_S5 = 'method1';
+  MEASURE_MODE_S5 = 'target';
+  MEASURE_BASE_ROT_S5 = null;
+  MEASURE_ANGLE_S5 = null;
+  animationToken_S5++;
+  const myToken = animationToken_S5;
+
+  clearBlinkTargetSector_S5();
+  document.getElementById('s5-method-buttons').style.display = 'none';
+  document.getElementById('s5-extend-line-buttons').style.display = 'none';
+  document.getElementById('s5-line-extended').style.opacity = 0;
+  document.getElementById('s5-sector-correct').setAttribute('d', '');
+  document.getElementById('s5-sector-wrong').setAttribute('d', '');
+  document.getElementById('s5-sector-180').setAttribute('d', '');
+  document.getElementById('s5-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s5-sector-360-blink').style.opacity = 0;
+  document.getElementById('s5-sector-360-blink').setAttribute('d', '');
+  clearHighlights_S5();
+  clearArcLabels_S5();
+
+  document.getElementById('s5-instruction').innerText = `方法1: 180°＋残りの角度で求めよう！`;
+  document.getElementById('s5-sub-instruction').innerText = `方法1: 直線ア・イのどちらを延長して、まっすぐな180°の線を作る？`;
+  document.getElementById('s5-formula-badge').innerText = '';
+
+  document.getElementById('s5-extend-line-buttons').style.display = 'flex';
+}
+
+// 方法1で「どちらの直線を延長するか」が選ばれた後の処理
+// which: 'base'（直線ア）または 'term'（直線イ）
+function extendLineChoice_S5(which) {
+  animationToken_S5++;
+  const myToken = animationToken_S5;
+
+  document.getElementById('s5-extend-line-buttons').style.display = 'none';
+  document.getElementById('s5-sector-correct').setAttribute('d', '');
+  document.getElementById('s5-sector-wrong').setAttribute('d', '');
+  document.getElementById('s5-sector-180').setAttribute('d', '');
+  clearHighlights_S5();
+  clearArcLabels_S5();
+
+  const baseRay = BASE_LINE_ROT_S5;
+  const termRay = BASE_LINE_ROT_S5 - TARGET_ANGLE_S5;
+  const remainder = TARGET_ANGLE_S5 - 180;
+
+  let extAngle, sector180Start, sector180End, sector180Sweep, remStart, remEnd, remSweep, rayLabel;
+  if (which === 'base') {
+    // 直線ア（底辺）を延長する
+    extAngle = baseRay - 180;
+    sector180Start = baseRay; sector180End = baseRay - 180; sector180Sweep = 0;
+    remStart = baseRay - 180; remEnd = termRay; remSweep = 0;
+    rayLabel = 'ア';
+  } else {
+    // 直線イ（終端）を延長する
+    extAngle = termRay + 180;
+    sector180Start = termRay; sector180End = termRay + 180; sector180Sweep = 1;
+    remStart = termRay + 180; remEnd = baseRay; remSweep = 1;
+    rayLabel = 'イ';
+  }
+
+  document.getElementById('s5-sub-instruction').innerText = `直線${rayLabel}を、頂点の向こう側にまっすぐ点線でのばすよ。`;
+  document.getElementById('s5-formula-badge').innerText = '';
+
+  const lineExt = document.getElementById('s5-line-extended');
+  lineExt.setAttribute('x1', VERTEX_S5.x);
+  lineExt.setAttribute('y1', VERTEX_S5.y);
+  lineExt.setAttribute('x2', VERTEX_S5.x);
+  lineExt.setAttribute('y2', VERTEX_S5.y);
+  lineExt.style.opacity = 1;
+
+  // 延長線の基準（"base"を延長したときはその延長線、"term"を延長したときは元の底辺）から
+  // 残りの角度分だけ引くと、もう一方のもとの線に到達するように基準を揃えておく
+  const measureBaseRotLocal = (which === 'base') ? remStart : remEnd;
+
+  // 点線が頂点からすーっと伸びるアニメーション
+  animateLineGrowth_S5(lineExt, extAngle, 900, () => {
+    if (myToken !== animationToken_S5) return;
+    document.getElementById('s5-sub-instruction').innerText = `直線${rayLabel}がまっすぐになったね。これで半分（180°）ができたよ。`;
+
+    animateSector_S5('s5-sector-180', sector180Start, sector180End, sector180Sweep, SUB_DURATION_S5, () => {
+      if (myToken !== animationToken_S5) return;
+      addArcLabel_S5(sector180Start, sector180End, '180°', '#f39c12');
+
+      // 残りの角度はまだ測っていないので、赤扇形を自動表示せず、
+      // 紫色の点滅で「ここを測ろう」と示してから、実際に分度器で測ってもらう
+      MEASURE_MODE_S5 = 'remainder';
+      MEASURE_BASE_ROT_S5 = measureBaseRotLocal;
+      MEASURE_ANGLE_S5 = remainder;
+      drawBlinkTargetSector_S5(MEASURE_BASE_ROT_S5, MEASURE_ANGLE_S5);
+
+      document.getElementById('s5-instruction').innerText = `Step 1: 残りの角度を分度器で測ろう！`;
+      document.getElementById('s5-sub-instruction').innerText = `色のついた部分（点滅している角）が、残りの角度だよ。分度器の中心（＋マーク）を、角の頂点に重ねよう！`;
+      step_S5 = 1;
+    }, myToken);
+  }, myToken);
+}
+
+// 方法2が選ばれた直後（Step1の時点）の処理：ここではまだ角度は明かさず、
+// 分度器を頂点に合わせて実際に測ってもらう通常のStep1/Step2に進む
+function chooseMethod2_S5() {
+  chosenMethod_S5 = 'method2';
+  MEASURE_MODE_S5 = 'target';
+  MEASURE_BASE_ROT_S5 = null;
+  MEASURE_ANGLE_S5 = null;
+  animationToken_S5++;
+
+  clearBlinkTargetSector_S5();
+  document.getElementById('s5-method-buttons').style.display = 'none';
+  document.getElementById('s5-extend-line-buttons').style.display = 'none';
+  document.getElementById('s5-formula-badge').innerText = '';
+  document.getElementById('s5-sector-correct').setAttribute('d', '');
+  document.getElementById('s5-sector-wrong').setAttribute('d', '');
+  document.getElementById('s5-sector-180').setAttribute('d', '');
+  document.getElementById('s5-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s5-sector-360-blink').style.opacity = 0;
+  document.getElementById('s5-sector-360-blink').setAttribute('d', '');
+  clearHighlights_S5();
+  clearArcLabels_S5();
+
+  step_S5 = 1;
+  document.getElementById('s5-instruction').innerText = "Step 1: 分度器の中心（＋マーク）を、角の頂点に重ねよう！";
+  document.getElementById('s5-sub-instruction').innerText = "方法2: 一周360°から、分度器で直接測れる角度を引いて求めるよ。まずは分度器をドラッグして移動させてね。";
+}
+
+// 方法2：分度器が正しく合わせ終わった後（Step3到達時）に呼ばれ、実際の角度を明かして解説する
+function showMethod2_S5() {
+  animationToken_S5++;
+  const myToken = animationToken_S5;
+  const smallAngle = 360 - TARGET_ANGLE_S5;
+
+  document.getElementById('s5-extend-line-buttons').style.display = 'none';
+  document.getElementById('s5-line-extended').style.opacity = 0;
+  document.getElementById('s5-sector-180').setAttribute('d', '');
+  document.getElementById('s5-sector-correct').setAttribute('d', '');
+  document.getElementById('s5-sector-wrong').setAttribute('d', '');
+  document.getElementById('s5-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s5-sector-360-blink').style.opacity = 0;
+  document.getElementById('s5-sector-360-blink').setAttribute('d', '');
+  document.getElementById('s5-formula-badge').innerHTML = '';
+
+  clearHighlights_S5();
+  clearArcLabels_S5();
+
+  // まず一周＝360°であることを、黄色い円の点滅と"360°"の表示で確認する
+  document.getElementById('s5-sub-instruction').innerText = `方法2: まずは一周（ぐるっと1回転）が 360° であることを確認しよう！`;
+
+  showFullCircleIntro_S5(myToken, 1600, () => {
+    if (myToken !== animationToken_S5) return;
+
+    // 分度器で直接測れる部分は青色で表示する（これは「間違い」ではなく方法2の一部なので消さずに残す）。
+    // 逆側の0°から読んでしまった場合の間違った扇形・数字も一度見せてから砕け散らせて消す。
+    performDirectRead_S5(BASE_LINE_ROT_S5, smallAngle, readPattern_S5, () => {
+      if (myToken !== animationToken_S5) return;
+      // ※ ここで表示する「小さい方の角（分度器で直接測れる角）」のラベル位置は、
+      //   実際に描かれた扇形（getSectorAngles_S5 の結果）に合わせて算出する。
+      //   優角(方法2)では rightLineRot/leftLineRot が底辺⇔終端で入れ替わるため、
+      //   単純に「BASE_LINE_ROT_S5, BASE_LINE_ROT_S5 - smallAngle」を使うとパターン
+      //   （A/C）によっては実際の扇形と全く違う位置にラベルがずれてしまっていた。
+      const smallSector = getSectorAngles_S5(readPattern_S5, smallAngle);
+      addArcLabel_S5(smallSector.start, smallSector.end, `${smallAngle}°`, '#3498db');
+
+      setTimeout(() => {
+        if (myToken !== animationToken_S5) return;
+        document.getElementById('s5-sub-instruction').innerText = `360°から、測れた${smallAngle}°を引くと、求めたい角度になるよ。`;
+        document.getElementById('s5-formula-badge').innerHTML =
+          `<span style="color:#f39c12">360°</span> − <span style="color:#3498db">${smallAngle}°</span> = <span style="color:#e74c3c">${TARGET_ANGLE_S5}°</span>`;
+
+        // 優角の全体(TARGET_ANGLE_S5)を表す扇形はパターンA/Cどちらでも同じ形（底辺→終端）。赤で表示する。
+        const correctStart = BASE_LINE_ROT_S5;
+        const correctEnd = BASE_LINE_ROT_S5 - TARGET_ANGLE_S5; // TARGET_ANGLE_S5>180なのでend<start（減少）→sweep:0
+        const correctSweep = 0;
+        setSectorColor_S5('s5-sector-correct', 'red');
+        animateSector_S5('s5-sector-correct', correctStart, correctEnd, correctSweep, SUB_DURATION_S5 - 300, () => {
+          if (myToken !== animationToken_S5) return;
+          // 引き算の結果である優角(TARGET_ANGLE_S5)自体も、扇形の色（赤）に合わせて
+          // 強調した数字テキストで示す。半径は「180°」等の途中経過ラベルより少し
+          // 外側にして、最終的な答えであることが視覚的に区別できるようにする。
+          addArcLabel_S5(correctStart, correctEnd, `${TARGET_ANGLE_S5}°`, '#e74c3c', 120, 24);
+        }, myToken);
+      }, 350);
+    }, myToken, 'blue');
+  });
+}
+
+function clearHighlights_S5() {
+  document.querySelectorAll('.highlight-text, .highlight-zero, .highlight-text-blue, .highlight-zero-blue').forEach(e => {
+    e.classList.remove('highlight-text', 'highlight-zero', 'highlight-text-blue', 'highlight-zero-blue');
+  });
+  document.getElementById('s5-dynamic-angle-labels').innerHTML = '';
+  document.querySelectorAll('.shatter-frag').forEach(f => f.remove());
+}
+
+// 点線(延長線)が頂点からまっすぐ伸びていくアニメーション
+function animateLineGrowth_S5(lineEl, angleDeg, duration, callback, token) {
+  const myToken = (token !== undefined) ? token : animationToken_S5;
+  const startTime = performance.now();
+  const rad = angleDeg * Math.PI / 180;
+  const fullLen = 220;
+
+  function stepAnim(time) {
+    if (myToken !== animationToken_S5) return;
+
+    let progress = (time - startTime) / duration;
+    if (progress > 1) progress = 1;
+
+    const len = fullLen * progress;
+    lineEl.setAttribute('x2', VERTEX_S5.x + len * Math.cos(rad));
+    lineEl.setAttribute('y2', VERTEX_S5.y + len * Math.sin(rad));
+
+    if (progress < 1) {
+      requestAnimationFrame(stepAnim);
+    } else if (callback) {
+      callback();
+    }
+  }
+  requestAnimationFrame(stepAnim);
+}
+
+// 扇形の弧の中央あたりに角度のラベル（180°・残りの角度・確定した角度など）を置く
+// radius を既定より中心寄りにすることで、分度器の目盛り数字との干渉を避ける。
+// fontSize は強調のため既定を大きめにしてある。
+function addArcLabel_S5(startDeg, endDeg, text, colorHex, radius = 92, fontSize = 22) {
+  const container = document.getElementById('s5-method-arc-labels');
+  if (!container) return;
+
+  const mid = (startDeg + endDeg) / 2;
+  const rad = mid * Math.PI / 180;
+  const x = VERTEX_S5.x + radius * Math.cos(rad);
+  const y = VERTEX_S5.y + radius * Math.sin(rad);
+
+  const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  textEl.setAttribute('x', x);
+  textEl.setAttribute('y', y);
+  textEl.setAttribute('class', 'arc-confirm-label');
+  textEl.setAttribute('font-size', String(fontSize));
+  textEl.setAttribute('fill', colorHex);
+  textEl.textContent = text;
+  container.appendChild(textEl);
+  return textEl;
+}
+
+// 一周(360°)全体を頂点中心の円として点滅させ、"360°"のラベルを添えて示す。
+// durationMs 後に自動的に消えて callback を呼ぶ。
+function showFullCircleIntro_S5(token, durationMs, callback) {
+  const path = document.getElementById('s5-sector-360-blink');
+  const radius = 170;
+  const d = `M ${VERTEX_S5.x - radius} ${VERTEX_S5.y} A ${radius} ${radius} 0 1 1 ${VERTEX_S5.x + radius} ${VERTEX_S5.y} A ${radius} ${radius} 0 1 1 ${VERTEX_S5.x - radius} ${VERTEX_S5.y} Z`;
+  path.setAttribute('d', d);
+  path.style.opacity = 1;
+  path.classList.add('blink-360');
+
+  addArcLabel_S5(-90, -90, '360°', '#f39c12', 190, 24);
+
+  setTimeout(() => {
+    if (token !== animationToken_S5) return;
+    path.classList.remove('blink-360');
+    path.style.opacity = 0;
+    path.setAttribute('d', '');
+    clearArcLabels_S5();
+    if (callback) callback();
+  }, durationMs);
+}
+
+function clearArcLabels_S5() {
+  const container = document.getElementById('s5-method-arc-labels');
+  if (container) container.innerHTML = '';
+}
+
+// animateSector_S5 修正版（sweep パラメータ対応、トークンによるキャンセル対応）
+function animateSector_S5(elementId, startDeg, endDeg, sweepFlag, duration, callback, token) {
+  const myToken = (token !== undefined) ? token : animationToken_S5;
+  const path = document.getElementById(elementId);
+  const startTime = performance.now();
+  const radius = 170;
+  const sweep = (sweepFlag !== undefined) ? sweepFlag : (endDeg < startDeg ? 0 : 1);
+
+  function stepAnim(time) {
+    if (myToken !== animationToken_S5) {
+      path.setAttribute('d', '');
+      return;
+    }
+
+    let progress = (time - startTime) / duration;
+    if (progress > 1) progress = 1;
+
+    const currentDeg = startDeg + (endDeg - startDeg) * progress;
+    const rad1 = startDeg * Math.PI / 180;
+    const rad2 = currentDeg * Math.PI / 180;
+
+    const x1 = VERTEX_S5.x + radius * Math.cos(rad1);
+    const y1 = VERTEX_S5.y + radius * Math.sin(rad1);
+    const x2 = VERTEX_S5.x + radius * Math.cos(rad2);
+    const y2 = VERTEX_S5.y + radius * Math.sin(rad2);
+
+    const largeArc = Math.abs(currentDeg - startDeg) > 180 ? 1 : 0;
+
+    const d = `M ${VERTEX_S5.x} ${VERTEX_S5.y} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x2} ${y2} Z`;
+    path.setAttribute('d', d);
+
+    if (progress < 1) {
+      requestAnimationFrame(stepAnim);
+    } else if (callback) {
+      callback();
+    }
+  }
+  requestAnimationFrame(stepAnim);
+}
+
+// ==========================================
+// リセット（アニメーション完全停止対応）
+// ==========================================
+function fullReset_S5() {
+  animationToken_S5++; // すべての進行中アニメーションをキャンセル
+
+  protractorState_S5 = { x: 150, y: 450, rot: 0 };
+  readPattern_S5 = 'A';
+  chosenMethod_S5 = null;
+  MEASURE_MODE_S5 = 'target';
+  MEASURE_BASE_ROT_S5 = null;
+  MEASURE_ANGLE_S5 = null;
+  updateProtractorTransform_S5();
+
+  ['s5-sector-correct', 's5-sector-wrong', 's5-sector-180', 's5-sector-360-blink'].forEach(id => {
+    document.getElementById(id).setAttribute('d', '');
+  });
+  document.getElementById('s5-sector-360-blink').classList.remove('blink-360');
+  document.getElementById('s5-sector-360-blink').style.opacity = 0;
+  document.getElementById('s5-line-extended').style.opacity = 0;
+
+  clearHighlights_S5();
+  clearArcLabels_S5();
+
+  document.getElementById('s5-formula-badge').innerText = '';
+
+  // ⑤は常に「直線がみじかい」状態からスタートする。まず延長してもらう。
+  raysExtended_S5 = false;
+  step_S5 = 0;
+  document.getElementById('s5-extend-ray-buttons').style.display = 'flex';
+  document.getElementById('s5-instruction').innerText = "Step 1: この直線は みじかくて、分度器の目もりまで とどかないよ！";
+  document.getElementById('s5-sub-instruction').innerText = "下の「直線をのばす」ボタンをおして、直線を のばしてから測ろう。";
+
+  drawTargetAngle_S5();
+  drawBlinkTargetSector_S5();
+}
+
+
+
+</script>
+</body>
+</html>
