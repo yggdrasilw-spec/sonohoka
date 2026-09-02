@@ -647,7 +647,7 @@
       <div class="prompt" id="s1-compare-title">くらべてみよう</div>
       <svg id="s1-compare-svg" viewBox="0 0 1160 480" style="width:100%;height:430px;display:block;"></svg>
       <div style="text-align:center;">
-        <button class="action-btn blue" id="s1-fan-btn" onclick="showFans()">くちに あなをだす</button>
+        <button class="action-btn blue" id="s1-fan-btn" onclick="showFans()">くちの ひらき方を くらべる</button>
         <button class="action-btn" onclick="resetS1()" style="display:none" id="s1-again-btn">もういちど えらぶ</button>
       </div>
       <div id="s1-result"></div>
@@ -1421,8 +1421,7 @@ function showFans(){
   const svg=document.getElementById('s1-compare-svg');
   const NS='http://www.w3.org/2000/svg';
   const colors=['#3670D6','#E5525F'];
-  const SNOUT_BASE=60; // wanternParts の snoutLen と一致
-  const R_DEST=150;
+  const SNOUT_BASE=65; // wanternParts の snoutLen と一致
   s1FanState.forEach((st,i)=>{
     const localR = SNOUT_BASE * st.S; // ワニの口の実際の長さにピッタリ合わせる
     const d=fanPathLocal(st.w.mouth, localR);
@@ -1436,12 +1435,11 @@ function showFans(){
     st.origEl=orig;
     st.localR=localR;
   });
-  setTimeout(()=>flyFans(R_DEST,colors), 650);
+  setTimeout(()=>flyFans(), 650);
 }
 
-function flyFans(R_DEST,colors){
+function flyFans(){
   const svg=document.getElementById('s1-compare-svg');
-  const NS='http://www.w3.org/2000/svg';
   /* 角度が大きいほうを先に(下に)、小さいほうをあとで(上に)描くと、
      同じ頂点・同じ半径で重ねたときに小さい扇形の輪郭までちゃんと見える */
   const order = [0,1].sort((a,b)=> s1FanState[b].w.mouth - s1FanState[a].w.mouth);
@@ -1455,7 +1453,7 @@ function flyFans(R_DEST,colors){
     svg.appendChild(clone);
     clones[i]=clone;
   });
-  const dur=900, t0=performance.now();
+  const dur=850, t0=performance.now();
   function ease(p){ return 1-Math.pow(1-p,3); }
   function step(now){
     const p=ease(Math.min(1,(now-t0)/dur));
@@ -1463,15 +1461,48 @@ function flyFans(R_DEST,colors){
       const tx = st.hingeWorld.x + (st.destX-st.hingeWorld.x)*p;
       const ty = st.hingeWorld.y + (st.destY-st.hingeWorld.y)*p;
       const rot = -90*p;
-      const k = R_DEST / st.localR;
-      const sc = 1 + (k-1)*p; // それぞれの初期口長から共通のR_DESTに揃う
-      clones[i].setAttribute('transform',`translate(${tx},${ty}) rotate(${rot}) scale(${sc})`);
+      // 移動中は元の顎の長さ（スケール1）のまま移動する
+      clones[i].setAttribute('transform',`translate(${tx},${ty}) rotate(${rot}) scale(1)`);
     });
     if(p<1) requestAnimationFrame(step);
-    else { drawFanLabels(R_DEST); setTimeout(revealResult,300); }
+    else {
+      // 重ね合わせ完了後、少し間を置いて短い方の扇形を伸ばして半径を揃える
+      setTimeout(()=>expandFans(clones), 250);
+    }
   }
   requestAnimationFrame(step);
 }
+
+function expandFans(clones){
+  // 長い方のワニの顎の長さに合わせて揃える
+  const targetR = Math.max(s1FanState[0].localR, s1FanState[1].localR);
+  const diff = Math.abs(s1FanState[0].localR - s1FanState[1].localR);
+
+  if(diff < 0.5){
+    // もともと同じ長さの場合はそのまま表示
+    drawFanLabels(targetR);
+    setTimeout(revealResult,300);
+    return;
+  }
+
+  const dur=700, t0=performance.now();
+  function ease(p){ return 1-Math.pow(1-p,3); }
+  function step(now){
+    const p=ease(Math.min(1,(now-t0)/dur));
+    s1FanState.forEach((st,i)=>{
+      const k = targetR / st.localR;
+      const sc = 1 + (k-1)*p; // 短い方の扇形が長い方に合わせてスーッと伸びる
+      clones[i].setAttribute('transform',`translate(${S1_VERTEX.x},${S1_VERTEX.y}) rotate(-90) scale(${sc})`);
+    });
+    if(p<1) requestAnimationFrame(step);
+    else {
+      drawFanLabels(targetR);
+      setTimeout(revealResult,300);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
 function drawFanLabels(R_DEST){
   const svg=document.getElementById('s1-compare-svg');
   const NS='http://www.w3.org/2000/svg';
