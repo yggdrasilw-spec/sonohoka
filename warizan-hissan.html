@@ -1793,14 +1793,24 @@ class AdvancedDivisionEngine {
                 });
             }
 
-            if (dvdParse.hasDot) {
+            const showRemainderDot = (dvdParse.hasDot || divParse.hasDot || finalRemainderStr.indexOf('.') !== -1);
+            if (showRemainderDot) {
                 currentDots.remainder = dvdParse.dotAfter + M;
                 currentDots.remainderRow = currentRow;
 
                 const remainderWriteCells = [];
-                if (remainderNeedsLeadingZero) {
-                    // 0.4 のように、0 を書く
-                    remainderWriteCells.push({ r: currentRow, c: currentDots.remainder - 1, char: "0" });
+                if (finalRemainderStr.indexOf('.') !== -1) {
+                    const [intPart, decPart] = finalRemainderStr.split('.');
+                    if (intPart === "0") {
+                        remainderWriteCells.push({ r: currentRow, c: currentDots.remainder - 1, char: "0" });
+                    }
+                    for (let dIdx = 0; dIdx < decPart.length; dIdx++) {
+                        const targetRemCol = currentDots.remainder + dIdx;
+                        const alreadyDropped = (finalDvdDotAfter < N) && (dIdx < N - finalDvdDotAfter);
+                        if (!alreadyDropped && decPart[dIdx] === "0") {
+                            remainderWriteCells.push({ r: currentRow, c: targetRemCol, char: "0", isNewZero: true });
+                        }
+                    }
                 }
 
                 steps.push({
@@ -1808,7 +1818,7 @@ class AdvancedDivisionEngine {
                     description: remainderNeedsLeadingZero
                         ? `【あまりの小数点】あまりが 0.4 の形になるときは、0 を書いたあと、もとの小数点からまっすぐ下におろして打ちます。`
                         : `【あまりの小数点】わられる数の「もとの小数点」からまっすぐ下におろして打ちます。`,
-                    dots: { ...currentDots }, maskFromCol: currentMaskFromCol, pulseBoxes: [],
+                    dots: { ...currentDots }, maskFromCol: currentMaskFromCol,
                     writeCells: remainderWriteCells,
                     pulseBoxes: remainderWriteCells.map(cell => ({ r: cell.r, c: cell.c }))
                 });
@@ -2026,17 +2036,20 @@ function initSimulation() {
     // 内部で先に整数商を最後まで計算し、余りの有無→割り切れるか、の順で分岐
     const divParse = parseNumberMeta(divisorStr);
     const dvdParse = parseNumberMeta(dividendStr);
-    const scale = Math.pow(10, divParse.decimalPlaces);
-    const scaledDividend = Math.round(parseFloat(dividendStr) * scale);
-    const scaledDivisor = parseInt(divParse.digits, 10);
-
-    const integerRemainder = scaledDividend % scaledDivisor;
+    const D = divParse.decimalPlaces;
+    const dvdNum = parseFloat(dividendStr);
+    const divNum = parseFloat(divisorStr);
+    const movedDvdInt = Math.floor(dvdNum * Math.pow(10, D));
+    const movedDivInt = Math.round(divNum * Math.pow(10, D));
+    const qInt = Math.floor(movedDvdInt / movedDivInt);
+    const remNum = Math.round((dvdNum - divNum * qInt) * 1e10) / 1e10;
+    const hasRemainder = Math.abs(remNum) > 1e-9;
     const dividesOut = AdvancedDivisionEngine.checkWillDivideOut(dividendStr, divisorStr);
 
     // 選択肢を作り直す前の値を保持して、再初期化で強制的に戻らないようにする
     const previousRoute = calcRoute.value || 'remainder';
 
-    if (integerRemainder !== 0) {
+    if (hasRemainder) {
         questionZone.style.display = 'flex';
         calcRoute.innerHTML = `
             <option value="remainder">あまりを出す 【4年生向け】</option>
