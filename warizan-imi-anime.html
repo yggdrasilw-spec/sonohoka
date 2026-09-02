@@ -686,9 +686,53 @@ button{
   to{   transform:scale(1);  opacity:1; }
 }
 
+/* ===== 音声ON/OFFボタン ===== */
+.sound-toggle-btn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  padding: 0;
+  line-height: 1;
+  transition: transform 0.1s ease, filter 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.sound-toggle-btn:active {
+  transform: scale(0.92);
+}
+.sound-toggle-btn.sound-off {
+  filter: grayscale(1) opacity(0.45);
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+/* 素材ボタン内の人型SVGアイコン */
+.materialBtn svg.personIconSvg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 </style>
 </head>
 <body>
+<!-- 音声ON/OFFボタン（全画面共通固定） -->
+<button class="sound-toggle-btn" id="soundBtn" aria-pressed="true" title="音声 ON/OFF">🔊</button>
+
 <!-- 表紙画面 -->
 <div id="cover">
   <div id="coverInner">
@@ -705,13 +749,20 @@ button{
       </div>
     </div>
     <div class="coverMaterialRow">
-      <div class="coverMaterialLabel">なにに分ける？</div>
+      <div class="coverMaterialLabel">何に（で）分ける？</div>
       <div class="coverMaterialBtns" id="containerBtns">
-        <button class="materialBtn selected" data-cont="0">🍽️<span>お皿</span></button>
-        <button class="materialBtn" data-cont="1">🪴<span>鉢</span></button>
-        <button class="materialBtn" data-cont="2">📦<span>箱</span></button>
-        <button class="materialBtn" data-cont="3">👜<span>袋</span></button>
-        <button class="materialBtn" data-cont="4">🧺<span>かご</span></button>
+        <button class="materialBtn selected" data-cont="0">
+          <svg class="personIconSvg" viewBox="0 0 24 24">
+            <circle cx="12" cy="6" r="4.5" fill="#222"/>
+            <polygon points="12,12 21,22 3,22" fill="#222"/>
+          </svg>
+          <span>人</span>
+        </button>
+        <button class="materialBtn" data-cont="1">🍽️<span>お皿</span></button>
+        <button class="materialBtn" data-cont="2">🪴<span>鉢</span></button>
+        <button class="materialBtn" data-cont="3">📦<span>箱</span></button>
+        <button class="materialBtn" data-cont="4">👜<span>袋</span></button>
+        <button class="materialBtn" data-cont="5">🧺<span>かご</span></button>
       </div>
     </div>
     <div class="coverInputRow">
@@ -825,6 +876,325 @@ const dotLayer = document.getElementById("dotLayer");
 const coverLayer = document.getElementById("coverLayer");
 const stageCaption = document.getElementById("stageCaption");
 
+// ==========================================
+// 音声・効果音（TTS & Web Audio SE）モジュール
+// ==========================================
+let soundEnabled = true;
+try {
+  const saved = localStorage.getItem("warizan-imi-sound-enabled");
+  if (saved !== null) soundEnabled = (saved === "1");
+} catch (e) {}
+
+const soundBtn = document.getElementById("soundBtn");
+
+function updateSoundButtonUI() {
+  if (!soundBtn) return;
+  soundBtn.classList.toggle("sound-off", !soundEnabled);
+  soundBtn.setAttribute("aria-pressed", soundEnabled ? "true" : "false");
+  soundBtn.title = soundEnabled ? "音声 ON（タップでOFF）" : "音声 OFF（タップでON）";
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  try { localStorage.setItem("warizan-imi-sound-enabled", soundEnabled ? "1" : "0"); } catch (e) {}
+  updateSoundButtonUI();
+  if (soundEnabled) {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    playSound('click');
+    speakText("おんせいをオンにしました");
+  } else {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+}
+if (soundBtn) {
+  soundBtn.addEventListener("click", toggleSound);
+  updateSoundButtonUI();
+}
+
+// --- Web Audio API 効果音 ---
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) audioCtx = new AudioContextClass();
+  }
+}
+
+function playSound(type) {
+  if (!soundEnabled) return;
+  try {
+    initAudio();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    const now = audioCtx.currentTime;
+
+    if (type === 'click') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(650, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+      g.gain.setValueAtTime(0.08, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.06);
+    } else if (type === 'drop') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(680, now + 0.04);
+      g.gain.setValueAtTime(0.06, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.05);
+    } else if (type === 'step') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(700, now);
+      osc.frequency.exponentialRampToValueAtTime(950, now + 0.06);
+      g.gain.setValueAtTime(0.06, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.07);
+    } else if (type === 'bell') {
+      [880, 1320].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = f;
+        const st = now + i * 0.08;
+        g.gain.setValueAtTime(0.07, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + 0.2);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(st); osc.stop(st + 0.22);
+      });
+    } else if (type === 'notice') {
+      [440, 392].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+        const st = now + i * 0.12;
+        g.gain.setValueAtTime(0.07, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + 0.14);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(st); osc.stop(st + 0.15);
+      });
+    } else if (type === 'fanfare') {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+        const st = now + i * 0.09;
+        g.gain.setValueAtTime(0.08, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + 0.24);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(st); osc.stop(st + 0.25);
+      });
+    }
+  } catch (e) {}
+}
+
+// --- ひらがな変換＆音声読み上げ（TTS） ---
+const TTS_ONE_DIGIT = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+const TTS_TENS = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう"];
+
+function numToHira(n) {
+  n = parseInt(n, 10);
+  if (isNaN(n) || n <= 0) return "れい";
+  if (n < 10) return TTS_ONE_DIGIT[n];
+  if (n < 100) {
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    return TTS_TENS[t] + TTS_ONE_DIGIT[o];
+  }
+  return String(n);
+}
+
+// 助数詞や数詞の特殊な読みを安全にひらがな化
+function convertSpecialCounters(text) {
+  return text
+    // 人
+    .replace(/1人分|１人分|一人分/g, "ひとりぶん")
+    .replace(/1人に|１人に/g, "ひとりに")
+    .replace(/1人|１人|一人/g, "ひとり")
+    .replace(/2人|２人|二人/g, "ふたり")
+    .replace(/3人|３人/g, "さんにん")
+    .replace(/4人|４人/g, "よにん")
+    .replace(/5人|５人/g, "ごにん")
+    .replace(/6人|６人/g, "ろくにん")
+    .replace(/7人|７人/g, "ななにん")
+    .replace(/8人|８人/g, "はちにん")
+    .replace(/9人|９人/g, "きゅうにん")
+    .replace(/何人に/g, "なんにんに")
+    .replace(/何人/g, "なんにん")
+    // 個
+    .replace(/1個|１個|1こ|１こ/g, "いっこ")
+    .replace(/6個|６個|6こ|６こ/g, "ろっこ")
+    .replace(/8個|８個|8こ|８こ/g, "はっこ")
+    .replace(/10個|１０個|10こ|１０こ/g, "じゅっこ")
+    .replace(/何個|何こ/g, "なんこ")
+    // 本
+    .replace(/1本|１本/g, "いっぽん")
+    .replace(/2本|２本/g, "にほん")
+    .replace(/3本|３本/g, "さんぼん")
+    .replace(/4本|４本/g, "よんほん")
+    .replace(/6本|６本/g, "ろっぽん")
+    .replace(/8本|８本/g, "はっぽん")
+    .replace(/10本|１０本/g, "じゅっぽん")
+    .replace(/何本/g, "なんぼん")
+    // 枚
+    .replace(/1枚|１枚|1まい|１まい/g, "いちまい")
+    .replace(/何枚|何まい/g, "なんまい")
+    // 袋
+    .replace(/1袋|１袋|1ふくろ|１ふくろ/g, "ひとふくろ")
+    .replace(/2袋|２袋|2ふくろ|２ふくろ/g, "ふたふくろ")
+    .replace(/何袋|何ふくろ/g, "なんぷくろ");
+}
+
+// 算数用語・一般用語をひらがなへ変換（揺れ防止）
+const TTS_WORD_REPLACE = [
+  [/÷|／/g, "わる"],
+  [/×|✕/g, "かける"],
+  [/＝|=/g, "わ"],
+  [/−|―|ー|\-/g, "ひく"],
+  [/＋|\+/g, "たす"],
+  [/□/g, "しかく"],
+  [/＝\s*[？?]/g, "わ？"],
+  [/\?/g, "？"],
+  [/…|・/g, "、"],
+  [/わり算/g, "わりざん"],
+  [/かけ算/g, "かけざん"],
+  [/あなあき/g, "あなあき"],
+  [/あまり/g, "あまり"],
+  [/九九/g, "くく"],
+  [/のだん/g, "のだん"],
+  [/分けると/g, "わけると"],
+  [/分ける/g, "わける"],
+  [/分けられる/g, "わけられる"],
+  [/同じ数ずつ/g, "おなじかずずつ"],
+  [/用意しよう/g, "よういしよう"],
+  [/用意/g, "ようい"],
+  [/入れると/g, "いれると"],
+  [/入れる/g, "いれる"],
+  [/入る/g, "はいる"],
+  [/引くよ/g, "ひくよ"],
+  [/引く/g, "ひく"],
+  [/だから/g, "だから"],
+  [/絵がなくても/g, "えがなくても"],
+  [/同じ考え方で/g, "おなじかんがえかたで"],
+  [/考え方/g, "かんがえかた"],
+  [/同じように/g, "おなじように"],
+  [/どんなものでも/g, "どんなものでも"],
+  [/たくさん/g, "たくさん"],
+  [/使って|使うよ|使う/g, "つかうよ"],
+  [/時|とき/g, "とき"],
+  [/一番近くて/g, "いちばんちかくて"],
+  [/一番大きい/g, "いちばんおおきい"],
+  [/一番/g, "いちばん"],
+  [/大きく|大きい/g, "おおきい"],
+  [/大きすぎる/g, "おおきすぎる"],
+  [/数/g, "かず"],
+  [/いちご/g, "いちご"],
+  [/花/g, "はな"],
+  [/カード/g, "かーど"],
+  [/鉛筆/g, "えんぴつ"],
+  [/みかん/g, "みかん"],
+  [/人/g, "ひと"],
+  [/お皿/g, "おさら"],
+  [/鉢/g, "はち"],
+  [/箱/g, "はこ"],
+  [/袋/g, "ふくろ"],
+  [/かご/g, "かご"],
+  [/分/g, "ぶん"]
+];
+
+function convertTextForSpeech(text) {
+  if (!text) return "";
+  let t = String(text);
+
+  // HTMLタグ・エンティティの除去
+  t = t.replace(/<[^>]*>/g, " ");
+  t = t.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ");
+
+  // 特殊な助数詞（1人分、1人、何人など）の処理
+  t = convertSpecialCounters(t);
+
+  // 全角数字を半角に変換
+  t = t.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+  // 残る数字をひらがなへ変換
+  t = t.replace(/\d+/g, m => numToHira(m));
+
+  // 算数用語・記号・単語をひらがなへ変換
+  for (const [pattern, rep] of TTS_WORD_REPLACE) {
+    t = t.replace(pattern, rep);
+  }
+
+  // 括弧などの記号の整理
+  t = t.replace(/[【】「」『』()（）]/g, " ")
+       .replace(/[、]{2,}/g, "、")
+       .replace(/\s+/g, " ")
+       .trim();
+
+  return t;
+}
+
+let ttsJaVoice = null;
+function ttsPickVoice() {
+  if (!("speechSynthesis" in window)) return;
+  const voices = window.speechSynthesis.getVoices();
+  ttsJaVoice = voices.find(v => v.lang === "ja-JP") || voices.find(v => v.lang && v.lang.startsWith("ja")) || null;
+}
+if ("speechSynthesis" in window) {
+  ttsPickVoice();
+  window.speechSynthesis.onvoiceschanged = ttsPickVoice;
+}
+
+function speakText(rawText, opts = {}) {
+  if (!("speechSynthesis" in window)) return;
+  if (!soundEnabled && !opts.forceWarmup) return;
+
+  const utter = new SpeechSynthesisUtterance();
+  utter.lang = "ja-JP";
+  if (ttsJaVoice) utter.voice = ttsJaVoice;
+  utter.rate = opts.rate || 1.05;
+  utter.pitch = 1.0;
+  utter.volume = typeof opts.volume === "number" ? opts.volume : 1.0;
+  utter.text = opts.raw ? String(rawText) : convertTextForSpeech(rawText);
+
+  try {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  } catch (e) {}
+}
+
+// 起動時のウォームアップ（無音で1音）
+function ttsWarmup() {
+  if (!("speechSynthesis" in window)) return;
+  speakText("ん", { raw: true, volume: 0, forceWarmup: true });
+}
+window.addEventListener("load", () => {
+  setTimeout(ttsWarmup, 250);
+});
+
+// ユーザーの初回タップでのアンロック
+function unlockUserAudio() {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  ttsWarmup();
+  window.removeEventListener('pointerdown', unlockUserAudio);
+  window.removeEventListener('keydown', unlockUserAudio);
+}
+window.addEventListener('pointerdown', unlockUserAudio, { once: true });
+window.addEventListener('keydown', unlockUserAudio, { once: true });
+
 // ===== 素材定義 =====
 const THINGS = [
   { emoji:"🍓", name:"いちご", unit:"こ" },
@@ -834,6 +1204,7 @@ const THINGS = [
   { emoji:"🍊", name:"みかん", unit:"こ" },
 ];
 const CONTAINERS = [
+  { name:"人",   counter:"人",   isPerson:true },
   { name:"お皿", counter:"まい" },
   { name:"鉢",   counter:"こ" },
   { name:"箱",   counter:"こ" },
@@ -852,6 +1223,7 @@ document.getElementById("abstractToggle").addEventListener("change", e => {
 document.getElementById("materialBtns").addEventListener("click", e => {
   const btn = e.target.closest(".materialBtn[data-thing]");
   if(!btn) return;
+  playSound('click');
   document.querySelectorAll(".materialBtn[data-thing]").forEach(b => b.classList.remove("selected"));
   btn.classList.add("selected");
   selectedThing = THINGS[parseInt(btn.dataset.thing)];
@@ -861,6 +1233,7 @@ document.getElementById("materialBtns").addEventListener("click", e => {
 document.getElementById("containerBtns").addEventListener("click", e => {
   const btn = e.target.closest(".materialBtn[data-cont]");
   if(!btn) return;
+  playSound('click');
   document.querySelectorAll(".materialBtn[data-cont]").forEach(b => b.classList.remove("selected"));
   btn.classList.add("selected");
   selectedContainer = CONTAINERS[parseInt(btn.dataset.cont)];
@@ -876,7 +1249,10 @@ const coverEl  = document.getElementById("cover");
 const appEl    = document.getElementById("app");
 const mode2El  = document.getElementById("mode2");
 
-function showCover(){ coverEl.style.display="flex"; appEl.style.display="none"; mode2El.style.display="none"; }
+function showCover(){
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  coverEl.style.display="flex"; appEl.style.display="none"; mode2El.style.display="none";
+}
 function showApp()  { coverEl.style.display="none"; appEl.style.display="flex"; mode2El.style.display="none"; }
 function showMode2(){ coverEl.style.display="none"; appEl.style.display="none"; mode2El.style.display="flex"; }
 
@@ -893,6 +1269,7 @@ function getCoverValues(){
 }
 
 document.getElementById("goModeA").addEventListener("click", () => {
+  playSound('click');
   const vals = getCoverValues(); if(!vals) return;
   document.getElementById("dividend").value = vals.d;
   document.getElementById("divisor").value  = vals.v;
@@ -900,8 +1277,8 @@ document.getElementById("goModeA").addEventListener("click", () => {
   setTimeout(() => startAnimation(), 100);
 });
 
-
 document.getElementById("goModeB").addEventListener("click", () => {
+  playSound('click');
   const vals = getCoverValues(); if(!vals) return;
   document.getElementById("m2Dividend").value = vals.d;
   document.getElementById("m2Divisor").value  = vals.v;
@@ -909,8 +1286,18 @@ document.getElementById("goModeB").addEventListener("click", () => {
   setTimeout(() => startMode2(vals.d, vals.v), 100);
 });
 
-document.getElementById("m2BackBtn").addEventListener("click", showCover);
+document.getElementById("appBackBtn").addEventListener("click", () => {
+  playSound('click');
+  showCover();
+});
+
+document.getElementById("m2BackBtn").addEventListener("click", () => {
+  playSound('click');
+  showCover();
+});
+
 document.getElementById("m2StartBtn").addEventListener("click", () => {
+  playSound('click');
   const d = parseInt(document.getElementById("m2Dividend").value);
   const v = parseInt(document.getElementById("m2Divisor").value);
   const notice = document.getElementById("m2Notice");
@@ -956,33 +1343,55 @@ async function startMode2(dividend, divisor){
   function waitM2(){
     return new Promise(res => {
       m2Next.disabled = false;
-      m2Next.onclick = () => { m2Next.disabled = true; res(); };
+      m2Next.onclick = () => {
+        playSound('click');
+        m2Next.disabled = true;
+        res();
+      };
     });
   }
 
   function setEq(...lines){ m2Eq.innerHTML = lines.join(""); }
 
+  const mat = selectedThing;
+  const cont = selectedContainer;
+  const isPerson = !!cont.isPerson;
+
   // S1
   m2Text.innerHTML = "たくさんの数を分けるときには<br>わり算を使うよ。";
   m2Eq.innerHTML = ""; m2Rem.innerHTML = "";
+  speakText("たくさんの数を分けるときにはわり算を使うよ。");
+  playSound('step');
   await waitM2();
 
   // S2
-  m2Text.innerHTML = `${dividend}このいちごがあって、<br>1人に${divisor}こずつ分けるとき、<br>何人に分けられる？`;
+  if (isPerson) {
+    m2Text.innerHTML = `${dividend}${mat.unit}の${mat.name}があって、<br>1人に${divisor}${mat.unit}ずつ分けるとき、<br>何人に分けられる？`;
+    speakText(`${dividend}${mat.unit}の${mat.name}があって、ひとりに${divisor}${mat.unit}ずつわけるとき、なんにんにわけられる？`);
+  } else {
+    m2Text.innerHTML = `${dividend}${mat.unit}の${mat.name}があって、<br>1${cont.counter}に${divisor}${mat.unit}ずつ分けるとき、<br>何${cont.counter}に分けられる？`;
+    speakText(`${dividend}${mat.unit}の${mat.name}があって、いち${cont.counter}に${divisor}${mat.unit}ずつわけるとき、なん${cont.counter}にわけられる？`);
+  }
+  playSound('step');
   await waitM2();
 
   // S3
   m2Text.innerHTML = "これは、わり算だね！";
   setEq(line1);
+  speakText(`これは、わり算だね！ ${dividend}わる${divisor}わ？`);
+  playSound('step');
   await waitM2();
 
   // S4
   m2Text.innerHTML = "あなあきかけ算で考えるよ。";
   setEq(line1, line2hole);
+  speakText(`あなあきかけ算で考えるよ。 ${divisor}かけるしかくわ${dividend}`);
+  playSound('step');
   await waitM2();
 
   // S4.5: 九九リストを横に表示
   m2Text.innerHTML = `${divisor}のだんの九九で考えると…`;
+  speakText(`${divisor}のだんの九九で考えると…`);
   // divisorの段を最大9まで列挙、dividendを超えた最初のもので止める
   const kuList = [];
   for(let i = 1; i <= 9; i++){
@@ -1005,16 +1414,22 @@ async function startMode2(dividend, divisor){
       `<div>${line1}${line2hole}</div>`+
       `<div class="m2SideBox">${kuLines}</div>`+
     `</div>`;
+  playSound('step');
   await waitM2();
 
   if(remainder === 0){
     // S5 わりきれる
     m2Text.innerHTML = `ぴったりわりきれる！`;
     setEq(line1, line2fillEq);
+    speakText(`ぴったりわりきれる！しかくは${quotient}だね。`);
+    playSound('bell');
     await waitM2();
+
     // S6
     m2Text.innerHTML = "だから";
     m2Eq.innerHTML = `<span class="m2Line">${D}÷${V}＝${Q}</span><span class="m2Line" style="font-size:.7em">だね！</span>`;
+    speakText(`だから、${dividend}わる${divisor}わ${quotient}だね！`);
+    playSound('fanfare');
     m2Next.textContent = "もどる";
     await waitM2();
     showCover(); m2Next.textContent = "次へ";
@@ -1036,16 +1451,22 @@ async function startMode2(dividend, divisor){
       `<div>${line1}${line2ans}</div>`+
       `<div class="m2SideBox">${kuLines5}</div>`+
     `</div>`;
+  speakText(`${divisor}かける${quotient}わ${product}が、${dividend}にいちばんちかくていちばんおおきいかずだね。`);
+  playSound('notice');
   await waitM2();
 
   // S6
   m2Text.innerHTML = `${product}を${dividend}から引くよ`;
   m2Eq.innerHTML = line1 + line2ans + line3;
+  speakText(`${product}を${dividend}からひくよ。${dividend}ひく${product}わ${remainder}`);
+  playSound('step');
   await waitM2();
 
   // S7
   m2Text.innerHTML = "だから";
   m2Eq.innerHTML = line1 + line2ans + line3 + lineFinal;
+  speakText(`だから、${dividend}わる${divisor}わ${quotient}、あまり、${remainder}`);
+  playSound('fanfare');
   await waitM2();
   showCover();
 }
@@ -1054,6 +1475,7 @@ let resolver = null;
 let currentType = "A"; // "A"=等分除, "B"=包含除
 
 document.getElementById("typeBtn").addEventListener("click", () => {
+  playSound('click');
   currentType = currentType === "A" ? "B" : "A";
   const btn = document.getElementById("typeBtn");
   btn.textContent = currentType + "タイプ";
@@ -1068,6 +1490,7 @@ function waitNext(){
 }
 
 document.getElementById("nextBtn").addEventListener("click", () => {
+  playSound('click');
   if(resolver){
     resolver();
     resolver = null;
@@ -1252,10 +1675,19 @@ function spawnPerson(p, plateWidth, delay){
   return svg;
 }
 
-// 入れ物SVGを描く（containerType: お皿/鉢/箱/袋/かご）
+// 入れ物SVGを描く（containerType: 人/お皿/鉢/箱/袋/かご）
 function drawContainerSVG(svgNS, svg, w, h, containerType){
   const s = Math.min(w, h);
   switch(containerType){
+    case "人": {
+      // 人の手元の受け皿（トレイ）
+      const tray = document.createElementNS(svgNS, "ellipse");
+      tray.setAttribute("cx", w/2); tray.setAttribute("cy", h*0.72);
+      tray.setAttribute("rx", w*0.44); tray.setAttribute("ry", h*0.13);
+      tray.setAttribute("fill","#f1f5f9"); tray.setAttribute("stroke","#64748b"); tray.setAttribute("stroke-width","2.5");
+      svg.appendChild(tray);
+      break;
+    }
     case "お皿": {
       // 楕円のお皿
       const ellipse = document.createElementNS(svgNS, "ellipse");
@@ -1597,8 +2029,14 @@ function drawConcaveOutline(rowRects, parent, pad){
   return { left: svgLeft, top: svgTop, width: svgRight - svgLeft, height: svgBottom - svgTop };
 }
 
-document.getElementById("startBtn").addEventListener("click", startAnimation);
-document.getElementById("appBackBtn").addEventListener("click", showCover);
+document.getElementById("startBtn").addEventListener("click", () => {
+  playSound('click');
+  startAnimation();
+});
+document.getElementById("appBackBtn").addEventListener("click", () => {
+  playSound('click');
+  showCover();
+});
 
 // 初期表示は表紙
 appEl.style.display = "none";
@@ -1647,23 +2085,41 @@ async function startAnimation(){
   const usableH = plateHeight - innerPadY * 2;
   const cellW = usableW / colsInPlate;
   const cellH = usableH / rowsInPlate;
-  // ドットサイズはcellに収まるよう上限なし（下限10px）
   const plateDotSize = Math.max(10, Math.floor(Math.min(cellW, cellH) * 0.78));
 
   const mat = selectedThing;
   const cont = selectedContainer;
+  const isPerson = !!cont.isPerson;
 
   topText.innerHTML = "たくさんの数を分ける時にはわり算を使うよ。";
+  speakText("たくさんの数を分けるときにはわり算を使うよ。");
+  playSound('step');
   await waitNext();
 
-  topText.innerHTML = `${dividend}${mat.unit}の${mat.name}を、${divisor}${cont.counter}の${cont.name}に同じ数ずつ分けると、<br>１${cont.counter}分は何${mat.unit}になる？ ${dividend}÷${divisor}＝？`;
+  if (isPerson) {
+    // Aタイプ：２４このいちごを８人で同じ数ずつ分けると、一人分は何こになる？
+    topText.innerHTML = `${dividend}${mat.unit}の${mat.name}を、${divisor}人で同じ数ずつ分けると、<br>一人分は何${mat.unit}になる？ ${dividend}÷${divisor}＝？`;
+    speakText(`${dividend}${mat.unit}の${mat.name}を、${divisor}にんでおなじかずずつわけると、ひとりぶんはなん${mat.unit}になる？ ${dividend}わる${divisor}わ？`);
+  } else {
+    topText.innerHTML = `${dividend}${mat.unit}の${mat.name}を、${divisor}${cont.counter}の${cont.name}に同じ数ずつ分けると、<br>１${cont.counter}分は何${mat.unit}になる？ ${dividend}÷${divisor}＝？`;
+    speakText(`${dividend}${mat.unit}の${mat.name}を、${divisor}${cont.counter}の${cont.name}におなじかずずつわけると、いち${cont.counter}ぶんはなん${mat.unit}になる？ ${dividend}わる${divisor}わ？`);
+  }
+  playSound('step');
   await waitNext();
 
   middleText.innerHTML = `${mat.name}が${dividend}${mat.unit}あるね。`;
+  speakText(`${mat.name}が${dividend}${mat.unit}あるね。`);
   const dots = spawnDots(dividend, cols, dotSize, gapX, gapY, startX, startY, true);
+  playSound('step');
   await waitNext();
 
-  middleText.innerHTML = `${divisor}${cont.counter}の${cont.name}に分けるから、${cont.name}が${divisor}${cont.counter}だね。`;
+  if (isPerson) {
+    middleText.innerHTML = `${divisor}人で分けるから、人が${divisor}人だね。`;
+    speakText(`${divisor}にんでわけるから、ひとが${divisor}にんだね。`);
+  } else {
+    middleText.innerHTML = `${divisor}${cont.counter}の${cont.name}に分けるから、${cont.name}が${divisor}${cont.counter}だね。`;
+    speakText(`${divisor}${cont.counter}の${cont.name}にわけるから、${cont.name}が${divisor}${cont.counter}だね。`);
+  }
 
   // 人型→お皿を順次ポップアップ
   const plateDelay = divisor * 60 * 0.5;
@@ -1671,18 +2127,30 @@ async function startAnimation(){
     spawnPerson(p, plateWidth, i * 60);
     spawnPlate(p, plateWidth, plateHeight, plateDelay + i * 60);
   });
-
+  playSound('step');
   await waitNext();
 
   middleText.innerHTML = "分けてみよう";
+  speakText("わけてみよう");
+  playSound('step');
   await waitNext();
 
   // 抽象化ステップ（トグルONのときのみ）
   if(doAbstract){
-    middleText.innerHTML = `${mat.name}でも、花でも、カードでも…${cont.name}でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+    if (isPerson) {
+      middleText.innerHTML = `${mat.name}でも、花でも、カードでも…人でも、お皿でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+      speakText(`${mat.name}でも、はなでも、かーどでも、ひとでも、おさらでも、はこでも、どんなものでも、おなじようにわりざんできるよ！`);
+    } else {
+      middleText.innerHTML = `${mat.name}でも、花でも、カードでも…${cont.name}でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+      speakText(`${mat.name}でも、はなでも、かーどでも、${cont.name}でも、はこでも、どんなものでも、おなじようにわりざんできるよ！`);
+    }
+    playSound('step');
     await waitNext();
+
     middleText.innerHTML = "絵がなくても、同じ考え方で分けられるよ。";
+    speakText("えがなくても、おなじかんがえかたでわけられるよ。");
     await Promise.all([abstractDots(dots), abstractPlates()]);
+    playSound('step');
     await waitNext();
   }
 
@@ -1695,6 +2163,7 @@ async function startAnimation(){
     const rects = createRowBoxes(currentDots, round, dotSize);
     allBlueRects.push(...rects);
 
+    playSound('step');
     await waitNext();
 
     for(let j = 0; j < divisor; j++){
@@ -1714,6 +2183,7 @@ async function startAnimation(){
       setTimeout(() => {
         d.el.style.left = `${targetCx}px`;
         d.el.style.top = `${targetCy}px`;
+        playSound('drop');
       }, j * 60);
 
       d.cx = targetCx;
@@ -1737,46 +2207,65 @@ async function startAnimation(){
       });
     }
 
+    playSound('step');
     await waitNext();
 
     // ステップ7: □×divisor＝dividend を大きく表示
     middleText.innerHTML = `<span class="bigEq"><span class="eqBox blinkBox">□</span> × ${divisor} ＝ ${dividend}</span>`;
+    speakText(`しかく かける ${divisor} わ ${dividend}`);
+    playSound('bell');
     await waitNext();
 
     // ステップ8: □の中に答えを入れる
     middleText.innerHTML = `<span class="bigEq"><span class="eqBox filledBox">${quotient}</span> × ${divisor} ＝ ${dividend}</span>`;
+    speakText(`${quotient} かける ${divisor} わ ${dividend}`);
+    playSound('bell');
     await waitNext();
 
     coverLayer.innerHTML = "";
-    bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">１人分は${quotient}こだね。</span>`;
+    if (isPerson) {
+      bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">一人分は${quotient}${mat.unit}だね。</span>`;
+      speakText(`だから、${dividend}わる${divisor}わ${quotient}。ひとりぶんは${quotient}${mat.unit}だね。`);
+    } else {
+      bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">１${cont.counter}分は${quotient}${mat.unit}だね。</span>`;
+      speakText(`だから、${dividend}わる${divisor}わ${quotient}。いち${cont.counter}ぶんは${quotient}${mat.unit}だね。`);
+    }
+    playSound('fanfare');
     return;
   }
 
   // ステップ7: シンプルに一言
   middleText.innerHTML = `あまりがある（わりきれない）もんだいだね。`;
+  speakText("あまりがある、わりきれないもんだいだね。");
+  playSound('notice');
   await waitNext();
 
   // S8: 青枠はそのまま（recolorしない）
-  // 凹型SVGアウトラインを描く
   let s8CaptionText = `${quotient}×${divisor}＝<span class="purpleNum">${product}</span>`;
   let outlineRect = null;
   if(allBlueRects.length > 0){
     outlineRect = drawConcaveOutline(allBlueRects, groupLayer, 10);
   }
   setCaption(s8CaptionText, outlineRect);
+  speakText(`${quotient}かける${divisor}わ${product}`);
+  playSound('step');
 
   await waitNext();
 
-  // S9: あまりドットに黄リングを付ける。stageCaptionにS8の式＋改行＋あまり式を追記。黄楕円全体は出さない。
+  // S9: あまりドットに黄リングを付ける
   const remainDots = dots.slice(product);
   createRemainRings(remainDots, dotSize);
 
   const s9CaptionText = s8CaptionText + `<br>${dividend}−<span class="purpleNum">${product}</span>＝<span class="yellowNum">${remainder}</span>`;
   setCaption(s9CaptionText, outlineRect);
+  speakText(`${dividend}ひく${product}わ${remainder}`);
+  playSound('step');
 
   await waitNext();
 
   bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient} あまり ${remainder}`;
+  speakText(`だから、${dividend}わる${divisor}わ${quotient}、あまり、${remainder}`);
+  playSound('fanfare');
 }
 
 // ===== Bタイプ（包含除）=====
@@ -1806,37 +2295,70 @@ async function startAnimationB(dividend, divisor){
   const cellW       = usableW / colsInPlate;
   const cellH       = usableH / rowsInPlate;
 
+  const matB = selectedThing;
+  const contB = selectedContainer;
+  const isPersonB = !!contB.isPerson;
+
   // --- S1 ---
   topText.innerHTML = "たくさんの数を分ける時にはわり算を使うよ。";
+  speakText("たくさんの数を分けるときにはわり算を使うよ。");
+  playSound('step');
   await waitNext();
 
   // --- S2 ---
-  const matB = selectedThing;
-  const contB = selectedContainer;
-  topText.innerHTML = `${dividend}${matB.unit}の${matB.name}を、${contB.name}１${contB.counter}に${divisor}${matB.unit}ずつ入れると、<br>${contB.name}は何${contB.counter}いる？ ${dividend}÷${divisor}＝？`;
+  if (isPersonB) {
+    // Bタイプ：２４このいちごを１人に８こずつ分けると、何人に分けられる？
+    topText.innerHTML = `${dividend}${matB.unit}の${matB.name}を、１人に${divisor}${matB.unit}ずつ分けると、<br>何人に分けられる？ ${dividend}÷${divisor}＝？`;
+    speakText(`${dividend}${matB.unit}の${matB.name}を、ひとりに${divisor}${matB.unit}ずつわけると、なんにんにわけられる？ ${dividend}わる${divisor}わ？`);
+  } else {
+    topText.innerHTML = `${dividend}${matB.unit}の${matB.name}を、${contB.name}１${contB.counter}に${divisor}${matB.unit}ずつ入れると、<br>${contB.name}は何${contB.counter}いる？ ${dividend}÷${divisor}＝？`;
+    speakText(`${dividend}${matB.unit}の${matB.name}を、${contB.name}いち${contB.counter}に${divisor}${matB.unit}ずついれると、${contB.name}はなん${contB.counter}いる？ ${dividend}わる${divisor}わ？`);
+  }
+  playSound('step');
   await waitNext();
 
-  // --- S3 ドット出現（Aと共通）---
+  // --- S3 ドット出現 ---
   middleText.innerHTML = `${matB.name}が${dividend}${matB.unit}あるね。`;
+  speakText(`${matB.name}が${dividend}${matB.unit}あるね。`);
   const dots = spawnDots(dividend, cols, dotSize, gapX, gapY, startX, startY, true);
+  playSound('step');
   await waitNext();
 
-  // --- S4 1人目＋1枚目だけポップアップ（位置はallPlates[0]で確定済み）---
-  middleText.innerHTML = `１${contB.counter}に${divisor}${matB.unit}ずつ入れるから、まず${contB.name}を１${contB.counter}用意しよう。`;
+  // --- S4 1人目＋1枚目だけポップアップ ---
+  if (isPersonB) {
+    middleText.innerHTML = `１人に${divisor}${matB.unit}ずつ分けるから、まず人を１人用意しよう。`;
+    speakText(`ひとりに${divisor}${matB.unit}ずつわけるから、まずひとをひとりよういしよう。`);
+  } else {
+    middleText.innerHTML = `１${contB.counter}に${divisor}${matB.unit}ずつ入れるから、まず${contB.name}を１${contB.counter}用意しよう。`;
+    speakText(`いち${contB.counter}に${divisor}${matB.unit}ずついれるから、まず${contB.name}をいち${contB.counter}よういしよう。`);
+  }
   spawnPerson(allPlates[0], plateWidth, 0);
   spawnPlate(allPlates[0], plateWidth, plateHeight, 120);
+  playSound('step');
   await waitNext();
 
   // --- S5 ---
   middleText.innerHTML = "分けてみよう";
+  speakText("わけてみよう");
+  playSound('step');
   await waitNext();
 
   // 抽象化ステップ（トグルONのときのみ）
   if(doAbstract){
-    middleText.innerHTML = `${matB.name}でも、花でも、カードでも…${contB.name}でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+    if (isPersonB) {
+      middleText.innerHTML = `${matB.name}でも、花でも、カードでも…人でも、お皿でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+      speakText(`${matB.name}でも、はなでも、かーどでも、ひとでも、おさらでも、はこでも、どんなものでも、おなじようにわりざんできるよ！`);
+    } else {
+      middleText.innerHTML = `${matB.name}でも、花でも、カードでも…${contB.name}でも、箱でも…<br>どんなものでも、同じようにわり算できるよ！`;
+      speakText(`${matB.name}でも、はなでも、かーどでも、${contB.name}でも、はこでも、どんなものでも、おなじようにわりざんできるよ！`);
+    }
+    playSound('step');
     await waitNext();
+
     middleText.innerHTML = "絵がなくても、同じ考え方で分けられるよ。";
+    speakText("えがなくても、おなじかんがえかたでわけられるよ。");
     await Promise.all([abstractDots(dots), abstractPlates()]);
+    playSound('step');
     await waitNext();
   }
 
@@ -1849,6 +2371,7 @@ async function startAnimationB(dividend, divisor){
 
     const rects = createRowBoxes(currentDots, round, dotSize);
     allBlueRects.push(...rects);
+    playSound('step');
     await waitNext();
 
     // ドットをallPlates[round]に移動
@@ -1862,7 +2385,11 @@ async function startAnimationB(dividend, divisor){
       const ghost = make("div", "dot ghost", ghostLayer);
       ghost.style.width = `${dotSize}px`; ghost.style.height = `${dotSize}px`;
       ghost.style.left = `${d.cx}px`; ghost.style.top = `${d.cy}px`;
-      setTimeout(() => { d.el.style.left=`${targetCx}px`; d.el.style.top=`${targetCy}px`; }, j * 60);
+      setTimeout(() => {
+        d.el.style.left=`${targetCx}px`;
+        d.el.style.top=`${targetCy}px`;
+        playSound('drop');
+      }, j * 60);
       d.cx = targetCx; d.cy = targetCy;
     }
     await sleep(divisor * 60 + 600);
@@ -1872,7 +2399,6 @@ async function startAnimationB(dividend, divisor){
     if(round < quotient - 1){
       const np = allPlates[round + 1];
       if(doAbstract){
-        // 抽象化済み：シンプル黒枠のみ
         const nextPlate = make("div", "plate", platesLayer);
         nextPlate.style.left = `${np.x}px`; nextPlate.style.top = `${np.y}px`;
         nextPlate.style.width = `${plateWidth}px`; nextPlate.style.height = `${plateHeight}px`;
@@ -1881,7 +2407,6 @@ async function startAnimationB(dividend, divisor){
         nextPlate.style.opacity = "0"; nextPlate.style.transform = "scale(0.6)";
         setTimeout(() => { nextPlate.style.opacity="1"; nextPlate.style.transform="scale(1)"; }, 120);
       } else {
-        // 抽象化なし：人型＋SVG入れ物
         spawnPerson(np, plateWidth, 0);
         spawnPlate(np, plateWidth, plateHeight, 120);
       }
@@ -1892,6 +2417,7 @@ async function startAnimationB(dividend, divisor){
   // --- あまりなし ---
   if(remainder === 0){
     middleText.innerHTML = "いくつできたかな？";
+    speakText("いくつできたかな？");
     const labels = groupLayer.querySelectorAll(".sourceLabel");
     labels.forEach((lbl, i) => {
       if(i >= allPlates.length) return;
@@ -1902,34 +2428,54 @@ async function startAnimationB(dividend, divisor){
         lbl.style.top  = `${p.y + plateHeight / 2 - 8}px`;
       }, i * 120);
     });
+    playSound('step');
     await waitNext();
 
     middleText.innerHTML = `<span class="bigEq">${divisor} × <span class="eqBox blinkBox">□</span> ＝ ${dividend}</span>`;
+    speakText(`${divisor} かける しかく わ ${dividend}`);
+    playSound('bell');
     await waitNext();
 
     middleText.innerHTML = `<span class="bigEq">${divisor} × <span class="eqBox filledBox">${quotient}</span> ＝ ${dividend}</span>`;
+    speakText(`${divisor} かける ${quotient} わ ${dividend}`);
+    playSound('bell');
     await waitNext();
 
-    bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">${quotient}人に分けられたね。</span>`;
+    if (isPersonB) {
+      bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">${quotient}人に分けられたね。</span>`;
+      speakText(`だから、${dividend}わる${divisor}わ${quotient}。${quotient}にんにわけられたね。`);
+    } else {
+      bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient}<br><span style="font-size:.7em;color:#333;">${quotient}${contB.counter}の${contB.name}に分けられたね。</span>`;
+      speakText(`だから、${dividend}わる${divisor}わ${quotient}。${quotient}${contB.counter}の${contB.name}にわけられたね。`);
+    }
+    playSound('fanfare');
     return;
   }
 
   // --- あまりあり ---
   middleText.innerHTML = "あまりがある（わりきれない）もんだいだね。";
+  speakText("あまりがある、わりきれないもんだいだね。");
+  playSound('notice');
   await waitNext();
 
   let s8Caption = `${quotient}×${divisor}＝<span class="purpleNum">${product}</span>`;
   let outlineRect = null;
   if(allBlueRects.length > 0) outlineRect = drawConcaveOutline(allBlueRects, groupLayer, 0);
   setCaption(s8Caption, outlineRect);
+  speakText(`${quotient}かける${divisor}わ${product}`);
+  playSound('step');
   await waitNext();
 
   const remainDots = dots.slice(product);
   createRemainRings(remainDots, dotSize);
   setCaption(s8Caption + `<br>${dividend}−<span class="purpleNum">${product}</span>＝<span class="yellowNum">${remainder}</span>`, outlineRect);
+  speakText(`${dividend}ひく${product}わ${remainder}`);
+  playSound('step');
   await waitNext();
 
   bottomText.innerHTML = `だから、${dividend}÷${divisor}＝${quotient} あまり ${remainder}`;
+  speakText(`だから、${dividend}わる${divisor}わ${quotient}、あまり、${remainder}`);
+  playSound('fanfare');
 }
 
 </script>
