@@ -262,15 +262,25 @@
   /* ---------- Section 6 ---------- */
   #s6 .layout{display:flex;gap:20px;height:560px;}
   #s6 .left-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;}
-  #s6 .right-col{flex:0 0 340px;display:flex;flex-direction:column;align-items:center;}
-  #s6 .trick-buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px;}
-  #s6 .trick-buttons button{border:none;border-radius:12px;padding:10px 15px;font-family:inherit;
-    font-weight:800;font-size:14px;color:#fff;background:var(--pink);box-shadow:0 4px 0 var(--pink-d);cursor:pointer;}
-  #s6 .trick-buttons button:active{transform:translateY(3px);box-shadow:none;}
-  #s6 input[type=range]{width:280px;margin-top:16px;accent-color:var(--pink);}
-  #s6-dial-readout{text-align:center;margin-top:8px;}
-  #s6-dial-readout .deg{font-size:30px;font-weight:800;color:var(--pink-d);}
-  #s6-dial-readout .name{font-size:15px;color:var(--sub);margin-top:2px;}
+  #s6 .right-col{flex:0 0 380px;display:flex;flex-direction:column;align-items:center;}
+  #s6 .trick-buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:6px;}
+  #s6 .trick-buttons button{border:none;border-radius:10px;padding:6px 11px;font-family:inherit;
+    font-weight:800;font-size:13.5px;color:#fff;background:var(--pink);box-shadow:0 3px 0 var(--pink-d);cursor:pointer;}
+  #s6 .trick-buttons button:active{transform:translateY(2px);box-shadow:none;}
+  #s6 input[type=range]{width:300px;margin-top:8px;accent-color:var(--pink);}
+  #s6-dial-readout{text-align:center;margin-top:3px;}
+  #s6-dial-readout .deg{font-size:24px;font-weight:800;color:var(--pink-d);line-height:1.1;}
+  #s6-dial-readout .name{font-size:14px;font-weight:700;color:var(--ink);margin-top:2px;min-height:20px;}
+  .s6-guide-box{width:100%;background:#F8FAFC;border:2px solid #E2E8F0;border-radius:14px;padding:8px 12px;margin-top:6px;box-sizing:border-box;}
+  .s6-guide-title{font-size:13.5px;font-weight:800;color:var(--ink);margin-bottom:3px;display:flex;align-items:center;gap:6px;}
+  .s6-guide-desc{font-size:11.5px;color:var(--sub);line-height:1.4;margin-bottom:6px;}
+  .s6-trick-grid{display:grid;grid-template-columns:1fr;gap:3px;max-height:220px;}
+  .s6-trick-item{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid #E2E8F0;border-radius:7px;padding:3px 8px;font-size:12px;cursor:pointer;transition:all 0.15s;}
+  .s6-trick-item:hover{border-color:var(--pink);background:#FFF5F7;}
+  .s6-trick-item.active{border-color:var(--pink);background:#FFE8EE;font-weight:700;}
+  .s6-trick-item .t-deg{font-weight:800;color:var(--pink-d);min-width:44px;}
+  .s6-trick-item .t-turns{font-size:11px;color:var(--sub);min-width:52px;}
+  .s6-trick-item .t-read{font-weight:700;color:var(--ink);text-align:right;flex:1;}
 
   .stub-msg{text-align:center;color:var(--sub);font-size:18px;padding:60px 10px;}
   svg text{font-family:inherit;user-select:none;}
@@ -1015,6 +1025,11 @@
         <div class="trick-buttons" id="s6-trick-buttons"></div>
         <input type="range" id="s6-dial" min="0" max="1440" value="0" step="10">
         <div id="s6-dial-readout"><div class="deg" id="s6-dial-deg">0°</div><div class="name" id="s6-dial-name">まわしてみよう</div></div>
+        <div class="s6-guide-box">
+          <div class="s6-guide-title">🏂 スノーボードのわざの よびかた</div>
+          <div class="s6-guide-desc">まわった角度（英語の数字）が そのまま技の名前になっているよ！タップしても回るよ。</div>
+          <div class="s6-trick-grid" id="s6-trick-list"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1268,7 +1283,7 @@ function toggleSound(){
 
 /* ---- ボタン類のタップ効果音（イベント委譲） ---- */
 document.addEventListener('pointerdown', (e)=>{
-  const t = e.target.closest('button, .wani-slot, .n-buttons button, .trick-buttons button');
+  const t = e.target.closest('button, .wani-slot, .n-buttons button, .trick-buttons button, .s6-trick-item');
   if(t && t.id !== 'sound-toggle-btn') playSE('tap');
 }, {capture:true});
 document.addEventListener('change', (e)=>{
@@ -1280,7 +1295,7 @@ const SPEAK_TARGETS = [
   's1-result','s2b-info','s2b-counter','s2-readout','s3-note','s3-bad-note','s3-history-box',
   's4-instruction','s4-sub-instruction','s4-formula-badge',
   's5-instruction','s5-sub-instruction','s5-formula-badge',
-  's6-dial-deg','s6-dial-name'
+  's6-dial-deg'
 ];
 const lastSpokenText = {};
 let speakBatchTimer = null;
@@ -2137,11 +2152,13 @@ function toggleHistory(){
 /* ============ SECTION 6 ============ */
 let s6Mode='open';
 const TRICKS=[
-  {deg:360,name:'360（ワンさん）'},
-  {deg:540,name:'540（ファイブテン）'},
-  {deg:720,name:'720（ワンタイティ）'},
-  {deg:900,name:'900'},
-  {deg:1080,name:'1080'},
+  {deg:180, name:'180（ワン・エイティ）', read:'ワン・エイティ', turns:'半回転'},
+  {deg:360, name:'360（スリー・シックスティ）', read:'スリー・シックスティ', turns:'1回転'},
+  {deg:540, name:'540（ファイブ・フォーティ）', read:'ファイブ・フォーティ', turns:'1回転半'},
+  {deg:720, name:'720（セブン・トゥエンティ）', read:'セブン・トゥエンティ', turns:'2回転'},
+  {deg:900, name:'900（ナインハンドレッド）', read:'ナインハンドレッド', turns:'2回転半'},
+  {deg:1080, name:'1080（テン・エイティ）', read:'テン・エイティ', turns:'3回転'},
+  {deg:1440, name:'1440（フォーティーン・フォーティ）', read:'フォーティーン・フォーティ', turns:'4回転'},
 ];
 function s6DrawOpen(angle){
   const cx=280, cy=460, R=210;
@@ -2364,11 +2381,27 @@ function s6DrawTrickScene(deg){
 function initS6(){
   s6DrawOpen(70);
   const tb=document.getElementById('s6-trick-buttons');
+  tb.innerHTML='';
+  const list=document.getElementById('s6-trick-list');
+  if(list) list.innerHTML='';
   TRICKS.forEach(tr=>{
     const b=document.createElement('button');
-    b.textContent=tr.name.split('（')[0]+'°';
+    b.textContent=tr.deg+'°';
     b.onclick=()=>s6PlayTrick(tr);
     tb.appendChild(b);
+
+    if(list){
+      const row=document.createElement('div');
+      row.className='s6-trick-item';
+      row.id='s6-item-'+tr.deg;
+      row.innerHTML=`
+        <span class="t-deg">${tr.deg}°</span>
+        <span class="t-turns">${tr.turns}</span>
+        <span class="t-read">${tr.read}</span>
+      `;
+      row.onclick=()=>s6PlayTrick(tr);
+      list.appendChild(row);
+    }
   });
   const dial=document.getElementById('s6-dial');
   dial.addEventListener('input',()=>{
@@ -2376,6 +2409,7 @@ function initS6(){
     s6DrawTrickScene(v);
     document.getElementById('s6-dial-deg').textContent=v+'°';
     document.getElementById('s6-dial-name').textContent=nearestTrickName(v);
+    s6HighlightItem(v);
   });
 }
 function nearestTrickName(v){
@@ -2383,6 +2417,15 @@ function nearestTrickName(v){
   TRICKS.forEach(tr=>{ const d=Math.abs(tr.deg-v); if(d<bd){bd=d; best=tr;} });
   if(bd<=25) return best.name+' に ちかいよ';
   return 'わざの とちゅう…';
+}
+function s6HighlightItem(v){
+  let best=null, bd=Infinity;
+  TRICKS.forEach(tr=>{ const d=Math.abs(tr.deg-v); if(d<bd){bd=d; best=tr;} });
+  document.querySelectorAll('.s6-trick-item').forEach(el=>el.classList.remove('active'));
+  if(bd<=25 && best){
+    const activeEl = document.getElementById('s6-item-'+best.deg);
+    if(activeEl) activeEl.classList.add('active');
+  }
 }
 function s6PlayTrick(tr){
   const dial=document.getElementById('s6-dial');
@@ -2394,6 +2437,7 @@ function s6PlayTrick(tr){
     s6DrawTrickScene(cur);
     dial.value=Math.round(cur);
     document.getElementById('s6-dial-deg').textContent=Math.round(cur)+'°';
+    s6HighlightItem(Math.round(cur));
     if(p<1) requestAnimationFrame(step);
     else document.getElementById('s6-dial-name').textContent=tr.name+' の かんせい！';
   }
@@ -2411,6 +2455,7 @@ function s6SwitchView(){
     dial.value=0;
     s6DrawTrickScene(0);
     document.getElementById('s6-dial-deg').textContent='0°';
+    s6HighlightItem(0);
     const t0=performance.now(), dur=700, target=360;
     function step(now){
       const p=Math.min(1,(now-t0)/dur);
@@ -2418,6 +2463,7 @@ function s6SwitchView(){
       s6DrawTrickScene(cur);
       dial.value=Math.round(cur);
       document.getElementById('s6-dial-deg').textContent=Math.round(cur)+'°';
+      s6HighlightItem(Math.round(cur));
       if(p<1) requestAnimationFrame(step);
       else document.getElementById('s6-dial-name').textContent=nearestTrickName(cur);
     }
