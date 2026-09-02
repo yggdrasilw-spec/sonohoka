@@ -1181,52 +1181,61 @@ const WANIS = [
 ];
 let s1Selected = [];
 
-/* ヘルパー: 基準線(hx,hy)-(tx,ty)の「外側」にのみ牙を配置する関数
-   unx, uny: 外側向きの法線単位ベクトル
-   t1, t2: 基準線に沿った根本の位置比率
-   h: 歯の高さ (外側から基準線に向かって突き出す)
-   baseOffset: 歯茎（根本）の外側オフセット */
-function calcOuterTooth(hx, hy, tx, ty, unx, uny, t1, t2, baseOffset=6){
+/* 牙の生成: 基準線の外側に歯茎と牙を美しく配置
+   歯は外側(unx, uny方向)に向かって生え、基準線側（扇形側）には絶対に侵入しない！ */
+function calcTeethRow(hx, hy, tx, ty, unx, uny, teethOffsets){
   const dx = tx - hx, dy = ty - hy;
-  // 歯の根本 (基準線から法線方向に baseOffset だけ外側)
-  const b1x = hx + dx * t1 + unx * baseOffset;
-  const b1y = hy + dy * t1 + uny * baseOffset;
-  const b2x = hx + dx * t2 + unx * baseOffset;
-  const b2y = hy + dy * t2 + uny * baseOffset;
-  // 歯の先端 (基準線の線上、法線オフセット0)
-  const midT = (t1 + t2) / 2;
-  const tipX = hx + dx * midT + unx * 0.2;
-  const tipY = hy + dy * midT + uny * 0.2;
-  return `M ${b1x.toFixed(1)},${b1y.toFixed(1)} L ${tipX.toFixed(1)},${tipY.toFixed(1)} L ${b2x.toFixed(1)},${b2y.toFixed(1)} Z`;
+  let paths = '';
+  teethOffsets.forEach(to => {
+    const t1 = to.t1, t2 = to.t2, h = to.h;
+    const b1x = hx + dx * t1, b1y = hy + dy * t1;
+    const b2x = hx + dx * t2, b2y = hy + dy * t2;
+    const midT = (t1 + t2) / 2;
+    // 歯の先端は外側方向(unx*h)へ突き出る！
+    const tipX = hx + dx * midT + unx * h;
+    const tipY = hy + dy * midT + uny * h;
+    paths += `<path d="M ${b1x.toFixed(1)},${b1y.toFixed(1)} L ${tipX.toFixed(1)},${tipY.toFixed(1)} L ${b2x.toFixed(1)},${b2y.toFixed(1)} Z" fill="#FFFFFF" stroke="#334155" stroke-width="0.6"/>`;
+  });
+  return paths;
 }
 
 function wanternParts(w){
-  const W = 200, H = 88;
-  const baseColor = w.body; // 例: #3FAE7A, #2C8F63, #4CAE3F
-  const darkColor = w.id >= 3 ? '#1A5339' : '#1F6B47';
-  const bellyColor = '#D8EDB8';
-  const gumColor = '#D35400';
+  const W = 210, H = 90;
+  const baseColor = w.body;
+  const darkColor = w.id >= 3 ? '#164E35' : '#1E6442';
+  const bellyColor = '#D5EDB3';
+  const mouthBorder = '#0F172A';
   
-  // 各主要座標
-  const hinge = { x: 130, y: 44 };
-  const snoutLen = 60;
+  const hinge = { x: 132, y: 45 };
+  const snoutLen = 65;
   const upA = -w.mouth / 2 * Math.PI / 180;
   const loA = w.mouth / 2 * Math.PI / 180;
   const upperTip = { x: hinge.x + snoutLen * Math.cos(upA), y: hinge.y + snoutLen * Math.sin(upA) };
   const lowerTip = { x: hinge.x + snoutLen * Math.cos(loA), y: hinge.y + snoutLen * Math.sin(loA) };
 
-  // 上顎の法線ベクトル (上側向き外側法線)
+  // 上顎の外側法線（上向き外側）
   const udx = upperTip.x - hinge.x, udy = upperTip.y - hinge.y;
   const ulen = Math.hypot(udx, udy) || 1;
-  const unx = -udy / ulen, uny = udx / ulen;
+  const unx = udy / ulen, uny = -udx / ulen;
 
-  // 下顎の法線ベクトル (下側向き外側法線)
+  // 下顎の外側法線（下向き外側）
   const ldx = lowerTip.x - hinge.x, ldy = lowerTip.y - hinge.y;
   const llen = Math.hypot(ldx, ldy) || 1;
-  const lnx = ldy / llen, lny = -ldx / llen;
+  const lnx = -ldy / llen, lny = ldx / llen;
 
-  // 目の位置（上顎ベースの上部）
   const eyeX = hinge.x - 6, eyeY = hinge.y - 13;
+
+  // 歯の定義（外側に向かって並ぶ）
+  const upperTeeth = [
+    { t1: 0.18, t2: 0.30, h: 5.5 },
+    { t1: 0.40, t2: 0.55, h: 7.5 },
+    { t1: 0.68, t2: 0.82, h: 5.0 }
+  ];
+  const lowerTeeth = [
+    { t1: 0.22, t2: 0.34, h: 5.0 },
+    { t1: 0.48, t2: 0.64, h: 7.0 },
+    { t1: 0.76, t2: 0.88, h: 4.5 }
+  ];
 
   const markup = `
     <g class="wani-body" transform="translate(10,6)">
@@ -1243,100 +1252,89 @@ function wanternParts(w){
         </radialGradient>
       </defs>
 
-      <!-- 1. 長い尻尾 (しなやかな曲線とうねり) -->
-      <path d="M 46,45 C 28,47 10,40 -12,30 C -2,42 16,57 42,58 Z" fill="${darkColor}"/>
-      <path d="M 48,46 C 30,48 14,41 -8,33 C 2,44 18,56 44,57 Z" fill="${baseColor}"/>
-      <!-- 尻尾の突起（クレスト列） -->
-      <polygon points="-10,31 -5,27 -4,34" fill="${darkColor}"/>
-      <polygon points="-2,35 4,30 5,38" fill="${darkColor}"/>
-      <polygon points="8,39 15,33 17,42" fill="${darkColor}"/>
-      <polygon points="20,43 28,36 30,47" fill="${darkColor}"/>
-      <polygon points="33,46 42,39 44,51" fill="${darkColor}"/>
+      <!-- 1. 長い尻尾 -->
+      <path d="M 46,46 C 28,48 10,41 -12,31 C -2,43 16,58 42,59 Z" fill="${darkColor}"/>
+      <path d="M 48,47 C 30,49 14,42 -8,34 C 2,45 18,57 44,58 Z" fill="${baseColor}"/>
+      <polygon points="-10,32 -5,28 -4,35" fill="${darkColor}"/>
+      <polygon points="-2,36 4,31 5,39" fill="${darkColor}"/>
+      <polygon points="8,40 15,34 17,43" fill="${darkColor}"/>
+      <polygon points="20,44 28,37 30,48" fill="${darkColor}"/>
+      <polygon points="33,47 42,40 44,52" fill="${darkColor}"/>
 
-      <!-- 2. 後足 (太ももと爪) -->
+      <!-- 2. 後足 -->
       <g class="wani-back-leg">
-        <path d="M 32,50 C 26,58 28,68 35,72 C 39,74 45,74 46,69 C 47,63 44,54 39,50 Z" fill="${darkColor}"/>
-        <path d="M 34,51 C 29,58 31,67 37,70 C 40,72 44,71 45,67 C 46,62 43,54 38,51 Z" fill="${baseColor}"/>
-        <!-- 爪 -->
-        <polygon points="35,71 33,75 37,73" fill="#FFF"/>
-        <polygon points="38,72 38,76 41,73" fill="#FFF"/>
-        <polygon points="42,71 43,75 44,72" fill="#FFF"/>
+        <path d="M 32,51 C 26,59 28,69 35,73 C 39,75 45,75 46,70 C 47,64 44,55 39,51 Z" fill="${darkColor}"/>
+        <path d="M 34,52 C 29,59 31,68 37,71 C 40,73 44,72 45,68 C 46,63 43,55 38,52 Z" fill="${baseColor}"/>
+        <polygon points="35,72 33,76 37,74" fill="#FFF"/>
+        <polygon points="38,73 38,77 41,74" fill="#FFF"/>
+        <polygon points="42,72 43,76 44,73" fill="#FFF"/>
       </g>
 
-      <!-- 3. 長く堂々とした胴体 (トルソー) -->
-      <path d="M 40,46 C 45,34 68,32 95,33 C 118,34 130,38 132,44 C 130,56 122,64 95,64 C 65,64 45,60 40,46 Z" fill="url(#waniBellyGrad_${w.id})" stroke="${darkColor}" stroke-width="1.3"/>
+      <!-- 3. 長く堂々とした胴体 -->
+      <path d="M 40,47 C 45,35 68,33 96,34 C 119,35 132,39 134,45 C 132,57 124,65 96,65 C 66,65 45,61 40,47 Z" fill="url(#waniBellyGrad_${w.id})" stroke="${darkColor}" stroke-width="1.3"/>
       
-      <!-- 背中のゴツゴツした鱗甲（クレスト）連続列 -->
-      <path d="M 46,39 Q 52,30 58,37 Q 66,29 74,36 Q 83,28 92,36 Q 101,29 110,36 Q 118,31 126,39" fill="none" stroke="${darkColor}" stroke-width="3" stroke-linecap="round"/>
-      <polygon points="50,37 54,29 58,37" fill="${darkColor}"/>
-      <polygon points="63,35 68,27 72,35" fill="${darkColor}"/>
-      <polygon points="78,34 83,26 87,35" fill="${darkColor}"/>
-      <polygon points="94,34 99,27 103,35" fill="${darkColor}"/>
-      <polygon points="109,36 114,29 118,37" fill="${darkColor}"/>
-      <polygon points="123,38 127,32 130,40" fill="${darkColor}"/>
+      <!-- 背中のクレスト連続列 -->
+      <path d="M 46,40 Q 52,31 58,38 Q 66,30 74,37 Q 83,29 92,37 Q 101,30 110,37 Q 118,32 126,40" fill="none" stroke="${darkColor}" stroke-width="3" stroke-linecap="round"/>
+      <polygon points="50,38 54,30 58,38" fill="${darkColor}"/>
+      <polygon points="63,36 68,28 72,36" fill="${darkColor}"/>
+      <polygon points="78,35 83,27 87,36" fill="${darkColor}"/>
+      <polygon points="94,35 99,28 103,36" fill="${darkColor}"/>
+      <polygon points="109,37 114,30 118,38" fill="${darkColor}"/>
+      <polygon points="123,39 127,33 130,41" fill="${darkColor}"/>
 
-      <!-- お腹の蛇腹ライン（ロングベリー） -->
-      <path d="M 52,56 Q 70,59 90,58 Q 110,57 122,53" stroke="${darkColor}" stroke-width="0.8" fill="none" opacity="0.6"/>
-      <path d="M 56,51 Q 72,54 92,53 Q 112,52 124,48" stroke="${darkColor}" stroke-width="0.8" fill="none" opacity="0.6"/>
+      <!-- お腹の蛇腹ライン -->
+      <path d="M 52,57 Q 70,60 90,59 Q 110,58 124,54" stroke="${darkColor}" stroke-width="0.8" fill="none" opacity="0.6"/>
+      <path d="M 56,52 Q 72,55 92,54 Q 112,53 126,49" stroke="${darkColor}" stroke-width="0.8" fill="none" opacity="0.6"/>
 
-      <!-- 4. 前足 (腕と爪) -->
+      <!-- 4. 前足 -->
       <g class="wani-front-leg">
-        <path d="M 104,52 C 101,60 103,69 110,72 C 114,74 120,73 121,68 C 122,63 118,55 113,52 Z" fill="${darkColor}"/>
-        <path d="M 106,53 C 103,60 105,68 112,70 C 115,72 119,71 120,66 C 121,62 117,55 112,53 Z" fill="${baseColor}"/>
-        <!-- 爪 -->
-        <polygon points="110,71 108,75 112,73" fill="#FFF"/>
-        <polygon points="113,72 114,76 116,73" fill="#FFF"/>
-        <polygon points="117,71 119,75 120,72" fill="#FFF"/>
+        <path d="M 105,53 C 102,61 104,70 111,73 C 115,75 121,74 122,69 C 123,64 119,56 114,53 Z" fill="${darkColor}"/>
+        <path d="M 107,54 C 104,61 106,69 113,71 C 116,73 120,72 121,67 C 122,63 118,56 113,54 Z" fill="${baseColor}"/>
+        <polygon points="111,72 109,76 113,74" fill="#FFF"/>
+        <polygon points="114,73 115,77 117,74" fill="#FFF"/>
+        <polygon points="118,72 120,76 121,73" fill="#FFF"/>
       </g>
 
-      <!-- 5. 下あご (jaw-lower): 扇形基準線(${hinge.x},${hinge.y})-(lowerTip)の外側（下側）のみに配置 -->
+      <!-- 5. 下あご (jaw-lower): 基準線 L_lo の外側（下側）のみに描画 -->
       <g class="jaw-lower" data-hx="${hinge.x}" data-hy="${hinge.y}">
-        <!-- 下顎骨と皮膚のアウトライン (基準線より完全に下側/外側) -->
-        <path d="M ${hinge.x},${hinge.y} L ${lowerTip.x},${lowerTip.y} Q ${lowerTip.x+lnx*7},${lowerTip.y+lny*7} ${lowerTip.x+lnx*5-ldx*0.06},${lowerTip.y+lny*5-ldy*0.06} Q ${hinge.x+ldx*0.5+lnx*16},${hinge.y+ldy*0.5+lny*16} ${hinge.x-4},${hinge.y+10} Z" fill="${darkColor}"/>
-        <path d="M ${hinge.x},${hinge.y+1} L ${lowerTip.x},${lowerTip.y} Q ${lowerTip.x+lnx*6},${lowerTip.y+lny*6} ${lowerTip.x+lnx*4-ldx*0.06},${lowerTip.y+lny*4-ldy*0.06} Q ${hinge.x+ldx*0.5+lnx*14},${hinge.y+ldy*0.5+lny*14} ${hinge.x-3},${hinge.y+8} Z" fill="${bellyColor}"/>
-        <!-- 歯茎ライン (基準線の外側) -->
-        <path d="M ${hinge.x+ldx*0.1+lnx*3},${hinge.y+ldy*0.1+lny*3} L ${lowerTip.x+lnx*3},${lowerTip.y+lny*3}" stroke="${gumColor}" stroke-width="1.2" fill="none"/>
+        <!-- 下顎骨・皮膚 (基準線より完全に下側) -->
+        <path d="M ${hinge.x},${hinge.y} L ${lowerTip.x},${lowerTip.y} Q ${lowerTip.x+lnx*7},${lowerTip.y+lny*7} ${lowerTip.x+lnx*6-ldx*0.06},${lowerTip.y+lny*6-ldy*0.06} Q ${hinge.x+ldx*0.5+lnx*17},${hinge.y+ldy*0.5+lny*17} ${hinge.x-4},${hinge.y+11} Z" fill="${darkColor}"/>
+        <path d="M ${hinge.x},${hinge.y} L ${lowerTip.x},${lowerTip.y} Q ${lowerTip.x+lnx*5},${lowerTip.y+lny*5} ${lowerTip.x+lnx*4-ldx*0.06},${lowerTip.y+lny*4-ldy*0.06} Q ${hinge.x+ldx*0.5+lnx*15},${hinge.y+ldy*0.5+lny*15} ${hinge.x-3},${hinge.y+9} Z" fill="${bellyColor}"/>
         
-        <!-- 下の牙 (先端は基準線、根本は外側オフセットに配置 = 扇形内側には一切入らない) -->
-        <path d="${calcOuterTooth(hinge.x, hinge.y, lowerTip.x, lowerTip.y, lnx, lny, 0.18, 0.32, 6)}" fill="#FFFFFF" stroke="#5D4037" stroke-width="0.5"/>
-        <path d="${calcOuterTooth(hinge.x, hinge.y, lowerTip.x, lowerTip.y, lnx, lny, 0.44, 0.62, 8)}" fill="#FFFFFF" stroke="#5D4037" stroke-width="0.5"/>
-        <path d="${calcOuterTooth(hinge.x, hinge.y, lowerTip.x, lowerTip.y, lnx, lny, 0.74, 0.90, 5)}" fill="#FFFFFF" stroke="#5D4037" stroke-width="0.5"/>
+        <!-- 下顎の基準線境界（くっきりしたエッジライン） -->
+        <line x1="${hinge.x}" y1="${hinge.y}" x2="${lowerTip.x}" y2="${lowerTip.y}" stroke="${mouthBorder}" stroke-width="1.2"/>
+
+        <!-- 下の牙 (外側/下向きに突き出るため、口の内側には一切入らない！) -->
+        ${calcTeethRow(hinge.x, hinge.y, lowerTip.x, lowerTip.y, lnx, lny, lowerTeeth)}
       </g>
 
-      <!-- 6. 上あご (jaw-upper): 扇形基準線(${hinge.x},${hinge.y})-(upperTip)の外側（上側）のみに配置 -->
+      <!-- 6. 上あご (jaw-upper): 基準線 L_up の外側（上側）のみに描画 -->
       <g class="jaw-upper" data-hx="${hinge.x}" data-hy="${hinge.y}">
-        <!-- 上顎骨・鼻先・頭部のアウトライン (基準線より完全に上側/外側) -->
-        <path d="M ${hinge.x-10},${hinge.y-14} Q ${hinge.x+udx*0.25+unx*17},${hinge.y+udy*0.25+uny*17} ${hinge.x+udx*0.6+unx*12},${hinge.y+udy*0.6+uny*12} Q ${upperTip.x+unx*14},${upperTip.y+uny*14} ${upperTip.x+unx*6},${upperTip.y+uny*6} Q ${upperTip.x+unx*1},${upperTip.y+uny*1} ${upperTip.x},${upperTip.y} L ${hinge.x},${hinge.y} Z" fill="${darkColor}"/>
-        <path d="M ${hinge.x-8},${hinge.y-12} Q ${hinge.x+udx*0.25+unx*15},${hinge.y+udy*0.25+uny*15} ${hinge.x+udx*0.6+unx*10},${hinge.y+udy*0.6+uny*10} Q ${upperTip.x+unx*12},${upperTip.y+uny*12} ${upperTip.x+unx*5},${upperTip.y+uny*5} Q ${upperTip.x+unx*1},${upperTip.y+uny*1} ${upperTip.x},${upperTip.y} L ${hinge.x},${hinge.y} Z" fill="${baseColor}"/>
+        <!-- 上顎骨・頭部 (基準線より完全に上側) -->
+        <path d="M ${hinge.x-10},${hinge.y-14} Q ${hinge.x+udx*0.25+unx*18},${hinge.y+udy*0.25+uny*18} ${hinge.x+udx*0.6+unx*13},${hinge.y+udy*0.6+uny*13} Q ${upperTip.x+unx*15},${upperTip.y+uny*15} ${upperTip.x+unx*6},${upperTip.y+uny*6} Q ${upperTip.x+unx*1},${upperTip.y+uny*1} ${upperTip.x},${upperTip.y} L ${hinge.x},${hinge.y} Z" fill="${darkColor}"/>
+        <path d="M ${hinge.x-8},${hinge.y-12} Q ${hinge.x+udx*0.25+unx*16},${hinge.y+udy*0.25+uny*16} ${hinge.x+udx*0.6+unx*11},${hinge.y+udy*0.6+uny*11} Q ${upperTip.x+unx*13},${upperTip.y+uny*13} ${upperTip.x+unx*5},${upperTip.y+uny*5} Q ${upperTip.x+unx*1},${upperTip.y+uny*1} ${upperTip.x},${upperTip.y} L ${hinge.x},${hinge.y} Z" fill="${baseColor}"/>
         
-        <!-- 鼻先のコブ（鼻孔） (基準線の外側上部) -->
+        <!-- 上顎の基準線境界（くっきりしたエッジライン） -->
+        <line x1="${hinge.x}" y1="${hinge.y}" x2="${upperTip.x}" y2="${upperTip.y}" stroke="${mouthBorder}" stroke-width="1.2"/>
+
+        <!-- 鼻孔 (外側上部) -->
         <ellipse cx="${upperTip.x+unx*7-udx*0.06}" cy="${upperTip.y+uny*7-udy*0.06}" rx="3.5" ry="2.2" fill="${darkColor}"/>
         <circle cx="${upperTip.x+unx*7.5-udx*0.05}" cy="${upperTip.y+uny*7.5-udy*0.05}" r="1.1" fill="#1B2436"/>
 
-        <!-- 鼻筋の立体ウロコハイライト -->
-        <path d="M ${hinge.x+udx*0.25+unx*12},${hinge.y+udy*0.25+uny*12} Q ${hinge.x+udx*0.6+unx*8},${hinge.y+udy*0.6+uny*8} ${upperTip.x+unx*7-udx*0.14},${upperTip.y+uny*7-udy*0.14}" stroke="${bellyColor}" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.75"/>
+        <!-- 鼻筋ハイライト -->
+        <path d="M ${hinge.x+udx*0.25+unx*13},${hinge.y+udy*0.25+uny*13} Q ${hinge.x+udx*0.6+unx*9},${hinge.y+udy*0.6+uny*9} ${upperTip.x+unx*8-udx*0.14},${upperTip.y+uny*8-udy*0.14}" stroke="${bellyColor}" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.75"/>
 
-        <!-- 歯茎ライン (基準線の外側) -->
-        <path d="M ${hinge.x+udx*0.1+unx*3},${hinge.y+udy*0.1+uny*3} L ${upperTip.x+unx*3},${upperTip.y+uny*3}" stroke="${gumColor}" stroke-width="1.2" fill="none"/>
+        <!-- 上の牙 (外側/上向きに突き出るため、口の内側には一切入らない！) -->
+        ${calcTeethRow(hinge.x, hinge.y, upperTip.x, upperTip.y, unx, uny, upperTeeth)}
 
-        <!-- 上の牙 (先端は基準線、根本は外側オフセットに配置 = 扇形内側には一切入らない) -->
-        <path d="${calcOuterTooth(hinge.x, hinge.y, upperTip.x, upperTip.y, unx, uny, 0.16, 0.30, 6)}" fill="#FFFFFF" stroke="#5D4037" stroke-width="0.5"/>
-        <path d="${calcOuterTooth(hinge.x, hinge.y, upperTip.x, upperTip.y, unx, uny, 0.38, 0.56, 8)}" fill="#FFFFFF" stroke="#5D4037" stroke-width="0.5"/>
-        <path d="${calcOuterTooth(hinge.x, hinge.y, upperTip.x, upperTip.y, unx, uny, 0.68, 0.84, 6)}" fill="#FFFFFF" stroke="#5D4037" stroke-width="0.5"/>
-
-        <!-- 目（まぶたの隆起・虹彩・縦長スリット瞳孔） -->
+        <!-- 目 -->
         <g class="wani-eye-group">
-          <!-- まぶたの骨格ドーム -->
           <ellipse cx="${eyeX}" cy="${eyeY}" rx="8" ry="7" fill="${darkColor}"/>
           <ellipse cx="${eyeX}" cy="${eyeY+0.5}" rx="7" ry="6" fill="${baseColor}"/>
-          <!-- 眼球 (ゴールドのグラデーション) -->
           <circle cx="${eyeX+0.5}" cy="${eyeY}" r="5" fill="url(#waniEyeGrad_${w.id})" stroke="#421D00" stroke-width="0.6"/>
-          <!-- 爬虫類のスリット瞳孔 (縦長) -->
           <path d="M ${eyeX+0.5},${eyeY-4.2} C ${eyeX+2},${eyeY-1} ${eyeX+2},${eyeY+1} ${eyeX+0.5},${eyeY+4.2} C ${eyeX-1},${eyeY+1} ${eyeX-1},${eyeY-1} ${eyeX+0.5},${eyeY-4.2} Z" fill="#1A150E"/>
-          <!-- ハイライト光 -->
           <circle cx="${eyeX-1.2}" cy="${eyeY-1.8}" r="1.5" fill="#FFFFFF" opacity="0.95"/>
           <circle cx="${eyeX+1.8}" cy="${eyeY+1.4}" r="0.8" fill="#FFFFFF" opacity="0.8"/>
-          <!-- 眉の立体アーチ -->
           <path d="M ${eyeX-8},${eyeY-2} Q ${eyeX-1},${eyeY-8.5} ${eyeX+7},${eyeY-3}" fill="none" stroke="${darkColor}" stroke-width="2" stroke-linecap="round"/>
         </g>
       </g>
