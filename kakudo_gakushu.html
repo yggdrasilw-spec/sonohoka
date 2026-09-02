@@ -1181,53 +1181,164 @@ const WANIS = [
 ];
 let s1Selected = [];
 
-function toothTri(hx,hy,tipx,tipy,t1,t2,side,size){
-  const dx=tipx-hx, dy=tipy-hy;
-  const bx=hx+dx*t1, by=hy+dy*t1;
-  const ex=hx+dx*t2, ey=hy+dy*t2;
-  const len=Math.hypot(dx,dy)||1, ux=dx/len, uy=dy/len, px=-uy*side, py=ux*side;
-  const mx=(bx+ex)/2+px*size, my=(by+ey)/2+py*size;
-  return `${bx},${by} ${mx},${my} ${ex},${ey}`;
+/* ヘルパー: 2点(x1,y1)-(x2,y2)間の指定比率位置から垂直方向に突き出る牙の三角形パス */
+function calcTooth(hx, hy, tx, ty, t1, t2, side, h, curve=0){
+  const dx = tx - hx, dy = ty - hy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const nx = -uy * side, ny = ux * side;
+  const p1x = hx + dx * t1, p1y = hy + dy * t1;
+  const p2x = hx + dx * t2, p2y = hy + dy * t2;
+  const midX = (p1x + p2x) / 2 + nx * h + ux * curve;
+  const midY = (p1y + p2y) / 2 + ny * h + uy * curve;
+  return `M ${p1x.toFixed(1)},${p1y.toFixed(1)} Q ${(p1x+midX)/2+nx*1.5},${(p1y+midY)/2+ny*1.5} ${midX.toFixed(1)},${midY.toFixed(1)} Q ${(p2x+midX)/2+nx*1.5},${(p2y+midY)/2+ny*1.5} ${p2x.toFixed(1)},${p2y.toFixed(1)} Z`;
 }
 
-/* returns inner markup (already includes an internal translate(10,6)) plus local hinge point
-   BEFORE that internal translate (so caller adds 10,6 when computing world hinge) */
 function wanternParts(w){
-  const W=132, H=84;
-  const bodyColor=w.body;
-  const bodyCx=W*0.34, bodyCy=H*0.60, bodyRx=W*0.24, bodyRy=H*0.23;
-  const tailTip={x:-W*0.03,y:H*0.56};
-  const headCx=bodyCx+bodyRx*0.98, headCy=bodyCy-bodyRy*0.30, headR=H*0.235;
-  const eyeCx=headCx-headR*0.05, eyeCy=headCy-headR*0.85;
-  const hinge={x:headCx+headR*0.62, y:headCy+headR*0.28};
-  const snoutLen=W*0.46;
-  const upA=-w.mouth/2*Math.PI/180, loA=w.mouth/2*Math.PI/180;
-  const upperTip={x:hinge.x+snoutLen*Math.cos(upA), y:hinge.y+snoutLen*Math.sin(upA)};
-  const lowerTip={x:hinge.x+snoutLen*Math.cos(loA), y:hinge.y+snoutLen*Math.sin(loA)};
-  const thick=H*0.13;
+  const W = 144, H = 90;
+  const baseColor = w.body; // 例: #3FAE7A, #2C8F63, #4CAE3F
+  // 暗い色・明るい色・お腹の色
+  const darkColor = w.id >= 3 ? '#1E5E41' : '#23734E';
+  const bellyColor = '#D4ECC6';
+  const mouthInside = '#E57373';
+  const mouthDark = '#B71C1C';
+  
+  // 各主要座標
+  const bodyCx = 52, bodyCy = 54;
+  const hinge = { x: 80, y: 44 };
+  const snoutLen = 56;
+  const upA = -w.mouth / 2 * Math.PI / 180;
+  const loA = w.mouth / 2 * Math.PI / 180;
+  const upperTip = { x: hinge.x + snoutLen * Math.cos(upA), y: hinge.y + snoutLen * Math.sin(upA) };
+  const lowerTip = { x: hinge.x + snoutLen * Math.cos(loA), y: hinge.y + snoutLen * Math.sin(loA) };
+  const upperMid = { x: hinge.x + snoutLen * 0.55 * Math.cos(upA), y: hinge.y + snoutLen * 0.55 * Math.sin(upA) };
+  const lowerMid = { x: hinge.x + snoutLen * 0.55 * Math.cos(loA), y: hinge.y + snoutLen * 0.55 * Math.sin(loA) };
+
+  // 上顎の法線ベクトル
+  const udx = upperTip.x - hinge.x, udy = upperTip.y - hinge.y;
+  const ulen = Math.hypot(udx, udy) || 1;
+  const unx = -udy / ulen, uny = udx / ulen; // 上側向き法線
+
+  // 下顎の法線ベクトル
+  const ldx = lowerTip.x - hinge.x, ldy = lowerTip.y - hinge.y;
+  const llen = Math.hypot(ldx, ldy) || 1;
+  const lnx = ldy / llen, lny = -ldx / llen; // 下側向き法線
+
+  // 目の位置（頭部上部・ヒンジの少し後上）
+  const eyeX = hinge.x - 7, eyeY = hinge.y - 14;
+
   const markup = `
     <g class="wani-body" transform="translate(10,6)">
-      <polygon points="${tailTip.x},${tailTip.y} ${bodyCx-bodyRx*0.5},${bodyCy-bodyRy*0.55} ${bodyCx-bodyRx*0.5},${bodyCy+bodyRy*0.6}" fill="${bodyColor}"/>
-      <ellipse cx="${bodyCx-bodyRx*0.32}" cy="${bodyCy+bodyRy*0.82}" rx="${W*0.05}" ry="${H*0.06}" fill="${bodyColor}"/>
-      <ellipse cx="${bodyCx+bodyRx*0.42}" cy="${bodyCy+bodyRy*0.82}" rx="${W*0.05}" ry="${H*0.06}" fill="${bodyColor}"/>
-      <ellipse cx="${bodyCx}" cy="${bodyCy}" rx="${bodyRx}" ry="${bodyRy}" fill="${bodyColor}"/>
-      <polygon points="${bodyCx-bodyRx*0.3},${bodyCy-bodyRy*0.9} ${bodyCx-bodyRx*0.1},${bodyCy-bodyRy*1.35} ${bodyCx+bodyRx*0.1},${bodyCy-bodyRy*0.9}" fill="${bodyColor}"/>
-      <polygon points="${bodyCx+bodyRx*0.15},${bodyCy-bodyRy*0.95} ${bodyCx+bodyRx*0.35},${bodyCy-bodyRy*1.4} ${bodyCx+bodyRx*0.55},${bodyCy-bodyRy*0.95}" fill="${bodyColor}"/>
-      <circle cx="${headCx}" cy="${headCy}" r="${headR}" fill="${bodyColor}"/>
+      <!-- フィルター・グラデーションの定義 -->
+      <defs>
+        <linearGradient id="waniBellyGrad_${w.id}" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="${baseColor}"/>
+          <stop offset="60%" stop-color="${baseColor}"/>
+          <stop offset="100%" stop-color="${bellyColor}"/>
+        </linearGradient>
+        <radialGradient id="waniEyeGrad_${w.id}" cx="35%" cy="35%" r="65%">
+          <stop offset="0%" stop-color="#FFF9C4"/>
+          <stop offset="55%" stop-color="#FBC02D"/>
+          <stop offset="100%" stop-color="#E65100"/>
+        </radialGradient>
+      </defs>
+
+      <!-- 尻尾 (しなやかな曲線と棘) -->
+      <path d="M 38,48 C 22,50 8,44 -4,35 C 4,44 16,59 36,60 Z" fill="${darkColor}"/>
+      <path d="M 40,49 C 24,51 12,45 0,38 C 7,46 18,58 38,59 Z" fill="${baseColor}"/>
+      <!-- 尻尾の突起（クレスト） -->
+      <polygon points="-2,36 3,33 4,39" fill="${darkColor}"/>
+      <polygon points="6,40 12,36 14,43" fill="${darkColor}"/>
+      <polygon points="17,44 24,39 26,47" fill="${darkColor}"/>
+      <polygon points="29,47 36,41 38,50" fill="${darkColor}"/>
+
+      <!-- 後足 (太ももと爪) -->
+      <g class="wani-back-leg">
+        <path d="M 22,53 C 18,60 20,68 25,72 C 28,74 33,74 34,70 C 35,65 33,56 29,53 Z" fill="${darkColor}"/>
+        <path d="M 24,54 C 21,60 23,67 27,70 C 29,72 33,71 33,68 C 34,63 32,56 28,54 Z" fill="${baseColor}"/>
+        <!-- 爪 -->
+        <polygon points="25,71 24,75 27,73" fill="#FFF"/>
+        <polygon points="28,72 28,76 30,73" fill="#FFF"/>
+        <polygon points="31,71 32,75 33,72" fill="#FFF"/>
+      </g>
+
+      <!-- 胴体 (グラデーションと背中のウロコ) -->
+      <path d="M 34,48 C 36,38 48,34 62,37 C 74,40 78,44 80,48 C 76,61 65,66 50,65 C 38,64 34,56 34,48 Z" fill="url(#waniBellyGrad_${w.id})" stroke="${darkColor}" stroke-width="1.2"/>
+      
+      <!-- 背中のゴツゴツした鱗甲（クレスト） -->
+      <path d="M 40,40 Q 44,32 48,38 Q 53,30 58,37 Q 63,31 68,39 Q 73,34 77,42" fill="none" stroke="${darkColor}" stroke-width="3" stroke-linecap="round"/>
+      <polygon points="43,38 46,31 49,38" fill="${darkColor}"/>
+      <polygon points="52,36 56,29 59,37" fill="${darkColor}"/>
+      <polygon points="62,37 66,31 69,39" fill="${darkColor}"/>
+      <polygon points="71,40 74,34 77,43" fill="${darkColor}"/>
+
+      <!-- お腹の蛇腹（スケールライン） -->
+      <path d="M 44,57 Q 52,60 62,58" stroke="${darkColor}" stroke-width="0.8" fill="none" opacity="0.6"/>
+      <path d="M 42,52 Q 50,55 60,53" stroke="${darkColor}" stroke-width="0.8" fill="none" opacity="0.6"/>
+
+      <!-- 前足 (腕と爪) -->
+      <g class="wani-front-leg">
+        <path d="M 58,56 C 56,63 58,70 63,73 C 67,75 72,74 72,70 C 73,66 70,59 66,56 Z" fill="${darkColor}"/>
+        <path d="M 60,57 C 58,63 60,69 64,71 C 67,73 70,72 71,69 C 71,65 69,59 65,57 Z" fill="${baseColor}"/>
+        <!-- 爪 -->
+        <polygon points="63,72 62,76 65,74" fill="#FFF"/>
+        <polygon points="66,73 66,77 68,74" fill="#FFF"/>
+        <polygon points="69,72 70,76 71,73" fill="#FFF"/>
+      </g>
+
+      <!-- 下あご (jaw-lower): ヒンジ中心に回転可能 -->
       <g class="jaw-lower" data-hx="${hinge.x}" data-hy="${hinge.y}">
-        <polygon points="${hinge.x},${hinge.y-thick*0.3} ${hinge.x},${hinge.y+thick} ${lowerTip.x},${lowerTip.y+thick*0.35} ${lowerTip.x},${lowerTip.y-thick*0.15}" fill="#FFD8CE" stroke="#1F6E4A" stroke-width="1.3"/>
-        <polygon points="${toothTri(hinge.x,hinge.y+thick*0.5,lowerTip.x,lowerTip.y+thick*0.1,0.35,0.55,-1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
-        <polygon points="${toothTri(hinge.x,hinge.y+thick*0.5,lowerTip.x,lowerTip.y+thick*0.1,0.65,0.85,-1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
+        <!-- 口腔（内側のピンク肉・影） -->
+        <path d="M ${hinge.x},${hinge.y} L ${lowerTip.x},${lowerTip.y} Q ${hinge.x+ldx*0.5+lnx*12},${hinge.y+ldy*0.5+lny*12} ${hinge.x},${hinge.y+6} Z" fill="${mouthInside}"/>
+        <!-- 舌 -->
+        <path d="M ${hinge.x+ldx*0.2},${hinge.y+ldy*0.2} Q ${hinge.x+ldx*0.5+lnx*7},${hinge.y+ldy*0.5+lny*7} ${hinge.x+ldx*0.75},${hinge.y+ldy*0.75} Q ${hinge.x+ldx*0.45+lnx*4},${hinge.y+ldy*0.45+lny*4} ${hinge.x+ldx*0.2},${hinge.y+ldy*0.2}" fill="#EF5350"/>
+        <!-- 下顎の外側（皮膚と骨格） -->
+        <path d="M ${hinge.x},${hinge.y+4} L ${lowerTip.x},${lowerTip.y} Q ${lowerTip.x+lnx*6},${lowerTip.y+lny*6} ${lowerTip.x+lnx*4-ldx*0.08},${lowerTip.y+lny*4-ldy*0.08} Q ${hinge.x+ldx*0.5+lnx*14},${hinge.y+ldy*0.5+lny*14} ${hinge.x-3},${hinge.y+8} Z" fill="${darkColor}"/>
+        <path d="M ${hinge.x},${hinge.y+2} L ${lowerTip.x},${lowerTip.y} Q ${lowerTip.x+lnx*5},${lowerTip.y+lny*5} ${lowerTip.x+lnx*3-ldx*0.08},${lowerTip.y+lny*3-ldy*0.08} Q ${hinge.x+ldx*0.5+lnx*12},${hinge.y+ldy*0.5+lny*12} ${hinge.x-2},${hinge.y+6} Z" fill="${bellyColor}"/>
+        <!-- 下の牙 (リアルな三角形コーン) -->
+        <path d="${calcTooth(hinge.x, hinge.y, lowerTip.x, lowerTip.y, 0.22, 0.36, 1, 7, -1)}" fill="#FFFFFF" stroke="${mouthDark}" stroke-width="0.5"/>
+        <path d="${calcTooth(hinge.x, hinge.y, lowerTip.x, lowerTip.y, 0.50, 0.68, 1, 9, -1)}" fill="#FFFFFF" stroke="${mouthDark}" stroke-width="0.5"/>
+        <path d="${calcTooth(hinge.x, hinge.y, lowerTip.x, lowerTip.y, 0.78, 0.94, 1, 6, -0.5)}" fill="#FFFFFF" stroke="${mouthDark}" stroke-width="0.5"/>
       </g>
+
+      <!-- 上あご (jaw-upper): ヒンジ中心に回転可能 -->
       <g class="jaw-upper" data-hx="${hinge.x}" data-hy="${hinge.y}">
-        <polygon points="${hinge.x},${hinge.y-thick} ${hinge.x},${hinge.y+thick*0.3} ${upperTip.x},${upperTip.y+thick*0.15} ${upperTip.x},${upperTip.y-thick*0.35}" fill="${bodyColor}" stroke="#1F6E4A" stroke-width="1.3"/>
-        <polygon points="${toothTri(hinge.x,hinge.y-thick*0.5,upperTip.x,upperTip.y-thick*0.1,0.35,0.55,1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
-        <polygon points="${toothTri(hinge.x,hinge.y-thick*0.5,upperTip.x,upperTip.y-thick*0.1,0.65,0.85,1,thick*0.4)}" fill="#fff" stroke="#1F6E4A" stroke-width="0.8"/>
+        <!-- 上顎の内側（口蓋） -->
+        <path d="M ${hinge.x},${hinge.y} L ${upperTip.x},${upperTip.y} Q ${hinge.x+udx*0.5+unx*10},${hinge.y+udy*0.5+uny*10} ${hinge.x},${hinge.y-4} Z" fill="${mouthDark}"/>
+        <!-- 上顎の外側（頭頂・鼻先・コブ） -->
+        <path d="M ${hinge.x-10},${hinge.y-12} Q ${hinge.x+udx*0.3+unx*16},${hinge.y+udy*0.3+uny*16} ${upperMid.x+unx*12},${upperMid.y+uny*12} Q ${upperTip.x+unx*14},${upperTip.y+uny*14} ${upperTip.x+unx*6},${upperTip.y+uny*6} Q ${upperTip.x+unx*2},${upperTip.y+uny*2} ${upperTip.x},${upperTip.y} Q ${hinge.x+udx*0.6+unx*3},${hinge.y+udy*0.6+uny*3} ${hinge.x},${hinge.y-2} Z" fill="${darkColor}"/>
+        <path d="M ${hinge.x-8},${hinge.y-10} Q ${hinge.x+udx*0.3+unx*14},${hinge.y+udy*0.3+uny*14} ${upperMid.x+unx*10},${upperMid.y+uny*10} Q ${upperTip.x+unx*12},${upperTip.y+uny*12} ${upperTip.x+unx*5},${upperTip.y+uny*5} Q ${upperTip.x+unx*1},${upperTip.y+uny*1} ${upperTip.x},${upperTip.y} Q ${hinge.x+udx*0.6+unx*2},${hinge.y+udy*0.6+uny*2} ${hinge.x},${hinge.y-1} Z" fill="${baseColor}"/>
+        
+        <!-- 鼻先のコブ（鼻孔） -->
+        <ellipse cx="${upperTip.x+unx*7-udx*0.08}" cy="${upperTip.y+uny*7-udy*0.08}" rx="3.2" ry="2.2" fill="${darkColor}"/>
+        <circle cx="${upperTip.x+unx*7.5-udx*0.07}" cy="${upperTip.y+uny*7.5-udy*0.07}" r="1.1" fill="#1B2436"/>
+
+        <!-- 鼻筋のウロコハイライト -->
+        <path d="M ${hinge.x+udx*0.3+unx*11},${hinge.y+udy*0.3+uny*11} Q ${upperMid.x+unx*8},${upperMid.y+uny*8} ${upperTip.x+unx*7-udx*0.16},${upperTip.y+uny*7-udy*0.16}" stroke="${bellyColor}" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+        <!-- 上の牙 (鋭い牙列) -->
+        <path d="${calcTooth(hinge.x, hinge.y, upperTip.x, upperTip.y, 0.18, 0.32, 1, 7, 0.5)}" fill="#FFFFFF" stroke="${mouthDark}" stroke-width="0.5"/>
+        <path d="${calcTooth(hinge.x, hinge.y, upperTip.x, upperTip.y, 0.42, 0.60, 1, 10, 1)}" fill="#FFFFFF" stroke="${mouthDark}" stroke-width="0.5"/>
+        <path d="${calcTooth(hinge.x, hinge.y, upperTip.x, upperTip.y, 0.70, 0.86, 1, 7, 0.5)}" fill="#FFFFFF" stroke="${mouthDark}" stroke-width="0.5"/>
+
+        <!-- 目（まぶたの隆起・虹彩・スリット瞳孔） -->
+        <g class="wani-eye-group">
+          <!-- まぶたの骨格ドーム -->
+          <ellipse cx="${eyeX}" cy="${eyeY}" rx="7.5" ry="6.5" fill="${darkColor}"/>
+          <ellipse cx="${eyeX}" cy="${eyeY+0.5}" rx="6.5" ry="5.5" fill="${baseColor}"/>
+          <!-- 眼球 (ゴールドのグラデーション) -->
+          <circle cx="${eyeX+0.5}" cy="${eyeY}" r="4.6" fill="url(#waniEyeGrad_${w.id})" stroke="#421D00" stroke-width="0.6"/>
+          <!-- 爬虫類のスリット瞳孔 (縦長) -->
+          <path d="M ${eyeX+0.5},${eyeY-3.8} C ${eyeX+1.8},${eyeY-1} ${eyeX+1.8},${eyeY+1} ${eyeX+0.5},${eyeY+3.8} C ${eyeX-0.8},${eyeY+1} ${eyeX-0.8},${eyeY-1} ${eyeX+0.5},${eyeY-3.8} Z" fill="#1A150E"/>
+          <!-- ハイライト光 -->
+          <circle cx="${eyeX-1.0}" cy="${eyeY-1.5}" r="1.4" fill="#FFFFFF" opacity="0.9"/>
+          <circle cx="${eyeX+1.5}" cy="${eyeY+1.2}" r="0.7" fill="#FFFFFF" opacity="0.7"/>
+          <!-- 眉の立体アーチ -->
+          <path d="M ${eyeX-7},${eyeY-2} Q ${eyeX-1},${eyeY-7.5} ${eyeX+6},${eyeY-3}" fill="none" stroke="${darkColor}" stroke-width="1.8" stroke-linecap="round"/>
+        </g>
       </g>
-      <circle cx="${eyeCx}" cy="${eyeCy}" r="${headR*0.34}" fill="#fff" stroke="#1F6E4A" stroke-width="1"/>
-      <circle cx="${eyeCx+headR*0.06}" cy="${eyeCy}" r="${headR*0.17}" fill="#2E3A59"/>
     </g>`;
-  return {markup, hinge:{x:10+hinge.x, y:6+hinge.y}, W:W+22, H:H+30};
+  return { markup, hinge: { x: 10 + hinge.x, y: 6 + hinge.y }, W: W + 10, H: H + 10 };
 }
 
 function wanternSVG(w, scaleMul){
@@ -1259,19 +1370,20 @@ function initS1(){
   injectIdleCSS();
 }
 function injectIdleCSS(){
-  if(document.getElementById('idle-style')) return;
-  const st=document.createElement('style');
-  st.id='idle-style';
-  st.textContent=`
-    @keyframes pakuUpper{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-6deg);}}
-    @keyframes pakuLower{0%,100%{transform:rotate(0deg);}50%{transform:rotate(6deg);}}
-    .idle-anim .jaw-upper{transform-origin:var(--hx,0) var(--hy,0);animation:pakuUpper 1.4s ease-in-out infinite;}
-    .idle-anim .jaw-lower{transform-origin:var(--hx,0) var(--hy,0);animation:pakuLower 1.4s ease-in-out infinite;}
-  `;
-  document.head.appendChild(st);
+  if(!document.getElementById('idle-style')){
+    const st=document.createElement('style');
+    st.id='idle-style';
+    st.textContent=`
+      @keyframes pakuUpper{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-6deg);}}
+      @keyframes pakuLower{0%,100%{transform:rotate(0deg);}50%{transform:rotate(6deg);}}
+      .idle-anim .jaw-upper{transform-origin:var(--hx,0) var(--hy,0);animation:pakuUpper 1.4s ease-in-out infinite;}
+      .idle-anim .jaw-lower{transform-origin:var(--hx,0) var(--hy,0);animation:pakuLower 1.4s ease-in-out infinite;}
+    `;
+    document.head.appendChild(st);
+  }
   document.querySelectorAll('.jaw-upper,.jaw-lower').forEach(g=>{
-    g.style.setProperty('--hx', g.dataset.hx+'px');
-    g.style.setProperty('--hy', g.dataset.hy+'px');
+    if(g.dataset.hx) g.style.setProperty('--hx', g.dataset.hx+'px');
+    if(g.dataset.hy) g.style.setProperty('--hy', g.dataset.hy+'px');
   });
 }
 function toggleSelect(id, slot){
@@ -1591,13 +1703,163 @@ function s6DrawOpen(angle){
 function snowboarderMarkup(){
   return `
     <g id="s6-boarder">
-      <rect x="-14" y="-95" width="28" height="190" rx="14" fill="#F5B942" stroke="#B9821F" stroke-width="3"/>
-      <ellipse cx="0" cy="-58" rx="26" ry="34" fill="#4C8DFF"/>
-      <circle cx="0" cy="-96" r="20" fill="#FFD8B0" stroke="#C98A55" stroke-width="2"/>
-      <rect x="-34" y="-70" width="24" height="14" rx="7" fill="#4C8DFF"/>
-      <rect x="10" y="-70" width="24" height="14" rx="7" fill="#4C8DFF"/>
-      <rect x="-10" y="6" width="8" height="26" fill="#2E3A59"/>
-      <rect x="2" y="6" width="8" height="26" fill="#2E3A59"/>
+      <defs>
+        <!-- スノーボードのグラデーション -->
+        <linearGradient id="sbDeckGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1E293B"/>
+          <stop offset="35%" stop-color="#0F172A"/>
+          <stop offset="65%" stop-color="#2563EB"/>
+          <stop offset="100%" stop-color="#06B6D4"/>
+        </linearGradient>
+        <!-- ゴーグルのミラーリフレクション -->
+        <linearGradient id="goggleMirror" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#FF5722"/>
+          <stop offset="40%" stop-color="#FFEB3B"/>
+          <stop offset="70%" stop-color="#E91E63"/>
+          <stop offset="100%" stop-color="#9C27B0"/>
+        </linearGradient>
+        <!-- ジャケットの陰影 -->
+        <linearGradient id="jacketGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#3B82F6"/>
+          <stop offset="60%" stop-color="#1D4ED8"/>
+          <stop offset="100%" stop-color="#1E3A8A"/>
+        </linearGradient>
+        <!-- ヘルメット -->
+        <radialGradient id="helmetGrad" cx="40%" cy="35%" r="65%">
+          <stop offset="0%" stop-color="#475569"/>
+          <stop offset="70%" stop-color="#1E293B"/>
+          <stop offset="100%" stop-color="#0F172A"/>
+        </radialGradient>
+        <!-- グローブ -->
+        <linearGradient id="gloveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FF9800"/>
+          <stop offset="100%" stop-color="#E65100"/>
+        </linearGradient>
+        <filter id="boardShadow" x="-30%" y="-20%" width="160%" height="140%">
+          <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.22"/>
+        </filter>
+      </defs>
+
+      <!-- 1. スノーボード本体 (シャドウ・エッジ・デッキ・グラフィック) -->
+      <g filter="url(#boardShadow)">
+        <!-- メタルエッジ・ベース -->
+        <path d="M -18,-96 C -18,-110 18,-110 18,-96 L 16,-35 C 14.5,-5 14.5,5 16,35 L 18,96 C 18,110 -18,110 -18,96 L -16,35 C -14.5,5 -14.5,-5 -16,-35 Z" fill="#94A3B8" stroke="#64748B" stroke-width="1.2"/>
+        <!-- トップシート (デッキ) -->
+        <path d="M -16,-95 C -16,-107 16,-107 16,-95 L 14.2,-35 C 13,-5 13,5 14.2,35 L 16,95 C 16,107 -16,107 -16,95 L -14.2,35 C -13,5 -13,-5 -14.2,-35 Z" fill="url(#sbDeckGrad)"/>
+        <!-- デッキグラフィック (レーシングストライプ & 幾何学アクセント) -->
+        <path d="M -13,-90 L 13,-75 L 8,-68 L -14,-80 Z" fill="#F59E0B" opacity="0.9"/>
+        <path d="M -14,-76 L 13,-58 L 11,-52 L -14,-67 Z" fill="#06B6D4" opacity="0.8"/>
+        <line x1="0" y1="-98" x2="0" y2="98" stroke="#FFFFFF" stroke-width="0.8" stroke-dasharray="8 6" opacity="0.4"/>
+        <path d="M -14,65 L 12,82 L 14,75 L -12,59 Z" fill="#F59E0B" opacity="0.9"/>
+        <path d="M -13,76 L 14,92 L 12,98 L -14,84 Z" fill="#EC4899" opacity="0.85"/>
+        <!-- ノーズ & テール プロテクター/リベット -->
+        <circle cx="0" cy="-100" r="2.2" fill="#E2E8F0"/>
+        <circle cx="0" cy="100" r="2.2" fill="#E2E8F0"/>
+      </g>
+
+      <!-- 2. ビンディング (バインディング) -->
+      <!-- 前足ビンディング (上側, 角度約 +16°) -->
+      <g transform="translate(0, -42) rotate(16)">
+        <!-- ディスク/ベースプレート -->
+        <rect x="-13" y="-8" width="26" height="16" rx="4" fill="#0F172A" stroke="#334155" stroke-width="1"/>
+        <circle cx="0" cy="0" r="5" fill="#1E293B" stroke="#475569" stroke-width="1"/>
+        <!-- ハイバック (後ろの支え) -->
+        <path d="M -11,-9 L -11,-12 C -11,-14 11,-14 11,-12 L 11,-9 Z" fill="#334155"/>
+        <!-- トゥストラップ & アンクルストラップ (ラチェットバックル) -->
+        <rect x="-12" y="-7" width="24" height="4" rx="2" fill="#F97316"/>
+        <rect x="-12" y="3" width="24" height="4.5" rx="2" fill="#F97316"/>
+        <circle cx="-10" cy="-5" r="1.5" fill="#E2E8F0"/>
+        <circle cx="-10" cy="5" r="1.5" fill="#E2E8F0"/>
+      </g>
+
+      <!-- 後足ビンディング (下側, 角度約 -6°) -->
+      <g transform="translate(0, 42) rotate(-6)">
+        <!-- ディスク/ベースプレート -->
+        <rect x="-13" y="-8" width="26" height="16" rx="4" fill="#0F172A" stroke="#334155" stroke-width="1"/>
+        <circle cx="0" cy="0" r="5" fill="#1E293B" stroke="#475569" stroke-width="1"/>
+        <!-- ハイバック -->
+        <path d="M -11,9 L -11,12 C -11,14 11,14 11,12 L 11,9 Z" fill="#334155"/>
+        <!-- ストラップ -->
+        <rect x="-12" y="-6" width="24" height="4.5" rx="2" fill="#F97316"/>
+        <rect x="-12" y="4" width="24" height="4" rx="2" fill="#F97316"/>
+        <circle cx="-10" cy="-4" r="1.5" fill="#E2E8F0"/>
+        <circle cx="-10" cy="6" r="1.5" fill="#E2E8F0"/>
+      </g>
+
+      <!-- 3. ライダー (スノーボーダー) -->
+      <!-- ブーツ (足元) -->
+      <g id="rider-boots">
+        <!-- 前足ブーツ -->
+        <path d="M -9,-48 C -9,-53 10,-47 11,-42 C 11,-36 -7,-34 -9,-40 Z" fill="#0F172A" stroke="#475569" stroke-width="1"/>
+        <!-- 後足ブーツ -->
+        <path d="M -10,36 C -10,31 9,35 10,40 C 10,47 -8,48 -10,43 Z" fill="#0F172A" stroke="#475569" stroke-width="1"/>
+      </g>
+
+      <!-- スノーパンツ (脚部・膝の曲がり) -->
+      <g id="rider-pants">
+        <!-- 前脚 (左脚) -->
+        <path d="M -11,-36 C -18,-30 -19,-18 -12,-8 C -8,-2 -1,-6 -2,-16 C -3,-24 -5,-32 -11,-36 Z" fill="#1E293B"/>
+        <!-- 後脚 (右脚) -->
+        <path d="M -11,32 C -18,26 -19,16 -12,6 C -8,1 -1,4 -2,14 C -3,22 -5,28 -11,32 Z" fill="#1E293B"/>
+        <!-- 陰影ハイライト -->
+        <path d="M -15,-24 Q -10,-20 -4,-18" stroke="#334155" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M -15,20 Q -10,16 -4,14" stroke="#334155" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <!-- 上半身 (スノージャケット・体幹) -->
+      <g id="rider-torso">
+        <!-- ジャケット本体 (ドロップショルダー & アスレチックフォーム) -->
+        <path d="M -16,-20 C -22,-12 -23,10 -16,18 C -7,24 16,18 20,4 C 23,-8 14,-22 -3,-24 C -10,-24 -14,-22 -16,-20 Z" fill="url(#jacketGrad)"/>
+        
+        <!-- 肩 & サイドパネルのカラーブロック (ディープネイビー) -->
+        <path d="M -16,-20 C -19,-12 -19,8 -14,16 C -10,10 -10,-10 -16,-20 Z" fill="#172554"/>
+        <path d="M 12,-18 C 17,-8 17,6 13,15 C 8,9 8,-10 12,-18 Z" fill="#172554"/>
+
+        <!-- フロントジッパー & ウェアディテール -->
+        <path d="M 0,-24 Q 4,-2 0,20" fill="none" stroke="#F59E0B" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="0" cy="-18" r="1.5" fill="#E2E8F0"/>
+        
+        <!-- フードの襟元 -->
+        <path d="M -8,-22 C -6,-26 8,-26 10,-21 C 8,-17 -6,-17 -8,-22 Z" fill="#1E3A8A"/>
+      </g>
+
+      <!-- 腕 & グローブ (バランスをとって広げたポーズ) -->
+      <g id="rider-arms">
+        <!-- 左腕 (進行方向/ノーズ側へ伸ばす) -->
+        <path d="M -14,-14 C -26,-20 -35,-32 -42,-44 C -45,-49 -38,-53 -33,-47 C -27,-38 -20,-28 -9,-20 Z" fill="url(#jacketGrad)"/>
+        <!-- 左グローブ (オレンジのミトン) -->
+        <g transform="translate(-40, -47) rotate(-35)">
+          <rect x="-6" y="-8" width="12" height="15" rx="5" fill="url(#gloveGrad)"/>
+          <path d="M 4,-2 C 7,-2 7,3 4,4 Z" fill="url(#gloveGrad)"/> <!-- 親指 -->
+          <rect x="-6" y="4" width="12" height="3" rx="1" fill="#0F172A"/> <!-- カフス -->
+        </g>
+
+        <!-- 右腕 (後方/テール側でバランスを取る) -->
+        <path d="M -14,12 C -24,20 -34,30 -40,42 C -44,47 -37,51 -32,45 C -26,36 -19,26 -9,16 Z" fill="url(#jacketGrad)"/>
+        <!-- 右グローブ -->
+        <g transform="translate(-38, 45) rotate(40)">
+          <rect x="-6" y="-7" width="12" height="15" rx="5" fill="url(#gloveGrad)"/>
+          <path d="M 4,-2 C 7,-2 7,3 4,4 Z" fill="url(#gloveGrad)"/>
+          <rect x="-6" y="4" width="12" height="3" rx="1" fill="#0F172A"/>
+        </g>
+      </g>
+
+      <!-- 頭部 (ヘルメット & ミラーゴーグル) -->
+      <g id="rider-head" transform="translate(1, -2)">
+        <!-- ヘルメット本体 (流線型シェル) -->
+        <ellipse cx="0" cy="0" rx="15" ry="14" fill="url(#helmetGrad)"/>
+        <!-- ヘルメットバイザー/つば -->
+        <path d="M -10,-8 Q 3,-15 13,-6 Q 5,-12 -8,-7 Z" fill="#64748B"/>
+        <!-- ゴーグルストラップ (ヘルメット後部をホールド) -->
+        <path d="M -14,1 C -15,5 -12,8 -6,11" fill="none" stroke="#F97316" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- ゴーグル本体 (視線方向を向いた曲面フレーム) -->
+        <path d="M -8,-6 C -6,-11 8,-12 14,-5 C 16,-1 15,4 11,6 C 6,9 -6,6 -8,-6 Z" fill="#0F172A" stroke="#1E293B" stroke-width="1.2"/>
+        <!-- イリディセント ミラーレンズ -->
+        <path d="M -6,-5 C -4,-9 7,-10 12,-4 C 14,-1 13,3 10,4.5 C 5,7 -4,5 -6,-5 Z" fill="url(#goggleMirror)"/>
+        <!-- ゴーグルの強烈な白い反射光/ハイライト -->
+        <path d="M -3,-6 Q 3,-8 8,-3" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>
+        <circle cx="10" cy="-1" r="1" fill="#FFFFFF" opacity="0.8"/>
+      </g>
     </g>`;
 }
 function s6DrawTrickScene(deg){
@@ -1606,14 +1868,34 @@ function s6DrawTrickScene(deg){
   const turns=deg/360;
   let ring='';
   for(let r=70;r<=210;r+=35){
-    ring += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#D9E6F0" stroke-width="1.5"/>`;
+    ring += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="3 4"/>`;
   }
+
+  // 回転時のダイナミックな雪しぶき（スノーダストパーティクル）
+  let snowSpray = '';
+  if(deg > 0){
+    const sprayCount = Math.min(24, Math.floor(deg / 20) + 4);
+    for(let i = 0; i < sprayCount; i++){
+      const a = (-deg - 90 - (i * 14)) * Math.PI / 180;
+      const sr = 90 + (i % 5) * 22;
+      const sx = cx + sr * Math.cos(a) + (Math.sin(i * 3) * 8);
+      const sy = cy + sr * Math.sin(a) + (Math.cos(i * 2) * 8);
+      const pr = 1.5 + (i % 3) * 1.2;
+      const op = Math.max(0.1, 0.75 - (i / sprayCount) * 0.7);
+      snowSpray += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${pr}" fill="#38BDF8" opacity="${op.toFixed(2)}"/>`;
+    }
+  }
+
   svg.innerHTML=`
     ${ring}
-    <line x1="${cx-210}" y1="${cy}" x2="${cx+210}" y2="${cy}" stroke="#EAF0F6" stroke-width="2"/>
-    <line x1="${cx}" y1="${cy-210}" x2="${cx}" y2="${cy+210}" stroke="#EAF0F6" stroke-width="2"/>
+    <line x1="${cx-210}" y1="${cy}" x2="${cx+210}" y2="${cy}" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <line x1="${cx}" y1="${cy-210}" x2="${cx}" y2="${cy+210}" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <!-- 角度ガイドの目盛りマーク -->
+    <circle cx="${cx}" cy="${cy}" r="210" fill="none" stroke="#94A3B8" stroke-width="2"/>
+    <circle cx="${cx}" cy="${cy}" r="6" fill="#3B82F6"/>
+    ${snowSpray}
     <g transform="translate(${cx},${cy}) rotate(${-deg})">${snowboarderMarkup()}</g>
-    <text x="${cx}" y="30" text-anchor="middle" font-size="15" fill="#6B7A99">${turns.toFixed(2)} かいてん</text>
+    <text x="${cx}" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="#475569">${turns.toFixed(2)} かいてん（${deg}°）</text>
   `;
 }
 function initS6(){
