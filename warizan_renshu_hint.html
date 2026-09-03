@@ -796,6 +796,7 @@
       }
       studentRoomRef = null;
       updateConnStatus("none", "レイドコード未入力");
+      updateStreakUI();
       if(!isAuto) showRaidMsg("⚠️ レイドコードを入力してください", "warn");
       return;
     }
@@ -858,10 +859,14 @@
     connectToRaid(code, false);
   }
 
+  function isRaidConnected(){
+    return !!(db && studentRoomRef && currentRaidCode && connStatus && connStatus.textContent === "🟢");
+  }
+
   function updateStreakUI(){
     if(!streakBadge || !streakCountEl) return;
     streakCountEl.textContent = state.streak;
-    if(state.streak > 0){
+    if(isRaidConnected() && state.streak > 0){
       streakBadge.classList.add("show");
     } else {
       streakBadge.classList.remove("show");
@@ -935,13 +940,16 @@
         if(avatarBtn) avatarBtn.textContent = savedAvatar;
       }
 
+      // レイドコードは初期状態では空欄で未接続（URLパラメータ ?code=XXXX が明示された場合のみ接続）
       var urlParams = new URLSearchParams(window.location.search);
       var codeParam = urlParams.get("code");
-      var savedCode = localStorage.getItem("raid_boss_student_code");
-      var initialCode = (codeParam && codeParam.trim()) ? codeParam.trim() : (savedCode || "");
-      if(studentRaidCodeInput && initialCode) studentRaidCodeInput.value = initialCode;
-      if(initialCode) connectToRaid(initialCode, true);
-      else updateConnStatus("none", "コードを入力して接続してください");
+      var initialCode = (codeParam && codeParam.trim()) ? codeParam.trim() : "";
+      if(studentRaidCodeInput) studentRaidCodeInput.value = initialCode;
+      if(initialCode){
+        connectToRaid(initialCode, true);
+      } else {
+        updateConnStatus("none", "コードを入力して接続してください");
+      }
     } catch(e){}
   }
 
@@ -1711,31 +1719,35 @@
       state.answered = true;
       hintNextBtn.disabled = true;
 
-      // Streak & damage calculation
-      state.streak++;
-      updateStreakUI();
+      var raidActive = isRaidConnected();
 
-      var baseDamage = 10;
-      var multiplier = 1;
-      var isCritical = false;
-      if(state.streak >= 5){
-        multiplier = 3;
-        isCritical = true;
-      } else if(state.streak >= 3){
-        multiplier = 2;
-        isCritical = true;
-      }
-      var finalDamage = baseDamage * multiplier;
+      if(raidActive){
+        // レイド接続中のみストリーク計算＆ダメージ送信
+        state.streak++;
+        updateStreakUI();
 
-      var modeDesc = state.level === 1 ? "わり算Lv1" : "わり算Lv2";
-      var attackSent = sendAttack(finalDamage, modeDesc + " (" + state.streak + "連勝 " + multiplier + "倍)");
+        var baseDamage = 10;
+        var multiplier = 1;
+        var isCritical = false;
+        if(state.streak >= 5){
+          multiplier = 3;
+          isCritical = true;
+        } else if(state.streak >= 3){
+          multiplier = 2;
+          isCritical = true;
+        }
+        var finalDamage = baseDamage * multiplier;
 
-      if(attackSent){
+        var modeDesc = state.level === 1 ? "わり算Lv1" : "わり算Lv2";
+        sendAttack(finalDamage, modeDesc + " (" + state.streak + "連勝 " + multiplier + "倍)");
+
         var critMsg = isCritical ? " 🔥【" + state.streak + "れんぞく！ " + multiplier + "倍クリティカル！】" : "";
         feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg;
       } else {
-        var streakMsg = state.streak >= 3 ? " 🔥【" + state.streak + "れんぞくせいかい！】" : "";
-        feedback.textContent = "せいかい！ よくできました！" + streakMsg;
+        // 未接続時：通常の問題集として動作（ダメージ表記等は一切出さない）
+        state.streak = 0;
+        updateStreakUI();
+        feedback.textContent = "せいかい！ よくできました！";
       }
 
       feedback.className = "good";

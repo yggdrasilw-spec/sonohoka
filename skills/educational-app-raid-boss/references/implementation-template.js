@@ -1,4 +1,4 @@
-﻿/**
+/**
  * レイドボスチャレンジ連携 実装テンプレート
  * 
  * 1. HTMLの <head> に以下を追加:
@@ -267,11 +267,11 @@ function initRaidUI() {
     const savedAvatar = localStorage.getItem("raid_boss_student_avatar");
     if (savedAvatar && avatarBtn) avatarBtn.textContent = savedAvatar;
 
+    // レイドコードは初期状態では空欄で未接続（URLパラメータ ?code=XXXX がある場合のみ接続）
     const urlParams = new URLSearchParams(window.location.search);
     const codeParam = urlParams.get("code");
-    const savedCode = localStorage.getItem("raid_boss_student_code");
-    const initialCode = (codeParam && codeParam.trim()) || savedCode || "";
-    if (studentRaidCodeInput && initialCode) studentRaidCodeInput.value = initialCode;
+    const initialCode = (codeParam && codeParam.trim()) || "";
+    if (studentRaidCodeInput) studentRaidCodeInput.value = initialCode;
     if (initialCode) connectToRaid(initialCode, true);
     else updateConnStatus("none", "コードを入力して接続してください");
   } catch(e){}
