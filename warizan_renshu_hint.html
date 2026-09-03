@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>わり算れんしゅう ヒントつき もんだいしゅう</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap');
+
+  :root{
+    --paper:#FBF3E1;
+    --paper-line:#E4D6AE;
+    --ink:#2B2A4C;
+    --ink-soft:#6b6a8c;
+    --accent:#FF8C42;
+    --accent-soft:#FFE7CC;
+    --accent-deep:#E06B1F;
+    --good:#2FAE8B;
+    --good-soft:#DBF3EA;
+    --bad:#E8505B;
+    --bad-soft:#FDE3E1;
+    --card:#FFFFFF;
+    --blue:#3E6D9C;
+    --blue-soft:#E4EEF8;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+  }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 40px;
+    font-family:'M PLUS Rounded 1c', sans-serif;
+    color: var(--ink);
+    display:flex;
+    justify-content:center;
+    align-items:stretch;
+    padding: 10px 12px;
+  }
+
+  #app{
+    width:100%;
+    max-width: 1240px;
+    height:100%;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+  }
+
+  header.top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+    flex:0 0 auto;
+    gap:8px;
+  }
+
+  header.top h1{
+    font-size: 1.3rem;
+    font-weight:800;
+    margin:0;
+    letter-spacing: .02em;
+  }
+
+  #scoreBox{
+    background: var(--card);
+    border: 2px solid var(--paper-line);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-weight:700;
+    font-size:.95rem;
+    color: var(--ink-soft);
+    display:none;
+    align-items:center;
+    gap:6px;
+  }
+  #scoreBox.show{ display:flex; }
+  #scoreBox b{ color: var(--good); font-size:1.05rem; }
+
+  /* ---------- raid boss controls ---------- */
+  .raid-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    position:relative;
+  }
+  .raid-code-box{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    background: #fff;
+    border: 2px solid var(--paper-line);
+    border-radius: 999px;
+    padding: 3px 8px;
+  }
+  .raid-code-box input{
+    width: 64px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: monospace, inherit;
+    font-weight: 800;
+    font-size: .9rem;
+    text-align: center;
+    color: var(--blue);
+  }
+  .raid-btn{
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .8rem;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .raid-btn:hover{ opacity: .9; }
+  .conn-status{
+    font-size: .85rem;
+    cursor: default;
+  }
+  .boss-mini-status{
+    display: none;
+    align-items: center;
+    gap: 4px;
+    background: #fff8e6;
+    border: 2px solid #ffd166;
+    border-radius: 999px;
+    padding: 3px 12px;
+    font-size: .85rem;
+    font-weight: 800;
+    color: #b45309;
+    box-shadow: 0 2px 6px rgba(180,83,9,.1);
+    animation: fadeInAnim .3s ease;
+  }
+  .boss-mini-status.show{ display: flex; }
+  .streak-badge{
+    display: none;
+    align-items: center;
+    gap: 4px;
+    background: #fff1f2;
+    border: 2px solid #fda4af;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: .85rem;
+    font-weight: 800;
+    color: #e11d48;
+  }
+  .streak-badge.show{ display: flex; }
+  .user-profile-box{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #fff;
+    border: 2px solid var(--paper-line);
+    border-radius: 999px;
+    padding: 2px 6px;
+    position: relative;
+  }
+  .avatar-select-btn{
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 1px 3px;
+    border-radius: 8px;
+    transition: transform .1s;
+  }
+  .avatar-select-btn:hover{ transform: scale(1.15); }
+  .avatar-picker-popover{
+    position: absolute;
+    top: 38px;
+    left: 0;
+    background: #fff;
+    border: 2px solid var(--paper-line);
+    border-radius: 12px;
+    padding: 6px 8px;
+    display: none;
+    gap: 6px;
+    z-index: 1000;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  }
+  .avatar-picker-popover.show{ display: flex; }
+  .avatar-option{
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 3px;
+    border-radius: 6px;
+    transition: background .15s;
+  }
+  .avatar-option:hover{ background: var(--accent-soft); }
+  .name-input-box input{
+    width: 60px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: .85rem;
+    text-align: center;
+    color: var(--ink);
+  }
+
+  .card{
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: 0 6px 0 var(--paper-line), 0 8px 20px rgba(43,42,76,.08);
+    padding: 16px;
+  }
+
+  /* ---------- level select ---------- */
+  #levelSelect .level-btn{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    width:100%;
+    text-align:left;
+    border: 3px solid var(--paper-line);
+    background: var(--card);
+    border-radius: 16px;
+    padding: 18px 18px;
+    margin-bottom: 14px;
+    cursor:pointer;
+    font-family: inherit;
+    transition: transform .12s ease, border-color .12s ease;
+  }
+  #levelSelect .level-btn:hover{
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  #levelSelect .level-btn:active{ transform: translateY(0); }
+  #levelSelect .badge{
+    flex: 0 0 auto;
+    width:56px; height:56px;
+    border-radius: 14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.6rem; font-weight:800; color:#fff;
+  }
+  #levelSelect .lv1 .badge{ background: var(--blue); }
+  #levelSelect .lv2 .badge{ background: var(--accent); }
+  #levelSelect .txt strong{ display:block; font-size:1.08rem; margin-bottom:4px; }
+  #levelSelect .txt span{ color: var(--ink-soft); font-size:.9rem; }
+
+  /* ---------- problem screen ---------- */
+  #problemScreen{ display:none; flex:1 1 auto; min-height:0; }
+  #problemScreen.show{ display:flex; flex-direction:column; min-height:0; }
+
+  #problemScreen .card{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) 300px;
+    gap:16px;
+    align-items:stretch;
+  }
+
+  .problem-left{
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+  }
+
+  .input-panel{
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    border-left:2px dashed var(--paper-line);
+    padding-left:14px;
+  }
+
+  .input-panel #hintControls{ margin-top:auto; }
+
+  #backToLevels{
+    background:none; border:none; color: var(--ink-soft);
+    font-family:inherit; font-size:.85rem; cursor:pointer;
+    padding:2px 0; margin-bottom:5px; display:inline-flex; align-items:center; gap:4px;
+    flex:0 0 auto;
+  }
+  #backToLevels:hover{ color: var(--ink); }
+
+  #stageSvgWrap{
+    width:100%;
+    flex:1 1 auto;
+    min-height:0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #fff, #fffdf7);
+    border: 2px dashed var(--paper-line);
+    margin-bottom: 6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #stageSvg{ display:block; width:100%; height:100%; }
+
+  #hintCaption{
+    min-height: 28px;
+    text-align:center;
+    color: var(--ink-soft);
+    font-weight:700;
+    font-size:.9rem;
+    margin-bottom:0;
+    flex:0 0 auto;
+  }
+
+  .slot-blue{ fill: var(--blue); }
+  .slot-orange{ fill: var(--accent-deep); }
+  .slot-wait{ fill: #b9b6d6; }
+
+  /* ---------- keypad / answer ---------- */
+  #answerArea{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    margin-bottom:0;
+  }
+
+  .answer-display{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    font-size:1.1rem;
+    font-weight:700;
+    color: var(--ink-soft);
+  }
+  .answer-display .chip{
+    min-width:52px;
+    padding:6px 10px;
+    text-align:center;
+    background: var(--blue-soft);
+    color: var(--blue);
+    border-radius:10px;
+    font-size:1.3rem;
+    font-weight:800;
+  }
+  .answer-display .chip.active{ outline:3px solid var(--accent); }
+
+  #keypad{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(52px, 72px));
+    gap:7px;
+    justify-content:center;
+    width:100%;
+    max-width:250px;
+  }
+  #keypad button{
+    width:100%; height:44px;
+    border-radius:12px;
+    border:2px solid var(--paper-line);
+    background:#fff;
+    font-family:inherit;
+    font-size:1.15rem;
+    font-weight:700;
+    color: var(--ink);
+    cursor:pointer;
+  }
+  #keypad button:active{ background: var(--accent-soft); border-color: var(--accent); }
+  #keypad button.wide{ grid-column: span 3; width:auto; }
+  #keypad button.clear{ color: var(--bad); }
+
+  #submitBtn{
+    margin-top:2px;
+    padding: 10px 36px;
+    border-radius: 999px;
+    border:none;
+    background: var(--good);
+    color:#fff;
+    font-family:inherit;
+    font-weight:800;
+    font-size:1.05rem;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #1f8e70;
+  }
+  #submitBtn:active{ transform: translateY(2px); box-shadow: 0 2px 0 #1f8e70; }
+  #submitBtn:disabled{ background:#cfd0e0; box-shadow:none; cursor:not-allowed; }
+
+  /* ---------- hint controls ---------- */
+  #hintControls{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    margin-bottom: 0;
+    flex:0 0 auto;
+  }
+  #hintControls button{
+    border-radius: 999px;
+    border: 2px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    font-family: inherit;
+    font-weight:800;
+    font-size:.95rem;
+    padding: 9px 18px;
+    cursor:pointer;
+  }
+  #hintControls button:disabled{
+    opacity:.35;
+    cursor:not-allowed;
+  }
+  #hintBackBtn{ background:#fff; color: var(--ink-soft); border-color: var(--paper-line); }
+
+  #hintDots{ display:flex; gap:6px; }
+  #hintDots span{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--paper-line);
+    display:inline-block;
+  }
+  #hintDots span.on{ background: var(--accent); }
+
+  /* ---------- feedback ---------- */
+  #feedback{
+    text-align:center;
+    min-height: 28px;
+    font-weight:800;
+    font-size:1.15rem;
+    margin-bottom:10px;
+  }
+  #feedback.good{ color: var(--good); }
+  #feedback.bad{ color: var(--bad); }
+
+  #nextProblemBtn{
+    display:none;
+    margin: 0 auto;
+    padding: 12px 40px;
+    border-radius: 999px;
+    border:none;
+    background: var(--blue);
+    color:#fff;
+    font-family:inherit;
+    font-weight:800;
+    font-size:1.05rem;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #294f74;
+  }
+  #nextProblemBtn.show{ display:block; }
+  #nextProblemBtn:active{ transform: translateY(2px); box-shadow: 0 2px 0 #294f74; }
+
+  .shake{ animation: shakeAnim .4s; }
+  @keyframes shakeAnim{
+    0%,100%{ transform: translateX(0); }
+    20%{ transform: translateX(-8px); }
+    40%{ transform: translateX(8px); }
+    60%{ transform: translateX(-6px); }
+    80%{ transform: translateX(6px); }
+  }
+
+  .fade-in{ animation: fadeInAnim .35s ease both; }
+  @keyframes fadeInAnim{
+    from{ opacity:0; transform: translateY(4px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+  .pop{ animation: popAnim .4s ease both; }
+  @keyframes popAnim{
+    0%{ transform: scale(1); }
+    45%{ transform: scale(1.35); }
+    100%{ transform: scale(1); }
+  }
+
+  .wrong-row .strike-line{
+    stroke:#E8505B;
+    stroke-width:5;
+    stroke-linecap:round;
+    stroke-dasharray:340;
+    stroke-dashoffset:340;
+    opacity:0;
+  }
+  .wrong-row.strike .strike-line{
+    opacity:1;
+    animation: strikeAnim .42s ease forwards;
+  }
+  .wrong-row.gray{
+    opacity:.38;
+    transition:opacity .25s ease;
+  }
+  .wrong-row.shatter{
+    animation: shatterAnim .48s cubic-bezier(.55,.05,.68,.53) forwards;
+    transform-box:fill-box;
+    transform-origin:center;
+  }
+  .correct-row{
+    transition: transform .45s ease;
+    transform-box:fill-box;
+    transform-origin:center;
+  }
+  @keyframes strikeAnim{
+    from{ stroke-dashoffset:340; }
+    to{ stroke-dashoffset:0; }
+  }
+  @keyframes shatterAnim{
+    0%{ opacity:.38; transform:scale(1); filter:blur(0); }
+    55%{ opacity:.24; transform:scale(1.08) rotate(1deg); filter:blur(.2px); }
+    100%{ opacity:0; transform:scale(.72) rotate(-4deg) translateY(5px); filter:blur(2px); }
+  }
+
+  @media (max-width: 820px){
+    #problemScreen .card{ grid-template-columns:minmax(0,1fr) 250px; gap:10px; padding:12px; }
+    .input-panel{ padding-left:10px; }
+  }
+
+  @media (max-height: 720px){
+    body{ padding:6px 10px; }
+    header.top h1{ font-size:1.1rem; }
+    .card{ padding:12px; }
+    #problemScreen .card{ grid-template-columns:minmax(0,1fr) 280px; }
+    #keypad button{ height:40px; }
+    .answer-display .chip{ min-width:44px; padding:4px 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .shake, .fade-in, .pop, .wrong-row.strike .strike-line, .wrong-row.shatter{ animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="top">
+    <h1>わり算れんしゅう</h1>
+
+    <div class="raid-bar" id="raidBar">
+      <div class="raid-code-box">
+        <span style="font-size: .85rem;">🔑</span>
+        <input type="text" id="studentRaidCode" placeholder="コード" maxlength="8">
+        <button id="connectBtn" class="raid-btn" type="button">接続</button>
+        <span id="connStatus" class="conn-status" title="接続状態">⚪</span>
+      </div>
+
+      <div id="bossMiniStatus" class="boss-mini-status">
+        👾 <span id="miniBossName">ボス</span> <span id="miniBossHp"></span>
+      </div>
+
+      <div id="streakBadge" class="streak-badge">
+        🔥 <span id="streakCount">0</span>れんぞく
+      </div>
+
+      <div class="user-profile-box">
+        <button id="avatarBtn" class="avatar-select-btn" type="button">⚔️</button>
+        <div class="name-input-box">
+          <input type="text" id="studentName" value="たろう" placeholder="なまえ" maxlength="8">
+        </div>
+        <div class="avatar-picker-popover" id="avatarPicker">
+          <span class="avatar-option" data-avatar="⚔️">⚔️</span>
+          <span class="avatar-option" data-avatar="🧙‍♂️">🧙‍♂️</span>
+          <span class="avatar-option" data-avatar="🏹">🏹</span>
+          <span class="avatar-option" data-avatar="🥷">🥷</span>
+          <span class="avatar-option" data-avatar="🐱">🐱</span>
+          <span class="avatar-option" data-avatar="🐶">🐶</span>
+          <span class="avatar-option" data-avatar="🤖">🤖</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="scoreBox"><span>せいかい</span><b id="scoreCorrect">0</b><span>/</span><span id="scoreTotal">0</span>もん</div>
+  </header>
+
+  <section id="levelSelect" class="card">
+    <button class="level-btn lv1" data-level="1">
+      <span class="badge">1</span>
+      <span class="txt">
+        <strong>レベル１　わりきれる もんだい</strong>
+        <span>こたえ 1〜10。ヒントで九九のしきを見てみよう</span>
+      </span>
+    </button>
+    <button class="level-btn lv2" data-level="2">
+      <span class="badge">2</span>
+      <span class="txt">
+        <strong>レベル２　あまりの ある もんだい</strong>
+        <span>こたえは 1〜9とあまり。九九のリストからヒントを出すよ</span>
+      </span>
+    </button>
+  </section>
+
+  <section id="problemScreen">
+    <button id="backToLevels">← レベルせんたくに もどる</button>
+
+    <div class="card">
+      <div class="problem-left">
+        <div id="stageSvgWrap">
+          <svg id="stageSvg" viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div id="hintCaption"></div>
+      </div>
+
+      <div class="input-panel">
+        <div id="answerArea">
+          <div class="answer-display" id="answerDisplay"></div>
+          <div id="keypad"></div>
+          <button id="submitBtn">こたえる</button>
+        </div>
+
+        <div id="hintControls">
+          <button id="hintBackBtn">◀ もどる</button>
+          <span id="hintDots"></span>
+          <button id="hintNextBtn">ヒント ▶</button>
+        </div>
+
+        <div id="feedback"></div>
+        <button id="nextProblemBtn">つぎの もんだい →</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, txt){
+    var e = document.createElementNS(SVGNS, tag);
+    if(attrs){
+      for(var k in attrs){
+        if(attrs[k] === null || attrs[k] === undefined || attrs[k] === "") continue;
+        e.setAttribute(k, attrs[k]);
+      }
+    }
+    if(txt !== undefined){ e.textContent = txt; }
+    return e;
+  }
+  function rand(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+  // ------------------------------------------------------------------
+  // state
+  // ------------------------------------------------------------------
+  var state = {
+    level: null,
+    problem: null,
+    hintStage: 0,
+    maxHint: 0,
+    inputDigits: "",      // quotient digits typed by the child (level1) or "active field" digits
+    inputRemainder: "",   // level2 remainder digits
+    activeField: "q",     // 'q' or 'r' for level2
+    answered: false,
+    lastKey: null,
+    score: { correct: 0, total: 0 },
+    streak: 0,
+    avatar: "⚔️"
+  };
+
+  var svg = document.getElementById("stageSvg");
+  var hintDots = document.getElementById("hintDots");
+  var hintNextBtn = document.getElementById("hintNextBtn");
+  var hintBackBtn = document.getElementById("hintBackBtn");
+  var answerDisplay = document.getElementById("answerDisplay");
+  var keypad = document.getElementById("keypad");
+  var submitBtn = document.getElementById("submitBtn");
+  var feedback = document.getElementById("feedback");
+  var nextProblemBtn = document.getElementById("nextProblemBtn");
+  var scoreBox = document.getElementById("scoreBox");
+
+  // Raid Boss UI elements
+  var studentRaidCodeInput = document.getElementById("studentRaidCode");
+  var connectBtn = document.getElementById("connectBtn");
+  var connStatus = document.getElementById("connStatus");
+  var bossMiniStatus = document.getElementById("bossMiniStatus");
+  var miniBossName = document.getElementById("miniBossName");
+  var miniBossHp = document.getElementById("miniBossHp");
+  var streakBadge = document.getElementById("streakBadge");
+  var streakCountEl = document.getElementById("streakCount");
+  var avatarBtn = document.getElementById("avatarBtn");
+  var avatarPicker = document.getElementById("avatarPicker");
+  var studentNameInput = document.getElementById("studentName");
+
+  // ------------------------------------------------------------------
+  // Firebase & Raid Boss Logic
+  // ------------------------------------------------------------------
+  var db = null;
+  try {
+    var firebaseConfig = {
+      apiKey: "AIzaSyDdqalOwQFkZnNvFCKzXqM4VeP4IBPhzXo",
+      authDomain: "raid-boss-project.firebaseapp.com",
+      databaseURL: "https://raid-boss-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "raid-boss-project",
+      storageBucket: "raid-boss-project.firebasestorage.app",
+      messagingSenderId: "195656323635",
+      appId: "1:195656323635:web:ca2dd1251af61929080946",
+      measurementId: "G-6VBWZVLKLK"
+    };
+    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+    }
+  } catch (err) {
+    console.error("Firebase初期化エラー:", err);
+  }
+
+  var currentRaidCode = "";
+  var studentRoomRef = null;
+  var currentRoomListener = null;
+
+  function updateConnStatus(status, tooltip){
+    if(!connStatus) return;
+    connStatus.title = tooltip;
+    if(status === "connected"){
+      connStatus.textContent = "🟢";
+      if(bossMiniStatus) bossMiniStatus.classList.add("show");
+    } else if(status === "error"){
+      connStatus.textContent = "🔴";
+      if(bossMiniStatus) bossMiniStatus.classList.remove("show");
+    } else {
+      connStatus.textContent = "⚪";
+      if(bossMiniStatus) bossMiniStatus.classList.remove("show");
+    }
+  }
+
+  function connectToRaid(code){
+    var cleanCode = (code || "").trim().toUpperCase();
+    if(!cleanCode){
+      currentRaidCode = "";
+      if(studentRoomRef && currentRoomListener){
+        studentRoomRef.off("value", currentRoomListener);
+      }
+      studentRoomRef = null;
+      updateConnStatus("none", "レイドコード未入力");
+      return;
+    }
+
+    if(!db){
+      updateConnStatus("error", "Firebaseが初期化されていません");
+      return;
+    }
+
+    currentRaidCode = cleanCode;
+    try { localStorage.setItem("raid_boss_student_code", cleanCode); } catch(e){}
+
+    if(studentRoomRef && currentRoomListener){
+      studentRoomRef.off("value", currentRoomListener);
+    }
+
+    studentRoomRef = db.ref("rooms/" + cleanCode);
+    currentRoomListener = function(snapshot){
+      var data = snapshot.val();
+      var now = Date.now();
+
+      if(!data || !data.boss || (data.expiresAt && data.expiresAt < now)){
+        updateConnStatus("error", "レイドコードが見つからないか、期限切れです");
+        return;
+      }
+
+      updateConnStatus("connected", "接続中: ルーム " + cleanCode);
+
+      if(miniBossName) miniBossName.textContent = data.boss.name || "ボス";
+      if(miniBossHp){
+        var cur = Math.max(0, data.boss.currentHp !== undefined ? data.boss.currentHp : (data.boss.maxHp || 0));
+        miniBossHp.textContent = "(" + cur + "/" + (data.boss.maxHp || "?") + ")";
+      }
+    };
+
+    studentRoomRef.on("value", currentRoomListener);
+  }
+
+  function applyStudentRaidCode(){
+    var code = studentRaidCodeInput ? studentRaidCodeInput.value : "";
+    connectToRaid(code);
+  }
+
+  function updateStreakUI(){
+    if(!streakBadge || !streakCountEl) return;
+    streakCountEl.textContent = state.streak;
+    if(state.streak > 0){
+      streakBadge.classList.add("show");
+    } else {
+      streakBadge.classList.remove("show");
+    }
+  }
+
+  function sendAttack(damage, detail){
+    if(!db || !studentRoomRef || !currentRaidCode){
+      return false; // local only
+    }
+
+    var name = (studentNameInput && studentNameInput.value.trim()) ? studentNameInput.value.trim() : "ななし";
+    try { localStorage.setItem("raid_boss_student_name", name); } catch(e){}
+
+    studentRoomRef.child("boss/currentHp").transaction(function(currentHp){
+      return (currentHp || 0) - damage;
+    });
+
+    studentRoomRef.child("logs").push({
+      avatar: state.avatar,
+      name: name,
+      damage: damage,
+      detail: detail,
+      timestamp: Date.now()
+    });
+
+    return true;
+  }
+
+  function initRaidUI(){
+    if(connectBtn){
+      connectBtn.addEventListener("click", applyStudentRaidCode);
+    }
+    if(studentRaidCodeInput){
+      studentRaidCodeInput.addEventListener("keydown", function(e){
+        if(e.key === "Enter") applyStudentRaidCode();
+      });
+    }
+    if(avatarBtn && avatarPicker){
+      avatarBtn.addEventListener("click", function(e){
+        e.stopPropagation();
+        avatarPicker.classList.toggle("show");
+      });
+      avatarPicker.querySelectorAll(".avatar-option").forEach(function(opt){
+        opt.addEventListener("click", function(e){
+          e.stopPropagation();
+          var av = opt.getAttribute("data-avatar");
+          if(av){
+            state.avatar = av;
+            avatarBtn.textContent = av;
+            try { localStorage.setItem("raid_boss_student_avatar", av); } catch(err){}
+          }
+          avatarPicker.classList.remove("show");
+        });
+      });
+      document.addEventListener("click", function(e){
+        if(!avatarPicker.contains(e.target) && e.target !== avatarBtn){
+          avatarPicker.classList.remove("show");
+        }
+      });
+    }
+
+    // Restore saved settings
+    try {
+      var savedName = localStorage.getItem("raid_boss_student_name");
+      if(savedName && studentNameInput) studentNameInput.value = savedName;
+
+      var savedAvatar = localStorage.getItem("raid_boss_student_avatar");
+      if(savedAvatar){
+        state.avatar = savedAvatar;
+        if(avatarBtn) avatarBtn.textContent = savedAvatar;
+      }
+
+      var urlParams = new URLSearchParams(window.location.search);
+      var codeParam = urlParams.get("code");
+      var savedCode = localStorage.getItem("raid_boss_student_code");
+      var initialCode = (codeParam && codeParam.trim()) ? codeParam.trim() : (savedCode || "");
+      if(studentRaidCodeInput && initialCode) studentRaidCodeInput.value = initialCode;
+      if(initialCode) connectToRaid(initialCode);
+      else updateConnStatus("none", "コードを入力して接続してください");
+    } catch(e){}
+  }
+
+  // ------------------------------------------------------------------
+  // problem generation
+  // ------------------------------------------------------------------
+  function genLevel1(prevKey){
+    var problem, key;
+    var tries = 0;
+    do{
+      var divisor = rand(1,9);
+      var quotient = rand(1,10);
+      problem = { level:1, divisor:divisor, quotient:quotient, remainder:0, dividend: divisor*quotient };
+      key = divisor+"-"+quotient;
+      tries++;
+    } while(key === prevKey && tries < 20);
+    return problem;
+  }
+
+  function genLevel2(prevKey){
+    var problem, key;
+    var tries = 0;
+    do{
+      var divisor = rand(2,9);
+      var quotient = rand(1,9);
+      var remainder = rand(1, divisor-1);
+      problem = { level:2, divisor:divisor, quotient:quotient, remainder:remainder, dividend: divisor*quotient+remainder };
+      key = divisor+"-"+quotient+"-"+remainder;
+      tries++;
+    } while(key === prevKey && tries < 20);
+    return problem;
+  }
+
+  var lastKey = null;
+  function newProblem(){
+    var p = state.level === 1 ? genLevel1(lastKey) : genLevel2(lastKey);
+    lastKey = p.divisor+"-"+p.quotient+"-"+p.remainder;
+    state.problem = p;
+    state.hintStage = 0;
+    state.maxHint = state.level === 1 ? 3 : 5;
+    state.inputDigits = "";
+    state.inputRemainder = "";
+    state.activeField = "q";
+    state.answered = false;
+    state.counted = false;
+    feedback.textContent = "";
+    feedback.className = "";
+    nextProblemBtn.classList.remove("show");
+    buildKeypad();
+    renderAll(false);
+  }
+
+  // ------------------------------------------------------------------
+  // keypad / answer input
+  // ------------------------------------------------------------------
+  function buildKeypad(){
+    keypad.innerHTML = "";
+    var nums = [1,2,3,4,5,6,7,8,9];
+    nums.forEach(function(n){
+      var b = document.createElement("button");
+      b.textContent = n;
+      b.addEventListener("click", function(){ pressDigit(n); });
+      keypad.appendChild(b);
+    });
+    var zero = document.createElement("button");
+    zero.textContent = "0";
+    zero.addEventListener("click", function(){ pressDigit(0); });
+    keypad.appendChild(zero);
+
+    var clearBtn = document.createElement("button");
+    clearBtn.textContent = "けす";
+    clearBtn.className = "clear";
+    clearBtn.addEventListener("click", clearDigit);
+    keypad.appendChild(clearBtn);
+
+    if(state.level === 2){
+      var switchBtn = document.createElement("button");
+      switchBtn.textContent = "きりかえ";
+      switchBtn.className = "wide";
+      switchBtn.addEventListener("click", function(){
+        state.activeField = state.activeField === "q" ? "r" : "q";
+        renderAnswerDisplay();
+      });
+      keypad.appendChild(switchBtn);
+    }
+  }
+
+  function pressDigit(n){
+    if(state.answered) return;
+    if(state.level === 1){
+      if(state.inputDigits.length >= 2) return;
+      state.inputDigits += String(n);
+    } else {
+      if(state.activeField === "q"){
+        if(state.inputDigits.length >= 1) return;
+        state.inputDigits += String(n);
+      } else {
+        if(state.inputRemainder.length >= 1) return;
+        state.inputRemainder += String(n);
+      }
+    }
+    renderAnswerDisplay();
+  }
+
+  function clearDigit(){
+    if(state.answered) return;
+    if(state.level === 1){
+      state.inputDigits = state.inputDigits.slice(0,-1);
+    } else if(state.activeField === "q"){
+      state.inputDigits = state.inputDigits.slice(0,-1);
+    } else {
+      state.inputRemainder = state.inputRemainder.slice(0,-1);
+    }
+    renderAnswerDisplay();
+  }
+
+  function renderAnswerDisplay(){
+    answerDisplay.innerHTML = "";
+    if(state.level === 1){
+      var chip = document.createElement("span");
+      chip.className = "chip active";
+      chip.textContent = state.inputDigits.length ? state.inputDigits : "?";
+      answerDisplay.appendChild(document.createTextNode("こたえ　"));
+      answerDisplay.appendChild(chip);
+    } else {
+      var qChip = document.createElement("span");
+      qChip.className = "chip" + (state.activeField === "q" ? " active" : "");
+      qChip.textContent = state.inputDigits.length ? state.inputDigits : "?";
+      var rChip = document.createElement("span");
+      rChip.className = "chip" + (state.activeField === "r" ? " active" : "");
+      rChip.textContent = state.inputRemainder.length ? state.inputRemainder : "?";
+      answerDisplay.appendChild(document.createTextNode("しょう　"));
+      answerDisplay.appendChild(qChip);
+      answerDisplay.appendChild(document.createTextNode("　あまり　"));
+      answerDisplay.appendChild(rChip);
+    }
+    updateEquationSlots();
+  }
+
+  // ------------------------------------------------------------------
+  // SVG layout helpers
+  // ------------------------------------------------------------------
+  var LAYOUT = {
+    eqY: 46,
+    eqFont: 30,
+    hintTop: 100,
+    lineH: 34
+  };
+
+  // Fixed digit columns used by the hint-4/5 subtraction diagram (and the
+  // dividend once that diagram is on screen). Every number involved -
+  // わられる数 / 引く数 / 答え(あまり) - is drawn one digit at a time, each
+  // digit centered ("text-anchor:middle") on its own column X. Because the
+  // glyph is centered rather than the whole number being right-aligned as a
+  // single string, columns line up exactly even though digits like "1" and
+  // "8" have different rendered widths.
+  var SUB_COLS = { onesX: 90, colW: 26, fontSize: 30 };
+
+  // A single digit character, centered on x,y. No fill/class of its own -
+  // color comes from the wrapping <g> (see renderNumberColumns) so the whole
+  // number can be recolored / animated together.
+  function digitText(x, y, txt, extra){
+    var attrs = { x:x, y:y, "text-anchor":"middle", "font-size": extra && extra.size || 26,
+                  "font-weight":"800", "font-family":"'M PLUS Rounded 1c', sans-serif" };
+    if(extra){ for(var k in extra){ if(k!=="size") attrs[k]=extra[k]; } }
+    return el("text", attrs, txt);
+  }
+
+  // Renders `number` as separate digit glyphs on the shared SUB_COLS columns,
+  // ones place at SUB_COLS.onesX, tens place one column to the left, etc.
+  // Returns the <g> wrapper (not yet attached to the document).
+  function renderNumberColumns(number, y, cls, id){
+    var str = String(number);
+    var g = el("g", { id: id || null });
+    if(cls) g.setAttribute("class", cls);
+    else g.setAttribute("fill", "#2B2A4C");
+    for(var i=0; i<str.length; i++){
+      var place = str.length - 1 - i; // 0 = ones, 1 = tens, ...
+      var x = SUB_COLS.onesX - place*SUB_COLS.colW;
+      g.appendChild(digitText(x, y, str[i], {size:SUB_COLS.fontSize}));
+    }
+    return g;
+  }
+
+  function clearSvg(){ svg.innerHTML = ""; }
+
+  function bigText(x, y, txt, cls, extra){
+    var attrs = { x:x, y:y, "text-anchor":"middle", "font-size": extra && extra.size || 26,
+                  "font-weight":"800", "font-family":"'M PLUS Rounded 1c', sans-serif" };
+    if(extra){ for(var k in extra){ if(k!=="size") attrs[k]=extra[k]; } }
+    var t = el("text", attrs, txt);
+    if(cls) t.setAttribute("class", cls);
+    else if(!attrs.fill) t.setAttribute("fill", "#2B2A4C");
+    return t;
+  }
+
+  // SVG text helper whose visual vertical center is explicitly aligned to y.
+  // This is used where a text line and a surrounding □ must share the same
+  // vertical center rather than relying on the font baseline offset.
+  function middleText(x, y, txt, cls, extra){
+    var attrs = { x:x, y:y, "text-anchor":"middle", "dominant-baseline":"middle",
+                  "font-size": extra && extra.size || 26,
+                  "font-weight":"800", "font-family":"'M PLUS Rounded 1c', sans-serif" };
+    if(extra){ for(var k in extra){ if(k!=="size") attrs[k]=extra[k]; } }
+    var t = el("text", attrs, txt);
+    if(cls) t.setAttribute("class", cls);
+    else if(!attrs.fill) t.setAttribute("fill", "#2B2A4C");
+    return t;
+  }
+
+  function box(x, y, w, h, extraClass){
+    return el("rect", {
+      x:x-w/2, y:y-h/2, width:w, height:h, rx:8,
+      fill:"#fff", stroke:"#3E6D9C", "stroke-width":3,
+      class: extraClass || ""
+    });
+  }
+
+  function outlineBox(x, y, w, h, color){
+    return el("rect", {
+      x:x-w/2, y:y-h/2, width:w, height:h, rx:8,
+      fill:"none", stroke: color || "#FF8C42", "stroke-width":3
+    });
+  }
+
+  function arrowPath(d){
+    var p = el("path", { d:d, fill:"none", stroke:"#FF8C42", "stroke-width":4, "stroke-linecap":"round" });
+    return p;
+  }
+  function arrowHead(x, y, angleDeg){
+    var g = el("g", { transform: "translate("+x+","+y+") rotate("+angleDeg+")" });
+    g.appendChild(el("path", { d:"M0,0 L-10,-6 L-10,6 Z", fill:"#FF8C42" }));
+    return g;
+  }
+  // Given the arrowhead's tip position/angle, returns a point pulled back
+  // along the same axis so the line's rounded end lands well inside the
+  // triangle's body (not right at its tip), so the round stroke-cap never
+  // peeks out past the clean triangle edge.
+  function arrowLineEnd(tipX, tipY, angleDeg, back){
+    var rad = (angleDeg||0) * Math.PI/180;
+    var b = (back===undefined) ? 8 : back;
+    return { x: tipX - Math.cos(rad)*b, y: tipY - Math.sin(rad)*b };
+  }
+
+  function animateDraw(pathEl, duration, onDone){
+    var len = pathEl.getTotalLength();
+    pathEl.style.strokeDasharray = len;
+    pathEl.style.strokeDashoffset = len;
+    pathEl.getBoundingClientRect(); // force reflow
+    pathEl.style.transition = "stroke-dashoffset " + duration + "ms ease";
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        pathEl.style.strokeDashoffset = 0;
+      });
+    });
+    if(onDone) setTimeout(onDone, duration + 30);
+  }
+
+  // ------------------------------------------------------------------
+  // main render dispatcher
+  // ------------------------------------------------------------------
+  function renderAll(forward){
+    if(state.level === 1) renderLevel1(forward);
+    else renderLevel2(forward);
+    renderHintControls();
+    renderAnswerDisplay();
+  }
+
+  function renderHintControls(){
+    hintBackBtn.disabled = state.hintStage <= 0;
+    hintNextBtn.disabled = state.hintStage >= state.maxHint || state.answered;
+    hintNextBtn.textContent = state.hintStage >= state.maxHint ? "ヒント おわり" : "ヒント ▶";
+    hintDots.innerHTML = "";
+    for(var i=1;i<=state.maxHint;i++){
+      var d = document.createElement("span");
+      if(i <= state.hintStage) d.className = "on";
+      hintDots.appendChild(d);
+    }
+  }
+
+  function updateEquationSlots(){
+    // reflect the child's own typed input into the "?" slot color (blue) while not yet hint-revealed
+    var p = state.problem;
+    if(!p) return;
+    if(state.level === 1){
+      var slot = document.getElementById("qSlot");
+      if(!slot) return;
+      if(state.hintStage >= 3) return; // hint already owns display
+      slot.textContent = state.inputDigits.length ? state.inputDigits : "?";
+      slot.setAttribute("class", state.inputDigits.length ? "slot-blue" : "slot-wait");
+    } else {
+      var qs = document.getElementById("qSlot");
+      var rs = document.getElementById("rSlot");
+      if(qs && state.hintStage < 3){
+        qs.textContent = state.inputDigits.length ? state.inputDigits : "?";
+        qs.setAttribute("class", state.inputDigits.length ? "slot-blue" : "slot-wait");
+      }
+      if(rs && state.hintStage < 5){
+        rs.textContent = state.inputRemainder.length ? state.inputRemainder : "?";
+        rs.setAttribute("class", state.inputRemainder.length ? "slot-blue" : "slot-wait");
+      }
+    }
+  }
+
+  // ==================================================================
+  // LEVEL 1
+  // ==================================================================
+  function renderLevel1(forward){
+    var p = state.problem;
+    var stage = state.hintStage;
+    svg.setAttribute("viewBox", "0 0 500 260");
+    clearSvg();
+    var hintCaptionElL1 = document.getElementById("hintCaption");
+    if(hintCaptionElL1) hintCaptionElL1.textContent = "";
+
+    // row 1: main equation  8 ÷ 2 = ?
+    var g1 = el("g", {});
+    g1.appendChild(bigText(150, LAYOUT.eqY, p.dividend, null, {size:32}));
+    g1.appendChild(bigText(190, LAYOUT.eqY, "÷", null, {size:32}));
+    g1.appendChild(bigText(230, LAYOUT.eqY, p.divisor, null, {size:32}));
+    g1.appendChild(bigText(270, LAYOUT.eqY, "=", null, {size:32}));
+    var slotTxt = (stage >= 3) ? p.quotient : (state.inputDigits.length ? state.inputDigits : "?");
+    var slotCls = (stage >= 3) ? "slot-orange" : (state.inputDigits.length ? "slot-blue" : "slot-wait");
+    var qSlot = bigText(320, LAYOUT.eqY, slotTxt, slotCls, {size:34, id:"qSlot"});
+    g1.appendChild(qSlot);
+    svg.appendChild(g1);
+
+    if(stage >= 1){
+      var boxCx = 320, boxCy = 126;
+      var g2 = el("g", { class: (forward && stage===1) ? "fade-in" : "" });
+      g2.appendChild(middleText(240, boxCy, p.divisor, null, {size:26}));
+      g2.appendChild(middleText(268, boxCy, "×", null, {size:26}));
+      g2.appendChild(box(boxCx, boxCy, 48, 40, "hintBox"));
+      var boxTxt = "";
+      if(stage >= 2) boxTxt = p.quotient;
+      var boxText = middleText(boxCx, boxCy, boxTxt, "slot-orange", {size:26, id:"boxText"});
+      if(forward && stage===2) boxText.setAttribute("class", boxText.getAttribute("class")+" fade-in");
+      g2.appendChild(boxText);
+      g2.appendChild(middleText(372, boxCy, "=", null, {size:26}));
+      g2.appendChild(middleText(410, boxCy, p.dividend, null, {size:26}));
+      svg.appendChild(g2);
+
+      if(stage >= 3){
+        var tipX1 = boxCx, tipY1 = 66, tipAngle1 = -90;
+        var lineEnd1 = arrowLineEnd(tipX1, tipY1, tipAngle1);
+        var pathD = "M " + boxCx + " " + (boxCy-22) + " L " + lineEnd1.x + " " + lineEnd1.y;
+        var arrow = arrowPath(pathD);
+        var head1 = arrowHead(tipX1, tipY1, tipAngle1);
+        if(forward) head1.style.opacity = "0";
+        var g3 = el("g", {});
+        g3.appendChild(arrow);
+        g3.appendChild(head1);
+        svg.appendChild(g3);
+        if(forward){
+          animateDraw(arrow, 550, function(){
+            head1.style.opacity = "1";
+            qSlot.textContent = p.quotient;
+            qSlot.setAttribute("class", "slot-orange pop");
+          });
+        }
+      }
+    }
+    updateEquationSlots();
+  }
+
+  // ==================================================================
+  // LEVEL 2
+  // ==================================================================
+  function renderLevel2(forward){
+    var p = state.problem;
+    var stage = state.hintStage;
+    var listCount = p.quotient + 1;
+    var listStartY = 110;
+    var correctFinalY = 110;
+    var visibleRows = stage <= 2 ? listCount : 1;
+    var listEndY = listStartY + (visibleRows-1)*LAYOUT.lineH;
+    var needSubArea = stage >= 4;
+    var totalH = needSubArea ? 265 : Math.max(190, listEndY + 70);
+    svg.setAttribute("viewBox", "0 0 500 " + totalH);
+    clearSvg();
+
+    // ---- row 1: main equation ----
+    // From hint 3 onward the division equation moves slightly upward and then stays fixed.
+    var eqY = stage >= 3 ? 36 : LAYOUT.eqY;
+    var g1 = el("g", { id:"divisionEquation" });
+    // From hint 4 onward the subtraction diagram appears directly beneath the
+    // dividend, so from that point on the dividend is drawn digit-by-digit on
+    // the same fixed columns the subtraction uses, keeping every place value
+    // lined up. Before hint 4 there's nothing to align to, so it's drawn as
+    // a single centered number as before.
+    if(stage >= 4){
+      g1.appendChild(renderNumberColumns(p.dividend, eqY, null, "dividendDigits"));
+    } else {
+      g1.appendChild(bigText(80, eqY, p.dividend, null, {size:30}));
+    }
+    g1.appendChild(bigText(125, eqY, "÷", null, {size:30}));
+    g1.appendChild(bigText(165, eqY, p.divisor, null, {size:30}));
+    g1.appendChild(bigText(200, eqY, "=", null, {size:30}));
+
+    // On the way INTO stage 3, the "?" only turns into the number once the arrow
+    // animation (built in buildList) finishes. On any other transition (already past
+    // stage 3, or stepping backward into it) show the final number immediately.
+    var quotientRevealedNow = stage > 3 || (stage === 3 && !forward);
+    var qTxt = quotientRevealedNow ? p.quotient : (state.inputDigits.length ? state.inputDigits : "?");
+    var qCls = quotientRevealedNow ? "slot-orange" : (state.inputDigits.length ? "slot-blue" : "slot-wait");
+    var qSlot = bigText(235, eqY, qTxt, qCls, {size:30, id:"qSlot"});
+    g1.appendChild(qSlot);
+
+    if(stage >= 3){
+      var amariLabel = bigText(300, eqY, "あまり", null, {size:22});
+      amariLabel.setAttribute("fill", "#6b6a8c");
+      if(forward && stage === 3) amariLabel.setAttribute("class", "fade-in");
+      g1.appendChild(amariLabel);
+
+      // Same rule as the quotient: only reveal immediately when arriving from a step
+      // that already knows it (stepping backward), otherwise wait for the subtraction's
+      // arrow animation (in buildSubtraction) to update this slot itself.
+      var remainderRevealedNow = stage > 5 || (stage === 5 && !forward);
+      var rTxt = remainderRevealedNow ? p.remainder : (state.inputRemainder.length ? state.inputRemainder : "?");
+      var rCls = remainderRevealedNow ? "slot-orange" : (state.inputRemainder.length ? "slot-blue" : "slot-wait");
+      var rSlot = bigText(365, eqY, rTxt, rCls, {size:30, id:"rSlot"});
+      if(forward && stage === 3) rSlot.setAttribute("class", rSlot.getAttribute("class")+" fade-in");
+      g1.appendChild(rSlot);
+    }
+
+    // Stage 3: animate the equation into its final position before the arrow appears.
+    if(stage === 3 && forward){
+      g1.style.transform = "translateY(10px)";
+      g1.style.transition = "transform .45s ease";
+      setTimeout(function(){ g1.style.transform = "translateY(0)"; }, 40);
+    }
+    svg.appendChild(g1);
+
+    var hintCaptionEl = document.getElementById("hintCaption");
+    if(stage < 1){ if(hintCaptionEl) hintCaptionEl.textContent = ""; updateEquationSlots(); return; }
+
+    var captionMap = {
+      1: "ちょうどに ならない！ わりきれないね！",
+      2: "これが いちばん おおきくて、ちかいね",
+      3: "３が わり算の こたえだよ",
+      4: "つぎは あまりを もとめるよ！",
+      5: "あまりが わかったね！"
+    };
+    if(hintCaptionEl){
+      hintCaptionEl.textContent = captionMap[stage] || "";
+      hintCaptionEl.className = forward ? "fade-in" : "";
+    }
+
+    // ---- multiplication list ----
+    var correctIndex = p.quotient;
+    var listG = el("g", { id:"listG" });
+    svg.appendChild(listG);
+    buildList(listG, p, listCount, correctIndex, stage, forward, listStartY, correctFinalY);
+
+    // ---- subtraction diagram (stage 4-5) ----
+    if(stage >= 4){
+      // Keep it compact and directly beneath the division equation.
+      buildSubtraction(svg, p, 72, stage, forward);
+    }
+
+    updateEquationSlots();
+  }
+
+  function buildList(container, p, listCount, correctIndex, stage, forward, startY, correctFinalY){
+    // Keep the multiplier column aligned with the quotient slot above.
+    var divisorX = 155;
+    var timesX = 195;
+    var multiplierX = 235;
+    var equalsX = 265;
+    var productX = 305;
+    var labelX = 385;
+
+    for(var i=1; i<=listCount; i++){
+      var isCorrect = (i === correctIndex);
+      var isOver = (i === listCount);
+
+      // Stage 3 onward: wrong formulas have already completed the stage-2 shatter.
+      if(stage >= 3 && !isCorrect) continue;
+
+      var originalY = startY + (i-1)*LAYOUT.lineH;
+      // From hint 3 onward the correct formula is rendered at its final fixed position.
+      // During hint 3 it starts visually at its old position and animates into this spot.
+      var y = stage >= 3 ? correctFinalY : originalY;
+      var rowClass = isCorrect ? "correct-row" : "wrong-row";
+      if(forward && stage===1) rowClass += " fade-in";
+      var rowG = el("g", { class: rowClass });
+
+      rowG.appendChild(bigText(divisorX, y+7, p.divisor, null, {size:20}));
+      rowG.appendChild(bigText(timesX, y+7, "×", null, {size:20}));
+
+      if(stage === 1){
+        rowG.appendChild(box(multiplierX, y, 30, 30, ""));
+        rowG.appendChild(bigText(multiplierX, y+7, i, null, {size:20}));
+      } else {
+        rowG.appendChild(bigText(multiplierX, y+7, i, isCorrect && stage>=3 ? "slot-orange" : null, {size:20, id: isCorrect ? "multiplierText" : null}));
+      }
+
+      rowG.appendChild(bigText(equalsX, y+7, "=", null, {size:20}));
+      var prodTxt = bigText(productX, y+7, p.divisor*i, null, {size:20, id: isCorrect ? "productText" : null});
+      rowG.appendChild(prodTxt);
+
+      if(isOver){
+        rowG.appendChild(bigText(labelX, y+7, "（おおきいね！）", null, {size:14, fill:"#E8505B"}));
+      } else if(isCorrect && stage < 4){
+        // From hint 4 onward this row is busy becoming part of the subtraction step,
+        // so the "ちょうどいい！" label is retired.
+        rowG.appendChild(bigText(labelX, y+7, "（ちょうどいい！）", null, {size:14, fill:"#2FAE8B"}));
+      }
+
+      if(!isCorrect && stage === 2){
+        var strike = el("line", { x1:divisorX-22, y1:y+1, x2:labelX+32, y2:y+1, class:"strike-line" });
+        rowG.appendChild(strike);
+        if(!forward){
+          rowG.classList.add("gray", "shatter");
+        } else {
+          (function(target, delay){
+            setTimeout(function(){
+              target.classList.add("strike");
+              setTimeout(function(){
+                target.classList.add("gray");
+                setTimeout(function(){ target.classList.add("shatter"); }, 220);
+              }, 430);
+            }, delay);
+          })(rowG, Math.max(20, (i-1)*40));
+        }
+      }
+
+      if(isCorrect && stage === 2){
+        // After the wrong rows disappear, keep the correct equation at the top of the list.
+        rowG.appendChild(outlineBox(multiplierX, y, 30, 30, "#FF8C42"));
+        var shift = correctFinalY-originalY;
+        if(!forward){
+          rowG.style.transform = "translate(0," + shift + ")";
+        } else {
+          (function(target, shift){
+            setTimeout(function(){ target.style.transform = "translate(0," + shift + ")"; }, 920);
+          })(rowG, shift);
+        }
+      }
+
+      if(isCorrect && stage >= 3){
+        rowG.appendChild(outlineBox(multiplierX, y, 30, 30, "#FF8C42"));
+
+        if(stage === 3){
+          // Move the correct multiplication equation into its final, readable position first.
+          var shift3 = correctFinalY-originalY;
+          if(forward){
+            rowG.style.transform = "translateY(" + (originalY-correctFinalY) + "px)";
+            rowG.style.transition = "transform .45s ease";
+            setTimeout(function(target){ target.style.transform = "translateY(0)"; }, 60, rowG);
+          } else {
+            rowG.style.transform = "translateY(0)";
+          }
+        }
+      }
+
+      container.appendChild(rowG);
+
+      if(isCorrect && stage === 3){
+        // The arrow appears only after the equation has moved into place.
+        var arrowStartY = correctFinalY - 16;
+        var tipX2 = multiplierX, tipY2 = eqYForArrow(), tipAngle2 = -90;
+        var lineEnd2 = arrowLineEnd(tipX2, tipY2, tipAngle2);
+        var arrow = arrowPath("M " + multiplierX + " " + arrowStartY + " L " + lineEnd2.x + " " + lineEnd2.y);
+        var arrowHeadEl = arrowHead(tipX2, tipY2, tipAngle2);
+        if(forward){
+          // Stay fully invisible while the equation is still sliding into place,
+          // so nothing is drawn (line or head) until that move has finished.
+          arrow.style.opacity = "0";
+          arrowHeadEl.style.opacity = "0";
+        }
+        container.appendChild(arrow);
+        container.appendChild(arrowHeadEl);
+        if(forward){
+          setTimeout(function(pathEl, headEl, pRef){
+            pathEl.style.opacity = "1";
+            // The triangle only appears once the line has fully drawn itself in.
+            animateDraw(pathEl, 500, function(){
+              headEl.style.opacity = "1";
+              var qSlot = document.getElementById("qSlot");
+              if(qSlot){ qSlot.textContent = pRef.quotient; qSlot.setAttribute("class","slot-orange pop"); }
+            });
+          }, 520, arrow, arrowHeadEl, p);
+        }
+      }
+    }
+
+    function eqYForArrow(){ return 36; }
+  }
+
+  function rightText(x, y, txt, cls, extra){
+    var attrs = { x:x, y:y, "text-anchor":"end", "font-size": extra && extra.size || 26,
+                  "font-weight":"800", "font-family":"'M PLUS Rounded 1c', sans-serif" };
+    if(extra){ for(var k in extra){ if(k!=="size") attrs[k]=extra[k]; } }
+    var t = el("text", attrs, txt);
+    if(cls) t.setAttribute("class", cls);
+    else if(!attrs.fill) t.setAttribute("fill", "#2B2A4C");
+    return t;
+  }
+
+  function buildSubtraction(svgRoot, p, topY, stage, forward){
+    var g = el("g", { class: (forward && stage===4) ? "fade-in" : "" });
+
+    var productY = topY;
+
+    // The number being subtracted (引く数) is drawn one digit per fixed
+    // column - the same SUB_COLS columns as the dividend above it - so the
+    // tens and ones places always line up, regardless of digit glyph widths.
+    var prodTarget = renderNumberColumns(p.divisor*p.quotient, productY, "slot-orange", "subProduct");
+    g.appendChild(prodTarget);
+    svgRoot.appendChild(g);
+
+    // Measure the subtrahend's real rendered box (so this works for 1- or 2-digit
+    // products alike) and place the minus sign and underline the way a paper-and-pencil
+    // subtraction is written: minus sign directly beside the number, on the same line,
+    // with the underline spanning just that line.
+    var prodBox = prodTarget.getBBox();
+    var minusRightX = prodBox.x - 8;
+    var minusEl = rightText(minusRightX, productY, "−", null, {size:26});
+    g.appendChild(minusEl);
+    var minusBox = minusEl.getBBox();
+
+    var lineY = prodBox.y + prodBox.height + 8;
+    var underlineLeft = minusBox.x - 4;
+    var underlineRight = Math.max(prodBox.x + prodBox.width, SUB_COLS.onesX + SUB_COLS.colW/2) + 4;
+    var answerY = lineY + 30;
+
+    g.appendChild(el("line", {
+      x1:underlineLeft, y1:lineY, x2:underlineRight, y2:lineY,
+      stroke:"#2B2A4C", "stroke-width":3, "stroke-linecap":"round"
+    }));
+
+    if(stage === 4 && forward){
+      // Start from just above the multiplication answer, travel upward,
+      // then turn left at the target height. One bend only.
+      var src = document.getElementById("productText");
+      prodTarget.style.opacity = "0";
+      if(src){
+        var srcBox = src.getBoundingClientRect();
+        var dstBox = prodTarget.getBoundingClientRect();
+        var svgBox = svg.getBoundingClientRect();
+        var vb = svg.viewBox.baseVal;
+        var scaleX = vb.width / svgBox.width, scaleY = vb.height / svgBox.height;
+        var sx = (srcBox.left + srcBox.width/2 - svgBox.left) * scaleX;
+        var syTop = (srcBox.top - svgBox.top) * scaleY;
+        var dx = (dstBox.right - svgBox.left) * scaleX - 2;
+        var dy = (dstBox.top + dstBox.height/2 - svgBox.top) * scaleY;
+        var tipAngle3 = 180;
+        var lineEnd3 = arrowLineEnd(dx, dy, tipAngle3);
+        var pathD = "M "+sx+" "+syTop+" L "+sx+" "+dy+" L "+lineEnd3.x+" "+lineEnd3.y;
+        var arrow = arrowPath(pathD);
+        var head3 = arrowHead(dx, dy, tipAngle3);
+        head3.style.opacity = "0";
+        svgRoot.appendChild(arrow);
+        svgRoot.appendChild(head3);
+        animateDraw(arrow, 600, function(){
+          head3.style.opacity = "1";
+          prodTarget.style.opacity = "1";
+          prodTarget.setAttribute("class", "slot-orange pop");
+        });
+      } else {
+        prodTarget.style.opacity = "1";
+      }
+    }
+
+    if(stage >= 5){
+      // Answer is immediately below the underline, on the same digit columns
+      // as the dividend and the subtracted number above it.
+      var remEl = renderNumberColumns(p.remainder, answerY, "slot-orange", "subRemainder");
+      svgRoot.appendChild(remEl);
+
+      if(forward && stage === 5){
+        remEl.style.opacity = "0";
+        // Step 1: the subtraction's own answer appears first, by itself.
+        setTimeout(function(){
+          remEl.style.opacity = "1";
+          remEl.setAttribute("class", "slot-orange pop");
+
+          // Step 2: only once that's visible does the arrow start growing up to
+          // the "あまり ?" slot. Its endpoint is measured against the slot's real
+          // position, so it always lands exactly on it regardless of layout.
+          setTimeout(function(){
+            var rSlot = document.getElementById("rSlot");
+            if(!rSlot) return;
+            var eqRow = document.getElementById("listG");
+            var srcBox = remEl.getBoundingClientRect();
+            var dstBox = rSlot.getBoundingClientRect();
+            var eqBox = eqRow ? eqRow.getBoundingClientRect() : null;
+            var svgBox = svg.getBoundingClientRect();
+            var vb = svg.viewBox.baseVal;
+            var scaleX = vb.width / svgBox.width, scaleY = vb.height / svgBox.height;
+
+            // Start just below the subtraction's own answer.
+            var sx = (srcBox.left + srcBox.width/2 - svgBox.left) * scaleX;
+            var sy = (srcBox.bottom - svgBox.top) * scaleY + 4;
+            // Target: just below the "あまり ?" slot.
+            var dx = (dstBox.left + dstBox.width/2 - svgBox.left) * scaleX;
+            var dy = (dstBox.bottom - svgBox.top) * scaleY + 6;
+            // Drop below both the answer AND the multiplication equation before
+            // heading sideways, so the arrow never crosses through that equation.
+            var eqBottom = eqBox ? (eqBox.bottom - svgBox.top) * scaleY : sy;
+            var dropY = Math.max(sy, eqBottom) + 14;
+
+            var tipAngle4 = -90;
+            var lineEnd4 = arrowLineEnd(dx, dy, tipAngle4);
+            var pathD2 = "M "+sx+" "+sy+" L "+sx+" "+dropY+" L "+dx+" "+dropY+" L "+lineEnd4.x+" "+lineEnd4.y;
+            var arrow2 = arrowPath(pathD2);
+            var head4 = arrowHead(dx, dy, tipAngle4);
+            head4.style.opacity = "0";
+            svgRoot.appendChild(arrow2);
+            svgRoot.appendChild(head4);
+
+            // Step 3: only after the arrow finishes does "?" become the number,
+            // and the triangle only appears once the line is fully drawn.
+            animateDraw(arrow2, 650, function(){
+              head4.style.opacity = "1";
+              rSlot.textContent = p.remainder;
+              rSlot.setAttribute("class", "slot-orange pop");
+            });
+          }, 420);
+        }, 60);
+      } else {
+        remEl.style.opacity = "1";
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // hint navigation
+  // ------------------------------------------------------------------
+  hintNextBtn.addEventListener("click", function(){
+    if(state.hintStage >= state.maxHint || state.answered) return;
+    state.hintStage++;
+    renderAll(true);
+  });
+  hintBackBtn.addEventListener("click", function(){
+    if(state.hintStage <= 0) return;
+    state.hintStage--;
+    renderAll(false);
+  });
+
+  // ------------------------------------------------------------------
+  // answer checking
+  // ------------------------------------------------------------------
+  submitBtn.addEventListener("click", function(){
+    if(state.answered) return;
+    var p = state.problem;
+    var correct;
+    if(state.level === 1){
+      correct = state.inputDigits.length > 0 && parseInt(state.inputDigits,10) === p.quotient;
+    } else {
+      correct = state.inputDigits.length > 0 && state.inputRemainder.length > 0 &&
+                parseInt(state.inputDigits,10) === p.quotient &&
+                parseInt(state.inputRemainder,10) === p.remainder;
+    }
+
+    if(!state.counted){
+      state.counted = true;
+      state.score.total++;
+      if(correct) state.score.correct++;
+      scoreBox.classList.add("show");
+      document.getElementById("scoreCorrect").textContent = state.score.correct;
+      document.getElementById("scoreTotal").textContent = state.score.total;
+    }
+
+    if(correct){
+      state.answered = true;
+      hintNextBtn.disabled = true;
+
+      // Streak & damage calculation
+      state.streak++;
+      updateStreakUI();
+
+      var baseDamage = 10;
+      var multiplier = 1;
+      var isCritical = false;
+      if(state.streak >= 5){
+        multiplier = 3;
+        isCritical = true;
+      } else if(state.streak >= 3){
+        multiplier = 2;
+        isCritical = true;
+      }
+      var finalDamage = baseDamage * multiplier;
+
+      var modeDesc = state.level === 1 ? "わり算Lv1" : "わり算Lv2";
+      var attackSent = sendAttack(finalDamage, modeDesc + " (" + state.streak + "連勝 " + multiplier + "倍)");
+
+      if(attackSent){
+        var critMsg = isCritical ? " 🔥【" + state.streak + "れんぞく！ " + multiplier + "倍クリティカル！】" : "";
+        feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg;
+      } else {
+        var streakMsg = state.streak >= 3 ? " 🔥【" + state.streak + "れんぞくせいかい！】" : "";
+        feedback.textContent = "せいかい！ よくできました！" + streakMsg;
+      }
+
+      feedback.className = "good";
+      state.hintStage = state.maxHint;
+      renderAll(false);
+      nextProblemBtn.classList.add("show");
+    } else {
+      state.streak = 0;
+      updateStreakUI();
+      feedback.textContent = "おしい！ もういちど かんがえてみよう";
+      feedback.className = "bad";
+      var card = document.querySelector("#problemScreen .card");
+      card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
+    }
+  });
+
+  nextProblemBtn.addEventListener("click", function(){
+    newProblem();
+  });
+
+  // ------------------------------------------------------------------
+  // level select / navigation
+  // ------------------------------------------------------------------
+  document.querySelectorAll("#levelSelect .level-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      state.level = parseInt(btn.getAttribute("data-level"), 10);
+      state.score = { correct:0, total:0 };
+      scoreBox.classList.remove("show");
+      document.getElementById("levelSelect").style.display = "none";
+      document.getElementById("problemScreen").classList.add("show");
+      lastKey = null;
+      newProblem();
+    });
+  });
+
+  document.getElementById("backToLevels").addEventListener("click", function(){
+    document.getElementById("problemScreen").classList.remove("show");
+    document.getElementById("levelSelect").style.display = "block";
+    scoreBox.classList.remove("show");
+  });
+
+  // Initialize Raid Boss UI
+  initRaidUI();
+
+})();
+</script>
+</body>
+</html>
