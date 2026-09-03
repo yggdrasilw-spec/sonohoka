@@ -217,6 +217,26 @@
     text-align: center;
     color: var(--ink);
   }
+  .raid-msg{
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    font-size: .8rem;
+    font-weight: 800;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+    border: 2px solid var(--paper-line);
+    white-space: nowrap;
+    z-index: 1000;
+    display: none;
+    animation: fadeInAnim .2s ease;
+  }
+  .raid-msg.show{ display: block; }
+  .raid-msg.error{ color: var(--bad); border-color: var(--bad); background: var(--bad-soft); }
+  .raid-msg.good{ color: var(--good); border-color: var(--good); background: var(--good-soft); }
+  .raid-msg.warn{ color: var(--accent-deep); border-color: var(--accent); background: var(--accent-soft); }
 
   .card{
     background: var(--card);
@@ -575,6 +595,7 @@
           <span class="avatar-option" data-avatar="🤖">🤖</span>
         </div>
       </div>
+      <div id="raidMsg" class="raid-msg"></div>
     </div>
 
     <div id="scoreBox"><span>せいかい</span><b id="scoreCorrect">0</b><span>/</span><span id="scoreTotal">0</span>もん</div>
@@ -692,6 +713,7 @@
   // Firebase & Raid Boss Logic
   // ------------------------------------------------------------------
   var db = null;
+  var authPromise = null;
   try {
     var firebaseConfig = {
       apiKey: "AIzaSyDdqalOwQFkZnNvFCKzXqM4VeP4IBPhzXo",
@@ -704,8 +726,14 @@
       measurementId: "G-6VBWZVLKLK"
     };
     if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-      firebase.initializeApp(firebaseConfig);
+      if (!firebase.apps || !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
       db = firebase.database();
+      authPromise = firebase.auth().signInAnonymously().catch(function(err){
+        console.error("匿名認証エラー:", err);
+        return null;
+      });
     }
   } catch (err) {
     console.error("Firebase初期化エラー:", err);
@@ -715,23 +743,52 @@
   var studentRoomRef = null;
   var currentRoomListener = null;
 
+  function normalizeCode(str){
+    if(!str) return "";
+    // convert full-width alphanumeric to half-width and uppercase
+    return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s){
+      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+    }).trim().toUpperCase();
+  }
+
+  var raidMsgEl = document.getElementById("raidMsg");
+  var raidMsgTimer = null;
+  function showRaidMsg(txt, type){
+    if(!raidMsgEl) return;
+    clearTimeout(raidMsgTimer);
+    raidMsgEl.textContent = txt;
+    raidMsgEl.className = "raid-msg show " + (type || "");
+    raidMsgTimer = setTimeout(function(){
+      raidMsgEl.classList.remove("show");
+    }, 3500);
+  }
+
   function updateConnStatus(status, tooltip){
     if(!connStatus) return;
     connStatus.title = tooltip;
     if(status === "connected"){
       connStatus.textContent = "🟢";
+      if(connectBtn) connectBtn.textContent = "接続中";
       if(bossMiniStatus) bossMiniStatus.classList.add("show");
+    } else if(status === "connecting"){
+      connStatus.textContent = "🟡";
+      if(connectBtn) connectBtn.textContent = "確認中...";
+      if(bossMiniStatus) bossMiniStatus.classList.remove("show");
     } else if(status === "error"){
       connStatus.textContent = "🔴";
+      if(connectBtn) connectBtn.textContent = "接続";
       if(bossMiniStatus) bossMiniStatus.classList.remove("show");
     } else {
       connStatus.textContent = "⚪";
+      if(connectBtn) connectBtn.textContent = "接続";
       if(bossMiniStatus) bossMiniStatus.classList.remove("show");
     }
   }
 
-  function connectToRaid(code){
-    var cleanCode = (code || "").trim().toUpperCase();
+  async function connectToRaid(code, isAuto){
+    var cleanCode = normalizeCode(code);
+    if(studentRaidCodeInput) studentRaidCodeInput.value = cleanCode;
+
     if(!cleanCode){
       currentRaidCode = "";
       if(studentRoomRef && currentRoomListener){
@@ -739,12 +796,21 @@
       }
       studentRoomRef = null;
       updateConnStatus("none", "レイドコード未入力");
+      if(!isAuto) showRaidMsg("⚠️ レイドコードを入力してください", "warn");
       return;
     }
 
     if(!db){
       updateConnStatus("error", "Firebaseが初期化されていません");
+      showRaidMsg("⚠️ Firebaseの接続に失敗しました", "error");
       return;
+    }
+
+    updateConnStatus("connecting", "接続確認中: ルーム " + cleanCode);
+    if(!isAuto) showRaidMsg("🔍 ルーム「" + cleanCode + "」を確認中...", "warn");
+
+    if(authPromise){
+      await authPromise;
     }
 
     currentRaidCode = cleanCode;
@@ -755,30 +821,41 @@
     }
 
     studentRoomRef = db.ref("rooms/" + cleanCode);
+    var firstLoad = true;
     currentRoomListener = function(snapshot){
       var data = snapshot.val();
       var now = Date.now();
 
       if(!data || !data.boss || (data.expiresAt && data.expiresAt < now)){
         updateConnStatus("error", "レイドコードが見つからないか、期限切れです");
+        showRaidMsg("⚠️ ルーム「" + cleanCode + "」が見つからないか期限切れです", "error");
         return;
       }
 
       updateConnStatus("connected", "接続中: ルーム " + cleanCode);
+      var bossName = data.boss.name || "ボス";
+      if(firstLoad){
+        showRaidMsg("✅ ボス「" + bossName + "」に接続しました！", "good");
+        firstLoad = false;
+      }
 
-      if(miniBossName) miniBossName.textContent = data.boss.name || "ボス";
+      if(miniBossName) miniBossName.textContent = bossName;
       if(miniBossHp){
         var cur = Math.max(0, data.boss.currentHp !== undefined ? data.boss.currentHp : (data.boss.maxHp || 0));
         miniBossHp.textContent = "(" + cur + "/" + (data.boss.maxHp || "?") + ")";
       }
     };
 
-    studentRoomRef.on("value", currentRoomListener);
+    studentRoomRef.on("value", currentRoomListener, function(err){
+      console.error("Firebase Room Listener Error:", err);
+      updateConnStatus("error", "通信エラー: " + (err.message || "権限がありません"));
+      showRaidMsg("⚠️ 通信エラーが発生しました", "error");
+    });
   }
 
   function applyStudentRaidCode(){
     var code = studentRaidCodeInput ? studentRaidCodeInput.value : "";
-    connectToRaid(code);
+    connectToRaid(code, false);
   }
 
   function updateStreakUI(){
@@ -863,7 +940,7 @@
       var savedCode = localStorage.getItem("raid_boss_student_code");
       var initialCode = (codeParam && codeParam.trim()) ? codeParam.trim() : (savedCode || "");
       if(studentRaidCodeInput && initialCode) studentRaidCodeInput.value = initialCode;
-      if(initialCode) connectToRaid(initialCode);
+      if(initialCode) connectToRaid(initialCode, true);
       else updateConnStatus("none", "コードを入力して接続してください");
     } catch(e){}
   }
