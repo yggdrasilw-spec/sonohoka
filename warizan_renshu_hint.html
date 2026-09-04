@@ -1015,12 +1015,12 @@
   }
 
   @keyframes blockDropIn {
-    0% { transform: translateY(-16px) scale(0.3); opacity: 0; }
-    60% { transform: translateY(3px) scale(1.15); opacity: 1; }
-    100% { transform: translateY(0) scale(1); opacity: 1; }
+    0% { transform: scale(0.2); opacity: 0; }
+    65% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
   }
   .block-drop-in {
-    animation: blockDropIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: blockDropIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transform-box: fill-box;
     transform-origin: center;
   }
@@ -1031,6 +1031,42 @@
   }
   .highlight-dish {
     animation: highlightBoxGlow 1.5s infinite ease-in-out;
+  }
+
+  @keyframes boxPopIn {
+    0% { transform: scale(0.92); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .group-box-blue {
+    fill: rgba(239, 246, 255, 0.82);
+    stroke: #3b82f6;
+    stroke-width: 2.5;
+    stroke-dasharray: 6 4;
+    animation: boxPopIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .group-box-purple {
+    fill: rgba(250, 245, 255, 0.85);
+    stroke: #a855f7;
+    stroke-width: 2.5;
+    stroke-dasharray: 6 4;
+    animation: boxPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .group-box-orange {
+    fill: rgba(255, 247, 237, 0.85);
+    stroke: #ea580c;
+    stroke-width: 2.5;
+    stroke-dasharray: 6 4;
+    animation: boxPopIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .ghost-box {
+    fill: none;
+    stroke: #cbd5e1;
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+    opacity: 0.7;
+  }
+  .bundle-unit, .block-unit {
+    transform-box: fill-box;
   }
 
   @media (max-width: 820px){
@@ -1340,6 +1376,16 @@
     streak: 0,
     avatar: "⚔️"
   };
+
+  // Level 4 Persistent Scene & Animation Timers
+  var level4Scene = null;
+  var level4Timers = [];
+  function clearLevel4Timers(){
+    if(level4Timers && level4Timers.length){
+      level4Timers.forEach(function(t){ clearTimeout(t); });
+      level4Timers = [];
+    }
+  }
 
   // ------------------------------------------------------------------
   // sound effects (Web Audio API)
@@ -2114,6 +2160,8 @@
 
   var lastKey = null;
   function newProblem(){
+    level4Scene = null;
+    clearLevel4Timers();
     var lvl = String(state.level || "1");
     var p;
     var maxH = 3;
@@ -3063,7 +3111,7 @@
     } else if(unitCount <= 12){
       boxW = 32; boxH = 28; gap = 4; fontSize = 11; rx = 5;
     } else if(unitCount <= 16){
-      boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
+boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     } else {
       boxW = 19; boxH = 22; gap = 2; fontSize = 8; rx = 3;
     }
@@ -3162,9 +3210,20 @@
   // ==================================================================
   // LEVEL 4 (2けた暗算・10の束の解体アニメーション全面刷新)
   // ==================================================================
-  function renderLevel4(forward){
-    var p = state.problem;
-    var stage = state.hintStage;
+
+  function moveEl(element, x, y, animate, duration, delay){
+    if(!element) return;
+    if(animate){
+      var d = (duration !== undefined) ? duration : 750;
+      var dl = delay || 0;
+      element.style.transition = "transform " + d + "ms cubic-bezier(0.25, 0.46, 0.45, 0.94) " + dl + "ms, opacity 0.3s ease";
+    } else {
+      element.style.transition = "none";
+    }
+    element.style.transform = "translate(" + x + "px, " + y + "px)";
+  }
+
+  function initLevel4Scene(p){
     svg.setAttribute("viewBox", "0 0 460 275");
     clearSvg();
 
@@ -3177,11 +3236,7 @@
     var unbundlePart = (p.unbundlePart !== undefined) ? p.unbundlePart : (tenRem * 10 + oneDigit);
     var q_one = (p.q_one !== undefined) ? p.q_one : Math.floor(unbundlePart / divisor);
     var isUnbundle = (tenRem > 0);
-
-    // チャリーン効果音（Stage 2で解体が発生する場合）
-    if(forward && stage === 2 && isUnbundle){
-      playSound('chariin');
-    }
+    var hasRem = p.hasRemainder;
 
     // --------------------------------------------------
     // 1. 最上部: 計算式
@@ -3193,22 +3248,423 @@
     gEq.appendChild(bigText(235, 26, "=", null, {size: 28}));
 
     var targetDigits = p.targetQuotientDigits || 2;
-    var slotTxt = (stage >= 5) ? p.quotient : (state.inputDigits.length ? state.inputDigits : "?".repeat(targetDigits));
-    var slotCls = (stage >= 5) ? "slot-orange" : (state.inputDigits.length ? "slot-blue" : "slot-wait");
-    var qSlot = bigText(285, 26, slotTxt, slotCls, {size: 30, id: "qSlot"});
+    var qSlot = bigText(285, 26, "?".repeat(targetDigits), "slot-wait", {size: 30, id: "qSlot"});
     gEq.appendChild(qSlot);
 
-    if(p.hasRemainder){
+    var rSlot = null;
+    if(hasRem){
       gEq.appendChild(middleText(345, 26, "あまり", null, {size: 15}));
-      var rTxt = (stage >= 5) ? p.remainder : (state.inputRemainder.length ? state.inputRemainder : "?");
-      var rCls = (stage >= 5) ? "slot-orange" : (state.inputRemainder.length ? "slot-blue" : "slot-wait");
-      gEq.appendChild(bigText(390, 26, rTxt, rCls, {size: 26, id: "rSlot"}));
+      rSlot = bigText(390, 26, "?", "slot-wait", {size: 26, id: "rSlot"});
+      gEq.appendChild(rSlot);
     }
     svg.appendChild(gEq);
 
     // --------------------------------------------------
-    // 2. ガイド解説バッジ
+    // 2. ガイド解説バッジ & サブテキスト
     // --------------------------------------------------
+    var gBadge = el("g", {});
+    var badgeW = 440;
+    var badgeH = 24;
+    var badgeX = 230 - badgeW / 2;
+    var badgeY = 38;
+    var badgeBg = el("rect", {
+      x: badgeX, y: badgeY, width: badgeW, height: badgeH, rx: 12,
+      fill: "#f1f5f9", stroke: "#cbd5e1", "stroke-width": 1.5
+    });
+    gBadge.appendChild(badgeBg);
+    var badgeTextEl = middleText(230, badgeY + 16, "", null, {size: 11.5, weight: 800});
+    gBadge.appendChild(badgeTextEl);
+    svg.appendChild(gBadge);
+
+    var subTextEl = middleText(230, 75, "", null, {size: 13, weight: 800});
+    svg.appendChild(subTextEl);
+
+    // --------------------------------------------------
+    // 3. レイヤーコンテナの準備（描画順）
+    // --------------------------------------------------
+    var gTrays = el("g", {});     // トレイ・受け皿
+    var gGhosts = el("g", {});    // 移動元のゴースト点線枠
+    var gBoxes = el("g", {});     // 青・オレンジの囲み枠とラベル
+    var gUnion = el("g", {});     // 紫の合体枠
+    var gBlocks = el("g", {});    // ブロック本体（束・バラ）
+    var gEffects = el("g", {});   // スパークルなどの演出
+
+    svg.appendChild(gTrays);
+    svg.appendChild(gGhosts);
+    svg.appendChild(gBoxes);
+    svg.appendChild(gUnion);
+    svg.appendChild(gBlocks);
+    svg.appendChild(gEffects);
+
+    // --------------------------------------------------
+    // 4. トレイ（受け皿）の作成
+    // --------------------------------------------------
+    var trayW = Math.min(125, Math.floor((hasRem ? 340 : 400) / divisor));
+    var trayGap = 10;
+    var totalTraysW = divisor * trayW + (divisor - 1) * trayGap;
+    var traysStartX = Math.round(((hasRem ? 370 : 460) - totalTraysW) / 2);
+
+    var trayBoxes = [];
+    var trayPositions = [];
+    var trayTenCoords = [];
+    var trayOneCoords = [];
+
+    for(var j = 0; j < divisor; j++){
+      var curTrayX = traysStartX + j * (trayW + trayGap);
+      var curCenterX = curTrayX + Math.round(trayW / 2);
+      trayPositions.push({ x: curTrayX, y: 193, w: trayW, h: 68 });
+
+      // 人型アイコン
+      var head = el("circle", { cx: curCenterX, cy: 174, r: 5.5, fill: "#2563eb" });
+      var body = el("polygon", {
+        points: (curCenterX - 2) + ",179 " + (curCenterX + 2) + ",179 " + (curCenterX + 6.5) + ",191 " + (curCenterX - 6.5) + ",191",
+        fill: "#2563eb"
+      });
+      gTrays.appendChild(head);
+      gTrays.appendChild(body);
+
+      // トレイ枠
+      var trayBox = el("rect", {
+        x: curTrayX, y: 193, width: trayW, height: 68, rx: 8,
+        fill: "#f8fafc", stroke: "#cbd5e1", "stroke-width": 1.5
+      });
+      gTrays.appendChild(trayBox);
+      trayBoxes.push(trayBox);
+
+      // トレイラベル
+      var trayLabel = el("text", {
+        x: curTrayX + 8, y: 205, fill: "#64748b",
+        "font-size": 9.5, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      trayLabel.textContent = (j + 1) + "人目";
+      gTrays.appendChild(trayLabel);
+
+      // トレイ内 10の束スロット座標（左側配置）
+      var tList = [];
+      for(var k = 0; k < q_ten; k++){
+        tList.push({
+          x: curTrayX + 8,
+          y: 211 + k * 21
+        });
+      }
+      trayTenCoords.push(tList);
+
+      // トレイ内 1のブロックスロット座標（右側配置）
+      var oList = [];
+      var oStartX = (q_ten > 0) ? (curTrayX + 46) : (curTrayX + 10);
+      var maxCols3 = (q_ten > 0) ? 4 : 5;
+      for(var m = 0; m < q_one; m++){
+        oList.push({
+          x: oStartX + (m % maxCols3) * 17 + 8,
+          y: 214 + Math.floor(m / maxCols3) * 17
+        });
+      }
+      trayOneCoords.push(oList);
+    }
+
+    // 余りトレイ（余りがある場合）
+    var remTrayX = traysStartX + totalTraysW + 12;
+    if(hasRem){
+      var rHead = el("circle", { cx: remTrayX + 22, cy: 174, r: 5.5, fill: "#e11d48" });
+      var rBody = el("polygon", {
+        points: (remTrayX + 20) + ",179 " + (remTrayX + 24) + ",179 " + (remTrayX + 28.5) + ",191 " + (remTrayX + 15.5) + ",191",
+        fill: "#e11d48"
+      });
+      gTrays.appendChild(rHead);
+      gTrays.appendChild(rBody);
+
+      var rTrayBox = el("rect", {
+        x: remTrayX, y: 193, width: 44, height: 68, rx: 8,
+        fill: "#fff1f2", stroke: "#fda4af", "stroke-width": 1.5
+      });
+      gTrays.appendChild(rTrayBox);
+
+      var rTrayLabel = el("text", {
+        x: remTrayX + 22, y: 205, "text-anchor": "middle",
+        fill: "#e11d48", "font-size": 9.5, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      rTrayLabel.textContent = "あまり";
+      gTrays.appendChild(rTrayLabel);
+    }
+
+    // 1人分の持ち分合計＆最終まとめ（Stage 4, 5で中央に表示）
+    var stage4SummaryG = el("g", { style: "display: none;" });
+    var s4Txt1 = middleText(230, 114, "", "slot-orange", {size: 13.5, weight: 800});
+    var s4Txt2 = middleText(230, 138, "", null, {size: 12.5});
+    stage4SummaryG.appendChild(s4Txt1);
+    stage4SummaryG.appendChild(s4Txt2);
+    svg.appendChild(stage4SummaryG);
+
+    var stage5SummaryG = el("g", { style: "display: none;" });
+    var s5Txt1 = middleText(230, 114, "", "slot-orange", {size: 15.5, weight: 800});
+    var s5Txt2 = middleText(230, 138, "", null, {size: 13});
+    stage5SummaryG.appendChild(s5Txt1);
+    stage5SummaryG.appendChild(s5Txt2);
+    svg.appendChild(stage5SummaryG);
+
+    // --------------------------------------------------
+    // 5. 座標計算（初期配置・解体配置）
+    // --------------------------------------------------
+    // 上部初期座標（Stage 0）
+    var initStartX = 230 - Math.round((tenDigit * 38 + oneDigit * 18 + 16) / 2);
+    var initTenCoords = [];
+    for(var b = 0; b < tenDigit; b++){
+      initTenCoords.push({ x: initStartX + b * 38, y: 104 });
+    }
+    var oneInitX = initStartX + tenDigit * 38 + 14;
+    var initOneCoords = [];
+    for(var o = 0; o < oneDigit; o++){
+      initOneCoords.push({ x: oneInitX + o * 18 + 8, y: 113 });
+    }
+
+    // Stage 2 の解体・合体座標
+    var unbundledCount = tenRem * 10;
+    var tenCols = (tenRem >= 2) ? 10 : 5;
+    var tenRows = Math.max(1, Math.ceil(unbundledCount / tenCols));
+    var oneCols = Math.max(1, Math.min(5, oneDigit));
+    var tenWidth = (unbundledCount > 0) ? (tenCols * 17) : 0;
+    var plusWidth = (unbundledCount > 0 && oneDigit > 0) ? 26 : 0;
+    var oneWidth = (oneDigit > 0) ? (oneCols * 17) : 10;
+    var eqWidth = 84;
+    var totalWorkW = (unbundledCount > 0 ? (tenWidth + plusWidth) : 0) + oneWidth + eqWidth;
+    var workStartX = Math.max(16, 230 - Math.round(totalWorkW / 2));
+    var tenBlkX = workStartX;
+    var tenBlkY = 96;
+    var commonLabelY = tenBlkY + tenRows * 17 + 9;
+
+    var burstOneCoords = [];
+    for(var tk = 0; tk < unbundledCount; tk++){
+      var tcol = tk % tenCols;
+      var trow = Math.floor(tk / tenCols);
+      burstOneCoords.push({
+        x: tenBlkX + tcol * 17 + 8,
+        y: tenBlkY + trow * 17
+      });
+    }
+
+    var plusX = tenBlkX + tenWidth + 14;
+    var oneBlkX = (unbundledCount > 0) ? (plusX + 18) : workStartX;
+    var mergedOneCoords = [];
+    for(var om = 0; om < oneDigit; om++){
+      mergedOneCoords.push({
+        x: oneBlkX + (om % 5) * 17 + 8,
+        y: tenBlkY + Math.floor(om / 5) * 17
+      });
+    }
+
+    // --------------------------------------------------
+    // 6. ブロック生成（10の束たち・1のブロックたち）
+    // --------------------------------------------------
+    function createBundleEl(label){
+      var g = el("g", { class: "bundle-unit" });
+      var inner = el("g", { class: "bundle-inner" });
+      var r = el("rect", {
+        x: 0, y: 0, width: 34, height: 19, rx: 4,
+        fill: "#e0f2fe", stroke: "#0284c7", "stroke-width": 1.5
+      });
+      var t = el("text", {
+        x: 17, y: 14, "text-anchor": "middle",
+        fill: "#0369a1", "font-size": 11, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      t.textContent = label || "10";
+      inner.appendChild(r);
+      inner.appendChild(t);
+      g.appendChild(inner);
+      return { g: g, inner: inner, r: r, t: t };
+    }
+
+    function createOneEl(label){
+      var g = el("g", { class: "block-unit" });
+      var inner = el("g", { class: "block-inner" });
+      var c = el("circle", {
+        cx: 0, cy: 0, r: 7.5,
+        fill: "#fff", stroke: "#f59e0b", "stroke-width": 1.5
+      });
+      var t = el("text", {
+        x: 0, y: 3.5, "text-anchor": "middle",
+        fill: "#b45309", "font-size": 9.5, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      t.textContent = label || "1";
+      inner.appendChild(c);
+      inner.appendChild(t);
+      g.appendChild(inner);
+      return { g: g, inner: inner, c: c, t: t };
+    }
+
+    var bundles = [];
+    for(var bi = 0; bi < tenDigit; bi++){
+      var bObj = createBundleEl("10");
+      moveEl(bObj.g, initTenCoords[bi].x, initTenCoords[bi].y, false);
+      gBlocks.appendChild(bObj.g);
+      bundles.push({
+        obj: bObj,
+        initX: initTenCoords[bi].x,
+        initY: initTenCoords[bi].y,
+        isRem: bi >= (divisor * q_ten),
+        assignedPerson: Math.floor(bi / q_ten),
+        assignedIndex: bi % q_ten
+      });
+    }
+
+    // もとの1のブロックたち
+    var initialOnes = [];
+    for(var oi = 0; oi < oneDigit; oi++){
+      var oObj = createOneEl("1");
+      moveEl(oObj.g, initOneCoords[oi].x, initOneCoords[oi].y, false);
+      gBlocks.appendChild(oObj.g);
+      initialOnes.push({
+        obj: oObj,
+        initX: initOneCoords[oi].x,
+        initY: initOneCoords[oi].y,
+        mergedX: mergedOneCoords[oi].x,
+        mergedY: mergedOneCoords[oi].y
+      });
+    }
+
+    // バラして生まれる1のブロックたち（初期は非表示）
+    var burstOnes = [];
+    for(var bti = 0; bti < unbundledCount; bti++){
+      var burstObj = createOneEl("1");
+      moveEl(burstObj.g, burstOneCoords[bti].x, burstOneCoords[bti].y, false);
+      burstObj.g.style.opacity = "0";
+      burstObj.g.style.display = "none";
+      gBlocks.appendChild(burstObj.g);
+      burstOnes.push({
+        obj: burstObj,
+        burstX: burstOneCoords[bti].x,
+        burstY: burstOneCoords[bti].y
+      });
+    }
+
+    // 全ての1のブロックリスト（Stage 3の配分用: burstOnes + initialOnes）
+    var allWorkOnes = [];
+    for(var ai1 = 0; ai1 < burstOnes.length; ai1++){
+      allWorkOnes.push({
+        obj: burstOnes[ai1].obj,
+        currX: burstOnes[ai1].burstX,
+        currY: burstOnes[ai1].burstY
+      });
+    }
+    for(var ai2 = 0; ai2 < initialOnes.length; ai2++){
+      allWorkOnes.push({
+        obj: initialOnes[ai2].obj,
+        currX: isUnbundle ? initialOnes[ai2].mergedX : initialOnes[ai2].initX,
+        currY: isUnbundle ? initialOnes[ai2].mergedY : initialOnes[ai2].initY
+      });
+    }
+
+    // --------------------------------------------------
+    // 7. Stage 2 合体ラベル・紫枠
+    // --------------------------------------------------
+    var unbundleEqG = el("g", { style: "display: none; opacity: 0;" });
+    if(isUnbundle){
+      var unionBox = el("rect", {
+        x: workStartX - 8, y: tenBlkY - 14,
+        width: totalWorkW + 16, height: (commonLabelY - tenBlkY + 22),
+        rx: 8, class: "group-box-purple"
+      });
+      unbundleEqG.appendChild(unionBox);
+
+      var blockCenterY = tenBlkY + Math.floor((tenRows * 17) / 2);
+      var tenLabel = middleText(tenBlkX + tenWidth / 2, commonLabelY, "バラした " + unbundledCount + "個", "slot-orange", {size: 10.5, weight: 800});
+      unbundleEqG.appendChild(tenLabel);
+      var plusTxt = middleText(plusX, blockCenterY, "＋", "slot-orange", {size: 18, weight: 800});
+      unbundleEqG.appendChild(plusTxt);
+      var oneLabel = middleText(oneBlkX + oneWidth / 2, commonLabelY, "もとの " + oneDigit + "個", null, {size: 10.5, weight: 800});
+      unbundleEqG.appendChild(oneLabel);
+      var eqTotalTxt = middleText(oneBlkX + oneWidth + 42, blockCenterY, "＝ " + unbundlePart + "個！", "slot-orange", {size: 17, weight: 800});
+      unbundleEqG.appendChild(eqTotalTxt);
+    }
+    gUnion.appendChild(unbundleEqG);
+
+    // 余った束のアラートバッジ（Stage 1用）
+    var alertBadgeG = el("g", { style: "display: none; opacity: 0;" });
+    var alertW = 200;
+    var alertBg = el("rect", {
+      x: 230 - alertW / 2, y: 134, width: alertW, height: 24, rx: 12,
+      fill: "#fff7ed", stroke: "#f97316", "stroke-width": 1.5
+    });
+    alertBadgeG.appendChild(alertBg);
+    alertBadgeG.appendChild(middleText(230, 150, "⚠️ " + tenRem + "束あまった！（分けられない）", "slot-orange", {size: 11, weight: 800}));
+    svg.appendChild(alertBadgeG);
+
+    level4Scene = {
+      problemKey: p.dividend + "-" + p.divisor + "-" + (p.remainder || 0),
+      p: p,
+      divisor: divisor,
+      dividend: dividend,
+      tenDigit: tenDigit,
+      oneDigit: oneDigit,
+      tenRem: tenRem,
+      q_ten: q_ten,
+      unbundlePart: unbundlePart,
+      q_one: q_one,
+      isUnbundle: isUnbundle,
+      hasRem: hasRem,
+      // elements
+      qSlot: qSlot,
+      rSlot: rSlot,
+      badgeBg: badgeBg,
+      badgeTextEl: badgeTextEl,
+      subTextEl: subTextEl,
+      trayBoxes: trayBoxes,
+      stage4SummaryG: stage4SummaryG,
+      s4Txt1: s4Txt1,
+      s4Txt2: s4Txt2,
+      stage5SummaryG: stage5SummaryG,
+      s5Txt1: s5Txt1,
+      s5Txt2: s5Txt2,
+      gGhosts: gGhosts,
+      gBoxes: gBoxes,
+      gEffects: gEffects,
+      alertBadgeG: alertBadgeG,
+      unbundleEqG: unbundleEqG,
+      bundles: bundles,
+      initialOnes: initialOnes,
+      burstOnes: burstOnes,
+      allWorkOnes: allWorkOnes,
+      trayPositions: trayPositions,
+      trayTenCoords: trayTenCoords,
+      trayOneCoords: trayOneCoords,
+      initTenCoords: initTenCoords,
+      initOneCoords: initOneCoords,
+      remTrayX: remTrayX,
+      totalTraysW: totalTraysW,
+      traysStartX: traysStartX,
+      tenBlkX: tenBlkX,
+      tenBlkY: tenBlkY,
+      tenWidth: tenWidth,
+      tenRows: tenRows
+    };
+  }
+
+  function renderLevel4(forward){
+    clearLevel4Timers();
+    var p = state.problem;
+    var stage = state.hintStage;
+    var expectedKey = p.dividend + "-" + p.divisor + "-" + (p.remainder || 0);
+
+    // シーンが存在しない、または別の問題になった場合は初期化
+    if(!level4Scene || level4Scene.problemKey !== expectedKey){
+      initLevel4Scene(p);
+    }
+
+    var sc = level4Scene;
+    var divisor = sc.divisor;
+    var dividend = sc.dividend;
+    var tenDigit = sc.tenDigit;
+    var oneDigit = sc.oneDigit;
+    var tenRem = sc.tenRem;
+    var q_ten = sc.q_ten;
+    var unbundlePart = sc.unbundlePart;
+    var q_one = sc.q_one;
+    var isUnbundle = sc.isUnbundle;
+
+    // ガイドテキストの設定
     var guideTxt = "";
     if(stage === 0){
       guideTxt = "十の位（10の束）から じゅんばんに 分けていこう！";
@@ -3228,377 +3684,631 @@
       guideTxt = "⑤ だから 答えは " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "") + " ！";
     }
 
-    var gBadge = el("g", { class: forward ? "fade-in" : "" });
-    var badgeW = 440;
-    var badgeH = 24;
-    var badgeX = 230 - badgeW / 2;
-    var badgeY = 38;
-    var badgeBg = el("rect", {
-      x: badgeX, y: badgeY, width: badgeW, height: badgeH, rx: 12,
-      fill: (stage === 2 && isUnbundle) ? "#fef3c7" : "#f1f5f9",
-      stroke: (stage === 2 && isUnbundle) ? "#f59e0b" : "#cbd5e1",
-      "stroke-width": 1.5
+    sc.badgeBg.setAttribute("fill", (stage === 2 && isUnbundle) ? "#fef3c7" : "#f1f5f9");
+    sc.badgeBg.setAttribute("stroke", (stage === 2 && isUnbundle) ? "#f59e0b" : "#cbd5e1");
+    sc.badgeTextEl.textContent = guideTxt;
+    var guideSz = calcSvgFontSize(guideTxt, 420, 13, 10.5);
+    sc.badgeTextEl.setAttribute("font-size", guideSz);
+    sc.badgeTextEl.setAttribute("class", (stage === 2 && isUnbundle) ? "slot-orange" : "");
+
+    // スロット状態
+    var targetDigits = p.targetQuotientDigits || 2;
+    var slotTxt = (stage >= 5) ? p.quotient : (state.inputDigits.length ? state.inputDigits : "?".repeat(targetDigits));
+    var slotCls = (stage >= 5) ? "slot-orange pop" : (state.inputDigits.length ? "slot-blue" : "slot-wait");
+    sc.qSlot.textContent = slotTxt;
+    sc.qSlot.setAttribute("class", slotCls);
+
+    if(sc.rSlot && p.hasRemainder){
+      var rTxt = (stage >= 5) ? p.remainder : (state.inputRemainder.length ? state.inputRemainder : "?");
+      var rCls = (stage >= 5) ? "slot-orange pop" : (state.inputRemainder.length ? "slot-blue" : "slot-wait");
+      sc.rSlot.textContent = rTxt;
+      sc.rSlot.setAttribute("class", rCls);
+    }
+
+    // トレイとサマリーの初期化
+    sc.trayBoxes.forEach(function(box, i){
+      var isFocus = (stage >= 4 && i === 0);
+      box.setAttribute("fill", isFocus ? "#fff7ed" : "#f8fafc");
+      box.setAttribute("stroke", isFocus ? "#ea580c" : "#cbd5e1");
+      box.setAttribute("stroke-width", isFocus ? "2.5" : "1.5");
+      box.setAttribute("class", isFocus ? "highlight-dish" : "");
     });
-    gBadge.appendChild(badgeBg);
-    var guideSz = calcSvgFontSize(guideTxt, badgeW - 20, 13, 10.5);
-    var badgeT = middleText(230, badgeY + 16, guideTxt, (stage === 2 && isUnbundle) ? "slot-orange" : null, {size: guideSz, weight: 800});
-    gBadge.appendChild(badgeT);
-    svg.appendChild(gBadge);
+    sc.stage4SummaryG.style.display = (stage === 4) ? "block" : "none";
+    sc.stage5SummaryG.style.display = (stage >= 5) ? "block" : "none";
 
-    // --------------------------------------------------
-    // ヘルパー: ブロック描画
-    // --------------------------------------------------
-    function drawBundle(x, y, label, isBurst, isGlow) {
-      var g = el("g", { class: isBurst ? "bundle-burst" : (isGlow ? "ten-rem-pulse" : "") });
-      var r = el("rect", {
-        x: x, y: y, width: 34, height: 19, rx: 4,
-        fill: isGlow ? "#ffedd5" : "#e0f2fe",
-        stroke: isGlow ? "#ea580c" : "#0284c7",
-        "stroke-width": isGlow ? 2.5 : 1.5
-      });
-      var t = el("text", {
-        x: x + 17, y: y + 14,
-        "text-anchor": "middle",
-        fill: isGlow ? "#c2410c" : "#0369a1",
-        "font-size": 11, "font-weight": 800,
-        "font-family": "'M PLUS Rounded 1c', sans-serif"
-      });
-      t.textContent = label || "10";
-      g.appendChild(r);
-      g.appendChild(t);
-      return g;
-    }
+    // 囲み枠・エフェクトのクリア
+    sc.gGhosts.innerHTML = "";
+    sc.gBoxes.innerHTML = "";
+    sc.gEffects.innerHTML = "";
+    sc.alertBadgeG.style.display = "none";
+    sc.alertBadgeG.style.opacity = "0";
+    sc.unbundleEqG.style.display = "none";
+    sc.unbundleEqG.style.opacity = "0";
 
-    function drawOne(cx, cy, delay, cls) {
-      var g = el("g", { class: cls || (delay !== undefined ? "block-drop-in" : "") });
-      if(delay) g.style.animationDelay = delay + "s";
-      var c = el("circle", {
-        cx: cx, cy: cy, r: 7.5,
-        fill: "#fff",
-        stroke: "#f59e0b",
-        "stroke-width": 1.5
-      });
-      var t = el("text", {
-        x: cx, y: cy + 3.5,
-        "text-anchor": "middle",
-        fill: "#b45309",
-        "font-size": 9.5, "font-weight": 800,
-        "font-family": "'M PLUS Rounded 1c', sans-serif"
-      });
-      t.textContent = "1";
-      g.appendChild(c);
-      g.appendChild(t);
-      return g;
-    }
-
-    function makeSparkle(cx, cy, color, delay, trans) {
-      var g = el("g", { class: "sparkle-particle" });
-      g.style.setProperty("--spark-trans", trans);
-      g.style.animationDelay = delay + "s";
-      var path = el("path", {
-        d: "M " + cx + " " + (cy - 8) + " Q " + cx + " " + cy + " " + (cx + 8) + " " + cy + " Q " + cx + " " + cy + " " + cx + " " + (cy + 8) + " Q " + cx + " " + cy + " " + (cx - 8) + " " + cy + " Z",
-        fill: color
-      });
-      g.appendChild(path);
-      return g;
-    }
-
-    // --------------------------------------------------
-    // 3. 配分先エリア（下部: 各人の受け皿トレイ）
-    // --------------------------------------------------
-    var gTrays = el("g", {});
-    var hasRem = p.hasRemainder;
-    var trayW = Math.min(125, Math.floor((hasRem ? 340 : 400) / divisor));
-    var trayGap = 10;
-    var totalTraysW = divisor * trayW + (divisor - 1) * trayGap;
-    var traysStartX = Math.round(((hasRem ? 370 : 460) - totalTraysW) / 2);
-
-    for(var j = 0; j < divisor; j++){
-      var curTrayX = traysStartX + j * (trayW + trayGap);
-      var curCenterX = curTrayX + Math.round(trayW / 2);
-
-      // 人型アイコン
-      var head = el("circle", {
-        cx: curCenterX, cy: 174, r: 5.5,
-        fill: "#2563eb"
-      });
-      var body = el("polygon", {
-        points: (curCenterX - 2) + ",179 " + (curCenterX + 2) + ",179 " + (curCenterX + 6.5) + ",191 " + (curCenterX - 6.5) + ",191",
-        fill: "#2563eb"
-      });
-      gTrays.appendChild(head);
-      gTrays.appendChild(body);
-
-      // 受け皿トレイ
-      var isFocus = (stage >= 4 && j === 0);
-      var trayBox = el("rect", {
-        x: curTrayX, y: 193, width: trayW, height: 68, rx: 8,
-        fill: isFocus ? "#fff7ed" : "#f8fafc",
-        stroke: isFocus ? "#ea580c" : "#cbd5e1",
-        "stroke-width": isFocus ? 2.5 : 1.5,
-        class: isFocus ? "highlight-dish" : ""
-      });
-      gTrays.appendChild(trayBox);
-
-      // トレイラベル
-      var trayLabel = el("text", {
-        x: curTrayX + 8, y: 205,
-        fill: isFocus ? "#ea580c" : "#64748b",
-        "font-size": 9.5, "font-weight": 800,
-        "font-family": "'M PLUS Rounded 1c', sans-serif"
-      });
-      trayLabel.textContent = (j + 1) + "人目";
-      gTrays.appendChild(trayLabel);
-
-      // Stage >= 1: 10の束をトレイに配置
-      if(stage >= 1 && q_ten > 0){
-        var bStartX = curTrayX + 6;
-        var bStartY = 212;
-        for(var bk = 0; bk < q_ten; bk++){
-          var bx = bStartX + (bk % 2) * 36;
-          var by = bStartY + Math.floor(bk / 2) * 22;
-          if(bx + 34 <= curTrayX + trayW){
-            gTrays.appendChild(drawBundle(bx, by, "10", false, false));
-          }
-        }
-      }
-
-      // Stage >= 3: 1のブロックをトレイに配置
-      if(stage >= 3 && q_one > 0){
-        var oneStartX = (q_ten > 0) ? (curTrayX + Math.min(trayW - 36, 8 + Math.min(2, q_ten) * 36)) : (curTrayX + 12);
-        var oneStartY = 214;
-        var maxOneCols = Math.max(2, Math.floor((curTrayX + trayW - 6 - oneStartX) / 17));
-
-        for(var om = 0; om < q_one; om++){
-          var colIdx = om % maxOneCols;
-          var rowIdx = Math.floor(om / maxOneCols);
-          var ocx = oneStartX + colIdx * 17 + 8;
-          var ocy = oneStartY + rowIdx * 17;
-          gTrays.appendChild(drawOne(ocx, ocy, (forward && stage === 3) ? (om * 0.04) : undefined));
-        }
-      }
-
-      // Stage >= 4: 1人分の合計表示
-      if(stage >= 4 && j === 0){
-        var sumBadge = el("g", { class: (forward && stage === 4) ? "pop" : "" });
-        var sumTxt = middleText(curCenterX, 269, (q_ten * 10) + "＋" + q_one + "＝ " + p.quotient, "slot-orange", {size: 11.5, weight: 800});
-        sumBadge.appendChild(sumTxt);
-        gTrays.appendChild(sumBadge);
-      }
-    }
-
-    // あまりエリア（4-3などで余りがある場合）
-    if(hasRem && stage >= 3 && p.remainder > 0){
-      var remTrayX = traysStartX + totalTraysW + 8;
-      var remLabel = el("text", {
-        x: remTrayX + 14, y: 190,
-        "text-anchor": "middle", fill: "#e11d48",
-        "font-size": 10.5, "font-weight": 800,
-        "font-family": "'M PLUS Rounded 1c', sans-serif"
-      });
-      remLabel.textContent = "あまり";
-      gTrays.appendChild(remLabel);
-
-      var remBox = el("rect", {
-        x: remTrayX, y: 194, width: 28, height: 66, rx: 6,
-        fill: "#fff1f2", stroke: "#fda4af", "stroke-width": 1.5
-      });
-      gTrays.appendChild(remBox);
-
-      for(var ri = 0; ri < p.remainder; ri++){
-        var rcy = 210 + ri * 18;
-        var rc = el("circle", {
-          cx: remTrayX + 14, cy: rcy, r: 7,
-          fill: "#fff", stroke: "#e11d48", "stroke-width": 1.5
-        });
-        var rt = el("text", {
-          x: remTrayX + 14, y: rcy + 3.5,
-          "text-anchor": "middle", fill: "#e11d48",
-          "font-size": 9, "font-weight": 800,
-          "font-family": "'M PLUS Rounded 1c', sans-serif"
-        });
-        rt.textContent = "1";
-        gTrays.appendChild(rc);
-        gTrays.appendChild(rt);
-      }
-    }
-
-    svg.appendChild(gTrays);
-
-    // --------------------------------------------------
-    // 4. 中央作業エリア（Y: 68〜165）: ステージごとの可視化
-    // --------------------------------------------------
-    var gWork = el("g", {});
-
-    // [Stage 0: はじめの数全体を表示]
+    // ==================================================
+    // STAGE 0: はじめの数
+    // ==================================================
     if(stage === 0){
-      var g0 = el("g", { class: forward ? "fade-in" : "" });
-      g0.appendChild(middleText(230, 84, "はじめの数 " + dividend + "（10の束が" + tenDigit + "つ、1のブロックが" + oneDigit + "個）", null, {size: 13.5}));
+      sc.subTextEl.textContent = "はじめの数 " + dividend + "（10の束が" + tenDigit + "つ、1のブロックが" + oneDigit + "個）";
+      sc.subTextEl.setAttribute("class", "");
 
-      var initStartX = 230 - Math.round((tenDigit * 38 + oneDigit * 18 + 16) / 2);
-      for(var b0 = 0; b0 < tenDigit; b0++){
-        g0.appendChild(drawBundle(initStartX + b0 * 38, 102, "10", false, false));
-      }
-      var oneInitX = initStartX + tenDigit * 38 + 14;
-      for(var o0 = 0; o0 < oneDigit; o0++){
-        g0.appendChild(drawOne(oneInitX + o0 * 18 + 8, 111));
-      }
-      gWork.appendChild(g0);
+      // 10の束を上部初期位置にセット
+      sc.bundles.forEach(function(b){
+        b.obj.g.style.display = "block";
+        b.obj.g.style.opacity = "1";
+        b.obj.r.setAttribute("fill", "#e0f2fe");
+        b.obj.r.setAttribute("stroke", "#0284c7");
+        b.obj.r.setAttribute("stroke-width", "1.5");
+        b.obj.t.setAttribute("fill", "#0369a1");
+        b.obj.inner.classList.remove("ten-rem-pulse");
+        b.obj.inner.classList.remove("bundle-burst");
+        moveEl(b.obj.g, b.initX, b.initY, false);
+      });
+
+      // もとの1のブロックを上部初期位置にセット
+      sc.initialOnes.forEach(function(o){
+        o.obj.g.style.display = "block";
+        o.obj.g.style.opacity = "1";
+        o.obj.c.setAttribute("stroke", "#f59e0b");
+        o.obj.t.setAttribute("fill", "#b45309");
+        o.obj.inner.classList.remove("block-drop-in");
+        moveEl(o.obj.g, o.initX, o.initY, false);
+      });
+
+      // バラしブロックは非表示
+      sc.burstOnes.forEach(function(bo){
+        bo.obj.g.style.display = "none";
+        bo.obj.g.style.opacity = "0";
+        bo.obj.inner.classList.remove("block-drop-in");
+      });
     }
 
-    // [Stage 1: 10の束を配り、余った束を強調]
+    // ==================================================
+    // STAGE 1: 10の束を分ける（囲む ➔ スーッと移動 ➔ あまり強調）
+    // ==================================================
     else if(stage === 1){
-      var g1 = el("g", { class: forward ? "fade-in" : "" });
-      if(isUnbundle){
-        g1.appendChild(middleText(230, 84, "10の束のわり算： " + tenDigit + "束 ÷ " + divisor + " ＝ 1人 " + q_ten + "束 （あまり " + tenRem + "束）", "slot-orange", {size: 13.5, weight: 800}));
+      sc.subTextEl.textContent = isUnbundle
+        ? "10の束のわり算： " + tenDigit + "束 ÷ " + divisor + " ＝ 1人 " + q_ten + "束 （あまり " + tenRem + "束）"
+        : "10の束のわり算： " + tenDigit + "束 ÷ " + divisor + " ＝ 1人 " + q_ten + "束（ぴったり！）";
+      sc.subTextEl.setAttribute("class", "slot-orange");
 
-        var remTotalW = tenRem * 38 - 4;
-        var remStartX = 230 - Math.round(remTotalW / 2);
-        for(var rk = 0; rk < tenRem; rk++){
-          g1.appendChild(drawBundle(remStartX + rk * 38, 104, "10", false, true));
-        }
+      // もとの1のブロックは初期位置のまま
+      sc.initialOnes.forEach(function(o){
+        o.obj.g.style.display = "block";
+        o.obj.g.style.opacity = "1";
+        o.obj.c.setAttribute("stroke", "#f59e0b");
+        o.obj.t.setAttribute("fill", "#b45309");
+        o.obj.inner.classList.remove("block-drop-in");
+        moveEl(o.obj.g, o.initX, o.initY, false);
+      });
 
-        // 吹き出し
-        var alertBadge = el("g", { class: "pop" });
-        var alertW = 190;
-        var alertBg = el("rect", {
-          x: 230 - alertW / 2, y: 134, width: alertW, height: 22, rx: 11,
-          fill: "#fff7ed", stroke: "#f97316", "stroke-width": 1.5
-        });
-        alertBadge.appendChild(alertBg);
-        alertBadge.appendChild(middleText(230, 149, "⚠️ " + tenRem + "束あまった！（分けられない）", "slot-orange", {size: 11, weight: 800}));
-        g1.appendChild(alertBadge);
-      } else {
-        g1.appendChild(middleText(230, 92, "10の束のわり算： " + tenDigit + "束 ÷ " + divisor + " ＝ 1人 " + q_ten + "束（ぴったり！）", "slot-orange", {size: 14.5, weight: 800}));
-        g1.appendChild(middleText(230, 124, "10の束はきれいに分かれたね。あまりは0束！", null, {size: 13}));
-      }
-      gWork.appendChild(g1);
-    }
-
-    // [Stage 2: ★最重要★ チャリーンと弾けて10個に解体＆合体]
-    else if(stage === 2){
-      var g2 = el("g", { class: forward ? "fade-in" : "" });
-
-      if(isUnbundle){
-        var unbundledCount = tenRem * 10;
-        g2.appendChild(middleText(230, 80, "あまった10の束を バラすと… " + unbundledCount + "個のブロックに変身！", "slot-orange", {size: 13.5, weight: 800}));
-
-        // キラキラスパークルエフェクト
-        var spCx = 230, spCy = 110;
-        g2.appendChild(makeSparkle(spCx, spCy, "#f59e0b", 0, "translate(24px, -20px) scale(0)"));
-        g2.appendChild(makeSparkle(spCx, spCy, "#fbbf24", 0.05, "translate(-26px, -18px) scale(0)"));
-        g2.appendChild(makeSparkle(spCx, spCy, "#f97316", 0.08, "translate(28px, 16px) scale(0)"));
-        g2.appendChild(makeSparkle(spCx, spCy, "#38bdf8", 0.1, "translate(-24px, 18px) scale(0)"));
-        g2.appendChild(makeSparkle(spCx, spCy, "#a855f7", 0.12, "translate(0px, -26px) scale(0)"));
-        g2.appendChild(makeSparkle(spCx, spCy, "#ec4899", 0.14, "translate(0px, 26px) scale(0)"));
-
-        // バラしたブロック（tenRem * 10個）と もとのブロック（oneDigit個）の動的中央揃え
-        var tenCols = 5;
-        var tenRows = Math.ceil(unbundledCount / tenCols);
-        var oneCols = Math.max(1, Math.min(5, oneDigit));
-
-        var tenWidth = tenCols * 17;
-        var plusWidth = 26;
-        var oneWidth = (oneDigit > 0) ? (oneCols * 17) : 10;
-        var eqWidth = 68;
-        var totalWorkW = tenWidth + plusWidth + oneWidth + eqWidth;
-        var workStartX = Math.max(20, 230 - Math.round(totalWorkW / 2));
-
-        var tenBlkX = workStartX;
-        var tenBlkY = (tenRows > 2) ? 92 : 100;
-
-        for(var tk = 0; tk < unbundledCount; tk++){
-          var tcol = tk % tenCols;
-          var trow = Math.floor(tk / tenCols);
-          var delay = (forward ? (0.12 + tk * 0.025) : undefined);
-          g2.appendChild(drawOne(tenBlkX + tcol * 17, tenBlkY + trow * 17, delay));
-        }
-
-        var commonLabelY = tenBlkY + tenRows * 17 + 9;
-        var tenLabel = middleText(tenBlkX + tenWidth / 2 - 8, commonLabelY, "バラした " + unbundledCount + "個", "slot-orange", {size: 10.5, weight: 800});
-        g2.appendChild(tenLabel);
-
-        // 「＋」記号
-        var plusX = tenBlkX + tenWidth + 14;
-        var plusTxt = bigText(plusX, tenBlkY + Math.min(2, tenRows) * 8.5, "＋", "slot-orange", {size: 18});
-        g2.appendChild(plusTxt);
-
-        // もとの一の位のブロック
-        var oneBlkX = plusX + 18;
-        if(oneDigit > 0){
-          for(var om2 = 0; om2 < oneDigit; om2++){
-            var ocol = om2 % 5;
-            var orow = Math.floor(om2 / 5);
-            g2.appendChild(drawOne(oneBlkX + ocol * 17, tenBlkY + orow * 17, undefined));
-          }
-        }
-        var oneLabel = middleText(oneBlkX + oneWidth / 2 - 8, commonLabelY, "もとの " + oneDigit + "個", null, {size: 10.5, weight: 800});
-        g2.appendChild(oneLabel);
-
-        // 「＝ 12個！」
-        var eqX = oneBlkX + oneWidth + 16;
-        var eqStr = "＝ " + unbundlePart + "個！";
-        var eqTotalTxt = bigText(eqX, tenBlkY + Math.min(2, tenRows) * 8.5, eqStr, "slot-orange", {size: 19});
-        g2.appendChild(eqTotalTxt);
-      } else {
-        g2.appendChild(middleText(230, 88, "一の位のブロック " + oneDigit + "個 を見てみよう！", "slot-orange", {size: 14.5}));
-        var oneStartX41 = 230 - Math.round((oneDigit * 18) / 2);
-        for(var om41 = 0; om41 < oneDigit; om41++){
-          g2.appendChild(drawOne(oneStartX41 + om41 * 18 + 8, 112));
-        }
-        g2.appendChild(middleText(230, 142, "一の位は " + oneDigit + "個 あるよ！これを " + divisor + "人に分けるよ！", null, {size: 12.5}));
-      }
-      gWork.appendChild(g2);
-    }
-
-    // [Stage 3: 1のブロック（12個など）を等分に配る]
-    else if(stage === 3){
-      var g3 = el("g", { class: forward ? "fade-in" : "" });
-      var eqStr3 = unbundlePart + " ÷ " + divisor + " ＝ " + q_one + (p.remainder > 0 ? "（あまり " + p.remainder + "）" : "");
-      g3.appendChild(middleText(230, 88, "1のブロックのわり算： " + eqStr3, "slot-orange", {size: 14.5, weight: 800}));
-      g3.appendChild(middleText(230, 116, "1のブロック " + unbundlePart + "個 を " + divisor + "人に分けると、1人 " + q_one + "個 ずつ！", null, {size: 12.5}));
-      if(p.remainder > 0){
-        g3.appendChild(middleText(230, 138, "分けきれなかった " + p.remainder + "個 は「あまり」になるよ！", "slot-orange", {size: 11.5}));
-      }
-      gWork.appendChild(g3);
-    }
-
-    // [Stage 4: 1人分の持ち分を合算]
-    else if(stage === 4){
-      var g4 = el("g", { class: forward ? "fade-in" : "" });
-      g4.appendChild(middleText(230, 86, "1人分の 持ち分を あわせよう！", "slot-orange", {size: 15, weight: 800}));
-
-      var detailStr = "10の束 " + q_ten + "つ（" + (q_ten * 10) + "） ＋ 1のブロック " + q_one + "個（" + q_one + "） ＝ " + p.quotient;
-      g4.appendChild(middleText(230, 114, detailStr, "slot-orange", {size: 14, weight: 800}));
-
-      var explainSub = "十の位は " + q_ten + " 、一の位は " + q_one + " になるよ！";
-      g4.appendChild(middleText(230, 138, explainSub, null, {size: 12.5}));
-      gWork.appendChild(g4);
-    }
-
-    // [Stage 5: 答え確定]
-    else if(stage >= 5){
-      var g5 = el("g", { class: forward ? "fade-in" : "" });
-      var finalStr = "だから　答えは " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "") + " ！";
-      var finalSz = calcSvgFontSize(finalStr, 440, 21, 15);
-      g5.appendChild(middleText(230, 104, finalStr, "slot-orange", {size: finalSz, weight: 800}));
-
-      var subConfirm = dividend + " ÷ " + divisor + " ＝ " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "");
-      g5.appendChild(middleText(230, 134, subConfirm, null, {size: 14}));
-      gWork.appendChild(g5);
+      // バラしブロックは非表示
+      sc.burstOnes.forEach(function(bo){
+        bo.obj.g.style.display = "none";
+        bo.obj.g.style.opacity = "0";
+        bo.obj.inner.classList.remove("block-drop-in");
+      });
 
       if(forward){
-        qSlot.textContent = p.quotient;
-        qSlot.setAttribute("class", "slot-orange pop");
-        var rSlotEl = document.getElementById("rSlot");
-        if(rSlotEl && p.hasRemainder){
-          rSlotEl.textContent = p.remainder;
-          rSlotEl.setAttribute("class", "slot-orange pop");
+        // 【ステップ1-A: 初期位置に整列 ＆ 囲む】
+        sc.bundles.forEach(function(b){
+          b.obj.g.style.display = "block";
+          b.obj.g.style.opacity = "1";
+          b.obj.r.setAttribute("fill", "#e0f2fe");
+          b.obj.r.setAttribute("stroke", "#0284c7");
+          b.obj.r.setAttribute("stroke-width", "1.5");
+          b.obj.t.setAttribute("fill", "#0369a1");
+          b.obj.inner.classList.remove("ten-rem-pulse");
+          b.obj.inner.classList.remove("bundle-burst");
+          moveEl(b.obj.g, b.initX, b.initY, false);
+        });
+
+        // 囲み枠とゴースト枠の描画（warizan-imi-anime同様）
+        for(var jBox = 0; jBox < divisor; jBox++){
+          if(q_ten === 0) continue;
+          var firstIdx = jBox * q_ten;
+          var lastIdx = (jBox + 1) * q_ten - 1;
+          var bx = sc.initTenCoords[firstIdx].x - 4;
+          var by = sc.initTenCoords[firstIdx].y - 4;
+          var bw = (lastIdx - firstIdx + 1) * 38 - 4 + 8;
+          var bh = 19 + 8;
+
+          // ゴースト枠（移動元にずっと残る）
+          var gGhost = el("rect", {
+            x: bx, y: by, width: bw, height: bh, rx: 6, class: "ghost-box"
+          });
+          sc.gGhosts.appendChild(gGhost);
+
+          // 青い点線囲み枠
+          var bRect = el("rect", {
+            x: bx, y: by, width: bw, height: bh, rx: 6, class: "group-box-blue"
+          });
+          var bTag = el("text", {
+            x: bx + 6, y: by - 3, fill: "#2563eb",
+            "font-size": 9.5, "font-weight": 800,
+            "font-family": "'M PLUS Rounded 1c', sans-serif"
+          });
+          bTag.textContent = (bw < 60) ? ((jBox + 1) + "人目") : ((jBox + 1) + "人目へ " + q_ten + "束");
+          sc.gBoxes.appendChild(bRect);
+          sc.gBoxes.appendChild(bTag);
+        }
+
+        // 【ステップ1-B: 450ms後にスーッと移動】
+        level4Timers.push(setTimeout(function(){
+          // 囲み枠をフェードアウト
+          sc.gBoxes.style.transition = "opacity 0.3s ease";
+          sc.gBoxes.style.opacity = "0";
+
+          // 配る束をトレイへスーッと移動
+          sc.bundles.forEach(function(b){
+            if(!b.isRem){
+              var target = sc.trayTenCoords[b.assignedPerson][b.assignedIndex];
+              moveEl(b.obj.g, target.x, target.y, true, 750, 0);
+            }
+          });
+        }, 450));
+
+        // 【ステップ1-C: 1200ms後に余った束を強調】
+        if(isUnbundle){
+          level4Timers.push(setTimeout(function(){
+            sc.bundles.forEach(function(b){
+              if(b.isRem){
+                b.obj.inner.classList.add("ten-rem-pulse");
+                b.obj.r.setAttribute("fill", "#ffedd5");
+                b.obj.r.setAttribute("stroke", "#ea580c");
+                b.obj.r.setAttribute("stroke-width", "2.5");
+                b.obj.t.setAttribute("fill", "#c2410c");
+              }
+            });
+            sc.alertBadgeG.style.display = "block";
+            sc.alertBadgeG.style.transition = "opacity 0.3s ease";
+            sc.alertBadgeG.style.opacity = "1";
+            sc.alertBadgeG.classList.add("pop");
+          }, 1200));
+        }
+      } else {
+        // 戻る操作（即時確定表示）
+        sc.bundles.forEach(function(b){
+          b.obj.g.style.display = "block";
+          b.obj.g.style.opacity = "1";
+          b.obj.inner.classList.remove("bundle-burst");
+          if(!b.isRem){
+            var targetB = sc.trayTenCoords[b.assignedPerson][b.assignedIndex];
+            moveEl(b.obj.g, targetB.x, targetB.y, false);
+            b.obj.r.setAttribute("fill", "#e0f2fe");
+            b.obj.r.setAttribute("stroke", "#0284c7");
+            b.obj.r.setAttribute("stroke-width", "1.5");
+            b.obj.t.setAttribute("fill", "#0369a1");
+            b.obj.inner.classList.remove("ten-rem-pulse");
+          } else {
+            moveEl(b.obj.g, b.initX, b.initY, false);
+            b.obj.inner.classList.add("ten-rem-pulse");
+            b.obj.r.setAttribute("fill", "#ffedd5");
+            b.obj.r.setAttribute("stroke", "#ea580c");
+            b.obj.r.setAttribute("stroke-width", "2.5");
+            b.obj.t.setAttribute("fill", "#c2410c");
+          }
+        });
+        if(isUnbundle){
+          sc.alertBadgeG.style.display = "block";
+          sc.alertBadgeG.style.opacity = "1";
         }
       }
     }
 
-    svg.appendChild(gWork);
+    // ==================================================
+    // STAGE 2: 余った束をチャリーンと解体 ＆ もとのブロックがスーッと寄って合体！
+    // ==================================================
+    else if(stage === 2){
+      // トレイの束はトレイ内確定位置
+      sc.bundles.forEach(function(b){
+        if(!b.isRem){
+          b.obj.g.style.display = "block";
+          b.obj.g.style.opacity = "1";
+          var targetB2 = sc.trayTenCoords[b.assignedPerson][b.assignedIndex];
+          moveEl(b.obj.g, targetB2.x, targetB2.y, false);
+        }
+      });
+
+      if(isUnbundle){
+        sc.subTextEl.textContent = "あまった10の束を バラすと… " + (tenRem * 10) + "個のブロックに変身！";
+        sc.subTextEl.setAttribute("class", "slot-orange");
+
+        // 余った束が解体される位置（バラしブロック群の中央）
+        var remTargetX = sc.tenBlkX + Math.round((sc.tenWidth - 34) / 2);
+        var remTargetY = sc.tenBlkY + Math.round((sc.tenRows * 17 - 19) / 2);
+
+        if(forward){
+          // 【ステップ2-A: 余った束がスーッと解体位置へスライド】
+          sc.bundles.forEach(function(b){
+            if(b.isRem){
+              b.obj.inner.classList.remove("ten-rem-pulse");
+              moveEl(b.obj.g, remTargetX, remTargetY, true, 300, 0);
+            }
+          });
+
+          // 【ステップ2-B: 300ms後にチャリーン！と弾けて10個のブロックが出現】
+          level4Timers.push(setTimeout(function(){
+            playSound('chariin');
+
+            sc.bundles.forEach(function(b){
+              if(b.isRem){
+                b.obj.inner.classList.add("bundle-burst");
+                setTimeout(function(){
+                  b.obj.g.style.display = "none";
+                  b.obj.g.style.opacity = "0";
+                }, 400);
+              }
+            });
+
+            // キラキラスパークル生成
+            var spCx = remTargetX + 17;
+            var spCy = remTargetY + 9.5;
+            function addSparkle(cx, cy, color, delay, trans) {
+              var spG = el("g", { class: "sparkle-particle" });
+              spG.style.setProperty("--spark-trans", trans);
+              spG.style.animationDelay = delay + "s";
+              var path = el("path", {
+                d: "M " + cx + " " + (cy - 8) + " Q " + cx + " " + cy + " " + (cx + 8) + " " + cy + " Q " + cx + " " + cy + " " + cx + " " + (cy + 8) + " Q " + cx + " " + cy + " " + (cx - 8) + " " + cy + " Z",
+                fill: color
+              });
+              spG.appendChild(path);
+              sc.gEffects.appendChild(spG);
+            }
+            addSparkle(spCx, spCy, "#f59e0b", 0, "translate(24px, -20px) scale(0)");
+            addSparkle(spCx, spCy, "#fbbf24", 0.05, "translate(-26px, -18px) scale(0)");
+            addSparkle(spCx, spCy, "#f97316", 0.08, "translate(28px, 16px) scale(0)");
+            addSparkle(spCx, spCy, "#38bdf8", 0.1, "translate(-24px, 18px) scale(0)");
+            addSparkle(spCx, spCy, "#a855f7", 0.12, "translate(0px, -26px) scale(0)");
+
+            // バラしたブロックをポンポン出現
+            sc.burstOnes.forEach(function(bo, idx){
+              bo.obj.g.style.display = "block";
+              bo.obj.g.style.opacity = "1";
+              bo.obj.inner.classList.add("block-drop-in");
+              bo.obj.inner.style.animationDelay = (0.05 + idx * 0.025) + "s";
+              moveEl(bo.obj.g, bo.burstX, bo.burstY, false);
+            });
+          }, 300));
+
+          // もとの1のブロックは初期位置からスタート
+          sc.initialOnes.forEach(function(o){
+            o.obj.g.style.display = "block";
+            o.obj.g.style.opacity = "1";
+            o.obj.inner.classList.remove("block-drop-in");
+            moveEl(o.obj.g, o.initX, o.initY, false);
+          });
+
+          // 【ステップ2-C: 750ms後にもとのブロックがスーッと左へスライド合流】
+          level4Timers.push(setTimeout(function(){
+            // もとのブロックの初期位置にゴースト枠を置く
+            sc.initialOnes.forEach(function(o){
+              var gGhostO = el("circle", {
+                cx: o.initX, cy: o.initY, r: 7.5, class: "ghost-box"
+              });
+              sc.gGhosts.appendChild(gGhostO);
+              // スーッと移動
+              moveEl(o.obj.g, o.mergedX, o.mergedY, true, 700, 0);
+            });
+          }, 750));
+
+          // 【ステップ2-D: 1500ms後に紫の合体枠と式が出現】
+          level4Timers.push(setTimeout(function(){
+            sc.unbundleEqG.style.display = "block";
+            sc.unbundleEqG.style.transition = "opacity 0.35s ease";
+            sc.unbundleEqG.style.opacity = "1";
+          }, 1500));
+        } else {
+          // 戻る操作（即時確定表示）
+          sc.bundles.forEach(function(b){
+            if(b.isRem){
+              b.obj.g.style.display = "none";
+              b.obj.g.style.opacity = "0";
+              b.obj.inner.classList.remove("bundle-burst");
+              b.obj.inner.classList.remove("ten-rem-pulse");
+            }
+          });
+          sc.burstOnes.forEach(function(bo){
+            bo.obj.g.style.display = "block";
+            bo.obj.g.style.opacity = "1";
+            bo.obj.inner.classList.remove("block-drop-in");
+            moveEl(bo.obj.g, bo.burstX, bo.burstY, false);
+          });
+          sc.initialOnes.forEach(function(o){
+            o.obj.g.style.display = "block";
+            o.obj.g.style.opacity = "1";
+            o.obj.inner.classList.remove("block-drop-in");
+            moveEl(o.obj.g, o.mergedX, o.mergedY, false);
+          });
+          sc.unbundleEqG.style.display = "block";
+          sc.unbundleEqG.style.opacity = "1";
+        }
+      } else {
+        // 解体なし（4-1）
+        sc.subTextEl.textContent = "一の位のブロック " + oneDigit + "個 を見てみよう！";
+        sc.initialOnes.forEach(function(o){
+          o.obj.g.style.display = "block";
+          o.obj.g.style.opacity = "1";
+          o.obj.inner.classList.remove("block-drop-in");
+          moveEl(o.obj.g, o.initX, o.initY, false);
+        });
+      }
+    }
+
+    // ==================================================
+    // STAGE 3: 1のブロックを分ける（囲む ➔ スーッと各トレイへ移動）
+    // ==================================================
+    else if(stage === 3){
+      // トレイ内の束はトレイ内確定
+      sc.bundles.forEach(function(b){
+        if(!b.isRem){
+          b.obj.g.style.display = "block";
+          b.obj.g.style.opacity = "1";
+          var targetB3 = sc.trayTenCoords[b.assignedPerson][b.assignedIndex];
+          moveEl(b.obj.g, targetB3.x, targetB3.y, false);
+        } else {
+          b.obj.g.style.display = "none";
+        }
+      });
+
+      var eqStr3 = unbundlePart + " ÷ " + divisor + " ＝ " + q_one + (p.remainder > 0 ? "（あまり " + p.remainder + "）" : "");
+      sc.subTextEl.textContent = "1のブロックのわり算： " + eqStr3;
+      sc.subTextEl.setAttribute("class", "slot-orange");
+
+      if(forward){
+        // まず全作業ブロックを合体位置（Stage 2の場所）に確実に配置して表示
+        sc.allWorkOnes.forEach(function(wo){
+          wo.obj.g.style.display = "block";
+          wo.obj.g.style.opacity = "1";
+          wo.obj.inner.classList.remove("block-drop-in");
+          moveEl(wo.obj.g, wo.currX, wo.currY, false);
+        });
+
+        // 【ステップ3-A: 囲む（各人分を青い点線枠で囲む）】
+        for(var jBox3 = 0; jBox3 < divisor; jBox3++){
+          var startIdx3 = jBox3 * q_one;
+          var endIdx3 = (jBox3 + 1) * q_one - 1;
+          if(startIdx3 >= sc.allWorkOnes.length) continue;
+          var xs3 = sc.allWorkOnes.slice(startIdx3, endIdx3 + 1).map(function(w){ return w.currX; });
+          var ys3 = sc.allWorkOnes.slice(startIdx3, endIdx3 + 1).map(function(w){ return w.currY; });
+          var minX3 = Math.min.apply(null, xs3) - 10;
+          var minY3 = Math.min.apply(null, ys3) - 10;
+          var maxX3 = Math.max.apply(null, xs3) + 10;
+          var maxY3 = Math.max.apply(null, ys3) + 10;
+
+          // ゴースト枠
+          var gGhost3 = el("rect", {
+            x: minX3, y: minY3, width: (maxX3 - minX3), height: (maxY3 - minY3), rx: 6, class: "ghost-box"
+          });
+          sc.gGhosts.appendChild(gGhost3);
+
+          // 青枠
+          var bRect3 = el("rect", {
+            x: minX3, y: minY3, width: (maxX3 - minX3), height: (maxY3 - minY3), rx: 6, class: "group-box-blue"
+          });
+          var bTag3 = el("text", {
+            x: minX3 + 6, y: minY3 - 3, fill: "#2563eb",
+            "font-size": 9.5, "font-weight": 800,
+            "font-family": "'M PLUS Rounded 1c', sans-serif"
+          });
+          var bw3 = maxX3 - minX3;
+          bTag3.textContent = (bw3 < 60) ? ((jBox3 + 1) + "人目") : ((jBox3 + 1) + "人目へ " + q_one + "個");
+          sc.gBoxes.appendChild(bRect3);
+          sc.gBoxes.appendChild(bTag3);
+        }
+
+        // 余りブロックがある場合はオレンジ枠で囲む
+        if(p.remainder > 0){
+          var remStartIdx3 = divisor * q_one;
+          var remXs = sc.allWorkOnes.slice(remStartIdx3).map(function(w){ return w.currX; });
+          var remYs = sc.allWorkOnes.slice(remStartIdx3).map(function(w){ return w.currY; });
+          var rMinX = Math.min.apply(null, remXs) - 10;
+          var rMinY = Math.min.apply(null, remYs) - 10;
+          var rMaxX = Math.max.apply(null, remXs) + 10;
+          var rMaxY = Math.max.apply(null, remYs) + 10;
+
+          var rGhost = el("rect", {
+            x: rMinX, y: rMinY, width: (rMaxX - rMinX), height: (rMaxY - rMinY), rx: 6, class: "ghost-box"
+          });
+          sc.gGhosts.appendChild(rGhost);
+
+          var rBox = el("rect", {
+            x: rMinX, y: rMinY, width: (rMaxX - rMinX), height: (rMaxY - rMinY), rx: 6, class: "group-box-orange"
+          });
+          var rTag = el("text", {
+            x: rMinX + 6, y: rMinY - 3, fill: "#ea580c",
+            "font-size": 9.5, "font-weight": 800,
+            "font-family": "'M PLUS Rounded 1c', sans-serif"
+          });
+          rTag.textContent = "あまり " + p.remainder + "個";
+          sc.gBoxes.appendChild(rBox);
+          sc.gBoxes.appendChild(rTag);
+        }
+
+        // 【ステップ3-B: 450ms後に各トレイへスーッと移動】
+        level4Timers.push(setTimeout(function(){
+          sc.gBoxes.style.transition = "opacity 0.3s ease";
+          sc.gBoxes.style.opacity = "0";
+
+          // 各人のトレイへ移動
+          for(var tj3_m = 0; tj3_m < divisor; tj3_m++){
+            for(var om3_m = 0; om3_m < q_one; om3_m++){
+              var blkIdx3_m = tj3_m * q_one + om3_m;
+              if(blkIdx3_m < sc.allWorkOnes.length){
+                var item3 = sc.allWorkOnes[blkIdx3_m];
+                var tCoord = sc.trayOneCoords[tj3_m][om3_m];
+                moveEl(item3.obj.g, tCoord.x, tCoord.y, true, 750, 0);
+              }
+            }
+          }
+
+          // 余りブロックの移動
+          if(p.remainder > 0){
+            for(var ri_m = 0; ri_m < p.remainder; ri_m++){
+              var rBlkIdx = divisor * q_one + ri_m;
+              if(rBlkIdx < sc.allWorkOnes.length){
+                var rItem = sc.allWorkOnes[rBlkIdx];
+                rItem.obj.c.setAttribute("stroke", "#e11d48");
+                rItem.obj.t.setAttribute("fill", "#e11d48");
+                moveEl(rItem.obj.g, sc.remTrayX + 14, 210 + ri_m * 18, true, 750, 0);
+              }
+            }
+          }
+        }, 450));
+      } else {
+        // 戻る操作（即時確定表示）
+        for(var tj3_b = 0; tj3_b < divisor; tj3_b++){
+          for(var om3_b = 0; om3_b < q_one; om3_b++){
+            var blkIdx3_b = tj3_b * q_one + om3_b;
+            if(blkIdx3_b < sc.allWorkOnes.length){
+              var item3_b = sc.allWorkOnes[blkIdx3_b];
+              item3_b.obj.g.style.display = "block";
+              item3_b.obj.g.style.opacity = "1";
+              item3_b.obj.inner.classList.remove("block-drop-in");
+              item3_b.obj.c.setAttribute("stroke", "#f59e0b");
+              item3_b.obj.t.setAttribute("fill", "#b45309");
+              var tCoord_b = sc.trayOneCoords[tj3_b][om3_b];
+              moveEl(item3_b.obj.g, tCoord_b.x, tCoord_b.y, false);
+            }
+          }
+        }
+        if(p.remainder > 0){
+          for(var ri_b = 0; ri_b < p.remainder; ri_b++){
+            var rBlkIdx_b = divisor * q_one + ri_b;
+            if(rBlkIdx_b < sc.allWorkOnes.length){
+              var rItem_b = sc.allWorkOnes[rBlkIdx_b];
+              rItem_b.obj.g.style.display = "block";
+              rItem_b.obj.g.style.opacity = "1";
+              rItem_b.obj.inner.classList.remove("block-drop-in");
+              rItem_b.obj.c.setAttribute("stroke", "#e11d48");
+              rItem_b.obj.t.setAttribute("fill", "#e11d48");
+              moveEl(rItem_b.obj.g, sc.remTrayX + 14, 210 + ri_b * 18, false);
+            }
+          }
+        }
+      }
+    }
+
+    // ==================================================
+    // STAGE 4: 1人分の持ち分を合算（トレイのハイライト＆合算バッジ）
+    // ==================================================
+    else if(stage === 4){
+      sc.subTextEl.textContent = "1人分の 持ち分を あわせよう！";
+      sc.subTextEl.setAttribute("class", "slot-orange");
+
+      // 束とブロックをトレイ内に確実に確定
+      sc.bundles.forEach(function(b){
+        if(!b.isRem){
+          b.obj.g.style.display = "block";
+          b.obj.g.style.opacity = "1";
+          var targetB4 = sc.trayTenCoords[b.assignedPerson][b.assignedIndex];
+          moveEl(b.obj.g, targetB4.x, targetB4.y, false);
+        } else {
+          b.obj.g.style.display = "none";
+        }
+      });
+
+      for(var tj4 = 0; tj4 < divisor; tj4++){
+        for(var om4 = 0; om4 < q_one; om4++){
+          var blkIdx4 = tj4 * q_one + om4;
+          if(blkIdx4 < sc.allWorkOnes.length){
+            var item4 = sc.allWorkOnes[blkIdx4];
+            item4.obj.g.style.display = "block";
+            item4.obj.g.style.opacity = "1";
+            var tCoord4 = sc.trayOneCoords[tj4][om4];
+            moveEl(item4.obj.g, tCoord4.x, tCoord4.y, false);
+          }
+        }
+      }
+      if(p.remainder > 0){
+        for(var ri4 = 0; ri4 < p.remainder; ri4++){
+          var rBlkIdx4 = divisor * q_one + ri4;
+          if(rBlkIdx4 < sc.allWorkOnes.length){
+            var rItem4 = sc.allWorkOnes[rBlkIdx4];
+            rItem4.obj.g.style.display = "block";
+            rItem4.obj.g.style.opacity = "1";
+            rItem4.obj.c.setAttribute("stroke", "#e11d48");
+            rItem4.obj.t.setAttribute("fill", "#e11d48");
+            moveEl(rItem4.obj.g, sc.remTrayX + 14, 210 + ri4 * 18, false);
+          }
+        }
+      }
+
+      // 1人目のトレイのハイライト＆中央まとめ
+      sc.trayBoxes[0].setAttribute("fill", "#fff7ed");
+      sc.trayBoxes[0].setAttribute("stroke", "#ea580c");
+      sc.trayBoxes[0].setAttribute("stroke-width", "2.5");
+      sc.trayBoxes[0].setAttribute("class", "highlight-dish");
+      sc.stage4SummaryG.style.display = "block";
+      sc.s4Txt1.textContent = "1人分 ＝ 10の束 " + q_ten + "つ ＋ 1のブロック " + q_one + "個";
+      sc.s4Txt2.textContent = "＝ " + (q_ten * 10) + " ＋ " + q_one + " ＝ " + p.quotient;
+      if(forward){
+        sc.stage4SummaryG.classList.remove("pop");
+        void sc.stage4SummaryG.offsetWidth;
+        sc.stage4SummaryG.classList.add("pop");
+      }
+    }
+
+    // ==================================================
+    // STAGE 5: 答え確定
+    // ==================================================
+    else if(stage >= 5){
+      var finalStr = "だから　答えは " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "") + " ！";
+      sc.subTextEl.textContent = finalStr;
+      sc.subTextEl.setAttribute("class", "slot-orange");
+
+      // 束とブロックをトレイ内に確実に確定
+      sc.bundles.forEach(function(b){
+        if(!b.isRem){
+          b.obj.g.style.display = "block";
+          b.obj.g.style.opacity = "1";
+          var targetB5 = sc.trayTenCoords[b.assignedPerson][b.assignedIndex];
+          moveEl(b.obj.g, targetB5.x, targetB5.y, false);
+        } else {
+          b.obj.g.style.display = "none";
+        }
+      });
+
+      for(var tj5 = 0; tj5 < divisor; tj5++){
+        for(var om5 = 0; om5 < q_one; om5++){
+          var blkIdx5 = tj5 * q_one + om5;
+          if(blkIdx5 < sc.allWorkOnes.length){
+            var item5 = sc.allWorkOnes[blkIdx5];
+            item5.obj.g.style.display = "block";
+            item5.obj.g.style.opacity = "1";
+            var tCoord5 = sc.trayOneCoords[tj5][om5];
+            moveEl(item5.obj.g, tCoord5.x, tCoord5.y, false);
+          }
+        }
+      }
+      if(p.remainder > 0){
+        for(var ri5 = 0; ri5 < p.remainder; ri5++){
+          var rBlkIdx5 = divisor * q_one + ri5;
+          if(rBlkIdx5 < sc.allWorkOnes.length){
+            var rItem5 = sc.allWorkOnes[rBlkIdx5];
+            rItem5.obj.g.style.display = "block";
+            rItem5.obj.g.style.opacity = "1";
+            rItem5.obj.c.setAttribute("stroke", "#e11d48");
+            rItem5.obj.t.setAttribute("fill", "#e11d48");
+            moveEl(rItem5.obj.g, sc.remTrayX + 14, 210 + ri5 * 18, false);
+          }
+        }
+      }
+
+      sc.trayBoxes[0].setAttribute("fill", "#fff7ed");
+      sc.trayBoxes[0].setAttribute("stroke", "#ea580c");
+      sc.trayBoxes[0].setAttribute("stroke-width", "2.5");
+      sc.trayBoxes[0].setAttribute("class", "highlight-dish");
+      sc.stage4SummaryG.style.display = "none";
+      sc.stage5SummaryG.style.display = "block";
+      sc.s5Txt1.textContent = "答え: " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "");
+      sc.s5Txt2.textContent = dividend + " ÷ " + divisor + " ＝ " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "");
+      if(forward){
+        sc.stage5SummaryG.classList.remove("pop");
+        void sc.stage5SummaryG.offsetWidth;
+        sc.stage5SummaryG.classList.add("pop");
+      }
+    }
   }
 
   // ==================================================================
