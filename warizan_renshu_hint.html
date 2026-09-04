@@ -91,6 +91,29 @@
   #scoreBox.show{ display:flex; }
   #scoreBox b{ color: var(--good); font-size:1.05rem; }
 
+  .sound-btn{
+    background: var(--card);
+    border: 2px solid var(--paper-line);
+    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: transform .1s, border-color .15s;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .sound-btn:hover{
+    transform: scale(1.08);
+    border-color: var(--accent);
+  }
+  .sound-btn.sound-off{
+    filter: grayscale(1) opacity(0.45);
+  }
+
   /* ---------- raid boss controls ---------- */
   .raid-bar{
     display:flex;
@@ -378,8 +401,35 @@
     border-radius:10px;
     font-size:1.3rem;
     font-weight:800;
+    cursor: pointer;
+    user-select: none;
+    transition: transform .1s, outline .1s, background .1s;
   }
-  .answer-display .chip.active{ outline:3px solid var(--accent); }
+  .answer-display .chip:hover{
+    transform: scale(1.06);
+  }
+  .answer-display .chip.active{
+    outline:3px solid var(--accent);
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(255, 140, 66, 0.25);
+  }
+  .answer-display .chip.wrong{
+    outline:3px solid var(--bad) !important;
+    background: var(--bad-soft) !important;
+    color: var(--bad) !important;
+  }
+  .answer-display .label-clickable{
+    cursor: pointer;
+    user-select: none;
+    transition: color .15s;
+  }
+  .answer-display .label-clickable:hover{
+    color: var(--accent-deep);
+  }
+  .answer-display .label-clickable.active{
+    color: var(--accent-deep);
+    font-weight: 800;
+  }
 
   #keypad{
     display:grid;
@@ -405,20 +455,8 @@
   #keypad button.clear{ color: var(--bad); }
 
   #submitBtn{
-    margin-top:2px;
-    padding: 10px 36px;
-    border-radius: 999px;
-    border:none;
-    background: var(--good);
-    color:#fff;
-    font-family:inherit;
-    font-weight:800;
-    font-size:1.05rem;
-    cursor:pointer;
-    box-shadow: 0 4px 0 #1f8e70;
+    display: none !important;
   }
-  #submitBtn:active{ transform: translateY(2px); box-shadow: 0 2px 0 #1f8e70; }
-  #submitBtn:disabled{ background:#cfd0e0; box-shadow:none; cursor:not-allowed; }
 
   /* ---------- hint controls ---------- */
   #hintControls{
@@ -598,7 +636,10 @@
       <div id="raidMsg" class="raid-msg"></div>
     </div>
 
-    <div id="scoreBox"><span>せいかい</span><b id="scoreCorrect">0</b><span>/</span><span id="scoreTotal">0</span>もん</div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div id="scoreBox"><span>せいかい</span><b id="scoreCorrect">0</b><span>/</span><span id="scoreTotal">0</span>もん</div>
+      <button id="soundBtn" class="sound-btn" title="おと ON/OFF" type="button" aria-pressed="true">🔊</button>
+    </div>
   </header>
 
   <section id="levelSelect" class="card">
@@ -679,11 +720,144 @@
     inputRemainder: "",   // level2 remainder digits
     activeField: "q",     // 'q' or 'r' for level2
     answered: false,
+    isWrongState: false,
     lastKey: null,
     score: { correct: 0, total: 0 },
     streak: 0,
     avatar: "⚔️"
   };
+
+  // ------------------------------------------------------------------
+  // sound effects (Web Audio API)
+  // ------------------------------------------------------------------
+  var soundEnabled = true;
+  try {
+    var savedSound = localStorage.getItem("warizan_sound_enabled");
+    if (savedSound !== null) soundEnabled = (savedSound === "1");
+  } catch(e){}
+
+  var soundBtn = document.getElementById("soundBtn");
+  var audioCtx = null;
+
+  function initAudio(){
+    if(!audioCtx){
+      var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if(AudioContextClass) audioCtx = new AudioContextClass();
+    }
+  }
+
+  function updateSoundButtonUI(){
+    if(!soundBtn) return;
+    soundBtn.classList.toggle("sound-off", !soundEnabled);
+    soundBtn.setAttribute("aria-pressed", soundEnabled ? "true" : "false");
+    soundBtn.title = soundEnabled ? "おと ON（タップでOFF）" : "おと OFF（タップでON）";
+    soundBtn.textContent = soundEnabled ? "🔊" : "🔇";
+  }
+
+  function toggleSound(){
+    soundEnabled = !soundEnabled;
+    try { localStorage.setItem("warizan_sound_enabled", soundEnabled ? "1" : "0"); } catch(e){}
+    updateSoundButtonUI();
+    if(soundEnabled){
+      initAudio();
+      if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+      playSound('click');
+    }
+  }
+
+  if(soundBtn){
+    soundBtn.addEventListener("click", toggleSound);
+    updateSoundButtonUI();
+  }
+
+  function unlockAudio(){
+    initAudio();
+    if(audioCtx && audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(function(){});
+    }
+    document.removeEventListener("pointerdown", unlockAudio);
+    document.removeEventListener("keydown", unlockAudio);
+  }
+  document.addEventListener("pointerdown", unlockAudio);
+  document.addEventListener("keydown", unlockAudio);
+
+  function playSound(type){
+    if(!soundEnabled) return;
+    try {
+      initAudio();
+      if(!audioCtx) return;
+      if(audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+      var now = audioCtx.currentTime;
+
+      if(type === 'click'){
+        var osc = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(650, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.06);
+      } else if(type === 'switch'){
+        var osc = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + 0.06);
+        g.gain.setValueAtTime(0.07, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.07);
+      } else if(type === 'step'){
+        var osc = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(660, now + 0.07);
+        g.gain.setValueAtTime(0.06, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.08);
+      } else if(type === 'correct'){
+        [880, 1320].forEach(function(f, i){
+          var osc = audioCtx.createOscillator();
+          var g = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = f;
+          var st = now + i * 0.12;
+          g.gain.setValueAtTime(0.12, st);
+          g.gain.exponentialRampToValueAtTime(0.001, st + 0.35);
+          osc.connect(g); g.connect(audioCtx.destination);
+          osc.start(st); osc.stop(st + 0.38);
+        });
+      } else if(type === 'wrong'){
+        [220, 200].forEach(function(f, i){
+          var osc = audioCtx.createOscillator();
+          var g = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.value = f;
+          var st = now + i * 0.14;
+          g.gain.setValueAtTime(0.08, st);
+          g.gain.exponentialRampToValueAtTime(0.001, st + 0.18);
+          osc.connect(g); g.connect(audioCtx.destination);
+          osc.start(st); osc.stop(st + 0.2);
+        });
+      } else if(type === 'critical'){
+        [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){
+          var osc = audioCtx.createOscillator();
+          var g = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = f;
+          var st = now + i * 0.08;
+          g.gain.setValueAtTime(0.12, st);
+          g.gain.exponentialRampToValueAtTime(0.001, st + 0.28);
+          osc.connect(g); g.connect(audioCtx.destination);
+          osc.start(st); osc.stop(st + 0.3);
+        });
+      }
+    } catch(e){}
+  }
 
   var svg = document.getElementById("stageSvg");
   var hintDots = document.getElementById("hintDots");
@@ -995,6 +1169,7 @@
     state.activeField = "q";
     state.answered = false;
     state.counted = false;
+    state.isWrongState = false;
     feedback.textContent = "";
     feedback.className = "";
     nextProblemBtn.classList.remove("show");
@@ -1004,6 +1179,9 @@
 
   // ------------------------------------------------------------------
   // keypad / answer input
+  // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  // keypad / answer input & auto check
   // ------------------------------------------------------------------
   function buildKeypad(){
     keypad.innerHTML = "";
@@ -1030,6 +1208,7 @@
       switchBtn.textContent = "きりかえ";
       switchBtn.className = "wide";
       switchBtn.addEventListener("click", function(){
+        playSound('switch');
         state.activeField = state.activeField === "q" ? "r" : "q";
         renderAnswerDisplay();
       });
@@ -1037,25 +1216,147 @@
     }
   }
 
+  function checkCurrentAnswer(){
+    if(state.answered) return;
+    var p = state.problem;
+    var correct = false;
+    if(state.level === 1){
+      correct = state.inputDigits.length > 0 && parseInt(state.inputDigits, 10) === p.quotient;
+    } else {
+      correct = state.inputDigits.length > 0 && state.inputRemainder.length > 0 &&
+                parseInt(state.inputDigits, 10) === p.quotient &&
+                parseInt(state.inputRemainder, 10) === p.remainder;
+    }
+
+    if(!state.counted){
+      state.counted = true;
+      state.score.total++;
+      if(correct) state.score.correct++;
+      scoreBox.classList.add("show");
+      document.getElementById("scoreCorrect").textContent = state.score.correct;
+      document.getElementById("scoreTotal").textContent = state.score.total;
+    }
+
+    if(correct){
+      state.answered = true;
+      state.isWrongState = false;
+      hintNextBtn.disabled = true;
+
+      var raidActive = isRaidConnected();
+
+      if(raidActive){
+        state.streak++;
+        updateStreakUI();
+
+        var baseDamage = 10;
+        var multiplier = 1;
+        var isCritical = false;
+        if(state.streak >= 5){
+          multiplier = 3;
+          isCritical = true;
+        } else if(state.streak >= 3){
+          multiplier = 2;
+          isCritical = true;
+        }
+        var finalDamage = baseDamage * multiplier;
+
+        var modeDesc = state.level === 1 ? "わり算Lv1" : "わり算Lv2";
+        sendAttack(finalDamage, modeDesc + " (" + state.streak + "連勝 " + multiplier + "倍)");
+
+        if(isCritical){
+          playSound('critical');
+        } else {
+          playSound('correct');
+        }
+
+        var critMsg = isCritical ? " 🔥【" + state.streak + "れんぞく！ " + multiplier + "倍クリティカル！】" : "";
+        feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg;
+      } else {
+        state.streak = 0;
+        updateStreakUI();
+        playSound('correct');
+        feedback.textContent = "せいかい！ よくできました！";
+      }
+
+      feedback.className = "good";
+      state.hintStage = state.maxHint;
+      renderAll(false);
+      nextProblemBtn.classList.add("show");
+    } else {
+      state.streak = 0;
+      state.isWrongState = true;
+      updateStreakUI();
+      playSound('wrong');
+      feedback.textContent = "おしい！ もういちど かんがえてみよう";
+      feedback.className = "bad";
+      var card = document.querySelector("#problemScreen .card");
+      card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
+      renderAnswerDisplay();
+    }
+  }
+
   function pressDigit(n){
     if(state.answered) return;
+    playSound('click');
+
+    // 不正解の直後に数字が押されたら、前の間違い入力をクリアして新しく入力開始
+    if(state.isWrongState){
+      state.isWrongState = false;
+      state.inputDigits = "";
+      state.inputRemainder = "";
+      state.activeField = "q";
+      feedback.textContent = "";
+      feedback.className = "";
+    }
+
     if(state.level === 1){
       if(state.inputDigits.length >= 2) return;
       state.inputDigits += String(n);
-    } else {
-      if(state.activeField === "q"){
-        if(state.inputDigits.length >= 1) return;
-        state.inputDigits += String(n);
+      renderAnswerDisplay();
+
+      // 答えが10の場合
+      if(state.problem.quotient === 10){
+        // 1が入力された時は、次に0が来るか待つため保留
+        if(state.inputDigits === "1"){
+          return;
+        } else {
+          // 1以外、または2桁（10や1Xなど）になったので判定
+          checkCurrentAnswer();
+        }
       } else {
-        if(state.inputRemainder.length >= 1) return;
-        state.inputRemainder += String(n);
+        // 答えが1〜9の場合：1文字入力された時点で即座に判定
+        checkCurrentAnswer();
+      }
+    } else {
+      // レベル2（あまりのある問題）
+      if(state.activeField === "q"){
+        state.inputDigits = String(n); // 商は1桁
+        state.activeField = "r"; // 自動的にあまりに切り替え
+        renderAnswerDisplay();
+        // もしすでにあまりも入力済みなら即判定
+        if(state.inputRemainder.length > 0){
+          checkCurrentAnswer();
+        }
+      } else {
+        // あまりの入力
+        state.inputRemainder = String(n); // あまりは1桁
+        renderAnswerDisplay();
+        // しょうとあまりの両方に数字が入力されたら正誤判定
+        if(state.inputDigits.length > 0){
+          checkCurrentAnswer();
+        } else {
+          // しょうがまだ空なら、しょうへ自動切り替え
+          state.activeField = "q";
+          renderAnswerDisplay();
+        }
       }
     }
-    renderAnswerDisplay();
   }
 
   function clearDigit(){
     if(state.answered) return;
+    playSound('click');
+    state.isWrongState = false;
     if(state.level === 1){
       state.inputDigits = state.inputDigits.slice(0,-1);
     } else if(state.activeField === "q"){
@@ -1063,6 +1364,8 @@
     } else {
       state.inputRemainder = state.inputRemainder.slice(0,-1);
     }
+    feedback.textContent = "";
+    feedback.className = "";
     renderAnswerDisplay();
   }
 
@@ -1070,20 +1373,52 @@
     answerDisplay.innerHTML = "";
     if(state.level === 1){
       var chip = document.createElement("span");
-      chip.className = "chip active";
+      chip.className = "chip active" + (state.isWrongState ? " wrong" : "");
       chip.textContent = state.inputDigits.length ? state.inputDigits : "?";
-      answerDisplay.appendChild(document.createTextNode("こたえ　"));
+      var lbl = document.createElement("span");
+      lbl.textContent = "こたえ　";
+      answerDisplay.appendChild(lbl);
       answerDisplay.appendChild(chip);
     } else {
+      var qLabel = document.createElement("span");
+      qLabel.textContent = "しょう　";
+      qLabel.className = "label-clickable" + (state.activeField === "q" ? " active" : "");
+      qLabel.addEventListener("click", function(){
+        playSound('switch');
+        state.activeField = "q";
+        renderAnswerDisplay();
+      });
+
       var qChip = document.createElement("span");
-      qChip.className = "chip" + (state.activeField === "q" ? " active" : "");
+      qChip.className = "chip" + (state.activeField === "q" ? " active" : "") + (state.isWrongState ? " wrong" : "");
       qChip.textContent = state.inputDigits.length ? state.inputDigits : "?";
+      qChip.addEventListener("click", function(){
+        playSound('switch');
+        state.activeField = "q";
+        renderAnswerDisplay();
+      });
+
+      var rLabel = document.createElement("span");
+      rLabel.textContent = "　あまり　";
+      rLabel.className = "label-clickable" + (state.activeField === "r" ? " active" : "");
+      rLabel.addEventListener("click", function(){
+        playSound('switch');
+        state.activeField = "r";
+        renderAnswerDisplay();
+      });
+
       var rChip = document.createElement("span");
-      rChip.className = "chip" + (state.activeField === "r" ? " active" : "");
+      rChip.className = "chip" + (state.activeField === "r" ? " active" : "") + (state.isWrongState ? " wrong" : "");
       rChip.textContent = state.inputRemainder.length ? state.inputRemainder : "?";
-      answerDisplay.appendChild(document.createTextNode("しょう　"));
+      rChip.addEventListener("click", function(){
+        playSound('switch');
+        state.activeField = "r";
+        renderAnswerDisplay();
+      });
+
+      answerDisplay.appendChild(qLabel);
       answerDisplay.appendChild(qChip);
-      answerDisplay.appendChild(document.createTextNode("　あまり　"));
+      answerDisplay.appendChild(rLabel);
       answerDisplay.appendChild(rChip);
     }
     updateEquationSlots();
@@ -1682,89 +2017,28 @@
   // ------------------------------------------------------------------
   hintNextBtn.addEventListener("click", function(){
     if(state.hintStage >= state.maxHint || state.answered) return;
+    playSound('step');
     state.hintStage++;
     renderAll(true);
   });
   hintBackBtn.addEventListener("click", function(){
     if(state.hintStage <= 0) return;
+    playSound('step');
     state.hintStage--;
     renderAll(false);
   });
 
   // ------------------------------------------------------------------
-  // answer checking
+  // answer checking (submitBtn fallback)
   // ------------------------------------------------------------------
-  submitBtn.addEventListener("click", function(){
-    if(state.answered) return;
-    var p = state.problem;
-    var correct;
-    if(state.level === 1){
-      correct = state.inputDigits.length > 0 && parseInt(state.inputDigits,10) === p.quotient;
-    } else {
-      correct = state.inputDigits.length > 0 && state.inputRemainder.length > 0 &&
-                parseInt(state.inputDigits,10) === p.quotient &&
-                parseInt(state.inputRemainder,10) === p.remainder;
-    }
-
-    if(!state.counted){
-      state.counted = true;
-      state.score.total++;
-      if(correct) state.score.correct++;
-      scoreBox.classList.add("show");
-      document.getElementById("scoreCorrect").textContent = state.score.correct;
-      document.getElementById("scoreTotal").textContent = state.score.total;
-    }
-
-    if(correct){
-      state.answered = true;
-      hintNextBtn.disabled = true;
-
-      var raidActive = isRaidConnected();
-
-      if(raidActive){
-        // レイド接続中のみストリーク計算＆ダメージ送信
-        state.streak++;
-        updateStreakUI();
-
-        var baseDamage = 10;
-        var multiplier = 1;
-        var isCritical = false;
-        if(state.streak >= 5){
-          multiplier = 3;
-          isCritical = true;
-        } else if(state.streak >= 3){
-          multiplier = 2;
-          isCritical = true;
-        }
-        var finalDamage = baseDamage * multiplier;
-
-        var modeDesc = state.level === 1 ? "わり算Lv1" : "わり算Lv2";
-        sendAttack(finalDamage, modeDesc + " (" + state.streak + "連勝 " + multiplier + "倍)");
-
-        var critMsg = isCritical ? " 🔥【" + state.streak + "れんぞく！ " + multiplier + "倍クリティカル！】" : "";
-        feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg;
-      } else {
-        // 未接続時：通常の問題集として動作（ダメージ表記等は一切出さない）
-        state.streak = 0;
-        updateStreakUI();
-        feedback.textContent = "せいかい！ よくできました！";
-      }
-
-      feedback.className = "good";
-      state.hintStage = state.maxHint;
-      renderAll(false);
-      nextProblemBtn.classList.add("show");
-    } else {
-      state.streak = 0;
-      updateStreakUI();
-      feedback.textContent = "おしい！ もういちど かんがえてみよう";
-      feedback.className = "bad";
-      var card = document.querySelector("#problemScreen .card");
-      card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
-    }
-  });
+  if(submitBtn){
+    submitBtn.addEventListener("click", function(){
+      checkCurrentAnswer();
+    });
+  }
 
   nextProblemBtn.addEventListener("click", function(){
+    playSound('click');
     newProblem();
   });
 
@@ -1773,6 +2047,7 @@
   // ------------------------------------------------------------------
   document.querySelectorAll("#levelSelect .level-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
+      playSound('click');
       state.level = parseInt(btn.getAttribute("data-level"), 10);
       state.score = { correct:0, total:0 };
       scoreBox.classList.remove("show");
@@ -1784,6 +2059,7 @@
   });
 
   document.getElementById("backToLevels").addEventListener("click", function(){
+    playSound('click');
     document.getElementById("problemScreen").classList.remove("show");
     document.getElementById("levelSelect").style.display = "block";
     scoreBox.classList.remove("show");
