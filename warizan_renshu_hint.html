@@ -3309,7 +3309,7 @@
 
       for (var i = 0; i < N; i++) {
         var currentDigit = dvdDigits[i];
-        currentDividendStr = (i === 0 && currentRemainder === 0) ? currentDigit : (currentRemainder.toString() + currentDigit);
+        currentDividendStr = (currentRemainder === 0) ? currentDigit : (currentRemainder.toString() + currentDigit);
         var currentTargetValue = parseInt(currentDividendStr, 10);
         var targetCol = M + i;
 
@@ -3415,18 +3415,26 @@
 
           var rem = currentTargetValue - product;
           var remStr = rem.toString();
+          var isLastDigit = (i === N - 1);
+          var shouldWriteIntermediateZero = !(rem === 0 && !isLastDigit);
           var diffCells = [];
-          for (var k = 0; k < remStr.length; k++) {
-            diffCells.push({
-              r: currentRow,
-              c: targetCol - remStr.length + 1 + k,
-              char: remStr[k]
-            });
+          if (shouldWriteIntermediateZero) {
+            for (var k = 0; k < remStr.length; k++) {
+              diffCells.push({
+                r: currentRow,
+                c: targetCol - remStr.length + 1 + k,
+                char: remStr[k]
+              });
+            }
           }
+
+          var subDesc = shouldWriteIntermediateZero
+            ? ("【ひく】" + currentTargetValue + " － " + product + " ＝ " + rem + " を書きます。")
+            : ("【ひく】" + currentTargetValue + " － " + product + " ＝ 0 ですが、次におろす数があるので「0」は書きません。");
 
           steps.push({
             phase: "subtract",
-            description: "【ひく】" + currentTargetValue + " － " + product + " ＝ " + rem + " を書きます。",
+            description: subDesc,
             writeCells: diffCells,
             maskFromCol: currentMaskFromCol,
             highlightCells: makeHighlight("red", currentDvdPartCells.concat(prodCells), diffCells),
@@ -3434,7 +3442,7 @@
           });
 
           currentRemainder = rem;
-          prevRemainderCells = diffCells.slice();
+          prevRemainderCells = shouldWriteIntermediateZero ? diffCells.slice() : [];
           nextDigitCellOverride = null;
         }
 
