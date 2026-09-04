@@ -1869,20 +1869,29 @@
     var problem, key, tries = 0;
     do{
       var divisor = rand(2, 4);
-      var q_ten = rand(2, 4);
-      var q_one = rand(1, 4);
+      var maxQTen = Math.floor(9 / divisor);
+      var q_ten = rand(1, maxQTen);
+      var maxQOne = Math.floor(9 / divisor);
+      var q_one = rand(1, maxQOne);
       var quotient = q_ten * 10 + q_one;
       var dividend = divisor * quotient;
-      problem = {
-        level: "5-1", divisor: divisor, quotient: quotient, remainder: 0,
-        hasRemainder: false, targetQuotientDigits: 2,
-        dividend: dividend, isLongDivision: true,
-        title: "レベル5-1　筆算：商が2けた（解体なし）"
-      };
-      key = divisor + "-" + quotient;
+      if(dividend >= 10 && dividend < 100 && (Math.floor(dividend / 10) % divisor === 0)){
+        problem = {
+          level: "5-1", divisor: divisor, quotient: quotient, remainder: 0,
+          hasRemainder: false, targetQuotientDigits: 2,
+          dividend: dividend, isLongDivision: true,
+          title: "レベル5-1　筆算：商が2けた（解体なし）"
+        };
+        key = divisor + "-" + quotient;
+      }
       tries++;
-    } while(key === prevKey && tries < 20);
-    return problem;
+    } while((!problem || key === prevKey) && tries < 30);
+    return problem || {
+      level: "5-1", divisor: 2, quotient: 43, remainder: 0,
+      hasRemainder: false, targetQuotientDigits: 2,
+      dividend: 86, isLongDivision: true,
+      title: "レベル5-1　筆算：商が2けた（解体なし）"
+    };
   }
 
   function genLevel5_2(prevKey){
@@ -3429,8 +3438,8 @@
           nextDigitCellOverride = null;
         }
 
-        // 次の桁をおろす
-        if (i < N - 1) {
+        // 次の桁をおろす（商がまだ立っていない場合はおろさず、ずらして次の桁を見る）
+        if (hasFirstQuotientStarted && i < N - 1) {
           var nextDigit = dvdDigits[i + 1];
           var nextCol = targetCol + 1;
           var isSuppressDroppedZero = shouldSuppressDroppedZero(currentRemainder, nextDigit, (i + 1) < (N - 1));
