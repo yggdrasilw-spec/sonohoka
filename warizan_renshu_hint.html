@@ -536,10 +536,10 @@
     opacity: 0.9;
     pointer-events: none;
   }
-  .step-arrow.a1 { top: 24px; right: 98px; transform: rotate(10deg); }
-  .step-arrow.a2 { top: 96px; right: 98px; transform: rotate(10deg); }
-  .step-arrow.a3 { bottom: 24px; left: 98px; transform: rotate(10deg); }
-  .step-arrow.a4 { top: 24px; left: 98px; transform: rotate(10deg); }
+  .step-arrow.a1 { top: 24px; right: 98px; transform: rotate(38deg); }
+  .step-arrow.a2 { top: 96px; right: 98px; transform: rotate(142deg); }
+  .step-arrow.a3 { bottom: 24px; left: 98px; transform: rotate(218deg); }
+  .step-arrow.a4 { top: 24px; left: 98px; transform: rotate(-38deg); }
 
   .step-panel.phase-tateru { background: rgba(219, 234, 254, 0.85); }
   .step-panel.phase-kakeru { background: rgba(220, 252, 231, 0.85); }
@@ -3130,11 +3130,40 @@
     return hasNextDigit && currentRemainder === 0 && nextDigit === "0";
   }
 
-  function extendHorizontalLine(cells, row, rightmostCol, shouldExtend) {
-    if (!shouldExtend) return cells;
-    return cells.concat([
-      { r: row, c: rightmostCol + 1, char: "", borderBottom: true, isLineExtend: true }
-    ]);
+  function buildMultiplyWriteCells(prodCells, row, targetCol, currentDvdPartCells, hasNextDigit, totalCols) {
+    var result = prodCells.map(function(cell){
+      return Object.assign({}, cell, { borderBottom: true });
+    });
+
+    var startCol = targetCol;
+    result.forEach(function(c){
+      if (c.c < startCol) startCol = c.c;
+    });
+    if (currentDvdPartCells && currentDvdPartCells.length > 0) {
+      currentDvdPartCells.forEach(function(c){
+        if (c.c < startCol) startCol = c.c;
+      });
+    }
+
+    var endCol = targetCol;
+    if (hasNextDigit && (targetCol + 1 < totalCols)) {
+      endCol = targetCol + 1;
+    }
+
+    for (var col = startCol; col <= endCol; col++) {
+      var exists = result.some(function(c){ return c.c === col; });
+      if (!exists) {
+        result.push({
+          r: row,
+          c: col,
+          char: "",
+          borderBottom: true,
+          isLineExtend: true
+        });
+      }
+    }
+
+    return result;
   }
 
   function makeHighlight(color, refCells, newCells) {
@@ -3362,7 +3391,8 @@
               char: prodStr[k]
             });
           }
-          var extendedProdCells = extendHorizontalLine(prodCells, currentRow, targetCol, true);
+          var hasNextDigit = (i < N - 1);
+          var extendedProdCells = buildMultiplyWriteCells(prodCells, currentRow, targetCol, currentDvdPartCells, hasNextDigit, M + N);
 
           steps.push({
             phase: "multiply",
