@@ -437,6 +437,328 @@
   }
   #stageSvg{ display:block; width:100%; height:100%; }
 
+  /* ---------- hissan digital notebook area ---------- */
+  #hissanStageWrap {
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+  }
+  #hissanStageWrap::-webkit-scrollbar {
+    width: 6px;
+  }
+  #hissanStageWrap::-webkit-scrollbar-thumb {
+    background: var(--paper-line);
+    border-radius: 999px;
+  }
+
+  /* ステップ循環カード */
+  .step-panel {
+    width: 100%;
+    max-width: 480px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 2px solid rgba(148, 163, 184, 0.35);
+    border-radius: 16px;
+    padding: 10px 14px 12px;
+    box-shadow: 0 6px 18px rgba(43, 42, 76, 0.05);
+    box-sizing: border-box;
+    transition: background-color 0.25s ease;
+  }
+  .step-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+  .step-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid rgba(148,163,184,0.4);
+    font-size: 13px;
+    font-weight: 800;
+    color: #334155;
+  }
+  .step-cycle {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    height: 155px;
+    margin: 0 auto;
+  }
+  .step-node {
+    position: absolute;
+    width: 96px;
+    height: 38px;
+    border-radius: 12px;
+    border: 2px solid #94a3b8;
+    background: rgba(255, 255, 255, 0.96);
+    color: #0f172a;
+    font-weight: 900;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
+    transform: translate(var(--tx, 0), var(--ty, 0)) scale(1);
+    transform-origin: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    user-select: none;
+  }
+  .step-node.active {
+    animation: step-node-pulse 1.1s ease-in-out infinite;
+    z-index: 2;
+  }
+  @keyframes step-node-pulse {
+    0% { transform: translate(var(--tx, 0), var(--ty, 0)) scale(1); }
+    50% { transform: translate(var(--tx, 0), var(--ty, 0)) scale(1.10); }
+    100% { transform: translate(var(--tx, 0), var(--ty, 0)) scale(1); }
+  }
+  .step-node.tateru { top: 0; left: 50%; --tx: -50%; }
+  .step-node.kakeru { top: 58px; right: 0; }
+  .step-node.hiku { bottom: 0; left: 50%; --tx: -50%; }
+  .step-node.orosu { top: 58px; left: 0; }
+
+  .step-arrow {
+    position: absolute;
+    font-size: 22px;
+    line-height: 1;
+    color: #64748b;
+    opacity: 0.9;
+    pointer-events: none;
+  }
+  .step-arrow.a1 { top: 24px; right: 98px; transform: rotate(10deg); }
+  .step-arrow.a2 { top: 96px; right: 98px; transform: rotate(10deg); }
+  .step-arrow.a3 { bottom: 24px; left: 98px; transform: rotate(10deg); }
+  .step-arrow.a4 { top: 24px; left: 98px; transform: rotate(10deg); }
+
+  .step-panel.phase-tateru { background: rgba(219, 234, 254, 0.85); }
+  .step-panel.phase-kakeru { background: rgba(220, 252, 231, 0.85); }
+  .step-panel.phase-hiku { background: rgba(254, 226, 226, 0.85); }
+  .step-panel.phase-orosu { background: rgba(255, 237, 213, 0.85); }
+  .step-panel.phase-neutral { background: rgba(255, 255, 255, 0.92); }
+
+  .step-panel.phase-tateru .step-node.tateru,
+  .step-panel.phase-kakeru .step-node.kakeru,
+  .step-panel.phase-hiku .step-node.hiku,
+  .step-panel.phase-orosu .step-node.orosu {
+    border-color: var(--phase-accent, #3b82f6);
+    background: var(--phase-soft, rgba(255,255,255,0.96));
+    color: #0f172a;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 0 6px 14px rgba(15, 23, 42, 0.12);
+  }
+  .step-panel.phase-tateru .step-node.tateru.active,
+  .step-panel.phase-kakeru .step-node.kakeru.active,
+  .step-panel.phase-hiku .step-node.hiku.active,
+  .step-panel.phase-orosu .step-node.orosu.active {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.5), 0 0 0 6px rgba(255,255,255,0.3), 0 10px 20px rgba(15,23,42,0.16);
+  }
+
+  /* 筆算ノート */
+  .notebook-wrapper {
+    background: #fff;
+    border: 2px solid #b8c6d2;
+    border-radius: 14px;
+    padding: 18px 24px;
+    position: relative;
+    box-shadow: 0 6px 20px rgba(43,42,76,0.06);
+    box-sizing: border-box;
+    display: inline-block;
+  }
+  #hissan-hint-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .division-grid {
+    display: grid;
+    position: relative;
+  }
+  .grid-cell {
+    width: 42px;
+    height: 42px;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+    border-right: 1px dashed #e2e8f0;
+    border-bottom: 1px dashed #e2e8f0;
+    transition: all 0.2s ease;
+  }
+  .cell-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .main-num {
+    font-size: 25px;
+    font-weight: 800;
+    color: #334155;
+    line-height: 42px;
+  }
+  @keyframes digit-drop {
+    0% {
+      transform: translateY(var(--drop-start-y));
+      color: #cbd5e1;
+      opacity: 0.4;
+    }
+    40% {
+      color: #cbd5e1;
+      opacity: 0.7;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .digit-dropping {
+    animation: digit-drop 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .top-num {
+    position: absolute;
+    top: -4px;
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 5;
+  }
+  .slash-line {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 130%;
+    height: 3px;
+    background: #ef4444;
+    transform: translate(-50%, -50%) rotate(45deg);
+    transform-origin: center;
+    display: none;
+    z-index: 4;
+    pointer-events: none;
+  }
+  .red-border {
+    box-shadow: inset 0 0 0 3px #ef4444 !important;
+    border-radius: 4px;
+  }
+  .border-top-solid { border-top: 3px solid #1e293b !important; }
+  .border-bottom-solid { border-bottom: 3px solid #1e293b !important; }
+  .gray-guide { color: #cbd5e1; font-size: 20px; }
+  .added-zero { color: #0284c7; }
+
+  /* マスハイライト */
+  .active-target {
+    background-color: rgba(255, 152, 0, 0.2) !important;
+    box-shadow: inset 0 0 0 3px #ff9800, 0 3px 10px rgba(255, 152, 0, 0.35) !important;
+    border-radius: 6px;
+    z-index: 10 !important;
+    animation: rich-pulse-animation 1.2s infinite ease-in-out;
+  }
+  @keyframes rich-pulse-animation {
+    0%, 100% { transform: scale(1); box-shadow: inset 0 0 0 3px #ff9800, 0 3px 8px rgba(255, 152, 0, 0.25); background-color: rgba(255, 152, 0, 0.15) !important; }
+    50% { transform: scale(1.06); box-shadow: inset 0 0 0 3.5px #f97316, 0 6px 16px rgba(249, 115, 22, 0.45); background-color: rgba(255, 152, 0, 0.32) !important; }
+  }
+
+  .hl-ref-blue   .main-num { color: #1d4ed8; font-weight: 900; }
+  .hl-ref-green  .main-num { color: #15803d; font-weight: 900; }
+  .hl-ref-red    .main-num { color: #b91c1c; font-weight: 900; }
+  .hl-ref-orange .main-num { color: #c2410c; font-weight: 900; }
+
+  .hl-new-blue, .hl-new-green, .hl-new-red, .hl-new-orange {
+    border-radius: 6px;
+    z-index: 10 !important;
+  }
+  .hl-new-blue   .main-num { color: #1d4ed8; font-weight: 900; }
+  .hl-new-green  .main-num { color: #15803d; font-weight: 900; }
+  .hl-new-red    .main-num { color: #b91c1c; font-weight: 900; }
+  .hl-new-orange .main-num { color: #c2410c; font-weight: 900; }
+
+  .hl-new-blue {
+    background-color: rgba(37, 99, 235, 0.12) !important;
+    box-shadow: inset 0 0 0 3px #2563eb, 0 3px 10px rgba(37, 99, 235, 0.35) !important;
+    animation: hl-pulse-blue 1.2s infinite ease-in-out;
+  }
+  .hl-new-green {
+    background-color: rgba(22, 163, 74, 0.12) !important;
+    box-shadow: inset 0 0 0 3px #16a34a, 0 3px 10px rgba(22, 163, 74, 0.35) !important;
+    animation: hl-pulse-green 1.2s infinite ease-in-out;
+  }
+  .hl-new-red {
+    background-color: rgba(220, 38, 38, 0.12) !important;
+    box-shadow: inset 0 0 0 3px #dc2626, 0 3px 10px rgba(220, 38, 38, 0.35) !important;
+    animation: hl-pulse-red 1.2s infinite ease-in-out;
+  }
+  .hl-new-orange {
+    background-color: rgba(234, 88, 12, 0.12) !important;
+    box-shadow: inset 0 0 0 3px #ea580c, 0 3px 10px rgba(234, 88, 12, 0.35) !important;
+    animation: hl-pulse-orange 1.2s infinite ease-in-out;
+  }
+
+  @keyframes hl-pulse-blue {
+    0%, 100% { transform: scale(1); box-shadow: inset 0 0 0 3px #2563eb, 0 3px 8px rgba(37, 99, 235, 0.25); background-color: rgba(37, 99, 235, 0.10) !important; }
+    50% { transform: scale(1.06); box-shadow: inset 0 0 0 3.5px #1d4ed8, 0 6px 16px rgba(37, 99, 235, 0.45); background-color: rgba(37, 99, 235, 0.22) !important; }
+  }
+  @keyframes hl-pulse-green {
+    0%, 100% { transform: scale(1); box-shadow: inset 0 0 0 3px #16a34a, 0 3px 8px rgba(22, 163, 74, 0.25); background-color: rgba(22, 163, 74, 0.10) !important; }
+    50% { transform: scale(1.06); box-shadow: inset 0 0 0 3.5px #15803d, 0 6px 16px rgba(22, 163, 74, 0.45); background-color: rgba(22, 163, 74, 0.22) !important; }
+  }
+  @keyframes hl-pulse-red {
+    0%, 100% { transform: scale(1); box-shadow: inset 0 0 0 3px #dc2626, 0 3px 8px rgba(220, 38, 38, 0.25); background-color: rgba(220, 38, 38, 0.10) !important; }
+    50% { transform: scale(1.06); box-shadow: inset 0 0 0 3.5px #b91c1c, 0 6px 16px rgba(220, 38, 38, 0.45); background-color: rgba(220, 38, 38, 0.22) !important; }
+  }
+  @keyframes hl-pulse-orange {
+    0%, 100% { transform: scale(1); box-shadow: inset 0 0 0 3px #ea580c, 0 3px 8px rgba(234, 88, 12, 0.25); background-color: rgba(234, 88, 12, 0.10) !important; }
+    50% { transform: scale(1.06); box-shadow: inset 0 0 0 3.5px #c2410c, 0 6px 16px rgba(234, 88, 12, 0.45); background-color: rgba(234, 88, 12, 0.22) !important; }
+  }
+
+  .fusen-mask {
+    position: absolute;
+    background-color: rgba(253, 224, 71, 0.45);
+    border-left: 3px dashed #eab308;
+    z-index: 8;
+    pointer-events: none;
+    display: none;
+    transition: all 0.3s ease;
+  }
+
+  .narration-card {
+    width: 100%;
+    max-width: 480px;
+    background-color: #f0fdf4;
+    border-left: 5px solid #22c55e;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #166534;
+    min-height: 48px;
+    line-height: 1.6;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.08);
+  }
+
+  .brain-card {
+    width: 100%;
+    max-width: 480px;
+    background-color: #fff;
+    border: 2px dashed #94a3b8;
+    padding: 10px 14px;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+
   #hintCaption{
     min-height: 28px;
     text-align:center;
@@ -562,9 +884,9 @@
   }
   #hintBackBtn{ background:#fff; color: var(--ink-soft); border-color: var(--paper-line); }
 
-  #hintDots{ display:flex; gap:6px; }
+  #hintDots{ display:flex; gap:4px; flex-wrap:wrap; justify-content:center; max-width:140px; }
   #hintDots span{
-    width:9px; height:9px; border-radius:50%;
+    width:7px; height:7px; border-radius:50%;
     background: var(--paper-line);
     display:inline-block;
   }
@@ -880,6 +1202,31 @@
       <div class="problem-left">
         <div id="stageSvgWrap">
           <svg id="stageSvg" viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <!-- 筆算専用コンテナ -->
+        <div id="hissanStageWrap">
+          <div class="step-panel phase-neutral" id="hissanStepPanel">
+            <div class="step-status">
+              <div class="step-status-badge" id="hissanStatusBadge">いまの工程：じゅんび</div>
+            </div>
+            <div class="step-cycle">
+              <div class="step-node tateru" data-step="tateru" id="node-tateru">① たてる</div>
+              <div class="step-arrow a1">➔</div>
+              <div class="step-node kakeru" data-step="kakeru" id="node-kakeru">② かける</div>
+              <div class="step-arrow a2">➔</div>
+              <div class="step-node hiku" data-step="hiku" id="node-hiku">③ ひく</div>
+              <div class="step-arrow a3">➔</div>
+              <div class="step-node orosu" data-step="orosu" id="node-orosu">④ おろす</div>
+              <div class="step-arrow a4">➔</div>
+            </div>
+          </div>
+          <div class="notebook-wrapper" id="hissan-notebook-container">
+            <svg id="hissan-hint-svg"></svg>
+            <div id="hissan-fusen" class="fusen-mask"></div>
+            <div class="division-grid" id="hissan-division-grid"></div>
+          </div>
+          <div class="narration-card" id="hissan-narration"></div>
+          <div class="brain-card" id="hissan-brain-work" style="display:none;"></div>
         </div>
         <div id="hintCaption"></div>
       </div>
@@ -1685,7 +2032,6 @@
     lastKey = p.dividend + "-" + p.divisor + "-" + p.quotient;
     state.problem = p;
     state.hintStage = 0;
-    state.maxHint = maxH;
     state.inputDigits = "";
     state.inputRemainder = "";
     state.activeField = "q";
@@ -1695,6 +2041,21 @@
     feedback.textContent = "";
     feedback.className = "";
     nextProblemBtn.classList.remove("show");
+
+    var stageSvgWrap = document.getElementById("stageSvgWrap");
+    var hissanStageWrap = document.getElementById("hissanStageWrap");
+
+    if(p.isLongDivision){
+      if(stageSvgWrap) stageSvgWrap.style.display = "none";
+      if(hissanStageWrap) hissanStageWrap.style.display = "flex";
+      HissanSim.initSimulation(String(p.dividend), String(p.divisor));
+      state.maxHint = HissanSim.appState.steps.length - 1;
+    } else {
+      if(stageSvgWrap) stageSvgWrap.style.display = "flex";
+      if(hissanStageWrap) hissanStageWrap.style.display = "none";
+      state.maxHint = maxH;
+    }
+
     buildKeypad();
     renderAll(false);
   }
@@ -2090,12 +2451,16 @@
   // main render dispatcher
   // ------------------------------------------------------------------
   function renderAll(forward){
-    var lvl = String(state.level || "1");
-    if(lvl === "1") renderLevel1(forward);
-    else if(lvl === "2") renderLevel2(forward);
-    else if(lvl.startsWith("3")) renderLevel3(forward);
-    else if(lvl.startsWith("4")) renderLevel4(forward);
-    else renderLevelLongDivision(forward);
+    var p = state.problem;
+    if(p && p.isLongDivision){
+      HissanSim.gotoStep(state.hintStage);
+    } else {
+      var lvl = String(state.level || "1");
+      if(lvl === "1") renderLevel1(forward);
+      else if(lvl === "2") renderLevel2(forward);
+      else if(lvl.startsWith("3")) renderLevel3(forward);
+      else if(lvl.startsWith("4")) renderLevel4(forward);
+    }
     renderHintControls();
     renderAnswerDisplay();
   }
@@ -2749,106 +3114,663 @@
   }
 
   // ==================================================================
-  // LEVEL 5 & 6 (筆算レンダラー)
+  // 筆算シミュレーション・ロジック (from warizan-hissan.html)
   // ==================================================================
-  function renderLevelLongDivision(forward){
-    var p = state.problem;
-    var stage = state.hintStage;
-    svg.setAttribute("viewBox", "0 0 500 260");
-    clearSvg();
 
-    var ox = 160, oy = 65;
-    var colW = 26, rowH = 26;
-
-    var divStr = String(p.dividend);
-    var qStr = String(p.quotient);
-
-    // 割る数
-    svg.appendChild(middleText(ox - 30, oy + rowH, p.divisor, null, {size: 24}));
-
-    // 筆算かっこ線と上の横棒
-    var barWidth = (divStr.length + 1) * colW + 8;
-    var bracketPath = el("path", {
-      d: "M " + (ox - 14) + " " + (oy + rowH + 6) +
-         " C " + (ox - 22) + " " + (oy + rowH - 6) + " " + (ox - 22) + " " + (oy + 4) + " " + (ox - 12) + " " + oy +
-         " L " + (ox + barWidth) + " " + oy,
-      fill: "none",
-      stroke: "#2b2a4c",
-      "stroke-width": 2.5,
-      "stroke-linecap": "round"
-    });
-    svg.appendChild(bracketPath);
-
-    // 割られる数の各桁
-    for(var i = 0; i < divStr.length; i++){
-      svg.appendChild(middleText(ox + i * colW + 12, oy + rowH, divStr[i], null, {size: 24}));
-    }
-
-    // 商の表示
-    var qOffset = divStr.length - qStr.length;
-    for(var j = 0; j < qStr.length; j++){
-      var qChar = (stage >= state.maxHint) ? qStr[j] : (state.inputDigits[j] || "?");
-      var qCls = (stage >= state.maxHint) ? "slot-orange" : (state.inputDigits[j] ? "slot-blue" : "slot-wait");
-      if(p.zeroInMiddle && qStr[j] === "0" && stage >= 2){
-        qCls = "slot-orange pop";
-      }
-      var qDigitEl = middleText(ox + (j + qOffset) * colW + 12, oy - 6, qChar, qCls, {size: 26});
-      svg.appendChild(qDigitEl);
-    }
-
-    // ステップ解説
-    if(stage >= 1){
-      var gStep1 = el("g", { class: (forward && stage === 1) ? "fade-in" : "" });
-      var firstQ = parseInt(qStr[0], 10);
-      var firstProd = p.divisor * firstQ;
-      var prodStr = String(firstProd);
-      for(var k = 0; k < prodStr.length; k++){
-        gStep1.appendChild(middleText(ox + k * colW + 12, oy + rowH * 2, prodStr[k], null, {size: 22}));
-      }
-      var line1 = el("line", {
-        x1: ox - 4, y1: oy + rowH * 2 + 8,
-        x2: ox + divStr.length * colW + 4, y2: oy + rowH * 2 + 8,
-        stroke: "#2b2a4c", "stroke-width": 2
-      });
-      gStep1.appendChild(line1);
-      gStep1.appendChild(middleText(370, 80, "① たてる → ② かける！", "slot-orange", {size: 16}));
-      svg.appendChild(gStep1);
-    }
-
-    if(stage >= 2){
-      var gStep2 = el("g", { class: (forward && stage === 2) ? "fade-in" : "" });
-      if(p.zeroInMiddle){
-        gStep2.appendChild(middleText(370, 120, "十の位でわれないから\n商に「0」をたてる！", "slot-orange", {size: 15}));
-      } else {
-        gStep2.appendChild(middleText(370, 120, "③ ひく → ④ おろす！", null, {size: 16}));
-      }
-      svg.appendChild(gStep2);
-    }
-
-    if(stage >= 3){
-      var gStep3 = el("g", { class: (forward && stage === 3) ? "fade-in" : "" });
-      var remY = oy + rowH * 4;
-      var remLine = el("line", {
-        x1: ox + Math.max(0, divStr.length - 2) * colW, y1: remY - 14,
-        x2: ox + divStr.length * colW + 4, y2: remY - 14,
-        stroke: "#2b2a4c", "stroke-width": 2
-      });
-      gStep3.appendChild(remLine);
-
-      var remTxt = middleText(ox + (divStr.length - 1) * colW + 12, remY, String(p.remainder), "slot-orange", {size: 24});
-      gStep3.appendChild(remTxt);
-
-      var finMsg = p.remainder > 0 ? "あまりは " + p.remainder + " ！" : "あまりなし（0）！";
-      gStep3.appendChild(middleText(370, 165, finMsg, "slot-orange", {size: 17}));
-      svg.appendChild(gStep3);
-    }
-
-    if(stage >= state.maxHint){
-      var gFin = el("g", { class: forward ? "fade-in" : "" });
-      gFin.appendChild(middleText(370, 210, "筆算かんせい！", "slot-orange pop", {size: 22}));
-      svg.appendChild(gFin);
+  function parseNumberMeta(numStr) {
+    var dotIdx = numStr.indexOf('.');
+    if (dotIdx === -1) {
+      return { digits: numStr, dotAfter: numStr.length, hasDot: false, decimalPlaces: 0 };
+    } else {
+      return { digits: numStr.replace('.', ''), dotAfter: dotIdx, hasDot: true, decimalPlaces: numStr.length - 1 - dotIdx };
     }
   }
+
+  function shouldSuppressDroppedZero(currentRemainder, nextDigit, hasNextDigit) {
+    return hasNextDigit && currentRemainder === 0 && nextDigit === "0";
+  }
+
+  function extendHorizontalLine(cells, row, rightmostCol, shouldExtend) {
+    if (!shouldExtend) return cells;
+    return cells.concat([
+      { r: row, c: rightmostCol + 1, char: "", borderBottom: true, isLineExtend: true }
+    ]);
+  }
+
+  function makeHighlight(color, refCells, newCells) {
+    var seen = new Map();
+    (refCells || []).forEach(function(cell){
+      if (!cell) return;
+      seen.set(cell.r + "-" + cell.c, { r: cell.r, c: cell.c, color: color, isNew: false });
+    });
+    (newCells || []).forEach(function(cell){
+      if (!cell) return;
+      seen.set(cell.r + "-" + cell.c, { r: cell.r, c: cell.c, color: color, isNew: true });
+    });
+    return Array.from(seen.values());
+  }
+
+  var HL_FORMULA_COLOR = {
+    blue: "#1d4ed8",
+    green: "#15803d",
+    red: "#b91c1c",
+    orange: "#c2410c"
+  };
+  function formulaHtml(color, text) {
+    var safeText = String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    var hex = HL_FORMULA_COLOR[color] || "#0f172a";
+    return '<div style="margin-top:4px;font-weight:900;color:' + hex + ';font-size:15px;letter-spacing:0.02em;">' + safeText + '</div>';
+  }
+
+  function buildVerticalMultiplicationHtml(divisorInt, multiplierInt, productInt, titleText, options) {
+    options = options || {};
+    var topStr = String(divisorInt);
+    var bottomStr = String(multiplierInt);
+    var productStr = String(productInt);
+    var width = Math.max(topStr.length, bottomStr.length + 1, productStr.length);
+
+    var line1 = topStr.padStart(width, " ");
+    var line2 = "×" + bottomStr.padStart(width - 1, " ");
+    var line3 = "―".repeat(width);
+    var line4 = productStr.padStart(width, " ");
+
+    var wrongOverlay = options.wrong
+      ? '<div style="position:absolute; inset:0; pointer-events:none; display:flex; align-items:center; justify-content:center;">' +
+        '<div style="position:absolute; width:92%; height:3px; background:#dc2626; transform:rotate(-18deg);"></div>' +
+        '<div style="position:absolute; width:92%; height:3px; background:#dc2626; transform:rotate(18deg);"></div>' +
+        '<div style="position:absolute; left:8px; top:4px; font-size:40px; font-weight:900; color:#dc2626; line-height:1;">✕</div>' +
+        '</div>'
+      : "";
+
+    var borderStyle = options.wrong
+      ? "border:2px solid #fca5a5;background:#fff1f2;"
+      : "border:1px solid #fed7aa;background:#fff7ed;";
+
+    return '<div style="position:relative;margin-top:6px;' + borderStyle + 'border-radius:8px;padding:6px 10px;">' +
+      wrongOverlay +
+      '<div style="font-size:12px;font-weight:800;color:#c2410c;margin-bottom:4px;">' + titleText + '</div>' +
+      '<div style="font-family:\'Courier New\', monospace;font-size:18px;line-height:1.15;color:#0f172a;white-space:pre;text-align:right;padding-right:2px;">\n' +
+      line1 + '\n' + line2 + '\n' + line3 + '\n' + line4 + '\n' +
+      '</div></div>';
+  }
+
+  function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient) {
+    if (currentTargetValue === 0 || currentTargetValue < divisorInt) return "";
+    var trueQuotient = Math.floor(currentTargetValue / divisorInt);
+
+    if (divisorInt < 10) {
+      var p = divisorInt * trueQuotient;
+      return '<div style="font-size:13px;color:#334155;">' +
+        '<b>💡 ひらめき九九メモ</b>' +
+        '<div style="margin-top:4px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:4px 8px;line-height:1.6;">' +
+        '<b style="color:#15803d;">' + divisorInt + ' × ' + trueQuotient + ' ＝ ' + p + '</b>（' + currentTargetValue + ' をこえない一番近い数）' +
+        '</div></div>';
+    }
+
+    var divisorStr = divisorInt.toString();
+    var d1 = parseInt(divisorStr[0], 10);
+    var topLen = divisorStr.length;
+    var topVal = Math.floor(currentTargetValue / Math.pow(10, topLen - 1));
+    var displayTrial = (trialQuotient !== undefined) ? trialQuotient : trueQuotient;
+    var trialProduct = divisorInt * displayTrial;
+
+    var html = '<div style="font-size:13px;color:#334155;">' +
+      '<b>🔍 仮商を見つけよう！</b>' +
+      '<div style="margin-top:6px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:6px 10px;line-height:1.6;">' +
+      '<div style="color:#0369a1;">わる数 <b>' + divisorInt + '</b> の上1けた ➜ <b>' + d1 + '</b></div>' +
+      '<div style="color:#0369a1;">わられる数 <b>' + currentTargetValue + '</b> の上' + topLen + 'けた ➜ <b>' + topVal + '</b></div>' +
+      '<div style="margin-top:3px;color:#334155;"><b>' + topVal + ' ÷ ' + d1 + '</b> で見当をつける ➜ 仮の商 <b style="color:#f97316;">' + displayTrial + '</b></div>' +
+      '</div>';
+    html += buildVerticalMultiplicationHtml(divisorInt, displayTrial, trialProduct, "商の筆算");
+    html += '</div>';
+    return html;
+  }
+
+  var AdvancedDivisionEngine = {
+    generateSteps: function(dividendStr, divisorStr, route) {
+      var divParse = parseNumberMeta(divisorStr);
+      var dvdParse = parseNumberMeta(dividendStr);
+      var D = divParse.decimalPlaces;
+
+      var baseDvdDigits = dvdParse.digits;
+      var finalDvdDotAfter = dvdParse.dotAfter + D;
+      if (finalDvdDotAfter > baseDvdDigits.length) {
+        baseDvdDigits += "0".repeat(finalDvdDotAfter - baseDvdDigits.length);
+      }
+
+      var divisorInt = parseInt(divParse.digits, 10);
+      var dvdDigits = baseDvdDigits;
+      var M = divParse.digits.length;
+      var N = dvdDigits.length;
+
+      var divisorCells = [];
+      for (var j = 0; j < M; j++) divisorCells.push({ r: 1, c: j });
+
+      var steps = [];
+      var initialCells = [];
+
+      for(var j = 0; j < M; j++) initialCells.push({ r: 1, c: j, char: divParse.digits[j] });
+      for(var j = 0; j < dvdParse.digits.length; j++) initialCells.push({ r: 1, c: M + j, char: dvdParse.digits[j] });
+
+      var currentMaskFromCol = null;
+
+      steps.push({
+        phase: "init",
+        description: "まずは筆算の形に数字を書きましょう。",
+        writeCells: [], maskFromCol: currentMaskFromCol, pulseBoxes: []
+      });
+
+      var currentRemainder = 0;
+      var currentDividendStr = "";
+      var currentRow = 2;
+      var hasFirstQuotientStarted = false;
+      var quotientPositions = Array(N).fill("");
+      var skippedCols = [];
+      var prevRemainderCells = [];
+      var nextDigitCellOverride = null;
+
+      for (var i = 0; i < N; i++) {
+        var currentDigit = dvdDigits[i];
+        currentDividendStr = (i === 0 && currentRemainder === 0) ? currentDigit : (currentRemainder.toString() + currentDigit);
+        var currentTargetValue = parseInt(currentDividendStr, 10);
+        var targetCol = M + i;
+
+        var currentNewDigitCell = (i === 0) ? { r: 1, c: targetCol } : (nextDigitCellOverride || { r: 1, c: targetCol });
+        var currentDvdPartCells = hasFirstQuotientStarted
+          ? prevRemainderCells.concat([currentNewDigitCell])
+          : Array.from({ length: targetCol - M + 1 }, function(_, j){ return { r: 1, c: M + j }; });
+
+        var preTrialQ = undefined;
+        if (divisorInt >= 10) {
+          var _d1 = parseInt(divParse.digits[0], 10);
+          var _topVal = Math.floor(currentTargetValue / Math.pow(10, divParse.digits.length - 1));
+          var _trial = Math.min(9, Math.floor(_topVal / _d1));
+          var _true  = Math.floor(currentTargetValue / divisorInt);
+          preTrialQ = (_trial > _true) ? _trial : _true;
+        }
+        var brainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt, preTrialQ);
+        currentMaskFromCol = targetCol + 1;
+
+        var canStand = (currentTargetValue >= divisorInt);
+
+        if (divisorInt < 10) {
+          steps.push({
+            phase: "hide",
+            description: "【ひらめき九九チェック】" + divisorInt + " のだんの九九で、" + currentTargetValue + " をこえない一番近い数をみつけよう！",
+            maskFromCol: currentMaskFromCol, brainHtml: brainHtml, pulseBoxes: [],
+            highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), []),
+            formulaHtml: formulaHtml("blue", currentTargetValue + " ÷ " + divisorInt + " ＝ ？")
+          });
+        } else {
+          steps.push({
+            phase: "hide",
+            description: canStand
+              ? "【商が立つかな？】" + currentTargetValue + " の中に " + divisorInt + " はあるかな？ → あるね！ 商には何が立つかな？"
+              : "【商が立つかな？】" + currentTargetValue + " の中に " + divisorInt + " はあるかな？ → ないね！ 商は立ちません。",
+            maskFromCol: currentMaskFromCol, brainHtml: brainHtml, pulseBoxes: [],
+            highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), []),
+            formulaHtml: formulaHtml("blue", currentTargetValue + " ÷ " + divisorInt + " ＝ ？")
+          });
+        }
+
+        if (currentTargetValue < divisorInt) {
+          if (!hasFirstQuotientStarted) {
+            skippedCols.push(targetCol);
+            steps.push({
+              phase: "skip",
+              description: "商は立ちません。次の桁をいっしょに見ます。",
+              writeCells: [{ r: 0, c: targetCol, char: "✕", isGuide: true }],
+              maskFromCol: currentMaskFromCol, pulseBoxes: [],
+              highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), [{ r: 0, c: targetCol }]),
+              formulaHtml: formulaHtml("blue", currentTargetValue + " ÷ " + divisorInt + " ＝ 0（商は立たない）")
+            });
+            currentRemainder = currentTargetValue;
+          } else {
+            quotientPositions[i] = "0";
+            steps.push({
+              phase: "build-zero",
+              description: "【たてる】商に「0」を書きます。",
+              writeCells: [{ r: 0, c: targetCol, char: "0", isGuide: false }],
+              pulseBoxes: [{ r: 0, c: targetCol }], maskFromCol: currentMaskFromCol,
+              highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), [{ r: 0, c: targetCol }]),
+              formulaHtml: formulaHtml("blue", currentTargetValue + " ÷ " + divisorInt + " ＝ 0")
+            });
+            currentRemainder = currentTargetValue;
+            prevRemainderCells = currentDvdPartCells.slice();
+          }
+        } else {
+          hasFirstQuotientStarted = true;
+          var q = Math.floor(currentTargetValue / divisorInt);
+          quotientPositions[i] = q.toString();
+
+          steps.push({
+            phase: "build",
+            description: "【たてる】商に " + q + " を書きます。",
+            writeCells: [{ r: 0, c: targetCol, char: q.toString(), isGuide: false }],
+            pulseBoxes: [{ r: 0, c: targetCol }], maskFromCol: currentMaskFromCol,
+            highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), [{ r: 0, c: targetCol }]),
+            formulaHtml: formulaHtml("blue", currentTargetValue + " ÷ " + divisorInt + " ＝ " + q)
+          });
+
+          var product = q * divisorInt;
+          var prodStr = product.toString();
+          var prodCells = [];
+          for (var k = 0; k < prodStr.length; k++) {
+            prodCells.push({
+              r: currentRow,
+              c: targetCol - prodStr.length + 1 + k,
+              char: prodStr[k]
+            });
+          }
+          var extendedProdCells = extendHorizontalLine(prodCells, currentRow, targetCol, true);
+
+          steps.push({
+            phase: "multiply",
+            description: "【かける】わる数 " + divisorInt + " × たてた商 " + q + " ＝ " + product + " を書きます。",
+            writeCells: extendedProdCells,
+            maskFromCol: currentMaskFromCol,
+            highlightCells: makeHighlight("green", divisorCells.concat([{ r: 0, c: targetCol }]), prodCells),
+            formulaHtml: formulaHtml("green", divisorInt + " × " + q + " ＝ " + product)
+          });
+          currentRow++;
+
+          var rem = currentTargetValue - product;
+          var remStr = rem.toString();
+          var diffCells = [];
+          for (var k = 0; k < remStr.length; k++) {
+            diffCells.push({
+              r: currentRow,
+              c: targetCol - remStr.length + 1 + k,
+              char: remStr[k]
+            });
+          }
+
+          steps.push({
+            phase: "subtract",
+            description: "【ひく】" + currentTargetValue + " － " + product + " ＝ " + rem + " を書きます。",
+            writeCells: diffCells,
+            maskFromCol: currentMaskFromCol,
+            highlightCells: makeHighlight("red", currentDvdPartCells.concat(prodCells), diffCells),
+            formulaHtml: formulaHtml("red", currentTargetValue + " － " + product + " ＝ " + rem)
+          });
+
+          currentRemainder = rem;
+          prevRemainderCells = diffCells.slice();
+          nextDigitCellOverride = null;
+        }
+
+        // 次の桁をおろす
+        if (i < N - 1) {
+          var nextDigit = dvdDigits[i + 1];
+          var nextCol = targetCol + 1;
+          var isSuppressDroppedZero = shouldSuppressDroppedZero(currentRemainder, nextDigit, (i + 1) < (N - 1));
+
+          if (!isSuppressDroppedZero) {
+            steps.push({
+              phase: "drop",
+              description: "【おろす】となりの「" + nextDigit + "」をまっすぐ下におろします。",
+              writeCells: [{ r: currentRow, c: nextCol, char: nextDigit }],
+              maskFromCol: nextCol + 1,
+              highlightCells: makeHighlight("orange", [{ r: 1, c: nextCol }], [{ r: currentRow, c: nextCol }]),
+              formulaHtml: formulaHtml("orange", "「" + nextDigit + "」をおろす")
+            });
+            nextDigitCellOverride = { r: currentRow, c: nextCol };
+          } else {
+            nextDigitCellOverride = null;
+          }
+          currentRow++;
+        }
+      }
+
+      // 未使用の ✕ をクリア
+      skippedCols.forEach(function(col){
+        steps[steps.length - 1].writeCells.push({ r: 0, c: col, char: "", isGuide: false });
+      });
+
+      var finalQuotientStr = quotientPositions.filter(function(c){ return c !== "" && c !== "✕"; }).join("") || "0";
+      var finalRemainderStr = currentRemainder.toString();
+
+      steps.push({
+        phase: "complete",
+        description: "【完成！】商は " + finalQuotientStr + (currentRemainder > 0 ? "、あまりは " + finalRemainderStr : "（わりきれました）") + " です！",
+        writeCells: [],
+        maskFromCol: null,
+        pulseBoxes: []
+      });
+
+      return { initialCells: initialCells, steps: steps, totalRows: currentRow + 2, totalCols: M + N, M: M, N: N };
+    }
+  };
+
+  // ==================================================================
+  // 筆算UIコントローラー (HissanSim)
+  // ==================================================================
+  var HissanSim = {
+    appState: null,
+    currentStepIdx: 0,
+    gridData: [],
+
+    initSimulation: function(dividendStr, divisorStr) {
+      this.appState = AdvancedDivisionEngine.generateSteps(dividendStr, divisorStr, "remainder");
+      this.currentStepIdx = 0;
+      this.initGridData();
+      this.renderGridStructure();
+      this.applyStepUI(true);
+    },
+
+    initGridData: function() {
+      if(!this.appState) return;
+      this.gridData = [];
+      for (var r = 0; r < this.appState.totalRows; r++) {
+        var rowArr = [];
+        for (var c = 0; c < this.appState.totalCols; c++) {
+          rowArr.push({
+            char: "", isGuide: false, borderTop: false, borderBottom: false,
+            isDropping: false, dropDistance: 0, hasSlash: false, topChar: "", isRedBorder: false
+          });
+        }
+        this.gridData.push(rowArr);
+      }
+
+      var self = this;
+      this.appState.initialCells.forEach(function(ic){
+        if(self.gridData[ic.r] && self.gridData[ic.r][ic.c]){
+          self.gridData[ic.r][ic.c].char = ic.char;
+        }
+      });
+
+      // 割られる数の上の横棒
+      for (var c = this.appState.M; c < this.appState.totalCols; c++) {
+        if(this.gridData[1] && this.gridData[1][c]){
+          this.gridData[1][c].borderTop = true;
+        }
+      }
+    },
+
+    renderGridStructure: function() {
+      var gridEl = document.getElementById('hissan-division-grid');
+      if(!gridEl || !this.appState) return;
+      gridEl.innerHTML = "";
+      gridEl.style.gridTemplateColumns = "repeat(" + this.appState.totalCols + ", 42px)";
+
+      for (var r = 0; r < this.appState.totalRows; r++) {
+        for (var c = 0; c < this.appState.totalCols; c++) {
+          var cellMeta = this.gridData[r][c];
+          if (!cellMeta) continue;
+          var cellDiv = document.createElement('div');
+          cellDiv.classList.add('grid-cell');
+          cellDiv.id = "cell-" + r + "-" + c;
+          if (cellMeta.borderTop) cellDiv.classList.add('border-top-solid');
+          if (cellMeta.borderBottom) cellDiv.classList.add('border-bottom-solid');
+          if (cellMeta.isRedBorder) cellDiv.classList.add('red-border');
+
+          var container = document.createElement('div');
+          container.classList.add('cell-container');
+
+          var topNum = document.createElement('div');
+          topNum.classList.add('top-num');
+          topNum.innerText = cellMeta.topChar || "";
+
+          var mainNum = document.createElement('div');
+          mainNum.classList.add('main-num');
+
+          if (cellMeta.isDropping) {
+            mainNum.classList.add('digit-dropping');
+            mainNum.style.setProperty('--drop-start-y', "-" + cellMeta.dropDistance + "px");
+          }
+
+          if (cellMeta.isGuide) {
+            mainNum.innerHTML = '<span class="gray-guide">✕</span>';
+          } else {
+            mainNum.innerText = cellMeta.char;
+          }
+
+          var slash = document.createElement('div');
+          slash.classList.add('slash-line');
+          if (cellMeta.hasSlash) slash.style.display = "block";
+
+          container.appendChild(topNum);
+          container.appendChild(mainNum);
+          container.appendChild(slash);
+          cellDiv.appendChild(container);
+          gridEl.appendChild(cellDiv);
+        }
+      }
+    },
+
+    clearSvg: function() {
+      var svg = document.getElementById('hissan-hint-svg');
+      if(!svg) return;
+      svg.innerHTML = '<defs><marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 10 5 L 0 9 z" fill="#2196f3"/></marker></defs>';
+    },
+
+    drawDropArrow: function(fromR, fromC, toR, toC) {
+      var svg = document.getElementById('hissan-hint-svg');
+      var container = document.getElementById('hissan-notebook-container');
+      if(!svg || !container) return;
+      var containerRect = container.getBoundingClientRect();
+
+      var fromCell = document.getElementById("cell-" + fromR + "-" + fromC);
+      var toCell = document.getElementById("cell-" + toR + "-" + toC);
+      if (!fromCell || !toCell) return;
+
+      var fromRect = fromCell.getBoundingClientRect();
+      var toRect = toCell.getBoundingClientRect();
+
+      var x = (fromRect.left + fromRect.right) / 2 - containerRect.left;
+      var yStart = fromRect.bottom - containerRect.top - 4;
+      var yEnd = toRect.top - containerRect.top + 2;
+
+      var line = document.createElementNS(SVGNS, "line");
+      line.setAttribute("x1", x);
+      line.setAttribute("y1", yStart);
+      line.setAttribute("x2", x);
+      line.setAttribute("y2", yEnd);
+      line.setAttribute("stroke", "#2196f3");
+      line.setAttribute("stroke-width", "2.5");
+      line.setAttribute("stroke-dasharray", "4,3");
+      line.setAttribute("marker-end", "url(#arrow)");
+      svg.appendChild(line);
+    },
+
+    clearAllHighlightClasses: function() {
+      document.querySelectorAll('#hissan-division-grid .grid-cell').forEach(function(el){
+        el.classList.remove(
+          'active-target',
+          'hl-ref-blue', 'hl-ref-green', 'hl-ref-red', 'hl-ref-orange',
+          'hl-new-blue', 'hl-new-green', 'hl-new-red', 'hl-new-orange'
+        );
+      });
+    },
+
+    drawDivisionCurve: function() {
+      var svg = document.getElementById('hissan-hint-svg');
+      var container = document.getElementById('hissan-notebook-container');
+      if(!svg || !container || !this.appState) return;
+
+      var targetCell = document.getElementById("cell-1-" + this.appState.M);
+      if (!targetCell) return;
+
+      var containerRect = container.getBoundingClientRect();
+      var cellRect = targetCell.getBoundingClientRect();
+      var x = cellRect.left - containerRect.left;
+      var yTop = cellRect.top - containerRect.top;
+      var yBottom = cellRect.bottom - containerRect.top;
+
+      // ★日本の正しい筆算円弧：割られる数の左側で右（内側）へ膨らむ曲線！
+      var path = document.createElementNS(SVGNS, "path");
+      path.setAttribute("d", "M " + x + " " + yTop + " Q " + (x + 12) + " " + ((yTop + yBottom)/2) + " " + x + " " + yBottom);
+      path.setAttribute("stroke", "#1e293b");
+      path.setAttribute("stroke-width", "3");
+      path.setAttribute("fill", "none");
+      svg.appendChild(path);
+    },
+
+    updateStepFlow: function(step) {
+      var panel = document.getElementById('hissanStepPanel');
+      var badge = document.getElementById('hissanStatusBadge');
+      if(!panel || !badge) return;
+
+      var phase = step.phase;
+      var activeKey = "none";
+      var bg = "rgba(255, 255, 255, 0.92)";
+      var accent = "#64748b";
+      var soft = "#ffffff";
+      var label = "じゅんび";
+
+      if (["build", "build-zero", "skip", "hide"].includes(phase)) {
+        activeKey = "tateru";
+        bg = "rgba(219, 234, 254, 0.85)";
+        accent = "#2563eb";
+        soft = "#eff6ff";
+        label = "たてる";
+      } else if (phase === "multiply") {
+        activeKey = "kakeru";
+        bg = "rgba(220, 252, 231, 0.85)";
+        accent = "#16a34a";
+        soft = "#f0fdf4";
+        label = "かける";
+      } else if (phase === "subtract") {
+        activeKey = "hiku";
+        bg = "rgba(254, 226, 226, 0.85)";
+        accent = "#dc2626";
+        soft = "#fff1f2";
+        label = "ひく";
+      } else if (phase === "drop") {
+        activeKey = "orosu";
+        bg = "rgba(255, 237, 213, 0.85)";
+        accent = "#ea580c";
+        soft = "#fff7ed";
+        label = "おろす";
+      } else if (phase === "complete") {
+        activeKey = "none";
+        bg = "rgba(255, 255, 255, 0.95)";
+        accent = "#64748b";
+        soft = "#ffffff";
+        label = "完成！";
+      }
+
+      panel.classList.remove("phase-tateru", "phase-kakeru", "phase-hiku", "phase-orosu", "phase-neutral");
+      panel.classList.add(activeKey === "none" ? "phase-neutral" : "phase-" + activeKey);
+      panel.style.setProperty("--phase-accent", accent);
+      panel.style.setProperty("--phase-soft", soft);
+      badge.textContent = "いまの工程：" + label;
+
+      panel.querySelectorAll(".step-node").forEach(function(node){
+        node.classList.toggle("active", activeKey !== "none" && node.getAttribute("data-step") === activeKey);
+      });
+    },
+
+    applyStepUI: function(renderDom) {
+      if(!this.appState || this.appState.steps.length === 0) return;
+      this.clearAllHighlightClasses();
+      this.clearSvg();
+
+      var fusen = document.getElementById('hissan-fusen');
+      if(fusen) fusen.style.display = "none";
+
+      for (var r = 0; r < this.appState.totalRows; r++) {
+        for (var c = 0; c < this.appState.totalCols; c++) {
+          if (this.gridData[r] && this.gridData[r][c]) {
+            this.gridData[r][c].isDropping = false;
+          }
+        }
+      }
+
+      var step = this.appState.steps[this.currentStepIdx];
+      if(!step) return;
+
+      var narrationEl = document.getElementById('hissan-narration');
+      if(narrationEl){
+        var escapedDesc = String(step.description)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        narrationEl.innerHTML = escapedDesc + (step.formulaHtml || "");
+      }
+
+      this.updateStepFlow(step);
+
+      var brainCard = document.getElementById('hissan-brain-work');
+      if(brainCard){
+        if (step.brainHtml) {
+          brainCard.innerHTML = step.brainHtml;
+          brainCard.style.display = "block";
+        } else {
+          brainCard.style.display = "none";
+        }
+      }
+
+      var self = this;
+      if (step.writeCells) {
+        step.writeCells.forEach(function(wc){
+          if (self.gridData[wc.r] && self.gridData[wc.r][wc.c]) {
+            self.gridData[wc.r][wc.c].char = wc.char;
+            self.gridData[wc.r][wc.c].isGuide = !!wc.isGuide;
+            if (wc.borderBottom) self.gridData[wc.r][wc.c].borderBottom = true;
+            if (step.phase === "drop" && wc.r > 1) {
+              self.gridData[wc.r][wc.c].isDropping = true;
+              self.gridData[wc.r][wc.c].dropDistance = (wc.r - 1) * 42;
+            }
+          }
+        });
+      }
+
+      if(renderDom){
+        this.renderGridStructure();
+
+        requestAnimationFrame(function(){
+          self.drawDivisionCurve();
+
+          if (step.phase === "drop" && step.writeCells) {
+            step.writeCells.forEach(function(wc){
+              if (wc.r > 1) {
+                self.drawDropArrow(1, wc.c, wc.r, wc.c);
+              }
+            });
+          }
+
+          if (step.maskFromCol !== null && step.maskFromCol < self.appState.totalCols && fusen) {
+            var container = document.getElementById('hissan-notebook-container');
+            var startCell = document.getElementById("cell-0-" + step.maskFromCol);
+            var endCell = document.getElementById("cell-" + (self.appState.totalRows-1) + "-" + (self.appState.totalCols-1));
+            if(container && startCell && endCell){
+              var containerRect = container.getBoundingClientRect();
+              var startRect = startCell.getBoundingClientRect();
+              var endRect = endCell.getBoundingClientRect();
+              fusen.style.left = (startRect.left - containerRect.left) + "px";
+              fusen.style.top = (startRect.top - containerRect.top) + "px";
+              fusen.style.width = (endRect.right - startRect.left) + "px";
+              fusen.style.height = (endRect.bottom - startRect.top) + "px";
+              fusen.style.display = "block";
+            }
+          }
+        });
+
+        if (step.highlightCells && step.highlightCells.length > 0) {
+          step.highlightCells.forEach(function(hc){
+            var target = document.getElementById("cell-" + hc.r + "-" + hc.c);
+            if (!target) return;
+            var cls = hc.isNew ? "hl-new-" + hc.color : "hl-ref-" + hc.color;
+            target.classList.add(cls);
+          });
+        } else if (step.pulseBoxes && step.pulseBoxes.length > 0) {
+          step.pulseBoxes.forEach(function(box){
+            var target = document.getElementById("cell-" + box.r + "-" + box.c);
+            if (target) target.classList.add('active-target');
+          });
+        }
+      }
+    },
+
+    gotoStep: function(targetIdx) {
+      if(!this.appState) return;
+      var target = Math.max(0, Math.min(targetIdx, this.appState.steps.length - 1));
+      this.initGridData();
+      for(var s = 0; s <= target; s++){
+        this.currentStepIdx = s;
+        this.applyStepUI(s === target);
+      }
+    }
+  };
 
   // ------------------------------------------------------------------
   // hint navigation
@@ -2911,12 +3833,19 @@
     scoreBox.classList.remove("show");
   });
 
+  window.addEventListener("resize", function(){
+    if(state.problem && state.problem.isLongDivision && HissanSim.appState){
+      HissanSim.applyStepUI(true);
+    }
+  });
+
   // Initialize Raid Boss UI
   initRaidUI();
 
   // Test hooks
   window.__warizan = {
     state: state,
+    HissanSim: HissanSim,
     pressDigit: pressDigit,
     clearDigit: clearDigit,
     newProblem: newProblem,
