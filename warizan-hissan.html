@@ -1002,12 +1002,14 @@ function shouldSuppressDroppedZero(currentRemainder, nextDigit, hasNextDigit) {
     return hasNextDigit && currentRemainder === 0 && nextDigit === "0";
 }
 
-function extendHorizontalLine(cells, row, rightmostCol, shouldExtend) {
+function extendHorizontalLine(cells, row, rightmostCol, shouldExtend, maxDropCol) {
     if (!shouldExtend) return cells;
-    return [
-        ...cells,
-        { r: row, c: rightmostCol + 1, char: "", borderBottom: true, isLineExtend: true }
-    ];
+    const targetEndCol = Math.max(rightmostCol + 1, maxDropCol || (rightmostCol + 1));
+    const newCells = [...cells];
+    for (let col = rightmostCol + 1; col <= targetEndCol; col++) {
+        newCells.push({ r: row, c: col, char: "", borderBottom: true, isLineExtend: true });
+    }
+    return newCells;
 }
 
 // ★強調表示ヘルパー
@@ -1685,7 +1687,22 @@ class AdvancedDivisionEngine {
                 multiplyCells.push({ r: currentRow, c: targetCol - (productStr.length - 1) + j, char: productStr[j], borderBottom: true });
             }
             const multiplyCoreCells = multiplyCells.map(c => ({ r: c.r, c: c.c }));
-            multiplyCells = extendHorizontalLine(multiplyCells, currentRow, targetCol, i < stopI - 1);
+            let nextDropCol = targetCol;
+            if (i < stopI - 1) {
+                let lookRem = currentTargetValue - product;
+                let lookIdx = i + 1;
+                while (lookIdx < stopI - 1) {
+                    let lookVal = lookRem * 10 + parseInt(dvdDigits[lookIdx], 10);
+                    if (lookVal < divisorInt) {
+                        lookRem = lookVal;
+                        lookIdx++;
+                    } else {
+                        break;
+                    }
+                }
+                nextDropCol = M + lookIdx;
+            }
+            multiplyCells = extendHorizontalLine(multiplyCells, currentRow, targetCol, i < stopI - 1, nextDropCol);
             steps.push({
                 phase: "multiply",
                 description: `【かける】 ${quotientDigit} × ${divisorInt} ＝ ${product} を書きます。`,
