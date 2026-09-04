@@ -980,6 +980,59 @@
     100%{ opacity:0; transform:scale(.72) rotate(-4deg) translateY(5px); filter:blur(2px); }
   }
 
+  /* Level 4 Bundle Burst & Unbundle Animation */
+  @keyframes tenRemPulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(249, 115, 22, 0.4)); }
+    50% { transform: scale(1.08); filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.85)); }
+  }
+  .ten-rem-pulse {
+    animation: tenRemPulse 1.2s infinite ease-in-out;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  @keyframes burstPop {
+    0% { transform: scale(1); opacity: 1; }
+    40% { transform: scale(1.4); opacity: 1; filter: drop-shadow(0 0 14px #fbbf24); }
+    70% { transform: scale(1.6) rotate(6deg); opacity: 0.8; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+  .bundle-burst {
+    animation: burstPop 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  @keyframes sparkFly {
+    0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+    40% { opacity: 1; transform: scale(1.2); }
+    100% { transform: var(--spark-trans, translate(15px, -15px) scale(0)); opacity: 0; }
+  }
+  .sparkle-particle {
+    animation: sparkFly 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  @keyframes blockDropIn {
+    0% { transform: translateY(-16px) scale(0.3); opacity: 0; }
+    60% { transform: translateY(3px) scale(1.15); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  .block-drop-in {
+    animation: blockDropIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  @keyframes highlightBoxGlow {
+    0%, 100% { stroke: #f97316; stroke-width: 2.5; }
+    50% { stroke: #ea580c; stroke-width: 4; filter: drop-shadow(0 0 8px rgba(249,115,22,0.6)); }
+  }
+  .highlight-dish {
+    animation: highlightBoxGlow 1.5s infinite ease-in-out;
+  }
+
   @media (max-width: 820px){
     #problemScreen .card{ grid-template-columns:minmax(0,1fr) 250px; gap:10px; padding:12px; }
     .input-panel{ padding-left:10px; }
@@ -1416,6 +1469,19 @@
           osc.connect(g); g.connect(audioCtx.destination);
           osc.start(st); osc.stop(st + 0.3);
         });
+      } else if(type === 'chariin'){
+        // チャリーン！と弾けるコイン・ベルの綺麗な音
+        [1567.98, 2093.00, 2637.02, 3135.96].forEach(function(f, i){
+          var osc = audioCtx.createOscillator();
+          var g = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + i * 0.05);
+          var st = now + i * 0.05;
+          g.gain.setValueAtTime(0.1, st);
+          g.gain.exponentialRampToValueAtTime(0.001, st + 0.35);
+          osc.connect(g); g.connect(audioCtx.destination);
+          osc.start(st); osc.stop(st + 0.38);
+        });
       }
     } catch(e){}
   }
@@ -1777,11 +1843,17 @@
       var q_one = rand(1, max_q_one);
       var quotient = q_ten * 10 + q_one;
       var dividend = divisor * quotient;
+      var tenDigit = Math.floor(dividend / 10);
+      var oneDigit = dividend % 10;
       if(dividend >= 20 && dividend < 100){
         problem = {
           level: "4-1", divisor: divisor, quotient: quotient, remainder: 0,
           hasRemainder: false, targetQuotientDigits: 2,
-          dividend: dividend, q_ten: q_ten, q_one: q_one,
+          dividend: dividend,
+          tenDigit: tenDigit, oneDigit: oneDigit,
+          q_ten: q_ten, q_one: q_one,
+          tenRem: 0,
+          unbundlePart: oneDigit,
           tenPart: divisor * q_ten * 10, onePart: divisor * q_one,
           title: "レベル4-1　分解なしでわりきれる暗算"
         };
@@ -1792,7 +1864,11 @@
     return problem || {
       level: "4-1", divisor: 2, quotient: 24, remainder: 0,
       hasRemainder: false, targetQuotientDigits: 2,
-      dividend: 48, q_ten: 2, q_one: 4,
+      dividend: 48,
+      tenDigit: 4, oneDigit: 8,
+      q_ten: 2, q_one: 4,
+      tenRem: 0,
+      unbundlePart: 8,
       tenPart: 40, onePart: 8,
       title: "レベル4-1　分解なしでわりきれる暗算"
     };
@@ -1807,15 +1883,22 @@
       var quotient = rand(minQ, maxQ);
       var dividend = divisor * quotient;
       var tenDigit = Math.floor(dividend / 10);
+      var oneDigit = dividend % 10;
       var tenRem = tenDigit % divisor;
       var tenPart = (tenDigit - tenRem) * 10;
+      var unbundlePart = tenRem * 10 + oneDigit;
+      var q_ten = Math.floor(tenDigit / divisor);
+      var q_one = Math.floor(unbundlePart / divisor);
       if(dividend >= 20 && dividend < 100 && quotient >= 10 && tenRem > 0 && tenPart > 0){
         problem = {
           level: "4-2", divisor: divisor, quotient: quotient, remainder: 0,
           hasRemainder: false, targetQuotientDigits: 2,
-          dividend: dividend, tenRem: tenRem,
+          dividend: dividend,
+          tenDigit: tenDigit, oneDigit: oneDigit,
+          q_ten: q_ten, q_one: q_one,
+          tenRem: tenRem,
           tenPart: tenPart,
-          unbundlePart: tenRem * 10 + (dividend % 10),
+          unbundlePart: unbundlePart,
           title: "レベル4-2　十の位を解体する暗算（あまりなし）"
         };
         key = divisor + "-" + quotient;
@@ -1825,7 +1908,10 @@
     return problem || {
       level: "4-2", divisor: 2, quotient: 26, remainder: 0,
       hasRemainder: false, targetQuotientDigits: 2,
-      dividend: 52, tenRem: 1,
+      dividend: 52,
+      tenDigit: 5, oneDigit: 2,
+      q_ten: 2, q_one: 6,
+      tenRem: 1,
       tenPart: 40, unbundlePart: 12,
       title: "レベル4-2　十の位を解体する暗算（あまりなし）"
     };
@@ -1841,15 +1927,22 @@
       var quotient = rand(minQ, maxQ);
       var dividend = divisor * quotient + remainder;
       var tenDigit = Math.floor(dividend / 10);
+      var oneDigit = dividend % 10;
       var tenRem = tenDigit % divisor;
       var tenPart = (tenDigit - tenRem) * 10;
+      var unbundlePart = tenRem * 10 + oneDigit;
+      var q_ten = Math.floor(tenDigit / divisor);
+      var q_one = Math.floor(unbundlePart / divisor);
       if(dividend >= 20 && dividend < 100 && quotient >= 10 && tenRem > 0 && tenPart > 0){
         problem = {
           level: "4-3", divisor: divisor, quotient: quotient, remainder: remainder,
           hasRemainder: true, targetQuotientDigits: 2,
-          dividend: dividend, tenRem: tenRem,
+          dividend: dividend,
+          tenDigit: tenDigit, oneDigit: oneDigit,
+          q_ten: q_ten, q_one: q_one,
+          tenRem: tenRem,
           tenPart: tenPart,
-          unbundlePart: tenRem * 10 + (dividend % 10),
+          unbundlePart: unbundlePart,
           title: "レベル4-3　解体＋あまりが出る暗算"
         };
         key = divisor + "-" + quotient + "-" + remainder;
@@ -1859,7 +1952,10 @@
     return problem || {
       level: "4-3", divisor: 2, quotient: 26, remainder: 1,
       hasRemainder: true, targetQuotientDigits: 2,
-      dividend: 53, tenRem: 1,
+      dividend: 53,
+      tenDigit: 5, oneDigit: 3,
+      q_ten: 2, q_one: 6,
+      tenRem: 1,
       tenPart: 40, unbundlePart: 13,
       title: "レベル4-3　解体＋あまりが出る暗算"
     };
@@ -3064,267 +3160,445 @@
   }
 
   // ==================================================================
-  // LEVEL 4 (2けた暗算・分解ツリー＆束の解体)
+  // LEVEL 4 (2けた暗算・10の束の解体アニメーション全面刷新)
   // ==================================================================
   function renderLevel4(forward){
     var p = state.problem;
     var stage = state.hintStage;
-    svg.setAttribute("viewBox", "0 0 500 295");
+    svg.setAttribute("viewBox", "0 0 460 275");
     clearSvg();
 
-    // 式
-    var g1 = el("g", {});
-    g1.appendChild(bigText(140, 34, p.dividend, null, {size:30}));
-    g1.appendChild(bigText(190, 34, "÷", null, {size:30}));
-    g1.appendChild(bigText(225, 34, p.divisor, null, {size:30}));
-    g1.appendChild(bigText(260, 34, "=", null, {size:30}));
+    var divisor = p.divisor;
+    var dividend = p.dividend;
+    var tenDigit = (p.tenDigit !== undefined) ? p.tenDigit : Math.floor(dividend / 10);
+    var oneDigit = (p.oneDigit !== undefined) ? p.oneDigit : (dividend % 10);
+    var tenRem = (p.tenRem !== undefined) ? p.tenRem : (tenDigit % divisor);
+    var q_ten = (p.q_ten !== undefined) ? p.q_ten : Math.floor(tenDigit / divisor);
+    var unbundlePart = (p.unbundlePart !== undefined) ? p.unbundlePart : (tenRem * 10 + oneDigit);
+    var q_one = (p.q_one !== undefined) ? p.q_one : Math.floor(unbundlePart / divisor);
+    var isUnbundle = (tenRem > 0);
+
+    // チャリーン効果音（Stage 2で解体が発生する場合）
+    if(forward && stage === 2 && isUnbundle){
+      playSound('chariin');
+    }
+
+    // --------------------------------------------------
+    // 1. 最上部: 計算式
+    // --------------------------------------------------
+    var gEq = el("g", {});
+    gEq.appendChild(bigText(120, 26, dividend, null, {size: 28}));
+    gEq.appendChild(bigText(165, 26, "÷", null, {size: 28}));
+    gEq.appendChild(bigText(200, 26, divisor, null, {size: 28}));
+    gEq.appendChild(bigText(235, 26, "=", null, {size: 28}));
 
     var targetDigits = p.targetQuotientDigits || 2;
     var slotTxt = (stage >= 5) ? p.quotient : (state.inputDigits.length ? state.inputDigits : "?".repeat(targetDigits));
     var slotCls = (stage >= 5) ? "slot-orange" : (state.inputDigits.length ? "slot-blue" : "slot-wait");
-    var qSlot = bigText(315, 34, slotTxt, slotCls, {size:32, id:"qSlot"});
-    g1.appendChild(qSlot);
+    var qSlot = bigText(285, 26, slotTxt, slotCls, {size: 30, id: "qSlot"});
+    gEq.appendChild(qSlot);
 
     if(p.hasRemainder){
-      g1.appendChild(middleText(375, 34, "あまり", null, {size:16}));
+      gEq.appendChild(middleText(345, 26, "あまり", null, {size: 15}));
       var rTxt = (stage >= 5) ? p.remainder : (state.inputRemainder.length ? state.inputRemainder : "?");
       var rCls = (stage >= 5) ? "slot-orange" : (state.inputRemainder.length ? "slot-blue" : "slot-wait");
-      g1.appendChild(bigText(420, 34, rTxt, rCls, {size:28, id:"rSlot"}));
+      gEq.appendChild(bigText(390, 26, rTxt, rCls, {size: 26, id: "rSlot"}));
     }
-    svg.appendChild(g1);
+    svg.appendChild(gEq);
 
-    var isUnbundle = String(p.level) !== "4-1";
-    var part1 = p.tenPart || 0;
-    var part2 = isUnbundle ? (p.unbundlePart || 0) : (p.onePart || 0);
-    var ans1 = Math.floor(part1 / p.divisor);
-    var ans2 = Math.floor(part2 / p.divisor);
-    var rem2 = part2 % p.divisor;
-
-    // ステップ1: 分解ツリー
-    if(stage >= 1){
-      var g2 = el("g", { class: (forward && stage === 1) ? "fade-in" : "" });
-      var l1 = el("line", { x1: 155, y1: 42, x2: 110, y2: 60, stroke: "#cbd5e1", "stroke-width": 2.5 });
-      var l2 = el("line", { x1: 155, y1: 42, x2: 210, y2: 60, stroke: "#cbd5e1", "stroke-width": 2.5 });
-      g2.appendChild(l1); g2.appendChild(l2);
-
-      g2.appendChild(box(110, 74, 52, 26, "hintBox"));
-      g2.appendChild(middleText(110, 74, part1, null, {size:17}));
-
-      g2.appendChild(box(210, 74, 52, 26, "hintBox"));
-      g2.appendChild(middleText(210, 74, part2, null, {size:17}));
-
-      var capTxt = isUnbundle ? "十の位のあまり（10の束）をバラして " + part2 + " と分けるよ！" : "十の位（" + part1 + "）と 一の位（" + part2 + "）に分けるよ！";
-      var capSz = calcSvgFontSize(capTxt, 460, 14, 11.5);
-      g2.appendChild(middleText(250, 102, capTxt, null, {size: capSz}));
-      svg.appendChild(g2);
+    // --------------------------------------------------
+    // 2. ガイド解説バッジ
+    // --------------------------------------------------
+    var guideTxt = "";
+    if(stage === 0){
+      guideTxt = "十の位（10の束）から じゅんばんに 分けていこう！";
+    } else if(stage === 1){
+      guideTxt = isUnbundle 
+        ? "① 10の束 " + tenDigit + "つを " + divisor + "人に分けると… 1人" + q_ten + "束で " + tenRem + "束あまる！"
+        : "① 10の束 " + tenDigit + "つを " + divisor + "人に分けると… 1人" + q_ten + "束！";
+    } else if(stage === 2){
+      guideTxt = isUnbundle
+        ? "② あまった " + tenRem + "束を チャリーンとバラして " + (tenRem * 10) + "個＋" + oneDigit + "個＝" + unbundlePart + "個！"
+        : "② 10の束はきれいに分かれたね！つぎは 1のブロック " + oneDigit + "個 を分けるよ！";
+    } else if(stage === 3){
+      guideTxt = "③ 1のブロック " + unbundlePart + "個 を " + divisor + "人に分けると… 1人" + q_one + "個" + (p.remainder > 0 ? "（あまり " + p.remainder + "個）" : "！");
+    } else if(stage === 4){
+      guideTxt = "④ 1人分は 10の束" + q_ten + "つ（" + (q_ten * 10) + "）と 1が" + q_one + "個で… " + p.quotient + "！";
+    } else {
+      guideTxt = "⑤ だから 答えは " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "") + " ！";
     }
 
-    // ステップ2: 1つ目の計算（十の位のわり算）
-    if(stage >= 2){
-      var g3 = el("g", { class: (forward && stage === 2) ? "fade-in" : "" });
-      var eqStr1 = part1 + " ÷ " + p.divisor + " ＝ " + ans1;
-      var sz1 = calcSvgFontSize(eqStr1, 215, 18, 13);
-      g3.appendChild(middleText(130, 126, eqStr1, "slot-orange", {size: sz1}));
-      svg.appendChild(g3);
+    var gBadge = el("g", { class: forward ? "fade-in" : "" });
+    var badgeW = 440;
+    var badgeH = 24;
+    var badgeX = 230 - badgeW / 2;
+    var badgeY = 38;
+    var badgeBg = el("rect", {
+      x: badgeX, y: badgeY, width: badgeW, height: badgeH, rx: 12,
+      fill: (stage === 2 && isUnbundle) ? "#fef3c7" : "#f1f5f9",
+      stroke: (stage === 2 && isUnbundle) ? "#f59e0b" : "#cbd5e1",
+      "stroke-width": 1.5
+    });
+    gBadge.appendChild(badgeBg);
+    var guideSz = calcSvgFontSize(guideTxt, badgeW - 20, 13, 10.5);
+    var badgeT = middleText(230, badgeY + 16, guideTxt, (stage === 2 && isUnbundle) ? "slot-orange" : null, {size: guideSz, weight: 800});
+    gBadge.appendChild(badgeT);
+    svg.appendChild(gBadge);
+
+    // --------------------------------------------------
+    // ヘルパー: ブロック描画
+    // --------------------------------------------------
+    function drawBundle(x, y, label, isBurst, isGlow) {
+      var g = el("g", { class: isBurst ? "bundle-burst" : (isGlow ? "ten-rem-pulse" : "") });
+      var r = el("rect", {
+        x: x, y: y, width: 34, height: 19, rx: 4,
+        fill: isGlow ? "#ffedd5" : "#e0f2fe",
+        stroke: isGlow ? "#ea580c" : "#0284c7",
+        "stroke-width": isGlow ? 2.5 : 1.5
+      });
+      var t = el("text", {
+        x: x + 17, y: y + 14,
+        "text-anchor": "middle",
+        fill: isGlow ? "#c2410c" : "#0369a1",
+        "font-size": 11, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      t.textContent = label || "10";
+      g.appendChild(r);
+      g.appendChild(t);
+      return g;
     }
 
-    // ステップ3: 2つ目の計算（一の位のわり算）
-    if(stage >= 3){
-      var g4 = el("g", { class: (forward && stage === 3) ? "fade-in" : "" });
-      var eqStr2 = part2 + " ÷ " + p.divisor + " ＝ " + ans2 + (rem2 > 0 ? " あまり " + rem2 : "");
-      var sz2 = calcSvgFontSize(eqStr2, 215, 18, 12);
-      g4.appendChild(middleText(365, 126, eqStr2, "slot-orange", {size: sz2}));
-      svg.appendChild(g4);
+    function drawOne(cx, cy, delay, cls) {
+      var g = el("g", { class: cls || (delay !== undefined ? "block-drop-in" : "") });
+      if(delay) g.style.animationDelay = delay + "s";
+      var c = el("circle", {
+        cx: cx, cy: cy, r: 7.5,
+        fill: "#fff",
+        stroke: "#f59e0b",
+        "stroke-width": 1.5
+      });
+      var t = el("text", {
+        x: cx, y: cy + 3.5,
+        "text-anchor": "middle",
+        fill: "#b45309",
+        "font-size": 9.5, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      t.textContent = "1";
+      g.appendChild(c);
+      g.appendChild(t);
+      return g;
     }
 
-    // ステップ4: 人型と10・1のブロックによる等分除の視覚化
-    if(stage >= 4){
-      var gVisual = el("g", { class: (forward && stage === 4) ? "fade-in" : "" });
-      var colW = Math.min(84, Math.floor((p.remainder > 0 ? 380 : 420) / p.divisor));
-      var totalW = colW * p.divisor;
-      var startX = Math.round(((p.remainder > 0 ? 440 : 500) - totalW) / 2);
+    function makeSparkle(cx, cy, color, delay, trans) {
+      var g = el("g", { class: "sparkle-particle" });
+      g.style.setProperty("--spark-trans", trans);
+      g.style.animationDelay = delay + "s";
+      var path = el("path", {
+        d: "M " + cx + " " + (cy - 8) + " Q " + cx + " " + cy + " " + (cx + 8) + " " + cy + " Q " + cx + " " + cy + " " + cx + " " + (cy + 8) + " Q " + cx + " " + cy + " " + (cx - 8) + " " + cy + " Z",
+        fill: color
+      });
+      g.appendChild(path);
+      return g;
+    }
 
-      var q_ten = Math.floor(ans1 / 10); // 1人分の10ブロックの個数
-      var q_one = ans2; // 1人分の1ブロックの個数
+    // --------------------------------------------------
+    // 3. 配分先エリア（下部: 各人の受け皿トレイ）
+    // --------------------------------------------------
+    var gTrays = el("g", {});
+    var hasRem = p.hasRemainder;
+    var trayW = Math.min(125, Math.floor((hasRem ? 340 : 400) / divisor));
+    var trayGap = 10;
+    var totalTraysW = divisor * trayW + (divisor - 1) * trayGap;
+    var traysStartX = Math.round(((hasRem ? 370 : 460) - totalTraysW) / 2);
 
-      // 人型アイコンとブロック
-      for(var j = 0; j < p.divisor; j++){
-        var colCenterX = startX + j * colW + Math.round(colW / 2);
+    for(var j = 0; j < divisor; j++){
+      var curTrayX = traysStartX + j * (trayW + trayGap);
+      var curCenterX = curTrayX + Math.round(trayW / 2);
 
-        // 青い人型アイコン（丸＋末広がり胴体）
-        var head = el("circle", {
-          cx: colCenterX, cy: 150, r: 5.5,
-          fill: "#2563eb"
-        });
-        var body = el("polygon", {
-          points: (colCenterX - 2) + ",155 " + (colCenterX + 2) + ",155 " + (colCenterX + 6.5) + ",168 " + (colCenterX - 6.5) + ",168",
-          fill: "#2563eb"
-        });
-        gVisual.appendChild(head);
-        gVisual.appendChild(body);
+      // 人型アイコン
+      var head = el("circle", {
+        cx: curCenterX, cy: 174, r: 5.5,
+        fill: "#2563eb"
+      });
+      var body = el("polygon", {
+        points: (curCenterX - 2) + ",179 " + (curCenterX + 2) + ",179 " + (curCenterX + 6.5) + ",191 " + (curCenterX - 6.5) + ",191",
+        fill: "#2563eb"
+      });
+      gTrays.appendChild(head);
+      gTrays.appendChild(body);
 
-        // 10のかたまりブロック
-        if(q_ten === 1){
-          var b10 = el("rect", {
-            x: colCenterX - 22, y: 174, width: 44, height: 22, rx: 4,
-            fill: "#ffffff", stroke: "#1e293b", "stroke-width": 1.5
-          });
-          var t10 = el("text", {
-            x: colCenterX, y: 189,
-            "text-anchor": "middle", fill: "#0f172a",
-            "font-size": 13, "font-weight": 800, "font-family": "'M PLUS Rounded 1c', sans-serif"
-          });
-          t10.textContent = "1 0";
-          gVisual.appendChild(b10);
-          gVisual.appendChild(t10);
-        } else if(q_ten > 1){
-          var bw10 = Math.min(26, Math.floor((colW - (q_ten - 1) * 3) / q_ten));
-          var tw10 = q_ten * bw10 + (q_ten - 1) * 3;
-          var sx10 = colCenterX - Math.round(tw10 / 2);
-          for(var k = 0; k < q_ten; k++){
-            var curX = sx10 + k * (bw10 + 3);
-            var rb = el("rect", {
-              x: curX, y: 176, width: bw10, height: 19, rx: 3,
-              fill: "#ffffff", stroke: "#1e293b", "stroke-width": 1.5
-            });
-            var tb = el("text", {
-              x: curX + bw10 / 2, y: 189.5,
-              "text-anchor": "middle", fill: "#0f172a",
-              "font-size": 10.5, "font-weight": 800, "font-family": "'M PLUS Rounded 1c', sans-serif"
-            });
-            tb.textContent = "10";
-            gVisual.appendChild(rb);
-            gVisual.appendChild(tb);
-          }
-        }
+      // 受け皿トレイ
+      var isFocus = (stage >= 4 && j === 0);
+      var trayBox = el("rect", {
+        x: curTrayX, y: 193, width: trayW, height: 68, rx: 8,
+        fill: isFocus ? "#fff7ed" : "#f8fafc",
+        stroke: isFocus ? "#ea580c" : "#cbd5e1",
+        "stroke-width": isFocus ? 2.5 : 1.5,
+        class: isFocus ? "highlight-dish" : ""
+      });
+      gTrays.appendChild(trayBox);
 
-        // 1のばらブロック
-        if(q_one > 0){
-          if(q_one <= 3){
-            var r1 = 8.5;
-            var gap1 = 4;
-            var tw1 = q_one * (r1 * 2) + (q_one - 1) * gap1;
-            var sx1 = colCenterX - Math.round(tw1 / 2) + r1;
-            var cy1 = (q_ten > 0) ? 214 : 190;
-            for(var m = 0; m < q_one; m++){
-              var cx1 = sx1 + m * (r1 * 2 + gap1);
-              var c1 = el("circle", {
-                cx: cx1, cy: cy1, r: r1,
-                fill: "#ffffff", stroke: "#1e293b", "stroke-width": 1.5
-              });
-              var tc1 = el("text", {
-                x: cx1, y: cy1 + 4,
-                "text-anchor": "middle", fill: "#0f172a",
-                "font-size": 11, "font-weight": 800, "font-family": "'M PLUS Rounded 1c', sans-serif"
-              });
-              tc1.textContent = "1";
-              gVisual.appendChild(c1);
-              gVisual.appendChild(tc1);
-            }
-          } else {
-            // 4個以上は2段で並べる
-            var r1 = 7.5;
-            var gap1 = 3;
-            var nRow1 = Math.ceil(q_one / 2);
-            var nRow2 = q_one - nRow1;
-            var twRow1 = nRow1 * (r1 * 2) + (nRow1 - 1) * gap1;
-            var sxRow1 = colCenterX - Math.round(twRow1 / 2) + r1;
-            var cyRow1 = (q_ten > 0) ? 207 : 182;
-            for(var m1 = 0; m1 < nRow1; m1++){
-              var cx1 = sxRow1 + m1 * (r1 * 2 + gap1);
-              var c1 = el("circle", {
-                cx: cx1, cy: cyRow1, r: r1,
-                fill: "#ffffff", stroke: "#1e293b", "stroke-width": 1.5
-              });
-              var tc1 = el("text", {
-                x: cx1, y: cyRow1 + 3.5,
-                "text-anchor": "middle", fill: "#0f172a",
-                "font-size": 9.5, "font-weight": 800, "font-family": "'M PLUS Rounded 1c', sans-serif"
-              });
-              tc1.textContent = "1";
-              gVisual.appendChild(c1);
-              gVisual.appendChild(tc1);
-            }
-            var twRow2 = nRow2 * (r1 * 2) + (nRow2 - 1) * gap1;
-            var sxRow2 = colCenterX - Math.round(twRow2 / 2) + r1;
-            var cyRow2 = cyRow1 + r1 * 2 + gap1;
-            for(var m2 = 0; m2 < nRow2; m2++){
-              var cx2 = sxRow2 + m2 * (r1 * 2 + gap1);
-              var c2 = el("circle", {
-                cx: cx2, cy: cyRow2, r: r1,
-                fill: "#ffffff", stroke: "#1e293b", "stroke-width": 1.5
-              });
-              var tc2 = el("text", {
-                x: cx2, y: cyRow2 + 3.5,
-                "text-anchor": "middle", fill: "#0f172a",
-                "font-size": 9.5, "font-weight": 800, "font-family": "'M PLUS Rounded 1c', sans-serif"
-              });
-              tc2.textContent = "1";
-              gVisual.appendChild(c2);
-              gVisual.appendChild(tc2);
-            }
+      // トレイラベル
+      var trayLabel = el("text", {
+        x: curTrayX + 8, y: 205,
+        fill: isFocus ? "#ea580c" : "#64748b",
+        "font-size": 9.5, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      trayLabel.textContent = (j + 1) + "人目";
+      gTrays.appendChild(trayLabel);
+
+      // Stage >= 1: 10の束をトレイに配置
+      if(stage >= 1 && q_ten > 0){
+        var bStartX = curTrayX + 6;
+        var bStartY = 212;
+        for(var bk = 0; bk < q_ten; bk++){
+          var bx = bStartX + (bk % 2) * 36;
+          var by = bStartY + Math.floor(bk / 2) * 22;
+          if(bx + 34 <= curTrayX + trayW){
+            gTrays.appendChild(drawBundle(bx, by, "10", false, false));
           }
         }
       }
 
-      // 青い破線の仕切り線
-      for(var j = 1; j < p.divisor; j++){
-        var sepX = startX + j * colW;
-        var sepLine = el("line", {
-          x1: sepX, y1: 145, x2: sepX, y2: 232,
-          stroke: "#3b82f6", "stroke-width": 1.5, "stroke-dasharray": "4,3"
-        });
-        gVisual.appendChild(sepLine);
+      // Stage >= 3: 1のブロックをトレイに配置
+      if(stage >= 3 && q_one > 0){
+        var oneStartX = (q_ten > 0) ? (curTrayX + Math.min(trayW - 36, 8 + Math.min(2, q_ten) * 36)) : (curTrayX + 12);
+        var oneStartY = 214;
+        var maxOneCols = Math.max(2, Math.floor((curTrayX + trayW - 6 - oneStartX) / 17));
+
+        for(var om = 0; om < q_one; om++){
+          var colIdx = om % maxOneCols;
+          var rowIdx = Math.floor(om / maxOneCols);
+          var ocx = oneStartX + colIdx * 17 + 8;
+          var ocy = oneStartY + rowIdx * 17;
+          gTrays.appendChild(drawOne(ocx, ocy, (forward && stage === 3) ? (om * 0.04) : undefined));
+        }
       }
 
-      // あまりの表示（4-3の場合）
-      if(p.remainder > 0){
-        var remAreaX = startX + totalW + 16;
-        var remLabel = el("text", {
-          x: remAreaX + 10, y: 170,
+      // Stage >= 4: 1人分の合計表示
+      if(stage >= 4 && j === 0){
+        var sumBadge = el("g", { class: (forward && stage === 4) ? "pop" : "" });
+        var sumTxt = middleText(curCenterX, 269, (q_ten * 10) + "＋" + q_one + "＝ " + p.quotient, "slot-orange", {size: 11.5, weight: 800});
+        sumBadge.appendChild(sumTxt);
+        gTrays.appendChild(sumBadge);
+      }
+    }
+
+    // あまりエリア（4-3などで余りがある場合）
+    if(hasRem && stage >= 3 && p.remainder > 0){
+      var remTrayX = traysStartX + totalTraysW + 8;
+      var remLabel = el("text", {
+        x: remTrayX + 14, y: 190,
+        "text-anchor": "middle", fill: "#e11d48",
+        "font-size": 10.5, "font-weight": 800,
+        "font-family": "'M PLUS Rounded 1c', sans-serif"
+      });
+      remLabel.textContent = "あまり";
+      gTrays.appendChild(remLabel);
+
+      var remBox = el("rect", {
+        x: remTrayX, y: 194, width: 28, height: 66, rx: 6,
+        fill: "#fff1f2", stroke: "#fda4af", "stroke-width": 1.5
+      });
+      gTrays.appendChild(remBox);
+
+      for(var ri = 0; ri < p.remainder; ri++){
+        var rcy = 210 + ri * 18;
+        var rc = el("circle", {
+          cx: remTrayX + 14, cy: rcy, r: 7,
+          fill: "#fff", stroke: "#e11d48", "stroke-width": 1.5
+        });
+        var rt = el("text", {
+          x: remTrayX + 14, y: rcy + 3.5,
           "text-anchor": "middle", fill: "#e11d48",
-          "font-size": 12, "font-weight": 800, "font-family": "'M PLUS Rounded 1c', sans-serif"
+          "font-size": 9, "font-weight": 800,
+          "font-family": "'M PLUS Rounded 1c', sans-serif"
         });
-        remLabel.textContent = "あまり";
-        gVisual.appendChild(remLabel);
-
-        for(var remIdx = 0; remIdx < p.remainder; remIdx++){
-          var remCy = 192 + remIdx * 20;
-          var remC = el("circle", {
-            cx: remAreaX + 10, cy: remCy, r: 8,
-            fill: "#fff1f2", stroke: "#e11d48", "stroke-width": 1.5
-          });
-          var remT = el("text", {
-            x: remAreaX + 10, y: remCy + 4,
-            "text-anchor": "middle", fill: "#e11d48",
-            "font-size": 10.5, "font-weight": 800, "font-family": "'M PLUS Rounded 1c', sans-serif"
-          });
-          remT.textContent = "1";
-          gVisual.appendChild(remC);
-          gVisual.appendChild(remT);
-        }
+        rt.textContent = "1";
+        gTrays.appendChild(rc);
+        gTrays.appendChild(rt);
       }
-
-      svg.appendChild(gVisual);
     }
 
-    // ステップ5: 合わせて答え確定
-    if(stage >= 5){
-      var g5 = el("g", { class: (forward && stage === 5) ? "fade-in" : "" });
-      var finStr = "合わせて　答えは " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "") + " ！";
-      var finSz = calcSvgFontSize(finStr, 460, 21, 15);
-      g5.appendChild(middleText(250, 266, finStr, "slot-orange", {size: finSz}));
-      svg.appendChild(g5);
+    svg.appendChild(gTrays);
+
+    // --------------------------------------------------
+    // 4. 中央作業エリア（Y: 68〜165）: ステージごとの可視化
+    // --------------------------------------------------
+    var gWork = el("g", {});
+
+    // [Stage 0: はじめの数全体を表示]
+    if(stage === 0){
+      var g0 = el("g", { class: forward ? "fade-in" : "" });
+      g0.appendChild(middleText(230, 84, "はじめの数 " + dividend + "（10の束が" + tenDigit + "つ、1のブロックが" + oneDigit + "個）", null, {size: 13.5}));
+
+      var initStartX = 230 - Math.round((tenDigit * 38 + oneDigit * 18 + 16) / 2);
+      for(var b0 = 0; b0 < tenDigit; b0++){
+        g0.appendChild(drawBundle(initStartX + b0 * 38, 102, "10", false, false));
+      }
+      var oneInitX = initStartX + tenDigit * 38 + 14;
+      for(var o0 = 0; o0 < oneDigit; o0++){
+        g0.appendChild(drawOne(oneInitX + o0 * 18 + 8, 111));
+      }
+      gWork.appendChild(g0);
+    }
+
+    // [Stage 1: 10の束を配り、余った束を強調]
+    else if(stage === 1){
+      var g1 = el("g", { class: forward ? "fade-in" : "" });
+      if(isUnbundle){
+        g1.appendChild(middleText(230, 84, "10の束のわり算： " + tenDigit + "束 ÷ " + divisor + " ＝ 1人 " + q_ten + "束 （あまり " + tenRem + "束）", "slot-orange", {size: 13.5, weight: 800}));
+
+        var remTotalW = tenRem * 38 - 4;
+        var remStartX = 230 - Math.round(remTotalW / 2);
+        for(var rk = 0; rk < tenRem; rk++){
+          g1.appendChild(drawBundle(remStartX + rk * 38, 104, "10", false, true));
+        }
+
+        // 吹き出し
+        var alertBadge = el("g", { class: "pop" });
+        var alertW = 190;
+        var alertBg = el("rect", {
+          x: 230 - alertW / 2, y: 134, width: alertW, height: 22, rx: 11,
+          fill: "#fff7ed", stroke: "#f97316", "stroke-width": 1.5
+        });
+        alertBadge.appendChild(alertBg);
+        alertBadge.appendChild(middleText(230, 149, "⚠️ " + tenRem + "束あまった！（分けられない）", "slot-orange", {size: 11, weight: 800}));
+        g1.appendChild(alertBadge);
+      } else {
+        g1.appendChild(middleText(230, 92, "10の束のわり算： " + tenDigit + "束 ÷ " + divisor + " ＝ 1人 " + q_ten + "束（ぴったり！）", "slot-orange", {size: 14.5, weight: 800}));
+        g1.appendChild(middleText(230, 124, "10の束はきれいに分かれたね。あまりは0束！", null, {size: 13}));
+      }
+      gWork.appendChild(g1);
+    }
+
+    // [Stage 2: ★最重要★ チャリーンと弾けて10個に解体＆合体]
+    else if(stage === 2){
+      var g2 = el("g", { class: forward ? "fade-in" : "" });
+
+      if(isUnbundle){
+        var unbundledCount = tenRem * 10;
+        g2.appendChild(middleText(230, 80, "あまった10の束を バラすと… " + unbundledCount + "個のブロックに変身！", "slot-orange", {size: 13.5, weight: 800}));
+
+        // キラキラスパークルエフェクト
+        var spCx = 230, spCy = 110;
+        g2.appendChild(makeSparkle(spCx, spCy, "#f59e0b", 0, "translate(24px, -20px) scale(0)"));
+        g2.appendChild(makeSparkle(spCx, spCy, "#fbbf24", 0.05, "translate(-26px, -18px) scale(0)"));
+        g2.appendChild(makeSparkle(spCx, spCy, "#f97316", 0.08, "translate(28px, 16px) scale(0)"));
+        g2.appendChild(makeSparkle(spCx, spCy, "#38bdf8", 0.1, "translate(-24px, 18px) scale(0)"));
+        g2.appendChild(makeSparkle(spCx, spCy, "#a855f7", 0.12, "translate(0px, -26px) scale(0)"));
+        g2.appendChild(makeSparkle(spCx, spCy, "#ec4899", 0.14, "translate(0px, 26px) scale(0)"));
+
+        // バラしたブロック（tenRem * 10個）と もとのブロック（oneDigit個）の動的中央揃え
+        var tenCols = 5;
+        var tenRows = Math.ceil(unbundledCount / tenCols);
+        var oneCols = Math.max(1, Math.min(5, oneDigit));
+
+        var tenWidth = tenCols * 17;
+        var plusWidth = 26;
+        var oneWidth = (oneDigit > 0) ? (oneCols * 17) : 10;
+        var eqWidth = 68;
+        var totalWorkW = tenWidth + plusWidth + oneWidth + eqWidth;
+        var workStartX = Math.max(20, 230 - Math.round(totalWorkW / 2));
+
+        var tenBlkX = workStartX;
+        var tenBlkY = (tenRows > 2) ? 92 : 100;
+
+        for(var tk = 0; tk < unbundledCount; tk++){
+          var tcol = tk % tenCols;
+          var trow = Math.floor(tk / tenCols);
+          var delay = (forward ? (0.12 + tk * 0.025) : undefined);
+          g2.appendChild(drawOne(tenBlkX + tcol * 17, tenBlkY + trow * 17, delay));
+        }
+
+        var commonLabelY = tenBlkY + tenRows * 17 + 9;
+        var tenLabel = middleText(tenBlkX + tenWidth / 2 - 8, commonLabelY, "バラした " + unbundledCount + "個", "slot-orange", {size: 10.5, weight: 800});
+        g2.appendChild(tenLabel);
+
+        // 「＋」記号
+        var plusX = tenBlkX + tenWidth + 14;
+        var plusTxt = bigText(plusX, tenBlkY + Math.min(2, tenRows) * 8.5, "＋", "slot-orange", {size: 18});
+        g2.appendChild(plusTxt);
+
+        // もとの一の位のブロック
+        var oneBlkX = plusX + 18;
+        if(oneDigit > 0){
+          for(var om2 = 0; om2 < oneDigit; om2++){
+            var ocol = om2 % 5;
+            var orow = Math.floor(om2 / 5);
+            g2.appendChild(drawOne(oneBlkX + ocol * 17, tenBlkY + orow * 17, undefined));
+          }
+        }
+        var oneLabel = middleText(oneBlkX + oneWidth / 2 - 8, commonLabelY, "もとの " + oneDigit + "個", null, {size: 10.5, weight: 800});
+        g2.appendChild(oneLabel);
+
+        // 「＝ 12個！」
+        var eqX = oneBlkX + oneWidth + 16;
+        var eqStr = "＝ " + unbundlePart + "個！";
+        var eqTotalTxt = bigText(eqX, tenBlkY + Math.min(2, tenRows) * 8.5, eqStr, "slot-orange", {size: 19});
+        g2.appendChild(eqTotalTxt);
+      } else {
+        g2.appendChild(middleText(230, 88, "一の位のブロック " + oneDigit + "個 を見てみよう！", "slot-orange", {size: 14.5}));
+        var oneStartX41 = 230 - Math.round((oneDigit * 18) / 2);
+        for(var om41 = 0; om41 < oneDigit; om41++){
+          g2.appendChild(drawOne(oneStartX41 + om41 * 18 + 8, 112));
+        }
+        g2.appendChild(middleText(230, 142, "一の位は " + oneDigit + "個 あるよ！これを " + divisor + "人に分けるよ！", null, {size: 12.5}));
+      }
+      gWork.appendChild(g2);
+    }
+
+    // [Stage 3: 1のブロック（12個など）を等分に配る]
+    else if(stage === 3){
+      var g3 = el("g", { class: forward ? "fade-in" : "" });
+      var eqStr3 = unbundlePart + " ÷ " + divisor + " ＝ " + q_one + (p.remainder > 0 ? "（あまり " + p.remainder + "）" : "");
+      g3.appendChild(middleText(230, 88, "1のブロックのわり算： " + eqStr3, "slot-orange", {size: 14.5, weight: 800}));
+      g3.appendChild(middleText(230, 116, "1のブロック " + unbundlePart + "個 を " + divisor + "人に分けると、1人 " + q_one + "個 ずつ！", null, {size: 12.5}));
+      if(p.remainder > 0){
+        g3.appendChild(middleText(230, 138, "分けきれなかった " + p.remainder + "個 は「あまり」になるよ！", "slot-orange", {size: 11.5}));
+      }
+      gWork.appendChild(g3);
+    }
+
+    // [Stage 4: 1人分の持ち分を合算]
+    else if(stage === 4){
+      var g4 = el("g", { class: forward ? "fade-in" : "" });
+      g4.appendChild(middleText(230, 86, "1人分の 持ち分を あわせよう！", "slot-orange", {size: 15, weight: 800}));
+
+      var detailStr = "10の束 " + q_ten + "つ（" + (q_ten * 10) + "） ＋ 1のブロック " + q_one + "個（" + q_one + "） ＝ " + p.quotient;
+      g4.appendChild(middleText(230, 114, detailStr, "slot-orange", {size: 14, weight: 800}));
+
+      var explainSub = "十の位は " + q_ten + " 、一の位は " + q_one + " になるよ！";
+      g4.appendChild(middleText(230, 138, explainSub, null, {size: 12.5}));
+      gWork.appendChild(g4);
+    }
+
+    // [Stage 5: 答え確定]
+    else if(stage >= 5){
+      var g5 = el("g", { class: forward ? "fade-in" : "" });
+      var finalStr = "だから　答えは " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "") + " ！";
+      var finalSz = calcSvgFontSize(finalStr, 440, 21, 15);
+      g5.appendChild(middleText(230, 104, finalStr, "slot-orange", {size: finalSz, weight: 800}));
+
+      var subConfirm = dividend + " ÷ " + divisor + " ＝ " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "");
+      g5.appendChild(middleText(230, 134, subConfirm, null, {size: 14}));
+      gWork.appendChild(g5);
+
       if(forward){
         qSlot.textContent = p.quotient;
         qSlot.setAttribute("class", "slot-orange pop");
         var rSlotEl = document.getElementById("rSlot");
-        if(rSlotEl && p.remainder > 0){
+        if(rSlotEl && p.hasRemainder){
           rSlotEl.textContent = p.remainder;
           rSlotEl.setAttribute("class", "slot-orange pop");
         }
       }
     }
+
+    svg.appendChild(gWork);
   }
 
   // ==================================================================
