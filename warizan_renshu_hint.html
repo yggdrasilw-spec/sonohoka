@@ -269,6 +269,28 @@
   }
 
   /* ---------- level select accordion ---------- */
+  #levelSelect {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 10px;
+  }
+  #levelSelect::-webkit-scrollbar {
+    width: 8px;
+  }
+  #levelSelect::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 999px;
+  }
+  #levelSelect::-webkit-scrollbar-thumb {
+    background: var(--paper-line);
+    border-radius: 999px;
+  }
+  #levelSelect::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-soft);
+  }
+
   .level-category {
     margin-bottom: 12px;
     border: 2px solid var(--paper-line);
@@ -1402,37 +1424,50 @@
     var problem, key, tries = 0;
     do{
       var divisor = rand(2, 4);
-      var q_ten = rand(1, 4);
-      var q_one = rand(1, 4);
+      var max_q_ten = Math.floor(9 / divisor);
+      var max_q_one = Math.floor(9 / divisor);
+      var q_ten = rand(1, max_q_ten);
+      var q_one = rand(1, max_q_one);
       var quotient = q_ten * 10 + q_one;
       var dividend = divisor * quotient;
-      problem = {
-        level: "4-1", divisor: divisor, quotient: quotient, remainder: 0,
-        hasRemainder: false, targetQuotientDigits: 2,
-        dividend: dividend, q_ten: q_ten, q_one: q_one,
-        tenPart: divisor * q_ten * 10, onePart: divisor * q_one,
-        title: "レベル4-1　分解なしでわりきれる暗算"
-      };
-      key = divisor + "-" + quotient;
+      if(dividend >= 20 && dividend < 100){
+        problem = {
+          level: "4-1", divisor: divisor, quotient: quotient, remainder: 0,
+          hasRemainder: false, targetQuotientDigits: 2,
+          dividend: dividend, q_ten: q_ten, q_one: q_one,
+          tenPart: divisor * q_ten * 10, onePart: divisor * q_one,
+          title: "レベル4-1　分解なしでわりきれる暗算"
+        };
+        key = divisor + "-" + quotient;
+      }
       tries++;
-    } while(key === prevKey && tries < 20);
-    return problem;
+    } while((!problem || key === prevKey) && tries < 30);
+    return problem || {
+      level: "4-1", divisor: 2, quotient: 24, remainder: 0,
+      hasRemainder: false, targetQuotientDigits: 2,
+      dividend: 48, q_ten: 2, q_one: 4,
+      tenPart: 40, onePart: 8,
+      title: "レベル4-1　分解なしでわりきれる暗算"
+    };
   }
 
   function genLevel4_2(prevKey){
     var problem, key, tries = 0;
     do{
       var divisor = rand(2, 4);
-      var quotient = rand(13, 39);
+      var minQ = 11;
+      var maxQ = Math.floor(99 / divisor);
+      var quotient = rand(minQ, maxQ);
       var dividend = divisor * quotient;
       var tenDigit = Math.floor(dividend / 10);
       var tenRem = tenDigit % divisor;
-      if(dividend >= 20 && dividend < 100 && tenRem > 0){
+      var tenPart = (tenDigit - tenRem) * 10;
+      if(dividend >= 20 && dividend < 100 && quotient >= 10 && tenRem > 0 && tenPart > 0){
         problem = {
           level: "4-2", divisor: divisor, quotient: quotient, remainder: 0,
           hasRemainder: false, targetQuotientDigits: 2,
           dividend: dividend, tenRem: tenRem,
-          tenPart: (tenDigit - tenRem) * 10,
+          tenPart: tenPart,
           unbundlePart: tenRem * 10 + (dividend % 10),
           title: "レベル4-2　十の位を解体する暗算（あまりなし）"
         };
@@ -1440,24 +1475,33 @@
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 50);
-    return problem || genLevel4_1(prevKey);
+    return problem || {
+      level: "4-2", divisor: 2, quotient: 26, remainder: 0,
+      hasRemainder: false, targetQuotientDigits: 2,
+      dividend: 52, tenRem: 1,
+      tenPart: 40, unbundlePart: 12,
+      title: "レベル4-2　十の位を解体する暗算（あまりなし）"
+    };
   }
 
   function genLevel4_3(prevKey){
     var problem, key, tries = 0;
     do{
       var divisor = rand(2, 4);
-      var quotient = rand(13, 38);
       var remainder = rand(1, divisor - 1);
+      var minQ = 11;
+      var maxQ = Math.floor((99 - remainder) / divisor);
+      var quotient = rand(minQ, maxQ);
       var dividend = divisor * quotient + remainder;
       var tenDigit = Math.floor(dividend / 10);
       var tenRem = tenDigit % divisor;
-      if(dividend >= 20 && dividend < 100 && tenRem > 0){
+      var tenPart = (tenDigit - tenRem) * 10;
+      if(dividend >= 20 && dividend < 100 && quotient >= 10 && tenRem > 0 && tenPart > 0){
         problem = {
           level: "4-3", divisor: divisor, quotient: quotient, remainder: remainder,
           hasRemainder: true, targetQuotientDigits: 2,
           dividend: dividend, tenRem: tenRem,
-          tenPart: (tenDigit - tenRem) * 10,
+          tenPart: tenPart,
           unbundlePart: tenRem * 10 + (dividend % 10),
           title: "レベル4-3　解体＋あまりが出る暗算"
         };
@@ -1465,7 +1509,13 @@
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 50);
-    return problem || genLevel2(prevKey);
+    return problem || {
+      level: "4-3", divisor: 2, quotient: 26, remainder: 1,
+      hasRemainder: true, targetQuotientDigits: 2,
+      dividend: 53, tenRem: 1,
+      tenPart: 40, unbundlePart: 13,
+      title: "レベル4-3　解体＋あまりが出る暗算"
+    };
   }
 
   function genLevel5_1(prevKey){
@@ -1972,6 +2022,20 @@
     if(cls) t.setAttribute("class", cls);
     else if(!attrs.fill) t.setAttribute("fill", "#2B2A4C");
     return t;
+  }
+
+  function calcSvgFontSize(text, maxPixelWidth, baseSize, minSize){
+    if(!text) return baseSize;
+    var str = String(text);
+    var len = 0;
+    for(var i = 0; i < str.length; i++){
+      var code = str.charCodeAt(i);
+      len += (code > 255) ? 1.0 : 0.58;
+    }
+    var estWidth = len * baseSize;
+    if(estWidth <= maxPixelWidth) return baseSize;
+    var scaled = Math.floor(maxPixelWidth / len);
+    return Math.max(minSize || 12, scaled);
   }
 
   function box(x, y, w, h, extraClass){
@@ -2522,23 +2586,38 @@
     var unitCount = isHundred ? Math.round(p.dividend / 100) : Math.round(p.dividend / 10);
     var unitAns = isHundred ? Math.round(p.quotient / 100) : Math.round(p.quotient / 10);
 
-    // ステップ1: まとまりアイコンの描画
+    // ステップ1: まとまりアイコンの描画（数が多い場合も枠からはみ出ないよう段階的に縮小調整）
     if(stage >= 1){
       var g2 = el("g", { class: (forward && stage === 1) ? "fade-in" : "" });
-      var startX = Math.max(20, 250 - (unitCount * 23));
+      var boxW, boxH, gap, fontSize, rx;
+      if(unitCount <= 8){
+        boxW = 40; boxH = 32; gap = 6; fontSize = 13; rx = 6;
+      } else if(unitCount <= 12){
+        boxW = 32; boxH = 28; gap = 4; fontSize = 11; rx = 5;
+      } else if(unitCount <= 16){
+        boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
+      } else {
+        boxW = 19; boxH = 22; gap = 2; fontSize = 8; rx = 3;
+      }
+
+      var totalW = unitCount * boxW + (unitCount - 1) * gap;
+      var startX = Math.round((500 - totalW) / 2);
+      var boxY = 74 + Math.round((32 - boxH) / 2);
+
       for(var i = 0; i < unitCount; i++){
-        var bx = startX + i * 46;
+        var bx = startX + i * (boxW + gap);
         var r = el("rect", {
-          x: bx, y: 74, width: 40, height: 32, rx: 6,
+          x: bx, y: boxY, width: boxW, height: boxH, rx: rx,
           fill: isHundred ? "#fef3c7" : "#dbeafe",
           stroke: isHundred ? "#f59e0b" : "#3b82f6",
-          "stroke-width": 2
+          "stroke-width": (unitCount > 16) ? 1.5 : 2
         });
         var t = el("text", {
-          x: bx + 20, y: 96,
+          x: bx + boxW / 2,
+          y: boxY + boxH / 2 + (fontSize * 0.35),
           "text-anchor": "middle",
           fill: isHundred ? "#b45309" : "#1d4ed8",
-          "font-size": 13,
+          "font-size": fontSize,
           "font-weight": 800,
           "font-family": "'M PLUS Rounded 1c', sans-serif"
         });
@@ -2554,7 +2633,9 @@
     // ステップ2: 束をもとにした割り算
     if(stage >= 2){
       var g3 = el("g", { class: (forward && stage === 2) ? "fade-in" : "" });
-      var subEq = middleText(250, 168, unitCount + " ÷ " + p.divisor + " ＝ " + unitAns + " （" + unitName + "が " + unitAns + "こ分）", "slot-orange", {size: 19});
+      var subEqTxt = unitCount + " ÷ " + p.divisor + " ＝ " + unitAns + " （" + unitName + "が " + unitAns + "こ分）";
+      var subEqSz = calcSvgFontSize(subEqTxt, 460, 19, 14);
+      var subEq = middleText(250, 168, subEqTxt, "slot-orange", {size: subEqSz});
       g3.appendChild(subEq);
       svg.appendChild(g3);
     }
@@ -2620,25 +2701,31 @@
       g2.appendChild(middleText(210, 102, part2, null, {size:19}));
 
       var capTxt = isUnbundle ? "十の位のあまり（10の束）をバラして " + part2 + " と分けるよ！" : "十の位（" + part1 + "）と 一の位（" + part2 + "）に分けるよ！";
-      g2.appendChild(middleText(250, 142, capTxt, null, {size: 15}));
+      var capSz = calcSvgFontSize(capTxt, 460, 15, 12);
+      g2.appendChild(middleText(250, 142, capTxt, null, {size: capSz}));
       svg.appendChild(g2);
     }
 
-    // ステップ2: 1つ目の計算
+    // ステップ2: 1つ目の計算（十の位のわり算）
+    // 2つの式を確実に離し（cx1=130, cx2=365）、重なりを防止
     if(stage >= 2){
       var g3 = el("g", { class: (forward && stage === 2) ? "fade-in" : "" });
       var ans1 = Math.floor(part1 / p.divisor);
-      g3.appendChild(middleText(110, 174, part1 + " ÷ " + p.divisor + " ＝ " + ans1, "slot-orange", {size: 18}));
+      var eqStr1 = part1 + " ÷ " + p.divisor + " ＝ " + ans1;
+      var sz1 = calcSvgFontSize(eqStr1, 215, 18, 13);
+      g3.appendChild(middleText(130, 174, eqStr1, "slot-orange", {size: sz1}));
       svg.appendChild(g3);
     }
 
-    // ステップ3: 2つ目の計算
+    // ステップ3: 2つ目の計算（一の位のわり算）
+    // 余りが出る場合などで式が長くなっても枠からはみ出ないよう自動調整
     if(stage >= 3){
       var g4 = el("g", { class: (forward && stage === 3) ? "fade-in" : "" });
       var ans2 = Math.floor(part2 / p.divisor);
       var rem2 = part2 % p.divisor;
-      var eqStr = part2 + " ÷ " + p.divisor + " ＝ " + ans2 + (rem2 > 0 ? " あまり " + rem2 : "");
-      g4.appendChild(middleText(210, 174, eqStr, "slot-orange", {size: 18}));
+      var eqStr2 = part2 + " ÷ " + p.divisor + " ＝ " + ans2 + (rem2 > 0 ? " あまり " + rem2 : "");
+      var sz2 = calcSvgFontSize(eqStr2, 215, 18, 12);
+      g4.appendChild(middleText(365, 174, eqStr2, "slot-orange", {size: sz2}));
       svg.appendChild(g4);
     }
 
@@ -2646,7 +2733,8 @@
     if(stage >= 4 || (stage >= 3 && !isUnbundle)){
       var g5 = el("g", { class: (forward) ? "fade-in" : "" });
       var finStr = "合わせて　答えは " + p.quotient + (p.remainder > 0 ? " あまり " + p.remainder : "") + " ！";
-      g5.appendChild(middleText(250, 216, finStr, "slot-orange", {size: 21}));
+      var finSz = calcSvgFontSize(finStr, 460, 21, 15);
+      g5.appendChild(middleText(250, 216, finStr, "slot-orange", {size: finSz}));
       svg.appendChild(g5);
       if(forward){
         qSlot.textContent = p.quotient;
