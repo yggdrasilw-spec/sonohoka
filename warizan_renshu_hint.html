@@ -3344,7 +3344,7 @@
     return hasNextDigit && currentRemainder === 0 && nextDigit === "0";
   }
 
-  function buildMultiplyWriteCells(prodCells, row, targetCol, currentDvdPartCells, hasNextDigit, totalCols) {
+  function buildMultiplyWriteCells(prodCells, row, targetCol, currentDvdPartCells, maxDropCol, totalCols) {
     var result = prodCells.map(function(cell){
       return Object.assign({}, cell, { borderBottom: true });
     });
@@ -3359,9 +3359,14 @@
       });
     }
 
-    var endCol = targetCol;
-    if (hasNextDigit && (targetCol + 1 < totalCols)) {
-      endCol = targetCol + 1;
+    var endCol = Math.max(targetCol, maxDropCol || targetCol);
+    result.forEach(function(c){
+      if (c.c > endCol) endCol = c.c;
+    });
+    if (currentDvdPartCells && currentDvdPartCells.length > 0) {
+      currentDvdPartCells.forEach(function(c){
+        if (c.c > endCol) endCol = c.c;
+      });
     }
 
     for (var col = startCol; col <= endCol; col++) {
@@ -3511,6 +3516,7 @@
       var skippedCols = [];
       var prevRemainderCells = [];
       var nextDigitCellOverride = null;
+      var justBuiltZero = false;
 
       for (var i = 0; i < N; i++) {
         var currentDigit = dvdDigits[i];
@@ -3580,6 +3586,7 @@
             });
             currentRemainder = currentTargetValue;
             prevRemainderCells = currentDvdPartCells.slice();
+            justBuiltZero = true;
           }
         } else {
           hasFirstQuotientStarted = true;
@@ -3605,8 +3612,23 @@
               char: prodStr[k]
             });
           }
-          var hasNextDigit = (i < N - 1);
-          var extendedProdCells = buildMultiplyWriteCells(prodCells, currentRow, targetCol, currentDvdPartCells, hasNextDigit, M + N);
+          var rem = currentTargetValue - product;
+          var nextDropCol = targetCol;
+          if (i < N - 1) {
+            var lookRem = rem;
+            var lookIdx = i + 1;
+            while (lookIdx < N - 1) {
+              var lookVal = lookRem * 10 + parseInt(dvdDigits[lookIdx], 10);
+              if (lookVal < divisorInt) {
+                lookRem = lookVal;
+                lookIdx++;
+              } else {
+                break;
+              }
+            }
+            nextDropCol = M + lookIdx;
+          }
+          var extendedProdCells = buildMultiplyWriteCells(prodCells, currentRow, targetCol, currentDvdPartCells, nextDropCol, M + N);
 
           steps.push({
             phase: "multiply",
@@ -3617,8 +3639,6 @@
             formulaHtml: formulaHtml("green", divisorInt + " × " + q + " ＝ " + product)
           });
           currentRow++;
-
-          var rem = currentTargetValue - product;
           var remStr = rem.toString();
           var isLastDigit = (i === N - 1);
           var shouldWriteIntermediateZero = !(rem === 0 && !isLastDigit);
@@ -3649,6 +3669,7 @@
           currentRemainder = rem;
           prevRemainderCells = shouldWriteIntermediateZero ? diffCells.slice() : [];
           nextDigitCellOverride = null;
+          justBuiltZero = false;
         }
 
         // 次の桁をおろす（商がまだ立っていない場合はおろさず、ずらして次の桁を見る）
@@ -3658,19 +3679,25 @@
           var isSuppressDroppedZero = shouldSuppressDroppedZero(currentRemainder, nextDigit, (i + 1) < (N - 1));
 
           if (!isSuppressDroppedZero) {
+            var dropRow = (justBuiltZero && prevRemainderCells && prevRemainderCells.length > 0)
+              ? prevRemainderCells[prevRemainderCells.length - 1].r
+              : currentRow;
+
             steps.push({
               phase: "drop",
               description: "【おろす】となりの「" + nextDigit + "」をまっすぐ下におろします。",
-              writeCells: [{ r: currentRow, c: nextCol, char: nextDigit }],
+              writeCells: [{ r: dropRow, c: nextCol, char: nextDigit }],
               maskFromCol: nextCol + 1,
-              highlightCells: makeHighlight("orange", [{ r: 1, c: nextCol }], [{ r: currentRow, c: nextCol }]),
+              highlightCells: makeHighlight("orange", [{ r: 1, c: nextCol }], [{ r: dropRow, c: nextCol }]),
               formulaHtml: formulaHtml("orange", "「" + nextDigit + "」をおろす")
             });
-            nextDigitCellOverride = { r: currentRow, c: nextCol };
+            nextDigitCellOverride = { r: dropRow, c: nextCol };
+            if (!justBuiltZero) {
+              currentRow++;
+            }
           } else {
             nextDigitCellOverride = null;
           }
-          currentRow++;
         }
       }
 
