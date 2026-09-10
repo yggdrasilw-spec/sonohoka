@@ -46,7 +46,13 @@ def main() -> None:
     files = sorted(args.frames.glob("frame-*.png"))
     if len(files) != len(args.captions):
         raise SystemExit(f"frame/caption count mismatch: {len(files)} != {len(args.captions)}")
-    durations = [1.0, 2.0, 2.5, 2.5, 1.5]
+    n = len(files)
+    if n == 5:
+        durations = [1.0, 2.0, 2.5, 2.5, 1.5]
+    else:
+        # 最初と最後を1.0s、残りを均等割りで合計9.5sに
+        middle = round((9.5 - 2.0) / max(n - 2, 1), 1)
+        durations = [1.0] + [middle] * (n - 2) + [1.0]
     frames: list[bytes] = []
     poster_img = None
     for i, (file, cap) in enumerate(zip(files, args.captions)):
