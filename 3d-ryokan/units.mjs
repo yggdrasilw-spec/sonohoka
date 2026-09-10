@@ -1,8 +1,10 @@
-// World dimensions in meters. Values are explicitly educational model settings.
+import {catalog} from './catalog.mjs';
+// World dimensions in meters. Legacy items remain educational settings.
 export const items={
  ruler:{name:'ものさし',height:.3,label:'ものさしの長さ',value:30,unit:'cm',hint:'手に持つと、手のひら何個分かな？'},
  pencil:{name:'えんぴつ',height:.18,label:'えんぴつの長さ',value:18,unit:'cm',hint:'小さなえんぴつ。実寸で見ると、いつもの長さかな？'},
- milk:{name:'牛乳パック',height:.235,label:'牛乳パックの中身',value:1,unit:'L',hint:'外形の高さ23.5cm。手とくらべてみよう。'}
+ milk:{name:'牛乳パック',height:.235,label:'牛乳パックの中身',value:1,unit:'L',hint:'旧教材の仮寸法：7×7×23.5cm。製品資料による裏付けは未取得。'},
+ ...catalog
 };
 export const tub={innerLength:1.25,innerWidth:.64,innerHeight:.45,referenceLiters:200};
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));

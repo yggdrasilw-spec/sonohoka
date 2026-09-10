@@ -1,7 +1,14 @@
 import * as THREE from './vendor/three.module.js';
+import {createHand,createTeachingModel} from './teaching-models.mjs';
+import {catalog,handReference,buildQuestions} from './catalog.mjs';
 import { items, tub, calibrationFrustum, waterDepth, clamp, smooth } from './units.mjs';
 const $=id=>document.getElementById(id), V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 const canvas=$('world'),stage=$('stage');
+let sideOn=false,showDimensions=false,quizIndex=0;
+const questions=buildQuestions();
+const grid=document.querySelector('.object-grid');
+for(const [id,d] of Object.entries(catalog)){const b=document.createElement('button');b.dataset.item=id;b.innerHTML='<b>'+d.name+'</b><small>'+d.value+' '+d.unit+'</small>';grid.append(b);}
+
 let renderer;
 try { renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false}); }
 catch(error){$('loading').innerHTML='3Dを表示できませんでした。WebGL対応ブラウザで開いてください。<br><a href="classic.html">基本教材を開く</a>';throw error;}
@@ -41,24 +48,28 @@ for(let i=0;i<11;i++)box(deskScene,[1.21,.001,.006],[-.36,.01,.15+i*.078],'#b8c2
 const heightMark=group(deskScene,[-.95,0,.0]);rod(heightMark,[0,0,0],[0,1.3,0],.003,'#7b9776');for(let i=0;i<=13;i++)rod(heightMark,[-.025,i*.1,0],[.025,i*.1,0],.002,'#7b9776');label(heightMark,'130 cm',.26,.065,[0,1.37,0]);
 const skin='#e3ad83',shirt='#d5a45e',shorts='#607c66',hair='#4b3f33';
 function createCharacter(){
- const root=group(scene),body=group(root);ball(body,[.135,.19,.085],[0,.805,0],shirt);ball(body,[.13,.09,.085],[0,.64,0],shorts);cylinder(body,.04,.06,[0,1.016,0],skin);
- for(const x of [-.12,.12])ball(body,[.05,.05,.057],[x,.935,0],shirt); const head=group(body,[0,1.15,0]);ball(head,[.12,.143,.111],[0,0,0],skin);
+ const root=group(scene),body=group(root);ball(body,[.135,.19,.085],[0,.805,0],shirt);ball(body,[.13,.09,.085],[0,.64,0],shorts);cylinder(body,.035,.10,[0,1.043,0],skin);
+ for(const x of [-.12,.12])ball(body,[.05,.05,.057],[x,.935,0],shirt); const head=group(body,[0,1.181,0]);head.scale.set(.80,.82,.85);ball(head,[.12,.143,.111],[0,0,0],skin);
  const hairCap=mesh(new THREE.SphereGeometry(1,32,24,0,Math.PI*2,0,Math.PI*.56),mat(hair),head,[0,.005,-.008],[.123,.145,.113]);
- for(const x of [-.044,.044]){ball(head,[.012,.017,.008],[x,.006,.102],'#383c31');ball(head,[.0035,.004,.002],[x-.002,.011,.11],'#fff8df');ball(head,[.019,.008,.002],[x*1.48,-.028,.099],'#d99579');const brow=ball(head,[.018,.003,.003],[x,.041,.101],hair);brow.rotation.z=x*2;}
+ for(const x of [-.044,.044]){ball(head,[.011,.006,.005],[x,.006,.102],'#383c31');ball(head,[.002,.002,.001],[x-.002,.011,.11],'#fff8df');ball(head,[.019,.008,.002],[x*1.48,-.028,.099],'#d99579');const brow=ball(head,[.018,.003,.003],[x,.041,.101],hair);brow.rotation.z=x*2;}
  ball(head,[.013,.014,.012],[0,-.016,.112],skin);const smile=new THREE.CatmullRomCurve3([V(-.018,-.046,.102),V(0,-.052,.108),V(.018,-.046,.102)]);mesh(new THREE.TubeGeometry(smile,14,.0018,5,false),mat('#965f49'),head);
  for(const x of [-.12,.12])ball(head,[.018,.026,.013],[x,-.01,0],skin);
  // Small fringe locks, collar, seams and toes.
  for(let i=0;i<5;i++){const lock=ball(head,[.031,.03,.012],[-.086+i*.041,.075+Math.sin(i)*.013,.083],hair);lock.rotation.z=-.4;}
  for(const x of [-.034,.034]){const collar=ball(body,[.029,.011,.013],[x,.98,.071],'#f4e4bd');collar.rotation.z=x>0?.4:-.4;}ball(body,[.006,.006,.003],[0,.922,.081],'#91703f');
  const arms=[-1,1].map(sign=>({sign,upper:mesh(cylinderGeo,mat(shirt),root),lower:mesh(cylinderGeo,mat(skin),root),elbow:ball(root,[.027,.027,.027],[0,0,0],skin),hand:group(root)}));
- for(const a of arms){ball(a.hand,[.03,.041,.024],[0,0,0],skin);for(let i=0;i<4;i++)ball(a.hand,[.0058,.02,.009],[-.02+i*.013,-.025,.012],skin);ball(a.hand,[.012,.023,.012],[-a.sign*.029,.002,.013],skin);}
+ for(const a of arms){const hand=createHand(a.sign);a.hand.add(hand);a.fingers=hand;}
  const legs=[-1,1].map(sign=>({sign,upper:mesh(cylinderGeo,mat(shorts),root),lower:mesh(cylinderGeo,mat(skin),root),knee:ball(root,[.038,.038,.038],[0,0,0],skin),foot:ball(root,[.048,.032,.083],[0,0,0],'#e9dfb9')}));
  return {root,body,head,arms,legs,handWorld:V(),pose:0};
 }
 const kid=createCharacter();
 function armPose(a,target){const shoulder=V(a.sign*.143,.96-sit*.5,0),d=target.clone().sub(shoulder),distance=Math.min(d.length(),.359),u=d.normalize(),bend=V(a.sign*.8,-.8,.1);bend.addScaledVector(u,-bend.dot(u)).normalize();const elbow=shoulder.clone().addScaledVector(u,distance/2).addScaledVector(bend,Math.sqrt(Math.max(0,.18*.18-distance*distance/4)));setRod(a.upper,shoulder,elbow,.032);setRod(a.lower,elbow,target,.024);a.elbow.position.copy(elbow);a.hand.position.copy(target);}
 function legPose(l,hip,knee,ankle){setRod(l.upper,hip,knee,.042);setRod(l.lower,knee,ankle,.027);l.knee.position.copy(knee);l.foot.position.copy(ankle).add(V(0,-.008,.026));}
-function makeItem(id){const root=group(scene),d=items[id];root.userData.id=id;
+function makeItem(id){const d=items[id];if(d.kind){const model=createTeachingModel(d);model.userData.id=id;scene.add(model);
+ if(d.kind==='measure'){for(let ml=d.stepMl;ml<=d.capacityMl;ml+=d.stepMl){const y=.0025+ml/1e6/(Math.PI*(d.innerDiameter/2)**2);label(model,String(ml),d.width*.23,d.height*.048,[0,y,d.depth/2+.0003],'#e5f2eb','#31515d');}}
+ else if(d.kind!=='syringe'&&d.kind!=='card'){label(model,d.kind==='book'?d.name:d.value+' '+d.unit,d.width*.75,Math.min(d.height*.14,.025),[0,d.height*.46,d.depth/2+.0003],'#f5f0de','#3d624f');}
+ if(d.kind==='card'){label(model,'郵便はがき',d.width*.55,.01,[0,d.height*.85,d.depth/2+.00003],'#fffbec','#a25e4c');}
+ return model;}const root=group(scene);root.userData.id=id;
  if(id==='ruler'){
  box(root,[.035,.3,.003],[0,.15,0],'#e4ba61');for(let i=0;i<=300;i++){const big=i%10===0,mid=i%5===0;box(root,[big?.012:mid?.008:.004,.00045,.0003],[-.0175+(big?.006:mid?.004:.002),i*.001,.0017],'#6b593b');}for(let i=0;i<=30;i+=5){const mark=label(root,String(i),.014,.009,[.007,i*.01,.0019],'#e4ba61','#5a4c32');}
  }else if(id==='pencil'){
@@ -79,7 +90,7 @@ const water=box(bath,[1.247,.001,.637],[0,.15,0],'#6bb5be',{transparent:true,opa
 const waterSurface=mesh(new THREE.PlaneGeometry(1.245,.635,32,16),mat('#8dccce',{transparent:true,opacity:.45,roughness:.1,metalness:.15,side:THREE.DoubleSide,depthWrite:false}),bath,[0,.38,0]);waterSurface.rotation.x=-Math.PI/2;waterSurface.castShadow=false;
 const faucet=group(bath,[-.46,0,-.36]);rod(faucet,[0,.59,0],[0,.82,0],.017,'#9ea99f');rod(faucet,[0,.82,0],[0,.82,.16],.017,'#9ea99f');ball(faucet,[.022,.022,.022],[0,.82,0],'#abb4aa');
 const stream=cylinder(faucet,.009,.42,[0,.6,.16],'#addde0',{transparent:true,opacity:.5});stream.visible=false;
-const bucket=group(bathScene,[1.18,0,.66]);cylinder(bucket,.115,.241,[0,.14,0],'#b5c6ae');cylinder(bucket,.106,.008,[0,.258,0],'#729d9a');const handle=mesh(new THREE.TorusGeometry(.12,.006,8,32,Math.PI),mat('#7a977d'),bucket,[0,.24,0]);label(bucket,'10 L',.12,.045,[0,.16,.116]);
+const bucket=group(bathScene,[1.18,0,.66]);cylinder(bucket,.115,.241,[0,.14,0],'#b5c6ae');cylinder(bucket,.106,.008,[0,.258,0],'#729d9a');const handle=mesh(new THREE.TorusGeometry(.12,.006,8,32,Math.PI),mat('#7a977d'),bucket,[0,.24,0]);bucket.visible=false; // Legacy bucket had unsupported dimensions; use researched desk model.
 const cubeGroup=group(bathScene,[-.55,.068,.7]);cubeGroup.visible=false;const literCubes=[];
 for(let i=0;i<200;i++){const x=i%10,y=Math.floor(i/100),z=Math.floor(i/10)%10;literCubes.push(box(cubeGroup,[.1,.1,.1],[x*.103,y*.103,z*.103],i%10%2?'#76b7b9':'#91c6c4',{roughness:.25}));}
 label(cubeGroup,'1 L × 200 = 200 L',.7,.1,[.46,.38,.48]);
@@ -96,6 +107,15 @@ function updateUI(){
  $('title').textContent=mode==='desk'?'手に持つと、どのくらい？':'200Lに、からだごと入ってみる。';$('subtitle').textContent=mode==='desk'?'近づいて、持って、ぐっと見てみよう。':'1Lも、おふろも、自分のからだも。同じものさしの世界。';
  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));document.querySelectorAll('[data-item]').forEach(b=>{b.classList.toggle('active',b.dataset.item===item);b.disabled=!!action;});document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
  const d=items[item];$('itemLabel').textContent=d.label;$('itemValue').innerHTML=d.value+' <em>'+d.unit+'</em>';$('itemHint').textContent=d.hint;
+ $('dimensions').textContent=d.width?`幅 ${(d.width*1000).toFixed(2).replace(/\.?0+$/,'')} × 高さ ${(d.height*1000).toFixed(2).replace(/\.?0+$/,'')} × 奥行 ${(d.depth*1000).toFixed(2).replace(/\.?0+$/,'')} mm`:'従来の教材設定（製品寸法の資料未取得）';
+ $('sourceLinks').replaceChildren();
+ for(const ref of d.sources||[]){const a=document.createElement('a');a.href=ref.url;a.target='_blank';a.rel='noopener';a.textContent=ref.title+'（確認 '+ref.checked+'）';$('sourceLinks').append(a);}
+ $('sourceNote').textContent=(d.dimensionStatus||'仮寸法')+'。形状の細部は簡略化しています。';
+ $('sideItem').disabled=!!action;$('sideItem').classList.toggle('active',sideOn);$('sideItem').textContent=sideOn?'正面にもどす':'横から厚さを見る';
+ $('volumeControls').hidden=d.kind!=='measure';if(d.kind==='measure')$('volumeReading').textContent=`いま ${objectModels[item].userData.volumeMl||0} mL ／ますの容量 ${d.capacityMl} mL`;
+ $('quizPanel').hidden=mode!=='desk';
+ for(const [id,m] of Object.entries(objectModels)){if(m.userData.dimensionHelper)m.userData.dimensionHelper.visible=showDimensions&&id===item;}
+
  $('pick').disabled=held||!!action;$('put').disabled=!held||!!action;$('enter').disabled=!!action;$('enter').textContent=inBath?'▶ おふろから出る':'▶ おふろに入る';
  $('liters').textContent=waterL;$('meterFill').style.width=waterL/2+'%';document.querySelectorAll('[data-add]').forEach(b=>b.disabled=waterL>=200);$('cubes').textContent=showCubes?'1Lのブロックをしまう':'1Lを200個ならべる';$('cubes').classList.toggle('active',showCubes);
  $('physicalScale').hidden=view!=='real';$('viewBadge').textContent=view==='real'?'⌖ 実寸 · 定規で調整済み':view==='hand'?'● 手元の拡大 · 実寸ではありません':'● 同じ縮尺の3D空間';
@@ -126,18 +146,22 @@ function animateActions(){
  armRight.copy(V(.21,.68,.12));armLeft.copy(V(-.21,.68,.12));
  }
  if(action&&t>=1){const type=action.type;action=null;if(type==='pickup'){held=true;bodyPosition.copy(atDesk);bodyRotation=0;armRight.set(.22,.88,.23);status('手に持てたよ。「手元にズーム」で、手と物を近くから見てみよう。');}if(type==='put'){held=false;armRight.set(.17,.66,.06);status('机にもどしたよ。別のものも持ってみよう。');}if(type==='enter'){inBath=true;sit=1;bodyPosition.copy(bathSeat);status('おふろに入ったよ。200Lの水と身体の大きさをくらべよう。');}if(type==='exit'){inBath=false;sit=0;bodyPosition.copy(bathHome);bodyRotation=0;status('おふろから出たよ。');}updateUI();}
- if(!action){if(mode==='desk'&&held)armRight.set(.22,.88,.23);else if(mode==='desk')armRight.set(.17,.66,.06);}
+ if(!action){armLeft.set(-.17,.66,.06);if(mode==='desk'&&held&&(items[item].width>.10||items[item].kind==='bucket'))armLeft.set(.04,.87,.24);if(mode==='desk'&&held)armRight.set(.22,.88,.23);else if(mode==='desk')armRight.set(.17,.66,.06);}
  kid.root.position.copy(bodyPosition);kid.root.rotation.y=bodyRotation;kid.body.position.y=sit*-.5;kid.head.rotation.z=mode==='desk'&&held?-.04:Math.sin(clock*.7)*.025;
  const breath=action?0:Math.sin(clock*2)*.002;kid.body.position.y+=breath;
  for(const a of kid.arms){const target=(a.sign===1?armRight:armLeft).clone();target.y-=sit*.5;armPose(a,target);}
  for(const leg of kid.legs){const x=leg.sign*.075,hip=V(x,.63-sit*.5,0),knee=V(x,.34-sit*.11,sit*.24+walk*leg.sign),ankle=V(x,.04,sit*.37+walk*leg.sign);legPose(leg,hip,knee,ankle);}
  kid.root.updateMatrixWorld(true);kid.arms[1].hand.getWorldPosition(kid.handWorld);
- const m=objectModels[item];if(held){m.position.copy(kid.handWorld).add(V(0,-.04,.026));m.rotation.set(0,0,0);}else {m.position.set(.27,.701,.035);m.rotation.set(0,0,0);}
+ const m=objectModels[item],d=items[item],large=d.kind==='bucket'||d.kind==='kettle'||d.width>.10;
+ for(const a of kid.arms){const active=held&&(a.sign===1||large);a.fingers.userData.pose(active?(large?.35:d.kind==='book'||d.kind==='card'?.45:1.05):.08);a.hand.rotation.set(active?-Math.PI/2:0,0,0);}
+ if(held){m.position.copy(kid.handWorld).add(V(large?-.12:0,large?-.04:-Math.min(d.height*.35,.06),large?.14:.10));}else m.position.set(.27,.701,.035);
+ m.rotation.set(0,sideOn?Math.PI/2:0,0);
+
 }
 function updateCamera(dt){
  const obj=objectModels[item];
  if(view==='real'&&cal){const fr=calibrationFrustum(w,h,cal.ppm);Object.assign(realCamera,fr);realCamera.updateProjectionMatrix();const center=obj.position.clone().add(V(0,Math.min(items[item].height/2,h/(cal.ppm*1000)*.2),0)).add(realPan);realCamera.position.copy(center).add(V(0,0,2));realCamera.lookAt(center);return;}
- if(view==='hand'){camGoal.copy(obj.position).add(V(0,items[item].height*.42,0));camPosGoal.copy(camGoal).add(V(.24,.12,.75));}
+ if(view==='hand'){camGoal.copy(obj.position).add(V(0,items[item].height*.42,0));camPosGoal.copy(camGoal).add(sideOn?V(0,0,.75):V(.24,.12,.75));}
  else if(mode==='bath'){camGoal.set(.08,.52,showCubes?.48:0);camPosGoal.set(showCubes?3.3:2.35,showCubes?3.15:2.4,showCubes?4.3:3.5);}
  else {camGoal.set(-.06,.71,.1);camPosGoal.set(2.15,1.9,3.65);}
  if(w/h<.9&&view==='wide'){camPosGoal.sub(camGoal).multiplyScalar(1.22).add(camGoal);}
@@ -163,7 +187,18 @@ $('home').onclick=()=>{manualOrbit=false;realPan.set(0,0,0);};
 $('cubes').onclick=()=>{showCubes=!showCubes;view='wide';manualOrbit=false;updateUI();status(showCubes?'1L（10cm角）を200個ならべたよ。いまのおふろの水量とは独立した、200Lの比較用だよ。':'ブロックをしまったよ。');};
 $('drain').onclick=()=>{waterL=0;updateUI();status('水を抜いています。');};$('fill').onclick=()=>{waterL=200;pourUntil=clock+2;updateUI();status('200Lまで水を入れています。');};
 for(const b of document.querySelectorAll('[data-add]'))b.onclick=()=>{const add=Math.min(Number(b.dataset.add),200-waterL);waterL+=add;pourUntil=clock+1.2;updateUI();status(`${add}L入れたよ。いま${waterL}L。${waterL===200?'200Lになった！':''}`);};
-for(const b of document.querySelectorAll('[data-item]'))b.onclick=()=>{if(action)return;item=b.dataset.item;held=false;bodyPosition.copy(homeDesk);armRight.set(.17,.66,.06);view='wide';manualOrbit=false;updateUI();status(`${items[item].name}を選んだよ。歩いて取りにいこう。`);};
+for(const b of document.querySelectorAll('[data-item]'))b.onclick=()=>{if(action)return;item=b.dataset.item;sideOn=false;held=false;bodyPosition.copy(homeDesk);armRight.set(.17,.66,.06);view='wide';manualOrbit=false;updateUI();status(`${items[item].name}を選んだよ。歩いて取りにいこう。`);};
+
+$('sideItem').onclick=()=>{if(action)return;sideOn=!sideOn;view=cal&&view==='real'?'real':'hand';manualOrbit=false;updateUI();};
+$('dimensionToggle').onclick=()=>{showDimensions=!showDimensions;$('dimensionToggle').classList.toggle('active',showDimensions);updateUI();};
+for(const [id,m] of Object.entries(objectModels)){const d=items[id];if(!d.width)continue;
+ const helper=new THREE.Box3Helper(new THREE.Box3(V(-d.width/2,0,-d.depth/2),V(d.width/2,d.height,d.depth)),0x467f70);helper.visible=false;m.add(helper);m.userData.dimensionHelper=helper;
+}
+for(const b of document.querySelectorAll('[data-volume]'))b.onclick=()=>{const m=objectModels[item],d=items[item];if(!m.userData.setVolume)return;const ml=Number(b.dataset.volume)*d.capacityMl;m.userData.setVolume(ml);m.userData.volumeMl=ml;$('volumeReading').textContent=`いま ${ml} mL（${ml/100} dL）／ますの容量 ${d.capacityMl} mL`;};
+function renderQuestion(){const q=questions[quizIndex];$('quizProgress').textContent=`${quizIndex+1} / ${questions.length}`;$('quizQuestion').textContent=q.text;$('quizResult').textContent='';$('quizAnswers').replaceChildren();const choices=[['mm','cm','m','km'],['mL','dL','L'],['g','kg','t'],['cm²','m²','a','ha','km²'],['cm³','m³']].find(group=>group.includes(q.answer));for(const unit of choices){const b=document.createElement('button');b.textContent=unit;b.onclick=()=>{$('quizResult').textContent=unit===q.answer?'正解！ '+q.explanation:'もう一度、大きさや数を考えてみよう。';};$('quizAnswers').append(b);}$('quizShow').hidden=!q.item;}
+$('quizNext').onclick=()=>{quizIndex=(quizIndex+1)%questions.length;renderQuestion();};
+$('quizShow').onclick=()=>{const id=questions[quizIndex].item;if(id&&!action){document.querySelector(`[data-item="${id}"]`).click();setView('hand');}};
+renderQuestion();
 for(const b of document.querySelectorAll('[data-mode]'))b.onclick=()=>switchMode(b.dataset.mode);
 for(const b of document.querySelectorAll('[data-view]'))b.onclick=()=>setView(b.dataset.view);
 let pointer=null;canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);if(!manualOrbit){const offset=camera.position.clone().sub(camTarget);orbitRadius=offset.length();orbitYaw=Math.atan2(offset.x,offset.z);orbitPitch=Math.asin(offset.y/orbitRadius);}});
