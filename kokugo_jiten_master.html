@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>国語辞典の使い方マスター</title>
+  <style>
+    :root {
+      --primary: #4A90E2;
+      --primary-dark: #2B6CB0;
+      --accent: #FF6B6B;
+      --bg: #F5F7FA;
+      --card-bg: #FFFFFF;
+      --text: #333;
+      --muted: #666;
+      --border: #CBD5E0;
+      --success: #48BB78;
+      --success-bg: #C6F6D5;
+      --danger-bg: #FED7D7;
+      --hint-bg: #FFFDF0;
+      --hint-border: #D69E2E;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+    }
+
+    html {
+      font-size: 19px;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN",
+        "ヒラギノ角ゴ ProN W3", "Yu Gothic", "游ゴシック", sans-serif;
+      background-color: #1A202C;
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 16:9 固定ステージ。JSでウインドウに合わせて拡大縮小する
+       仮想解像度を1280×720に抑えることで、実際の画面では
+       より大きい倍率で拡大され、文字が読みやすくなる */
+    #stage {
+      width: 1280px;
+      height: 720px;
+      flex-shrink: 0;
+      transform-origin: center center;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: var(--card-bg);
+      padding: 18px 22px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2C3E50;
+      font-size: 1.55rem;
+      margin: 0 0 14px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      flex: 1 1 220px;
+      padding: 12px;
+      border: none;
+      background: #E2E8F0;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #2D3748;
+    }
+
+    .tab-btn:hover { transform: translateY(-1px); }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* 五十音表 */
+    .gojuon-panel {
+      margin-top: 12px;
+    }
+
+    .gojuon-grid {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(42px, 1fr));
+      gap: 6px;
+      margin-bottom: 15px;
+    }
+
+    .cell {
+      border: 1px solid var(--border);
+      padding: 11px 2px;
+      text-align: center;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 1.05rem;
+      background: #FFF;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .cell.header {
+      background: #EDF2F7;
+      color: #2D3748;
+      font-size: 0.85rem;
+      min-height: 36px;
+    }
+
+    .cell.adan {
+      background: #FEFCBF;
+      border-color: #D69E2E;
+      color: #744210;
+    }
+
+    .cell.empty {
+      background: #F7FAFC;
+      color: #A0AEC0;
+    }
+
+    .highlight-box {
+      background: #EBF8FF;
+      border-left: 4px solid var(--primary);
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      border-radius: 4px;
+      line-height: 1.6;
+    }
+
+    .small-note {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* クイズ */
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .q-badge {
+      background: var(--primary);
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .type-badge {
+      background: #EDF2F7;
+      color: #4A5568;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: bold;
+    }
+
+    .questionText {
+      font-weight: bold;
+      font-size: 1.12rem;
+      line-height: 1.65;
+      margin: 10px 0;
+    }
+
+    .group-filter {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .group-btn {
+      border: none;
+      padding: 10px 6px;
+      border-radius: 8px;
+      background: #E2E8F0;
+      font-weight: bold;
+      cursor: pointer;
+      color: #2D3748;
+    }
+
+    .group-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .group-btn:hover { opacity: 0.9; }
+
+    .word-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .word-card {
+      background: #EDF2F7;
+      border: 2px solid #CBD5E0;
+      padding: 15px 25px;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+      transition: 0.2s;
+      min-width: 125px;
+      text-align: center;
+    }
+
+    .word-card:hover {
+      transform: translateY(-1px);
+      border-color: #A0AEC0;
+    }
+
+    .word-card.selected {
+      background: #EBF8FF;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(74,144,226,0.12);
+    }
+
+    .word-card.single.selected {
+      background: #F0FFF4;
+      border-color: var(--success);
+    }
+
+    .word-card.answer-correct {
+      border-color: var(--success);
+      background: #F0FFF4;
+    }
+
+    .word-card.answer-wrong {
+      border-color: var(--accent);
+      background: #FFF5F5;
+    }
+
+    .badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: var(--accent);
+      color: white;
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .single-mark {
+      position: absolute;
+      top: -9px;
+      right: -9px;
+      background: var(--success);
+      color: white;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      flex: 1;
+      transition: 0.2s;
+    }
+
+    .btn:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn:disabled { background: #CBD5E0; cursor: not-allowed; }
+    .btn-secondary { background: #718096; }
+    .btn-secondary:hover:not(:disabled) { background: #4A5568; }
+    .btn-success { background: var(--success); }
+    .btn-success:hover:not(:disabled) { background: #38A169; }
+
+    .hint-btn {
+      background: #F6AD55;
+      color: #5F370E;
+      border: none;
+      padding: 9px 15px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .hint-btn:hover { background: #ED8936; color: white; }
+
+    .result-box {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      display: none;
+      line-height: 1.7;
+    }
+
+    .result-box.correct { background: var(--success-bg); color: #22543D; }
+    .result-box.incorrect { background: var(--danger-bg); color: #742A2A; }
+
+    .result-box .answer-line {
+      background: rgba(255,255,255,0.65);
+      border-radius: 7px;
+      padding: 10px;
+      margin: 8px 0 12px;
+    }
+
+    .normalized-list {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+    }
+
+    /* ヒント */
+    .hint-panel {
+      display: none;
+      background: var(--hint-bg);
+      border: 2px solid #ECC94B;
+      border-radius: 12px;
+      padding: 14px;
+      margin: 10px 0 15px;
+    }
+
+    .hint-panel.open { display: block; }
+
+    .hint-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .close-hint {
+      border: none;
+      background: transparent;
+      font-size: 1.15rem;
+      cursor: pointer;
+      color: #744210;
+    }
+
+    /* 教員用 */
+    .form-group { margin-bottom: 15px; }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 1rem;
+    }
+
+    input[type="text"]:focus {
+      outline: 2px solid rgba(74,144,226,0.25);
+      border-color: var(--primary);
+    }
+
+    .status {
+      color: #38A169;
+      font-weight: bold;
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    .quiz-footer-note {
+      margin-top: 12px;
+      padding: 9px 12px;
+      background: #F7FAFC;
+      border-radius: 8px;
+      color: #4A5568;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    /* ---------------------------------------------------------
+       タブ4：比較アニメーション演出
+       --------------------------------------------------------- */
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(74,144,226,0.45); }
+      50% { box-shadow: 0 0 0 7px rgba(74,144,226,0); }
+    }
+
+    @keyframes pulse-border-accent {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0.5); }
+      50% { box-shadow: 0 0 0 7px rgba(255,107,107,0); }
+    }
+
+    .word-card.col-active {
+      animation: pulse-border 1.1s ease-in-out infinite;
+    }
+
+    @keyframes char-pop {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.45); }
+      100% { transform: scale(1); }
+    }
+
+    .algo-char-highlight {
+      display: inline-block;
+      color: var(--accent);
+      font-weight: bold;
+      text-decoration: underline;
+      animation: char-pop 0.45s ease;
+    }
+
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #algoStepDesc {
+      animation: fade-in-up 0.3s ease;
+    }
+
+    .algo-gojuon-wrap {
+      margin-top: 14px;
+    }
+
+    .cell.gojuon-cell-link {
+      border-color: var(--accent);
+      background: #FFF0F0;
+      animation: pulse-border-accent 1.1s ease-in-out infinite;
+    }
+
+    .cell-order-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--accent);
+      color: white;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+      z-index: 1;
+    }
+
+    .algo-order-badge {
+      position: absolute;
+      top: -9px;
+      left: -9px;
+      background: var(--primary);
+      color: white;
+      width: 23px;
+      height: 23px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    }
+
+    .algo-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .autoplay-btn {
+      background: #EDF2F7;
+      color: #2D3748;
+      border: 2px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .autoplay-btn.on {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
+    @keyframes fade-in-opacity-only {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .algo-resolved-word {
+      display: inline-block;
+      /* transformを含めるとFLIPアニメーション(JSでtransformを操作)と
+         同じプロパティを取り合ってしまい、移動せず瞬間移動→ポップに
+         見えてしまうため、opacityのみをアニメーションさせる */
+      animation: fade-in-opacity-only 0.35s ease;
+    }
+
+  </style>
+</head>
+<body>
+
+<div id="stage">
+<div class="container">
+  <h1>📖 国語辞典の使い方マスター</h1>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" id="tabBtn1" onclick="switchTab('tab1', event)">1. 五十音の基本</button>
+    <button class="tab-btn" id="tabBtn2" onclick="switchTab('tab2', event)">2. 辞書順チャレンジ</button>
+    <button class="tab-btn" id="tabBtn3" onclick="switchTab('tab3', event)">3. 教員用：問題自作</button>
+    <button class="tab-btn" id="tabBtn4" onclick="switchTab('tab4', event)">4. 比較のしくみを見る</button>
+  </div>
+
+  <!-- TAB 1 -->
+  <div id="tab1" class="tab-content active">
+    <div class="highlight-box">
+      <strong>「あ段」を覚えよう！</strong><br>
+      五十音の順番を知っていると、辞書で言葉を探すときに「どちらが先か」を判断しやすくなります。
+      黄色いマスは「あ段（あ・か・さ・た・な・は・ま・や・ら・わ）」です。
+    </div>
+    <div class="gojuon-panel">
+      <div class="gojuon-grid" id="gojuonGrid"></div>
+      <div class="small-note">
+        ※ 「ゃ・ゅ・ょ」「っ」「ー」や濁点・半濁点を含む言葉は、問題の解説で比較のしかたを確認しましょう。
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2 -->
+  <div id="tab2" class="tab-content">
+    <div class="group-filter" id="groupFilter"></div>
+
+    <div class="quiz-header">
+      <span class="q-badge" id="questionCounter">A 1 / 6</span>
+      <span class="type-badge" id="questionType">並べ替え問題</span>
+      <button class="hint-btn" onclick="toggleHint()">💡 五十音表</button>
+      <button class="hint-btn" id="algoHintBtn" onclick="showAlgoHintForCurrentQuestion()">🎬 比べ方のヒント</button>
+    </div>
+
+    <div id="hintPanel" class="hint-panel">
+      <div class="hint-header">
+        <strong>💡 五十音表ヒント</strong>
+        <button class="close-hint" onclick="toggleHint()" aria-label="閉じる">✕</button>
+      </div>
+      <div class="gojuon-grid" id="hintGojuonGrid"></div>
+      <div class="small-note">
+        同じところまで同じなら、次の文字を比べます。濁点・半濁点・小さい文字・長音が出てきたときは、問題の解説をよく確認しましょう。
+      </div>
+    </div>
+
+    <div id="quizContainer">
+      <div id="questionText" class="questionText"></div>
+      <div class="small-note" id="selectionInstruction"></div>
+
+      <div class="word-cards" id="wordCards"></div>
+
+      <button class="btn" id="checkBtn" onclick="checkAnswer()" disabled>正誤判定する</button>
+
+      <div class="result-box" id="resultBox">
+        <div id="resultTitle" style="font-size:1.2rem; font-weight:bold; margin-bottom:5px;"></div>
+        <div id="resultExp"></div>
+      </div>
+
+      <div class="btn-group" id="navBtnGroup" style="display:none;">
+        <button class="btn btn-secondary" id="prevBtn" onclick="prevQuestion()">前の問題へ</button>
+        <button class="btn btn-success" id="nextBtn" onclick="nextQuestion()">次の問題へ</button>
+      </div>
+
+      <div class="quiz-footer-note">
+        <strong>問題の考え方：</strong>
+        「最初の文字だけを見る」のではなく、同じところまでそろっていたら次の文字へ進みます。
+        この問題集では、実際の辞書引きで迷いやすいポイントを意図的に組み込んでいます。
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3 -->
+  <div id="tab3" class="tab-content">
+    <div class="highlight-box">
+      カンマ区切りで言葉を入力すると、辞書順ソートエンジンが自動で【正答順】と【自動解説】を生成して問題に追加します。<br>
+      <strong>2〜4語</strong>で作ると、今回の学習用問題と同じ形式になります。
+    </div>
+
+    <div class="form-group">
+      <label for="customPrompt">問題文（指示文）</label>
+      <input type="text" id="customPrompt" value="言葉を辞書順にタップしてください。">
+    </div>
+
+    <div class="form-group">
+      <label for="customWords">単語リスト（カンマ区切りで入力）</label>
+      <input type="text" id="customWords" placeholder="例: きょうしつ, きゅうしょく, きりん, ぎゅうにゅう">
+    </div>
+
+    <button class="btn" onclick="createCustomQuestion()">自動生成して問題追加</button>
+    <div id="createSuccess" class="status"></div>
+    <div class="quiz-footer-note" style="margin-top:16px;">
+      <strong>教材研究メモ：</strong>問題設計では、国立国語研究所の「めざせ！辞書引きの達人」、ブリッジぷりんとの「国語辞典の引き方」、文部科学省の指導事例、Startooの学習プリントで共通して扱われている「一文字ずつ比べる・長音を直す・清音→濁音→半濁音・小さい文字の扱い」などの型を参考にし、このアプリ用に語を選び直したオリジナル問題として構成しています。
+    </div>
+
+  </div>
+
+  <!-- TAB 4 -->
+  <div id="tab4" class="tab-content">
+    <div class="highlight-box">
+      2〜6個くらいの言葉をカンマ区切りで入力すると、辞書順に並べる過程を1ステップずつ確認できます。
+      「一文字ずつ比べる」「長音は母音に置きかえる」「小さい文字は大きい文字として考える」
+      「濁点・半濁点を外して比べる」「同じなら短い語が先」「清音→濁音→半濁音の順」
+      という手順を、実際にどう使っているかを見てみましょう。
+    </div>
+
+    <div class="form-group">
+      <label for="algoWordsInput">比べたい言葉（カンマ区切りで入力）</label>
+      <input type="text" id="algoWordsInput" placeholder="例: きゅうしょく, きょうしつ, ぎゅうにゅう">
+    </div>
+
+    <button class="btn" onclick="startAlgoTrace()">比較を始める</button>
+    <div id="algoInputError" class="status" style="color:#C53030;"></div>
+
+    <div id="algoTracePanel" style="display:none; margin-top:18px;">
+      <div class="quiz-header">
+        <span class="q-badge" id="algoStepCounter">1 / 1</span>
+        <span class="type-badge" id="algoStepTypeLabel"></span>
+      </div>
+
+      <div id="algoWordsArea" class="word-cards"></div>
+
+      <div id="algoStepDesc" class="highlight-box"></div>
+
+      <div id="algoResolvedArea" class="small-note"></div>
+
+      <div class="algo-toolbar">
+        <div class="btn-group" style="margin-top:0; flex:1;">
+          <button class="btn btn-secondary" id="algoPrevBtn" onclick="algoPrevStep()">前へ</button>
+          <button class="btn btn-success" id="algoNextBtn" onclick="algoNextStep()">次へ</button>
+        </div>
+        <button class="autoplay-btn" id="autoplayBtn" onclick="toggleAutoPlay()">▶ 自動再生（1.5秒ごと）</button>
+      </div>
+
+      <div class="algo-gojuon-wrap">
+        <div class="small-note" style="margin-bottom:6px;">
+          <strong>五十音表と連動：</strong>今比べている文字の行が赤く光り、比べる順番（①②③…）が単語カードの番号バッジと対応しています。
+        </div>
+        <div class="gojuon-grid" id="algoGojuonGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+/* =========================================================
+   国語辞典の使い方マスター 完全版
+   - 元のアプリ機能を維持
+   - 問題をA〜Eにグループ化
+   - 現行8〜10は「1つだけ選ぶ」単一選択問題
+   - 五十音表ヒント
+   - 辞書順の比較キーを一元化
+   - 教員用の問題自作
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   辞書順ソートエンジン
+   このアプリで採用する比較の考え方
+   1. カタカナをひらがなへ
+   2. 長音「ー」は直前の文字の母音へ
+   3. 濁点・半濁点は基の清音で比較
+   4. 小さい「っ」「ゃ」「ゅ」「ょ」は対応する
+      通常かな（つ・や・ゆ・よ）として比較
+   5. 同じ比較キーなら正規化文字列→原文で決定
+   --------------------------------------------------------- */
+
+const DAKUTEN_MAP = {
+  'が':'か','ぎ':'き','ぐ':'く','げ':'け','ご':'こ',
+  'ざ':'さ','じ':'し','ず':'す','ぜ':'せ','ぞ':'そ',
+  'だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と',
+  'ば':'は','び':'ひ','ぶ':'ふ','べ':'へ','ぼ':'ほ',
+  'ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ',
+  'ゔ':'う'
+};
+
+const SMALL_TO_LARGE = {
+  'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お',
+  'っ':'つ','ゃ':'や','ゅ':'ゆ','ょ':'よ','ゎ':'わ'
+};
+
+const VOWEL_MAP = {
+  'あ':'あ','か':'あ','さ':'あ','た':'あ','な':'あ','は':'あ','ま':'あ','や':'あ','ら':'あ','わ':'あ',
+  'い':'い','き':'い','し':'い','ち':'い','に':'い','ひ':'い','み':'い','り':'い',
+  'う':'う','く':'う','す':'う','つ':'う','ぬ':'う','ふ':'う','む':'う','ゆ':'う','る':'う',
+  'え':'え','け':'え','せ':'え','て':'え','ね':'え','へ':'え','め':'え','れ':'え',
+  'お':'お','こ':'お','そ':'お','と':'お','の':'お','ほ':'お','も':'お','よ':'お','ろ':'お'
+};
+
+function toHiragana(str) {
+  return str.replace(/[\u30a1-\u30f6]/g, match =>
+    String.fromCharCode(match.charCodeAt(0) - 0x60)
+  );
+}
+
+function isKatakanaChar(ch) {
+  return /[\u30A1-\u30FA]/.test(ch || '');
+}
+
+/*
+  学習用の辞書順比較キー
+  ① カタカナ→ひらがな
+  ② 「ー」は直前の音の母音に置き換える
+  ③ 濁点・半濁点を外す
+  ④ 「っ・ゃ・ゅ・ょ」は、まず「つ・や・ゆ・よ」と同じ音として比べる
+  ⑤ 五十音順で決まらなければ、短い語→長い語
+  ⑥ それでも同じなら、清音→濁音→半濁音、小さい文字は大きい文字の後
+  ⑦ 同じ読みなら、ひらがな→カタカナ
+
+  ※国語辞典には版・辞書ごとに細かな排列規則の差があります。
+    このアプリでは、国立国語研究所・文科省等の教材で説明されている
+    学習上の基本ルールに合わせ、アプリ内の比較規則を一貫させています。
+*/
+function getCharBase(ch) {
+  return DAKUTEN_MAP[ch] || ch;
+}
+
+function expandForPrimary(hira) {
+  let result = '';
+  for (let i = 0; i < hira.length; i++) {
+    const ch = hira[i];
+    if (ch === 'ー') {
+      const prev = result[result.length - 1];
+      const basePrev = getCharBase(prev || '');
+      result += VOWEL_MAP[basePrev] || '';
+      continue;
+    }
+    const large = SMALL_TO_LARGE[ch] || ch;
+    result += getCharBase(large);
+  }
+  return result;
+}
+
+function normalizeWord(word) {
+  const hira = toHiragana(word);
+  const primary = expandForPrimary(hira);
+  return { original: word, hira, primary };
+}
+
+const GOJUON_ORDER = [
+  'あ','い','う','え','お',
+  'か','き','く','け','こ',
+  'さ','し','す','せ','そ',
+  'た','ち','つ','て','と',
+  'な','に','ぬ','ね','の',
+  'は','ひ','ふ','へ','ほ',
+  'ま','み','む','め','も',
+  'や','ゆ','よ',
+  'ら','り','る','れ','ろ',
+  'わ','を','ん'
+];
+
+const GOJUON_INDEX = Object.fromEntries(
+  GOJUON_ORDER.map((char, index) => [char, index])
+);
+
+function compareStringByGojuon(a, b) {
+  const max = Math.max(a.length, b.length);
+  for (let i = 0; i < max; i++) {
+    if (a[i] === undefined) return -1;
+    if (b[i] === undefined) return 1;
+    const ai = GOJUON_INDEX[a[i]];
+    const bi = GOJUON_INDEX[b[i]];
+    if (ai === undefined || bi === undefined) {
+      if (a[i] < b[i]) return -1;
+      if (a[i] > b[i]) return 1;
+    } else if (ai !== bi) {
+      return ai - bi;
+    }
+  }
+  return 0;
+}
+
+function kanaDetailPriority(ch) {
+  const hira = toHiragana(ch || '');
+  const base = getCharBase(hira);
+  const isSmall = SMALL_TO_LARGE[hira] !== undefined;
+  const isHandaku = 'ぱぴぷぺぽ'.includes(hira);
+  const isDaku = 'がぎぐげござじずぜぞだぢづでどばびぶべぼ'.includes(hira);
+  let soundType = 0; // 清音
+  if (isDaku) soundType = 1;
+  if (isHandaku) soundType = 2;
+  // 大きい文字 → 小さい文字。濁点・半濁点の方が先に効く。
+  return soundType * 2 + (isSmall ? 1 : 0) + (base ? 0 : 10);
+}
+
+function compareWords(a, b) {
+  const A = normalizeWord(a);
+  const B = normalizeWord(b);
+
+  // 1. 正規化した読みの五十音順
+  const primaryCompare = compareStringByGojuon(A.primary, B.primary);
+  if (primaryCompare !== 0) return primaryCompare;
+
+  // 2. 同じところまで一致したら、短い語を先にする
+  if (A.primary.length !== B.primary.length) {
+    return A.primary.length - B.primary.length;
+  }
+
+  // 3. 同じ読みになったときの細則
+  const max = Math.max(A.hira.length, B.hira.length);
+  for (let i = 0; i < max; i++) {
+    const ac = A.hira[i];
+    const bc = B.hira[i];
+    if (ac === bc) continue;
+
+    const ap = kanaDetailPriority(ac);
+    const bp = kanaDetailPriority(bc);
+    if (ap !== bp) return ap - bp;
+
+    const abase = getCharBase(ac || '');
+    const bbase = getCharBase(bc || '');
+    const ai = GOJUON_INDEX[abase];
+    const bi = GOJUON_INDEX[bbase];
+    if (ai !== undefined && bi !== undefined && ai !== bi) return ai - bi;
+
+    // ひらがな→カタカナ
+    const aKat = isKatakanaChar(a[i]);
+    const bKat = isKatakanaChar(b[i]);
+    if (aKat !== bKat) return aKat ? 1 : -1;
+  }
+
+  return a.localeCompare(b, 'ja');
+}
+
+/* ---------------------------------------------------------
+   比較アルゴリズムの可視化トレース生成（アニメーション用）
+   ---------------------------------------------------------
+   ・既存のcompareWords()はクイズ採点用としてそのまま維持し、
+     こちらは「見せるための」トレース（手順の記録）を作る専用ロジック。
+   ・3〜4語以上の同時比較に対応するため、compareWordsのような
+     2語ペア比較ではなく、単語グループを桁（文字位置）ごとに
+     多分岐で絞り込んでいく方式（DFS）を採用している。
+   ・最終的な並び順は必ず [...words].sort(compareWords) を
+     正として採用するため、トレースがどんな稀なケースに当たっても
+     アプリの正誤判定・表示される「正しい順番」は既存ロジックと
+     食い違わない。
+   --------------------------------------------------------- */
+
+function charTransformInfo(hiraChar, prevPrimaryChar) {
+  if (hiraChar === 'ー') {
+    const basePrev = getCharBase(prevPrimaryChar || '');
+    const vowel = VOWEL_MAP[basePrev] || '';
+    return { primaryChar: vowel, transform: 'long-vowel' };
+  }
+  const large = SMALL_TO_LARGE[hiraChar] || hiraChar;
+  const base = getCharBase(large);
+  let transform = null;
+  if (SMALL_TO_LARGE[hiraChar]) transform = 'small-to-large';
+  else if (DAKUTEN_MAP[hiraChar]) transform = 'dakuten-removed';
+  return { primaryChar: base, transform };
+}
+
+/* 1語分の「正規化の過程」を1文字ずつ記録する
+   （カタカナ→ひらがな／長音→母音／小さい文字→大きい文字／濁点半濁点を外す） */
+function buildNormalizeTrace(word) {
+  const hira = toHiragana(word);
+  const chars = [];
+  let primary = '';
+  for (let i = 0; i < hira.length; i++) {
+    const ch = hira[i];
+    const info = charTransformInfo(ch, primary[primary.length - 1]);
+    chars.push({
+      index: i,
+      original: word[i],
+      hira: ch,
+      primaryChar: info.primaryChar,
+      transform: info.transform,       // 'long-vowel' | 'small-to-large' | 'dakuten-removed' | null
+      isKatakana: isKatakanaChar(word[i])
+    });
+    primary += info.primaryChar;
+  }
+  return { word, hira, primary, chars };
+}
+
+let traceIdCounter = 0;
+function nextTraceId() {
+  traceIdCounter += 1;
+  return 'w' + traceIdCounter;
+}
+
+/*
+  words（3〜4語以上）を渡すと、比較の全過程を steps 配列として返す。
+
+  steps の種類:
+    - normalize        : 1語分の正規化過程（各語ごとに1個）
+    - column-compare    : 正規化文字列を1文字目から比較していく過程
+    - primary-tied      : 正規化文字列が完全一致し、細則比較へ進む合図
+    - detail-compare    : 清音／濁音／半濁音・小さい文字などの細則比較
+    - final-tiebreak    : 稀に細則でも決まらない場合の最終判定
+    - resolved          : その語の順位が確定した合図
+
+  返り値の finalOrder は、既存のcompareWordsによる並び順（正）を採用する。
+*/
+function buildComparisonTrace(words) {
+  traceIdCounter = 0;
+  const entries = words.map(w => {
+    const n = buildNormalizeTrace(w);
+    return { id: nextTraceId(), ...n };
+  });
+
+  const steps = [];
+  entries.forEach(entry => steps.push({ type: 'normalize', entry }));
+
+  const finalOrderIds = [];
+
+  /* ---- フェーズA：正規化した読みを1文字ずつ比較して絞り込む ---- */
+  function primaryDFS(group, column) {
+    if (group.length === 1) {
+      finalOrderIds.push(group[0].id);
+      steps.push({ type: 'resolved', entry: group[0], reason: 'primary' });
+      return;
+    }
+
+    const allEnded = group.every(e => column >= e.primary.length);
+    if (allEnded) {
+      // 正規化した読みが完全に同じ → 細則比較（フェーズB）へ
+      steps.push({ type: 'primary-tied', group: group.map(e => e.id) });
+      detailDFS(group, 0);
+      return;
+    }
+
+    const buckets = new Map();
+    group.forEach(entry => {
+      const key = column >= entry.primary.length ? '' : entry.primary[column];
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(entry);
+    });
+
+    // ''（そこで語が終わっている＝短い語）を最優先、あとは五十音順
+    const orderedKeys = Array.from(buckets.keys()).sort((a, b) => {
+      if (a === '' && b === '') return 0;
+      if (a === '') return -1;
+      if (b === '') return 1;
+      const ai = GOJUON_INDEX[a];
+      const bi = GOJUON_INDEX[b];
+      if (ai !== undefined && bi !== undefined) return ai - bi;
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
+
+    steps.push({
+      type: 'column-compare',
+      column,
+      group: group.map(e => e.id),
+      buckets: orderedKeys.map(k => ({ char: k, entries: buckets.get(k).map(e => e.id) }))
+    });
+
+    orderedKeys.forEach(key => {
+      const bucket = buckets.get(key);
+      if (bucket.length === 1) {
+        finalOrderIds.push(bucket[0].id);
+        steps.push({ type: 'resolved', entry: bucket[0], reason: 'primary' });
+      } else {
+        primaryDFS(bucket, column + 1);
+      }
+    });
+  }
+
+  /* ---- フェーズB：清音→濁音→半濁音、小さい文字は大きい文字の後 ---- */
+  function detailKey(entry, pos) {
+    const ch = entry.hira[pos];
+    if (ch === undefined) return { priority: 10, base: '' };
+    return { priority: kanaDetailPriority(ch), base: getCharBase(ch) };
+  }
+
+  function detailDFS(group, pos) {
+    if (group.length === 1) {
+      finalOrderIds.push(group[0].id);
+      steps.push({ type: 'resolved', entry: group[0], reason: 'detail' });
+      return;
+    }
+
+    const maxLen = Math.max(...group.map(e => e.hira.length));
+    if (pos >= maxLen) {
+      // 極めて稀：ここまでの規則では決まらない → 総合的な最終判定
+      const sorted = [...group].sort((a, b) => a.word.localeCompare(b.word, 'ja'));
+      steps.push({ type: 'final-tiebreak', group: sorted.map(e => e.id) });
+      sorted.forEach(e => {
+        finalOrderIds.push(e.id);
+        steps.push({ type: 'resolved', entry: e, reason: 'tiebreak' });
+      });
+      return;
+    }
+
+    const chars = group.map(e => e.hira[pos]);
+    const allSame = chars.every(c => c === chars[0]);
+    if (allSame) {
+      // 同じ文字なので勝敗つかず、次の文字へ
+      detailDFS(group, pos + 1);
+      return;
+    }
+
+    const buckets = new Map();
+    group.forEach(entry => {
+      const { priority, base } = detailKey(entry, pos);
+      const key = priority + '_' + base;
+      if (!buckets.has(key)) buckets.set(key, { priority, base, entries: [] });
+      buckets.get(key).entries.push(entry);
+    });
+
+    const orderedBuckets = Array.from(buckets.values()).sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      const ai = GOJUON_INDEX[a.base];
+      const bi = GOJUON_INDEX[b.base];
+      if (ai !== undefined && bi !== undefined) return ai - bi;
+      return 0;
+    });
+
+    steps.push({
+      type: 'detail-compare',
+      column: pos,
+      group: group.map(e => e.id),
+      buckets: orderedBuckets.map(b => ({ base: b.base, priority: b.priority, entries: b.entries.map(e => e.id) }))
+    });
+
+    orderedBuckets.forEach(b => {
+      if (b.entries.length === 1) {
+        finalOrderIds.push(b.entries[0].id);
+        steps.push({ type: 'resolved', entry: b.entries[0], reason: 'detail' });
+      } else {
+        detailDFS(b.entries, pos + 1);
+      }
+    });
+  }
+
+  primaryDFS(entries, 0);
+
+  // 安全策：最終的な並び順は既存のcompareWords（採点にも使う正のロジック）に必ず合わせる
+  const authoritative = [...words].sort(compareWords);
+  const byWord = {};
+  entries.forEach(e => { byWord[e.word] = e; });
+  const finalOrder = authoritative.map(w => byWord[w]);
+
+  return { entries, steps, finalOrder };
+}
+
+/* ---------------------------------------------------------
+   補助関数
+   --------------------------------------------------------- */
+
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function groupLabel(group) {
+  const labels = {
+    A: 'A：基本の辞書順',
+    B: 'B：濁点・半濁点',
+    C: 'C：長音・小さい文字',
+    D: 'D：見出し語',
+    E: 'E：総合チャレンジ'
+  };
+  return labels[group] || '全問題';
+}
+
+function getCurrentQuestion() {
+  const indexes = getFilteredIndexes();
+  return questions[indexes[quizPosition]] || questions[0];
+}
+
+function getFilteredIndexes() {
+  const indexes = [];
+  questions.forEach((q, index) => {
+    if (activeGroup === 'ALL' || q.group === activeGroup) {
+      indexes.push(index);
+    }
+  });
+  return indexes;
+}
+
+function findFirstDifference(a, b) {
+  const na = normalizeWord(a).primary;
+  const nb = normalizeWord(b).primary;
+  const max = Math.max(na.length, nb.length);
+
+  for (let i = 0; i < max; i++) {
+    if (na[i] !== nb[i]) {
+      return {
+        index: i,
+        a: na[i] ?? '（なし）',
+        b: nb[i] ?? '（なし）'
+      };
+    }
+  }
+
+  return null;
+}
+
+function makeAutoExplanation(words, sortedWords) {
+  const lines = [];
+  lines.push(`正しい順番は「${sortedWords.join(' → ')}」です。`);
+  lines.push('同じところまで同じなら、次の文字を比べます。');
+
+  const normalized = sortedWords.map(word => {
+    const n = normalizeWord(word);
+    let note = `${word} → ${n.primary}`;
+    if (word.includes('ー')) note += '（「ー」を直前の音の母音に置き換えて考えます）';
+    return note;
+  });
+
+  lines.push(`<ul class="normalized-list">${normalized.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`);
+
+  if (sortedWords.length >= 2) {
+    for (let i = 0; i < sortedWords.length - 1; i++) {
+      const diff = findFirstDifference(sortedWords[i], sortedWords[i + 1]);
+      if (diff) {
+        lines.push(
+          `「${sortedWords[i]}」と「${sortedWords[i + 1]}」は、比較キーの${diff.index + 1}文字目付近で違いが出ます。`
+        );
+      }
+    }
+  }
+
+  return lines.join('<br>');
+}
+
+/* ---------------------------------------------------------
+   問題データ
+   type:
+     order  = すべての語を辞書順に並べる
+     single = 正答を1つだけ選ぶ
+   --------------------------------------------------------- */
+
+let questions = [
+  /* =========================================================
+     A：基本の辞書順（10問）
+     ========================================================= */
+  { id:1, group:'A', type:'order', prompt:'【A：基本】1文字目がちがう言葉を、辞書に載っている順番にタップしてください。', words:['あさ','いし','うら'], exp:'1文字目を五十音順に比べます。「あ」→「い」→「う」の順です。' },
+  { id:2, group:'A', type:'order', prompt:'【A：基本】1文字目が同じ言葉を、辞書に載っている順番にタップしてください。', words:['あさい','あしあと','あす'], exp:'1文字目はすべて「あ」。そこで2文字目を比べ、「さ」→「し」→「す」の順にします。' },
+  { id:3, group:'A', type:'order', prompt:'【A：基本】1・2文字目が同じ言葉を、辞書に載っている順番にタップしてください。', words:['あしあと','あしおと','あしか'], exp:'「あし」まで同じです。3文字目の「あ・お・か」を比べます。' },
+  { id:11, group:'A', type:'order', prompt:'【A：基本】言葉を辞書に載っている順番にタップしてください。', words:['さかな','さくら','さくらんぼ','さと'], exp:'2文字目を比べると「か→く→く→と」。さらに「さくら」と「さくらんぼ」は「さくら」まで同じなので、短い「さくら」が先です。' },
+  { id:12, group:'A', type:'order', prompt:'【A：基本】同じ文字から始まる言葉を、辞書に載っている順番にタップしてください。', words:['はし','はな','はなび','はん'], exp:'2文字目は「し・な・な・ん」。まず「な」の2語。その2語は「はな」まで同じなので短い「はな」が先。次に「はし」、最後に「はん」です。' },
+  { id:21, group:'A', type:'order', prompt:'【A：発展】「同じところまで同じ」の考え方を使って並べてください。', words:['あめ','あめだま','あめや','あんぱん'], exp:'「あめ」はそこで終わるので先。「あめだま」と「あめや」は3文字目の「だ・や」を比べ、「あめだま」が先。「あんぱん」は「ん」なので最後です。' },
+  { id:31, group:'A', type:'order', prompt:'【A：基本】「く」から始まる言葉と「け」から始まる言葉を、辞書順に並べてください。', words:['くつ','くじら','けんだま','くも'], exp:'「く」の3語が先。「くつ」「くじら」「くも」は2文字目「つ・じ・も」を比べ、「じ」→「つ」→「も」。その後に「けんだま」です。' },
+  { id:32, group:'A', type:'order', prompt:'【A：発展】2文字目が同じ言葉で、3文字目まで比べてください。', words:['たまご','たから','たこ','ちず'], exp:'「た」の3語を比べます。2文字目「ま・か・こ」では「か」→「こ」→「ま」。最後に「ちず」です。' },
+  { id:33, group:'A', type:'order', prompt:'【A：発展】同じ1文字目でも、2文字目の順番に注意して並べてください。', words:['みず','みみ','みかん','むし'], exp:'「み」の3語は2文字目「ず・み・か」ではなく、五十音順の「か→み→ず」。したがって「みかん」→「みみ」→「みず」→「むし」です。' },
+  { id:34, group:'A', type:'order', prompt:'【A：発展】「せん」まで同じ言葉を、辞書順に並べてください。', words:['せんせい','せんたく','せんべい','せんろ'], exp:'「せん」まで同じ。4文字目の「せ・た・べ・ろ」を比べ、「せ→た→べ→ろ」の順です。' },
+
+  /* =========================================================
+     B：濁点・半濁点（10問）
+     ========================================================= */
+  { id:4, group:'B', type:'order', prompt:'【B：濁点】清音と濁音を含む言葉を、辞書に載っている順番にタップしてください。', words:['ふた','ぶた'], exp:'「ふ」と「ぶ」は同じ「ふ」の仲間として比べ、清音「ふた」が先、その後に濁音「ぶた」です。' },
+  { id:5, group:'B', type:'order', prompt:'【B：濁点・半濁点】清音・濁音・半濁音を、辞書に載っている順番にタップしてください。', words:['はす','バス','パス'], exp:'「は・ば・ぱ」は同じ「は」の仲間。清音→濁音→半濁音の順です。' },
+  { id:6, group:'B', type:'order', prompt:'【B：濁点・半濁点】カタカナでも、辞書順を考えて並べてください。', words:['ホール','ボール','ポール'], exp:'読みをひらがなにすると「ほーる・ぼーる・ぽーる」。同じ「ほ」の仲間では、清音→濁音→半濁音です。' },
+  { id:13, group:'B', type:'order', prompt:'【B：濁点・半濁点】濁点・半濁点を含む言葉を、辞書に載っている順番にタップしてください。', words:['へや','ぺん','べんきょう'], exp:'「へや」は「へや」、「ぺん」は「へん」、「べんきょう」は「へんきよう」として考えます。「へや」が先。「へん」の2語では短い「ぺん」が先です。' },
+  { id:14, group:'B', type:'order', prompt:'【B：濁点・半濁点】「は」の仲間を含む言葉を、辞書に載っている順番にタップしてください。', words:['はな','パパ','ばら'], exp:'基の音を考えると「はな・はは・はら」。2文字目は「な→は→ら」なので、この順です。' },
+  { id:15, group:'B', type:'order', prompt:'【B：濁点】濁点を外した読みと、その次の文字を両方考えて並べてください。', words:['かさ','がっこう','かばん','ぱん'], exp:'「がっこう」は「かつこう」、「かばん」は「かはん」、「ぱん」は「はん」として比べます。「かさ」→「がっこう」→「かばん」→「ぱん」の順です。' },
+  { id:22, group:'B', type:'order', prompt:'【B：診断】「ひ・び・ぴ」の違いがある言葉を、辞書に載っている順番にタップしてください。', words:['ひこうき','びわ','ぴあの','ひまわり'], exp:'「ひ・び・ぴ」を基の清音に戻して考えます。「ぴあの」は「ひあの」なので、2文字目が「こ・ま・あ」の「ひこうき・ひまわり」より先に来ます。その後、「ひこうき」→「ひまわり」→「びわ」の順です。' },
+  { id:35, group:'B', type:'order', prompt:'【B：濁点】清音と濁音、さらに次の文字まで比べてください。', words:['さる','ざる','さんぽ','ザリガニ'], exp:'「ザリガニ」は「さりがに」として考えるので、2文字目「り」が「さる・ざる」の「る」より先です。まず「ザリガニ」。次に清音「さる」→濁音「ざる」。最後に、2文字目が「ん」の「さんぽ」です。' },
+  { id:36, group:'B', type:'order', prompt:'【B：濁点】「か・が」の仲間と、その後の文字の違いを考えてください。', words:['かき','がっき','かきん','ぱん'], exp:'「かき」「かきん」「がっき」は基準化すると「かき・かきん・かつき」。短い「かき」が先、その次に「かきん」、次に「がっき」。最後が「ぱん」です。' },
+  { id:37, group:'B', type:'order', prompt:'【B：濁点・半濁点】「て・で・ぺ」を含む言葉を、辞書順に並べてください。', words:['てがみ','でんわ','てんき','ぺん'], exp:'「でんわ」は「てんわ」、「ぺん」は「へん」として考えます。「てがみ」→「てんき」→「でんわ」→「ぺん」です。' },
+
+  /* =========================================================
+     C：長音・小さい文字（10問）
+     ========================================================= */
+  { id:7, group:'C', type:'order', prompt:'【C：長音】のばす音「ー」をふくむ言葉を、辞書に載っている順番にタップしてください。', words:['ゲーム','チーム'], exp:'「ゲーム」は「げえむ」、「チーム」は「ちいむ」と考えます。1文字目「け」→「ち」なので「ゲーム」が先です。' },
+  { id:16, group:'C', type:'order', prompt:'【C：長音】「ー」をふくむ言葉と、ふくまない言葉を比べてください。', words:['けいと','ケーキ','ノート','のり'], exp:'「ケーキ」は「けえき」、「ノート」は「のおと」。2文字目「い」と「え」では「い」が先なので「けいと」→「ケーキ」。その後「のり」→「ノート」です。' },
+  { id:17, group:'C', type:'order', prompt:'【C：長音】「ー」が入る言葉の順番を、長音をひらがなに直して考えてください。', words:['スープ','すず','スプーン'], exp:'「スープ」は「すうぷ」、「スプーン」は「すうぷうん」。2文字目の「う」と「ず」を比べ、「う」の2語が先。その2語では短い「スープ」が先です。' },
+  { id:18, group:'C', type:'order', prompt:'【C：長音】カタカナ言葉を、長音を直して辞書順に並べてください。', words:['プール','ペダル','プロ'], exp:'「プール」は「ぷうる」、「プロ」は「ぷろ」、「ペダル」は「ぺだる」。まず「ぷ」の2語、その中では「う」→「ろ」なので「プール」→「プロ」→「ペダル」です。' },
+  { id:23, group:'C', type:'order', prompt:'【C：小さい文字】「ゃ・ゅ・ょ」をふくむ言葉を、辞書に載っている順番にタップしてください。', words:['きゃく','きゅうり','きょうしつ','きりん'], exp:'「き」まで同じ。「ゃ・ゅ・ょ」を「や・ゆ・よ」と考えると「や→ゆ→よ」。ただし「きりん」の2文字目「り」はそれより後なので、最後です。' },
+  { id:24, group:'C', type:'order', prompt:'【C：小さい文字＋濁点】小さい文字と濁点を同時にふくむ言葉を、辞書に載っている順番にタップしてください。', words:['しゃしん','じゃしん','しゅくだい','しょくいん'], exp:'まず「しゃ・しゅ・しょ」を「しや・しゆ・しよ」と考えます。清音の3語が先で、その中は「や→ゆ→よ」。濁音の「じゃしん」が最後です。' },
+  { id:38, group:'C', type:'order', prompt:'【C：小さい文字】「大きい文字」と「小さい文字」が同じ音になる例を比べてください。', words:['きよう','きょう','きょうと'], exp:'「きょう」は「きよう」と同じ音として考えます。辞書順では同じ基準化になり、短い順ではなく同じ長さなので、「きよう」と「きょう」の細則で大きい「よ」を使う「きよう」が先。その後「きょうと」です。' },
+  { id:39, group:'C', type:'order', prompt:'【C：小さい文字】「りょう」と「りよう」のような並びに注意して、辞書順にしてください。', words:['りょうり','りよう','りんご'], exp:'「りょうり」は「りようり」。まず「りよう」と「りようり」は「りよう」まで同じなので短い「りよう」が先。「りんご」は2文字目が「ん」なので、その後です。' },
+  { id:40, group:'C', type:'order', prompt:'【C：っ＋長音】「っ」と「ー」を両方ふくむ言葉を、辞書順に並べてください。', words:['かた','かった','カッター','カップ'], exp:'「かった」は「かつた」、「カッター」は「かつたあ」、「カップ」は「かつふ」。まず「かた」。残りは「かった」→「カッター」→「カップ」の順です。' },
+  { id:41, group:'C', type:'order', prompt:'【C：長音】「ルール」のように長音を母音に直して考えてください。', words:['りす','ルール','ルビー','レモン'], exp:'「ルール」は「るうる」、「ルビー」は「るびい」。最初の「り」が先。続いて「る」の2語は2文字目「う」→「び」なので「ルール」→「ルビー」。最後に「レモン」です。' },
+
+  /* =========================================================
+     D：見出し語（10問）
+     ========================================================= */
+  { id:8, group:'D', type:'single', prompt:'【D：見出し語】動詞「行く」の変化形から、辞書で調べるときの見出し語（元の形）を1つ選んでください。', words:['行かない','行きます','行く','行けば'], answer:'行く', exp:'動詞は活用して形が変わります。辞書では元の形である「行く」を見出し語として探します。' },
+  { id:9, group:'D', type:'single', prompt:'【D：見出し語】形容詞「青い」の変化形から、辞書の見出し語になるものを1つ選んでください。', words:['青かろう','青かった','青い','青ければ'], answer:'青い', exp:'形容詞は、辞書では基本の「〜い」で終わる形を見出し語として調べます。' },
+  { id:10, group:'D', type:'single', prompt:'【D：見出し語】形容動詞「しずかだ」の仲間から、辞書の見出し語になる語を1つ選んでください。', words:['しずかだった','しずかに','しずか','しずかな'], answer:'しずか', exp:'形容動詞は、学校で学ぶ辞書引きでは語幹にあたる「しずか」を見出し語として調べます。「しずかだった・しずかに・しずかな」は形が変わった表現です。' },
+  { id:19, group:'D', type:'order', prompt:'【D：見出し語】文の中で形が変わった言葉を元の形（見出し語）に直し、その順番に並べてください。', words:['泳いだ','走らない','話します'], exp:'元の形は「泳ぐ」「走る」「話す」。五十音順では「お」→「はな」→「はし」なので、「泳いだ」→「話します」→「走らない」です。' },
+  { id:25, group:'D', type:'single', prompt:'【D：見出し語】次の中から、辞書で「読む」を調べるときの見出し語を1つ選んでください。', words:['読んだ','読みます','読む','読めば'], answer:'読む', exp:'「読んだ・読みます・読めば」は活用した形。元の形「読む」を見出し語として探します。' },
+  { id:26, group:'D', type:'single', prompt:'【D：見出し語】次の中から、辞書で「きれい」を調べるときの見出し語を1つ選んでください。', words:['きれいだった','きれいに','きれい','きれいな'], answer:'きれい', exp:'「きれい」は形容動詞の語幹にあたる形です。辞書で調べるときは「きれい」を探します。' },
+  { id:42, group:'D', type:'single', prompt:'【D：見出し語】「書いた」「書きます」などの元の形から、見出し語になるものを1つ選んでください。', words:['書いた','書きます','書く','書けば'], answer:'書く', exp:'動詞「書く」が元の形。辞書では「書く」を見出し語として調べます。' },
+  { id:43, group:'D', type:'single', prompt:'【D：見出し語】次の中から、形容詞「楽しい」の見出し語になるものを1つ選んでください。', words:['楽しんだ','楽しかった','楽しい','楽しければ'], answer:'楽しい', exp:'「楽しかった」などは活用した形です。形容詞の基本の形「楽しい」が見出し語です。' },
+  { id:44, group:'D', type:'single', prompt:'【D：見出し語】形容動詞「元気だ」の仲間から、辞書で調べる語を1つ選んでください。', words:['元気だった','元気に','元気な','元気'], answer:'元気', exp:'形容動詞は、学校での辞書引きでは語幹「元気」を見出し語として調べます。' },
+  { id:45, group:'D', type:'single', prompt:'【D：見出し語】動詞「遊ぶ」の仲間から、辞書の見出し語になるものを1つ選んでください。', words:['遊んだ','遊びます','遊ぶ','遊べば'], answer:'遊ぶ', exp:'「遊んだ・遊びます・遊べば」は活用形。元の形「遊ぶ」を探します。' },
+
+  /* =========================================================
+     E：総合チャレンジ（15問）
+     ========================================================= */
+  { id:20, group:'E', type:'order', prompt:'【E：総合】長音と文字数の違いに注意して、辞書に載っている順番にタップしてください。', words:['ビル','ひるま','ビール'], exp:'「ビール」は「ひいる」。2文字目「い」が先なので、まず「ビール」。その後「ビル」と「ひるま」は「ひる」まで同じなので短い「ビル」が先です。' },
+  { id:27, group:'E', type:'order', prompt:'【E：総合】五十音・小さい文字・濁点を組み合わせて、辞書に載っている順番にタップしてください。', words:['きゅうり','きょうしつ','ぎゅうにゅう','きりん'], exp:'基準化すると「きゅうり→きゆうり」「ぎゅうにゅう→きゆうにゆう」「きょうしつ→きようしつ」「きりん→きりん」。2文字目などを順に比べると「ぎゅうにゅう」→「きゅうり」→「きょうしつ」→「きりん」です。' },
+  { id:28, group:'E', type:'order', prompt:'【E：総合】長音「ー」と濁点・半濁点を組み合わせて並べてください。', words:['ケーキ','ゲーム','ページ','けいと'], exp:'「ケーキ」は「けえき」、「ゲーム」は「げえむ」、「ページ」は「ぺえじ」。まず「け」の2語を比べると「けいと」→「ケーキ」。続いて「ゲーム」→「ページ」です。' },
+  { id:29, group:'E', type:'order', prompt:'【E：総合】「っ」「ゃゅょ」「濁点」を組み合わせて、辞書順に並べてください。', words:['きた','きって','ぎゅうにゅう','きょうしつ'], exp:'「きって」は「きつて」、「ぎゅうにゅう」は「きゆうにゆう」、「きょうしつ」は「きようしつ」。2文字目を「た→つ→ゆ→よ」と比べるので、この順です。' },
+  { id:30, group:'E', type:'order', prompt:'【E：総合】短い語が先に来ることと、濁点・半濁点の位置を考えてください。', words:['ぱん','パンツ','はんぶん','はん'], exp:'基準化すると「ぱん→はん」「パンツ→はんつ」「はんぶん→はんふん」「はん→はん」。まず「はん」の2語では清音「はん」が先。長い2語は「ふ→つ」の順なので、「はん」→「ぱん」→「はんぶん」→「パンツ」です。' },
+  { id:46, group:'E', type:'order', prompt:'【E：総合】長音「ー」と「ん」を組み合わせて、辞書順に並べてください。', words:['セーター','せんせい','センス','ぜんぶ'], exp:'「セーター」は「せえたあ」なので、「せん…」より先。残りは「せんせい・センス・ぜんぶ」。3文字目を比べると「す→せ→ふ」の順なので、「センス」→「せんせい」→「ぜんぶ」です。' },
+  { id:47, group:'E', type:'order', prompt:'【E：総合】カタカナと濁点、さらに3文字目までよく見て並べてください。', words:['しんぶん','ジンジャー','しんかんせん','しんごう'], exp:'「ジンジャー」は「しんしやあ」。4語とも「しん」付近なので、次の文字を比べます。「か→ご→し→ぶ」の順になるため、「しんかんせん」→「しんごう」→「ジンジャー」→「しんぶん」です。' },
+  { id:48, group:'E', type:'order', prompt:'【E：総合】小さい「ょ」と、大きい「よ」の違いを確認して並べてください。', words:['キーワード','きよう','きょう','ぎゅうにゅう'], exp:'「キーワード」は「きいわあど」で、2文字目「い」が先。次に「ぎゅうにゅう」は「きゆう…」、「きよう」「きょう」は「きよう…」となり、2文字目以降では「ゆ」が「よ」より先なので「ぎゅうにゅう」が先。その後、同じ音の「きよう→きょう」と続きます。' },
+  { id:49, group:'E', type:'order', prompt:'【E：総合】「はん・ばん・パン」のような清音・濁音・半濁音と、語の長さを合わせて考えてください。', words:['はん','ばん','パン','はんぺん'], exp:'「はん」「ばん」「パン」は基準化すると同じ「はん」。「はんぺん」はそれより長い語です。まず短い3語を並べ、清音→濁音→半濁音の順にしてから、長い「はんぺん」を置きます。' },
+  { id:50, group:'E', type:'order', prompt:'【E：総合】「っ」と濁点を含む言葉を、基準化して比べてください。', words:['ざっし','さつまいも','さじ','さっぱり'], exp:'「ざっし」は「さつし」、「さっぱり」は「さつはり」。まず「さじ」「さつまいも」「ざっし」「さっぱり」の順を、2文字目「し」ではなく基準化した「じ・つ・つ・つ」で比べます。五十音では「し」系より「つ」系が後なので「さじ」が先。つ系では3文字目「ま・し・は」を比べ、「さつまいも」→「ざっし」→「さっぱり」です。' },
+  { id:51, group:'E', type:'order', prompt:'【E：総合】長音を直した後、同じところまで同じなら次の文字へ進んでください。', words:['コーヒー','こうえん','こうもり','ごはん'], exp:'「コーヒー」は「こおひい」。2文字目は「お」。「こうえん」「こうもり」の2文字目は「う」です。五十音順では「う」が「お」より先なので、「こうえん」→「こうもり」→「コーヒー」。その後、1文字目が濁音の「ごはん」です。' },
+  { id:52, group:'E', type:'order', prompt:'【E：総合】小さい「ゅ」と濁点を含む言葉を、読みを直して比べてください。', words:['しゅくだい','じゅぎょう','しょうがっこう','しょうゆ'], exp:'「しゅくだい」は「しゆくだい」、「じゅぎょう」は「しゆぎよう」。どちらも「しゆ」まで同じなので、その次の「く」「き」を比べ、「き」が先です。したがって「じゅぎょう」→「しゅくだい」。その後は「しょ」を含む2語で、「しょうがっこう」は「しょうゆ」より「しょう」が共通するので、4文字目「が」「ゆ」を比べ、「が」が先です。' },
+  { id:53, group:'E', type:'order', prompt:'【E：最終チャレンジ】長音・小さい文字・濁点・文字数を全部使って考えてください。', words:['きょう','ぎゅうにゅう','キーワード','きよう','きょうだい'], exp:'「キーワード」は「きいわあど」なので最初。「ぎゅうにゅう」は「きゆうにゆう」となり、「きよう」「きょう」の「よ」より「ゆ」が先なので次です。その後、同じ音になる「きよう」と「きょう」は、大きい「よ」を使う「きよう」が先。最後に「きょうだい」は「きょう」より長いので、その後です。' },
+  { id:54, group:'E', type:'order', prompt:'【E：最終チャレンジ】清音・濁音・半濁音、小さい文字、長音をまとめて比べてください。', words:['はん','パーティー','ばん','はっぴ'], exp:'「パーティー」は「はあていい」、「はっぴ」は「はつひ」。まず「は」から始まる語と「はん」の位置を比べます。「はあ…」→「はつ…」→「はん…」の順ではなく、五十音順では「あ→つ→ん」なので、「パーティー」→「はっぴ」→「はん」→「ばん」です。' },
+  { id:55, group:'E', type:'order', prompt:'【E：総合】「同じところまで同じ→次の文字へ」の手順を最後まで使って並べてください。', words:['りんご','りんごあめ','りんどう','りゅう'], exp:'「りゅう」は2文字目が「ゆ」、「りんご・りんごあめ・りんどう」は2文字目が「ん」なので、「りゅう」が先。その後、「りんご」と「りんごあめ」は「りんご」まで同じなので短い「りんご」が先。最後に「りんどう」です。' }
+];
+
+/* ---------------------------------------------------------
+   状態
+   --------------------------------------------------------- */
+
+let quizPosition = 0;
+let activeGroup = 'A';
+let userSelection = [];
+let answered = false;
+let currentShuffledWords = [];
+
+/* ---------------------------------------------------------
+   タブ
+   --------------------------------------------------------- */
+
+function switchTab(tabId, evt) {
+  document.querySelectorAll('.tab-content').forEach(el =>
+    el.classList.remove('active')
+  );
+  document.querySelectorAll('.tab-btn').forEach(el =>
+    el.classList.remove('active')
+  );
+
+  document.getElementById(tabId).classList.add('active');
+
+  if (evt && evt.currentTarget) {
+    evt.currentTarget.classList.add('active');
+  } else {
+    /* プログラムからタブを切り替えた場合（クリックイベントなし）は
+       対応するタブボタンをidから探して active にする */
+    const btn = document.getElementById('tabBtn' + tabId.replace('tab', ''));
+    if (btn) btn.classList.add('active');
+  }
+}
+
+/* ---------------------------------------------------------
+   五十音表
+   --------------------------------------------------------- */
+
+function renderGojuon(targetId) {
+  const columns = [
+    ['あ','い','う','え','お'],
+    ['か','き','く','け','こ'],
+    ['さ','し','す','せ','そ'],
+    ['た','ち','つ','て','と'],
+    ['な','に','ぬ','ね','の'],
+    ['は','ひ','ふ','へ','ほ'],
+    ['ま','み','む','め','も'],
+    ['や','','ゆ','','よ'],
+    ['ら','り','る','れ','ろ'],
+    ['わ','','','','を']
+  ];
+
+  const grid = document.getElementById(targetId);
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  const headers = ['あ','か','さ','た','な','は','ま','や','ら','わ'];
+  headers.forEach((char, index) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell header';
+    cell.innerText = `${char}行`;
+    grid.appendChild(cell);
+  });
+
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 10; col++) {
+      const char = columns[col][row];
+      const cell = document.createElement('div');
+      cell.className = 'cell' +
+        (row === 0 && char !== '' ? ' adan' : '') +
+        (char === '' ? ' empty' : '');
+      cell.innerText = char;
+      if (char !== '') cell.dataset.char = char;
+      grid.appendChild(cell);
+    }
+  }
+}
+
+/* ---------------------------------------------------------
+   グループ
+   --------------------------------------------------------- */
+
+function renderGroupButtons() {
+  const container = document.getElementById('groupFilter');
+  container.innerHTML = '';
+
+  const groups = [
+    { id: 'ALL', label: 'すべて' },
+    { id: 'A', label: 'A 基本' },
+    { id: 'B', label: 'B 濁点' },
+    { id: 'C', label: 'C 長音・小文字' },
+    { id: 'D', label: 'D 見出し語' },
+    { id: 'E', label: 'E 総合' }
+  ];
+
+  groups.forEach(group => {
+    const button = document.createElement('button');
+    button.className = 'group-btn' + (activeGroup === group.id ? ' active' : '');
+    button.innerText = group.label;
+    button.onclick = () => {
+      activeGroup = group.id;
+      quizPosition = 0;
+      loadQuestion();
+      renderGroupButtons();
+    };
+    container.appendChild(button);
+  });
+}
+
+/* ---------------------------------------------------------
+   ヒント
+   --------------------------------------------------------- */
+
+function toggleHint() {
+  const panel = document.getElementById('hintPanel');
+  panel.classList.toggle('open');
+}
+
+/* ---------------------------------------------------------
+   問題表示
+   --------------------------------------------------------- */
+
+function loadQuestion() {
+  const indexes = getFilteredIndexes();
+
+  if (indexes.length === 0) return;
+
+  if (quizPosition < 0) quizPosition = 0;
+  if (quizPosition >= indexes.length) quizPosition = indexes.length - 1;
+
+  const q = questions[indexes[quizPosition]];
+  answered = false;
+  userSelection = [];
+
+  document.getElementById('questionCounter').innerText =
+    `${q.group} ${quizPosition + 1} / ${indexes.length}`;
+
+  document.getElementById('questionType').innerText =
+    q.type === 'single' ? '1つだけ選ぶ問題' : '並べ替え問題';
+
+  document.getElementById('questionText').innerText = q.prompt;
+
+  document.getElementById('selectionInstruction').innerText =
+    q.type === 'single'
+      ? '正しいものを1つだけタップしてください。'
+      : 'タップした順番に 1・2・3… と番号がつきます。';
+
+  /* 「比べ方のヒント」ボタンは、並べ替え問題（order）のときだけ表示。
+     単一選択（見出し語）問題は辞書順比較アニメーションと関係がないため。 */
+  const algoHintBtn = document.getElementById('algoHintBtn');
+  if (algoHintBtn) {
+    algoHintBtn.style.display = q.type === 'order' ? 'inline-block' : 'none';
+  }
+
+  const cardsContainer = document.getElementById('wordCards');
+  cardsContainer.innerHTML = '';
+
+  document.getElementById('checkBtn').disabled = true;
+  document.getElementById('resultBox').style.display = 'none';
+  document.getElementById('navBtnGroup').style.display = 'none';
+
+  /* 選択肢の表示順のみ毎回シャッフル */
+  const shuffledWords = shuffleArray(q.words);
+  currentShuffledWords = shuffledWords;
+
+  shuffledWords.forEach(word => {
+    const card = document.createElement('div');
+    card.className = 'word-card' + (q.type === 'single' ? ' single' : '');
+    card.dataset.word = word;
+    card.innerText = word;
+    card.onclick = () => toggleSelect(card, word);
+    cardsContainer.appendChild(card);
+  });
+
+  const prevBtn = document.getElementById('prevBtn');
+  prevBtn.disabled = quizPosition === 0;
+}
+
+/* ---------------------------------------------------------
+   選択処理
+   --------------------------------------------------------- */
+
+function toggleSelect(card, word) {
+  if (answered) return;
+
+  const q = getCurrentQuestion();
+
+  if (q.type === 'single') {
+    /* 1つだけ選ぶ */
+    userSelection = [word];
+
+    document.querySelectorAll('.word-card').forEach(c => {
+      c.classList.remove('selected');
+      const mark = c.querySelector('.single-mark');
+      if (mark) mark.remove();
+    });
+
+    card.classList.add('selected');
+
+    const mark = document.createElement('div');
+    mark.className = 'single-mark';
+    mark.innerText = '✓';
+    card.appendChild(mark);
+
+  } else {
+    /* 並べ替え */
+    const index = userSelection.indexOf(word);
+
+    if (index > -1) {
+      userSelection.splice(index, 1);
+    } else {
+      if (userSelection.length >= q.words.length) return;
+      userSelection.push(word);
+    }
+
+    const allCards = document.querySelectorAll('.word-card');
+
+    allCards.forEach(c => {
+      const w = c.dataset.word;
+      const selIdx = userSelection.indexOf(w);
+      const existingBadge = c.querySelector('.badge');
+      if (existingBadge) existingBadge.remove();
+
+      if (selIdx > -1) {
+        c.classList.add('selected');
+
+        const badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.innerText = selIdx + 1;
+        c.appendChild(badge);
+      } else {
+        c.classList.remove('selected');
+      }
+    });
+  }
+
+  document.getElementById('checkBtn').disabled =
+    q.type === 'single'
+      ? userSelection.length !== 1
+      : userSelection.length !== q.words.length;
+}
+
+/* ---------------------------------------------------------
+   正誤判定
+   --------------------------------------------------------- */
+
+function checkAnswer() {
+  const q = getCurrentQuestion();
+  let isCorrect = false;
+  let correctOrder = [];
+
+  if (q.type === 'single') {
+    isCorrect = userSelection.length === 1 && userSelection[0] === q.answer;
+    correctOrder = [q.answer];
+  } else {
+    correctOrder = [...q.words].sort(compareWords);
+    isCorrect =
+      JSON.stringify(userSelection) === JSON.stringify(correctOrder);
+  }
+
+  answered = true;
+
+  const resultBox = document.getElementById('resultBox');
+  const resultTitle = document.getElementById('resultTitle');
+  const resultExp = document.getElementById('resultExp');
+
+  resultBox.style.display = 'block';
+
+  if (isCorrect) {
+    resultBox.className = 'result-box correct';
+    resultTitle.innerText = '⭕ 正解！';
+  } else {
+    resultBox.className = 'result-box incorrect';
+    resultTitle.innerText = '❌ もう一度、考えてみよう！';
+  }
+
+  if (q.type === 'single') {
+    resultExp.innerHTML =
+      `<strong>【正しい答え】</strong>` +
+      `<div class="answer-line">${escapeHtml(q.answer)}</div>` +
+      `<strong>【解説】</strong><br>${q.exp}`;
+  } else {
+    resultExp.innerHTML =
+      `<strong>【正しい順番】</strong>` +
+      `<div class="answer-line">${correctOrder.map(escapeHtml).join(' → ')}</div>` +
+      `<strong>【解説】</strong><br>${q.exp}` +
+      `<button class="btn hint-btn" style="margin-top:12px; width:auto;" ` +
+      `onclick='goToAlgoTraceFromQuiz(${JSON.stringify(currentShuffledWords)})'>` +
+      `🎬 アニメーションで比較を見る</button>`;
+  }
+
+  /* 誤答・正答を視覚的に表示 */
+  document.querySelectorAll('.word-card').forEach(card => {
+    const word = card.dataset.word;
+    card.classList.remove('answer-correct', 'answer-wrong');
+
+    if (q.type === 'single') {
+      if (word === q.answer) {
+        card.classList.add('answer-correct');
+      } else if (userSelection.includes(word)) {
+        card.classList.add('answer-wrong');
+      }
+    } else {
+      const correctIndex = correctOrder.indexOf(word);
+      const userIndex = userSelection.indexOf(word);
+
+      if (userIndex === correctIndex) {
+        card.classList.add('answer-correct');
+      } else if (userIndex > -1) {
+        card.classList.add('answer-wrong');
+      }
+    }
+  });
+
+  document.getElementById('navBtnGroup').style.display = 'flex';
+}
+
+/* ---------------------------------------------------------
+   前後の問題
+   --------------------------------------------------------- */
+
+function prevQuestion() {
+  if (quizPosition > 0) {
+    quizPosition--;
+    loadQuestion();
+  }
+}
+
+function nextQuestion() {
+  const indexes = getFilteredIndexes();
+
+  if (quizPosition < indexes.length - 1) {
+    quizPosition++;
+  } else {
+    quizPosition = 0;
+  }
+
+  loadQuestion();
+}
+
+/* ---------------------------------------------------------
+   教員用：問題自作
+   --------------------------------------------------------- */
+
+function createCustomQuestion() {
+  const promptText =
+    document.getElementById('customPrompt').value.trim();
+  const wordsInput =
+    document.getElementById('customWords').value.trim();
+
+  if (!wordsInput) {
+    alert('言葉を入力してください。');
+    return;
+  }
+
+  const rawWords = wordsInput
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s);
+
+  if (rawWords.length < 2 || rawWords.length > 4) {
+    alert('この問題は2〜4語で作ってください。');
+    return;
+  }
+
+  const uniqueWords = [...new Set(rawWords)];
+  if (uniqueWords.length !== rawWords.length) {
+    alert('同じ言葉が重複しています。別々の言葉を入力してください。');
+    return;
+  }
+
+  const sortedWords = [...rawWords].sort(compareWords);
+  const autoExp = makeAutoExplanation(rawWords, sortedWords);
+
+  questions.push({
+    id: Date.now(),
+    group: 'E',
+    type: 'order',
+    prompt: promptText || '言葉を辞書順にタップしてください。',
+    words: rawWords,
+    exp: autoExp
+  });
+
+  activeGroup = 'E';
+  const newIndex = questions.length - 1;
+  const eIndexes = getFilteredIndexes();
+  quizPosition = eIndexes.length - 1;
+
+  renderGroupButtons();
+  loadQuestion();
+
+  document.getElementById('createSuccess').innerText =
+    `問題を追加しました！ 全${questions.length}問。` +
+    `「E：総合チャレンジ」に追加されています。`;
+
+  document.getElementById('customWords').value = '';
+}
+
+/* ---------------------------------------------------------
+   タブ4：比較のしくみを見る（静的ステップ表示パネル）
+   ---------------------------------------------------------
+   buildComparisonTrace() が作った steps を、1つずつ
+   「次へ／前へ」で手動送りしながら確認できるパネル。
+   このフェーズではアニメーションは付けず、情報が正しく
+   出ることを優先する。
+   --------------------------------------------------------- */
+
+let algoTrace = null;
+let algoStepIndex = 0;
+let algoAutoplayTimer = null;
+
+function findTraceEntry(entries, id) {
+  return entries.find(e => e.id === id);
+}
+
+/* ---- 五十音表との連動ハイライト＋比較順の番号表示 ----
+   charOrderMap は { 文字: 順番（1始まり） } の形。
+   ハイライトされた行に、比較する順番の番号バッジを付ける */
+function highlightGojuonCells(targetId, charOrderMap) {
+  const grid = document.getElementById(targetId);
+  if (!grid) return;
+  const map = charOrderMap || {};
+  grid.querySelectorAll('.cell').forEach(cell => {
+    const c = cell.dataset.char;
+    const existingBadge = cell.querySelector('.cell-order-badge');
+    if (c && map[c] !== undefined) {
+      cell.classList.add('gojuon-cell-link');
+      if (existingBadge) {
+        existingBadge.innerText = map[c];
+      } else {
+        const badge = document.createElement('div');
+        badge.className = 'cell-order-badge';
+        badge.innerText = map[c];
+        cell.appendChild(badge);
+      }
+    } else {
+      cell.classList.remove('gojuon-cell-link');
+      if (existingBadge) existingBadge.remove();
+    }
+  });
+}
+
+/* ---- ステップ0からuptoIndexまでを走査し、各語が「今どの順番グループに
+   いるか」を求める。column-compare／detail-compare／final-tiebreakの
+   バケツ内での位置（1始まり）を、そのつど最新の値で上書きしていく。
+   確定（resolved）した後もこの番号は残り、緑カードにも表示され続ける ---- */
+function computeOrderNumbers(steps, uptoIndex) {
+  const map = {};
+  for (let i = 0; i <= uptoIndex; i++) {
+    const s = steps[i];
+    if (s.type === 'column-compare' || s.type === 'detail-compare') {
+      s.buckets.forEach((b, idx) => {
+        b.entries.forEach(id => { map[id] = idx + 1; });
+      });
+    } else if (s.type === 'final-tiebreak') {
+      s.group.forEach((id, idx) => { map[id] = idx + 1; });
+    }
+  }
+  return map;
+}
+
+/* ---- FLIPパターンによるカードの並べ替えアニメーション ----
+   container内の子要素（dataset.idを持つカード）を、
+   orderedIds の順番に並べ替えつつ、移動をアニメーションで見せる */
+function animateReorder(container, orderedIds, prevRects) {
+  const children = Array.from(container.children);
+  /* prevRectsが渡されていれば、それを「移動前の位置」として使う。
+     これは直前の画面に実際に描画されていた位置（前回確定後の位置）であり、
+     ここでcontainer.childrenを測り直すと、renderAlgoStep()が
+     innerHTMLを作り直した直後の「entries本来の並び順」の位置になってしまい、
+     確定済みカードまで毎回ズレて動く原因になっていた。 */
+  const firstRects = (prevRects && prevRects.size > 0)
+    ? prevRects
+    : new Map(children.map(el => [el.dataset.id, el.getBoundingClientRect()]));
+
+  orderedIds.forEach(id => {
+    const el = children.find(c => c.dataset.id === id);
+    if (el) container.appendChild(el);
+  });
+
+  Array.from(container.children).forEach(el => {
+    const id = el.dataset.id;
+    const first = firstRects.get(id);
+    if (!first) return;
+    const last = el.getBoundingClientRect();
+    const dx = first.left - last.left;
+    const dy = first.top - last.top;
+    if (dx || dy) {
+      el.style.transition = 'none';
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = 'transform 0.5s ease';
+        el.style.transform = '';
+      });
+    }
+  });
+}
+
+const STEP_TYPE_LABEL = {
+  'normalize': '正規化',
+  'column-compare': '文字を比較',
+  'primary-tied': '読みが一致',
+  'detail-compare': '細則で比較',
+  'final-tiebreak': '最終判定',
+  'resolved': '順番が確定'
+};
+
+function priorityLabel(p) {
+  switch (p) {
+    case 0: return '清音';
+    case 1: return '清音（小さい文字）';
+    case 2: return '濁音';
+    case 3: return '濁音（小さい文字）';
+    case 4: return '半濁音';
+    case 5: return '半濁音（小さい文字）';
+    default: return 'その他';
+  }
+}
+
+function describeAlgoStep(step, entries) {
+  switch (step.type) {
+    case 'normalize': {
+      const e = step.entry;
+      const notes = [];
+      if (e.chars.some(c => c.transform === 'long-vowel')) notes.push('長音「ー」を母音に置きかえ');
+      if (e.chars.some(c => c.transform === 'small-to-large')) notes.push('小さい文字を大きい文字として考え');
+      if (e.chars.some(c => c.transform === 'dakuten-removed')) notes.push('濁点・半濁点を外し');
+      const noteText = notes.length > 0 ? `（${notes.join('、')}ます）` : '（このままの形で比べます）';
+      return `<strong>「${escapeHtml(e.word)}」を比べやすい形に直します。</strong><br>` +
+        `「${escapeHtml(e.hira)}」 → 「${escapeHtml(e.primary)}」 ${noteText}`;
+    }
+
+    case 'column-compare': {
+      const words = step.group.map(id => findTraceEntry(entries, id).word);
+      const bucketText = step.buckets.map(b => {
+        const label = b.char === '' ? '（そこで言葉が終わる）' : `「${escapeHtml(b.char)}」`;
+        const bw = b.entries.map(id => findTraceEntry(entries, id).word).map(escapeHtml).join('・');
+        return `${label}：${bw}`;
+      }).join('<br>');
+      return `<strong>${step.column + 1}文字目を比べます。</strong>（対象：${words.map(escapeHtml).join('・')}）<br>` +
+        bucketText;
+    }
+
+    case 'primary-tied': {
+      const words = step.group.map(id => findTraceEntry(entries, id).word).map(escapeHtml).join('」「');
+      return `<strong>比べやすい形にした読みが、すべて同じになりました。</strong><br>` +
+        `「${words}」は、清音→濁音→半濁音、小さい文字は大きい文字の後、という細かいルールで比べます。`;
+    }
+
+    case 'detail-compare': {
+      const words = step.group.map(id => findTraceEntry(entries, id).word);
+      const bucketText = step.buckets.map(b => {
+        const bw = b.entries.map(id => findTraceEntry(entries, id).word).map(escapeHtml).join('・');
+        const baseLabel = b.base ? `「${escapeHtml(b.base)}」` : '（そこで終わる）';
+        return `${priorityLabel(b.priority)} ${baseLabel}：${bw}`;
+      }).join('<br>');
+      return `<strong>${step.column + 1}文字目の、元の文字で比べます。</strong>（対象：${words.map(escapeHtml).join('・')}）<br>` +
+        bucketText;
+    }
+
+    case 'final-tiebreak': {
+      const words = step.group.map(id => findTraceEntry(entries, id).word).map(escapeHtml).join('」「');
+      return `<strong>ここまでの規則だけでは決まらなかったので、最終的な判定をします。</strong><br>「${words}」`;
+    }
+
+    case 'resolved': {
+      const reasonText =
+        step.reason === 'primary' ? '文字の五十音順' :
+        step.reason === 'detail' ? '清音・濁音・半濁音などの細かいルール' :
+        '最終的な判定';
+      return `<strong>✅「${escapeHtml(step.entry.word)}」の順番が決まりました！</strong><br>（決め手：${reasonText}）`;
+    }
+
+    default:
+      return '';
+  }
+}
+
+function renderAlgoStep() {
+  if (!algoTrace) return;
+
+  const step = algoTrace.steps[algoStepIndex];
+  const entries = algoTrace.entries;
+  const isLastStep = algoStepIndex === algoTrace.steps.length - 1;
+
+  document.getElementById('algoStepCounter').innerText =
+    `${algoStepIndex + 1} / ${algoTrace.steps.length}`;
+  document.getElementById('algoStepTypeLabel').innerText =
+    STEP_TYPE_LABEL[step.type] || '';
+
+  const resolvedSoFar = algoTrace.steps
+    .slice(0, algoStepIndex + 1)
+    .filter(s => s.type === 'resolved')
+    .map(s => s.entry);
+
+  const activeIds = new Set(
+    step.group ? step.group : (step.entry ? [step.entry.id] : [])
+  );
+  const highlightColumn =
+    (step.type === 'column-compare' || step.type === 'detail-compare') ? step.column : null;
+  const useHiraReading =
+    (step.type === 'detail-compare' || step.type === 'primary-tied' || step.type === 'final-tiebreak');
+  const isColumnStep =
+    (step.type === 'column-compare' || step.type === 'detail-compare');
+
+  const wordsArea = document.getElementById('algoWordsArea');
+  /* innerHTMLで作り直す前に、今まさに画面に見えているカードの位置を
+     dataset.idごとに記録しておく。これが本当の「移動前の位置」。 */
+  const previousRects = new Map();
+  Array.from(wordsArea.children).forEach(el => {
+    if (el.dataset && el.dataset.id) previousRects.set(el.dataset.id, el.getBoundingClientRect());
+  });
+  wordsArea.innerHTML = '';
+
+  /* この段階で比べている「文字」→比較順（1,2,3…）のマップ。五十音表のハイライト・番号表示に使う */
+  const charOrderMap = {};
+  if (step.type === 'column-compare') {
+    step.buckets.forEach((b, idx) => { if (b.char && charOrderMap[b.char] === undefined) charOrderMap[b.char] = idx + 1; });
+  } else if (step.type === 'detail-compare') {
+    step.buckets.forEach((b, idx) => { if (b.base && charOrderMap[b.base] === undefined) charOrderMap[b.base] = idx + 1; });
+  }
+
+  /* 各語が「今どの順番グループに属しているか」（確定後も番号を保持） */
+  const entryOrderNumbers = computeOrderNumbers(algoTrace.steps, algoStepIndex);
+
+  entries.forEach(entry => {
+    const isResolved = resolvedSoFar.some(r => r.id === entry.id);
+    const isActive = activeIds.has(entry.id) && !isResolved;
+    const orderNumber = entryOrderNumbers[entry.id];
+    /* 「今このステップで初めて確定した語」だけにエントランスの
+       フェードインを付ける。以前から確定済みのカードにまで毎回
+       付けると、作り直すたびにopacity:0から始まり、移動前に
+       一瞬消えて見えてしまうため。 */
+    const isNewlyResolved = step.type === 'resolved' && step.entry && step.entry.id === entry.id;
+
+    const card = document.createElement('div');
+    card.dataset.id = entry.id;
+    card.className = 'word-card' +
+      (isActive ? ' selected' : '') +
+      (isActive && isColumnStep ? ' col-active' : '') +
+      (isResolved ? ' answer-correct' : '') +
+      (isNewlyResolved ? ' algo-resolved-word' : '');
+    card.style.cursor = 'default';
+    card.style.minWidth = '110px';
+
+    const readingSource = useHiraReading ? entry.hira : entry.primary;
+    let readingHtml = escapeHtml(readingSource);
+
+    if (highlightColumn !== null && activeIds.has(entry.id) && highlightColumn < readingSource.length) {
+      const before = escapeHtml(readingSource.slice(0, highlightColumn));
+      const ch = escapeHtml(readingSource[highlightColumn]);
+      const after = escapeHtml(readingSource.slice(highlightColumn + 1));
+      readingHtml = `${before}<span class="algo-char-highlight">${ch}</span>${after}`;
+    }
+
+    card.innerHTML =
+      `<div>${escapeHtml(entry.word)}</div>` +
+      `<div class="small-note" style="margin-top:4px; font-weight:normal;">${readingHtml}</div>`;
+
+    if (orderNumber !== undefined) {
+      const badge = document.createElement('div');
+      badge.className = 'algo-order-badge';
+      badge.innerText = orderNumber;
+      card.appendChild(badge);
+    }
+
+    wordsArea.appendChild(card);
+  });
+
+  document.getElementById('algoStepDesc').innerHTML = describeAlgoStep(step, entries);
+
+  highlightGojuonCells('algoGojuonGrid', charOrderMap);
+
+  /* 確定した語を左から順に並べ、まだ確定していない語をその後ろに続ける形で
+     表示順を決め、毎回FLIPアニメーションで滑らかに並べ替える。
+     最後のステップでは、必ず正のロジック（compareWords）に基づく
+     finalOrder を採用する。 */
+  let displayOrderIds;
+  if (isLastStep) {
+    displayOrderIds = algoTrace.finalOrder.map(e => e.id);
+  } else {
+    const resolvedIds = resolvedSoFar.map(e => e.id);
+    const resolvedIdSet = new Set(resolvedIds);
+    const restIds = entries.filter(e => !resolvedIdSet.has(e.id)).map(e => e.id);
+    displayOrderIds = [...resolvedIds, ...restIds];
+  }
+  animateReorder(wordsArea, displayOrderIds, previousRects);
+
+  const resolvedArea = document.getElementById('algoResolvedArea');
+  if (isLastStep) {
+    resolvedArea.innerHTML =
+      '<strong>✅ 最終的な辞書順：</strong>' +
+      `<div class="answer-line">${algoTrace.finalOrder.map(e => escapeHtml(e.word)).join(' → ')}</div>`;
+  } else if (resolvedSoFar.length > 0) {
+    resolvedArea.innerHTML =
+      '<strong>ここまでに確定した順番：</strong> ' +
+      resolvedSoFar.map(e => escapeHtml(e.word)).join(' → ');
+  } else {
+    resolvedArea.innerHTML = '';
+  }
+
+  document.getElementById('algoPrevBtn').disabled = algoStepIndex === 0;
+  document.getElementById('algoNextBtn').disabled = isLastStep;
+
+  if (isLastStep) stopAutoPlay();
+}
+
+/* 出題中の問題を、答える前に「ヒント」としてタブ4のアニメーションで見る。
+   カードの並び順は、問題画面で今実際に表示されているシャッフル順を
+   そのまま使う（元のリスト順に戻ると直感と合わなくなるため） */
+function showAlgoHintForCurrentQuestion() {
+  const q = getCurrentQuestion();
+  if (!q || q.type !== 'order') return;
+  const words = currentShuffledWords.length > 0 ? currentShuffledWords : q.words;
+  goToAlgoTraceFromQuiz(words);
+}
+
+/* クイズの解説から「タブ4：比較のしくみを見る」へジャンプし、
+   その問題の単語で自動的にトレースを開始する */
+function goToAlgoTraceFromQuiz(words) {
+  switchTab('tab4');
+  document.getElementById('algoWordsInput').value = words.join(', ');
+  startAlgoTrace();
+
+  const panel = document.getElementById('algoTracePanel');
+  if (panel) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function startAlgoTrace() {
+  const errorBox = document.getElementById('algoInputError');
+  errorBox.innerText = '';
+
+  const input = document.getElementById('algoWordsInput').value.trim();
+  if (!input) {
+    errorBox.innerText = '言葉を入力してください。';
+    return;
+  }
+
+  const words = input.split(',').map(s => s.trim()).filter(s => s);
+
+  if (words.length < 2) {
+    errorBox.innerText = '2つ以上の言葉を、カンマ区切りで入力してください。';
+    return;
+  }
+
+  const uniqueWords = [...new Set(words)];
+  if (uniqueWords.length !== words.length) {
+    errorBox.innerText = '同じ言葉が重複しています。別々の言葉を入力してください。';
+    return;
+  }
+
+  stopAutoPlay();
+  algoTrace = buildComparisonTrace(words);
+  algoStepIndex = 0;
+
+  /* 前回のトレース(別の単語セットや、非表示状態だったパネル)のカードが
+     残っていると、その位置を「移動前の位置」として拾ってしまい、
+     新しいトレースの初回表示なのに変なアニメーション移動が起きる。
+     新しいトレースを始める際は、必ず一度空にしておく。 */
+  document.getElementById('algoWordsArea').innerHTML = '';
+
+  document.getElementById('algoTracePanel').style.display = 'block';
+  renderAlgoStep();
+}
+
+function algoNextStep() {
+  if (!algoTrace) return;
+  if (algoStepIndex < algoTrace.steps.length - 1) {
+    algoStepIndex++;
+    renderAlgoStep();
+  }
+}
+
+function algoPrevStep() {
+  if (!algoTrace) return;
+  if (algoStepIndex > 0) {
+    algoStepIndex--;
+    renderAlgoStep();
+  }
+}
+
+/* ---- 自動再生（1.5秒おきに次のステップへ進む） ---- */
+function startAutoPlay() {
+  if (algoAutoplayTimer) return;
+  const btn = document.getElementById('autoplayBtn');
+  if (btn) {
+    btn.classList.add('on');
+    btn.innerText = '⏸ 自動再生を止める';
+  }
+  algoAutoplayTimer = setInterval(() => {
+    if (!algoTrace) { stopAutoPlay(); return; }
+    if (algoStepIndex >= algoTrace.steps.length - 1) {
+      stopAutoPlay();
+      return;
+    }
+    algoNextStep();
+  }, 1500);
+}
+
+function stopAutoPlay() {
+  if (algoAutoplayTimer) {
+    clearInterval(algoAutoplayTimer);
+    algoAutoplayTimer = null;
+  }
+  const btn = document.getElementById('autoplayBtn');
+  if (btn) {
+    btn.classList.remove('on');
+    btn.innerText = '▶ 自動再生（1.5秒ごと）';
+  }
+}
+
+function toggleAutoPlay() {
+  if (algoAutoplayTimer) {
+    stopAutoPlay();
+  } else {
+    startAutoPlay();
+  }
+}
+
+/* ---------------------------------------------------------
+   16:9ステージのフィット表示
+   ウインドウのサイズに合わせて、縦横比を保ったまま
+   ステージ（1600×900）を拡大縮小する
+   --------------------------------------------------------- */
+
+const STAGE_WIDTH = 1280;
+const STAGE_HEIGHT = 720;
+
+function fitStage() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const scale = Math.min(
+    viewportWidth / STAGE_WIDTH,
+    viewportHeight / STAGE_HEIGHT
+  );
+
+  stage.style.transform = `scale(${scale})`;
+}
+
+window.addEventListener('resize', fitStage);
+window.addEventListener('orientationchange', fitStage);
+
+/* ---------------------------------------------------------
+   初期化
+   --------------------------------------------------------- */
+
+renderGojuon('gojuonGrid');
+renderGojuon('hintGojuonGrid');
+renderGojuon('algoGojuonGrid');
+renderGroupButtons();
+loadQuestion();
+fitStage();
+</script>
+
+</body>
+</html>

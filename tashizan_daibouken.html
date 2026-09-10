@@ -1,0 +1,2411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>たしざん だいぼうけん 〜けいさんのじゅんばんマスター！〜</title>
+    <style>
+        :root {
+            --bg: #fef7e0;
+            --card: #ffffff;
+            --primary: #ff8c42;
+            --secondary: #4ecdc4;
+            --accent: #ff6b6b;
+            --text: #333333;
+            --light-blue: #e8f4fd;
+            --gold: #ffd700;
+            --swap: #8b6bff;
+            --shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+            --rounded: 20px;
+            --font: 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ============ 16:9 横長レイアウト ============ */
+        .app {
+            width: 100%;
+            max-width: 1040px;
+            aspect-ratio: 16 / 9;
+            min-height: 480px;
+            max-height: 92vh;
+            background: var(--card);
+            border-radius: 28px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff9a56, #ff8c42);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .back-btn {
+            background: rgba(255, 255, 255, 0.25);
+            border: none;
+            color: #fff;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 22px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            scroll-behavior: smooth;
+            min-height: 0;
+        }
+        .content::-webkit-scrollbar { width: 6px; }
+        .content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        .content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+        .stage-title {
+            text-align: center;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+        .stage-subtitle {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 2px;
+        }
+
+        .message-box {
+            background: var(--light-blue);
+            border-radius: 16px;
+            padding: 10px 18px;
+            font-size: 0.92rem;
+            line-height: 1.55;
+            color: #2c3e50;
+            border-left: 5px solid var(--secondary);
+            position: relative;
+        }
+        .message-box .speaker {
+            font-weight: 700;
+            color: var(--secondary);
+            margin-right: 4px;
+        }
+
+        /* ============ 式エリア（SVGベース） ============ */
+        .expr-host {
+            width: 100%;
+            background: #fafafa;
+            border-radius: 18px;
+            border: 2px dashed #e0e0e0;
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transition: border-color 0.3s;
+        }
+        .expr-host.tappable { border-color: #ffd08a; }
+        .expr-svg {
+            width: 100%;
+            display: block;
+            overflow: visible;
+        }
+        .expr-svg text {
+            font-family: var(--font);
+            user-select: none;
+        }
+        .num-token { transform-box: fill-box; transform-origin: 50% 50%; }
+        .num-token .num-rect {
+            fill: #fff;
+            stroke: #e8e8e8;
+            stroke-width: 3;
+            transition: fill 0.25s, stroke 0.25s, stroke-width 0.25s;
+        }
+        .num-token .num-text { fill: var(--text); font-weight: 800; }
+        .num-token.tap-on .num-rect { cursor: pointer; }
+        .num-token.hl-gold .num-rect {
+            fill: #fffbe6; stroke: var(--gold); stroke-width: 4;
+            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));
+        }
+        .num-token.hl-blue .num-rect {
+            fill: #e6f9f5; stroke: var(--secondary); stroke-width: 4;
+            filter: drop-shadow(0 0 4px rgba(78, 205, 196, 0.5));
+        }
+        .num-token.hl-bad .num-rect { fill: #ffebee; stroke: #f44336; stroke-width: 4; }
+        .num-token.hl-bad { animation: svgShake 0.5s ease-in-out; }
+        .num-token.hl-final .num-rect {
+            fill: var(--gold); stroke: #e6b800;
+        }
+        .num-token.hl-final .num-text { fill: #5a3e00; }
+
+        .op-text, .eq-text { fill: #555; font-weight: 800; }
+        .eq-text { fill: #666; }
+        .op-text.op-hl-gold { fill: var(--gold); filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.7)); }
+        .op-text.op-hl-blue { fill: var(--secondary); filter: drop-shadow(0 0 3px rgba(78, 205, 196, 0.6)); }
+        .token-pop { animation: tokenPopSmall 0.28s ease-out; }
+        .paren-text { fill: var(--accent); font-weight: 800; }
+        .paren-text.paren-pulse {
+            transform-box: fill-box; transform-origin: 50% 50%;
+            animation: parenPulseSvg 0.8s ease-in-out infinite;
+        }
+
+        .calc-underline {
+            stroke: var(--accent); stroke-width: 5; stroke-linecap: round;
+            transform-box: fill-box; transform-origin: 0% 50%;
+        }
+        .calc-underline.calc-pop-once { animation: svgGrow 0.35s ease-out; }
+        .calc-underline.result-active { stroke: var(--secondary); transition: stroke 0.25s; }
+        .calc-result {
+            fill: var(--accent); font-weight: 800;
+            transform-box: fill-box; transform-origin: 50% 50%;
+        }
+        .calc-result.calc-pop-once { animation: svgPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .calc-result.result-active { fill: var(--secondary); filter: drop-shadow(0 0 4px rgba(78, 205, 196, 0.6)); transition: fill 0.25s; }
+        .swap-arrow {
+            stroke: var(--swap); stroke-width: 4; fill: none; stroke-linecap: round;
+            stroke-dasharray: 340; stroke-dashoffset: 340;
+            animation: swapDraw 0.5s ease-out forwards;
+        }
+
+        @keyframes svgGrow { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+        @keyframes svgPop {
+            0% { transform: scale(0.4); opacity: 0; }
+            70% { transform: scale(1.12); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes tokenPopSmall {
+            0% { transform: scale(0.75); opacity: 0; }
+            65% { transform: scale(1.04); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes swapDraw { to { stroke-dashoffset: 0; } }
+        @keyframes svgShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-5px); }
+            40% { transform: translateX(5px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+        }
+        @keyframes parenPulseSvg {
+            0%, 100% { transform: scale(1); fill: var(--accent); }
+            50% { transform: scale(1.15); fill: #ff1744; }
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.08); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        .shake { animation: shake 0.5s ease-in-out; }
+
+        .row-center { display: flex; justify-content: center; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .btn {
+            padding: 10px 22px;
+            border-radius: 50px;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: var(--font);
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: #f07a2e; }
+        .btn-secondary { background: var(--secondary); color: #fff; }
+        .btn-secondary:hover { background: #3ab8a8; }
+        .btn-accent { background: var(--accent); color: #fff; }
+        .btn-accent:hover { background: #e55555; }
+        .btn-outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: #fff5ed; }
+        .btn-small { padding: 7px 14px; font-size: 0.8rem; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .stage-select {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .stage-select .stage-btn {
+            padding: 12px 8px;
+            border-radius: 18px;
+            border: 3px solid #e8e8e8;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-family: var(--font);
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #555;
+        }
+        .stage-select .stage-btn:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(255, 140, 66, 0.25);
+        }
+        .stage-select .stage-btn .stage-icon { font-size: 1.6rem; display: block; margin-bottom: 3px; }
+        .stage-select .stage-btn.completed { border-color: #4caf50; background: #f0f8f0; }
+
+        .quiz-options { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .quiz-option {
+            padding: 12px 20px;
+            border-radius: 16px;
+            border: 3px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            font-size: 1.05rem;
+            font-weight: 700;
+            transition: all 0.25s;
+            font-family: var(--font);
+            min-width: 66px;
+            text-align: center;
+        }
+        .quiz-option:hover { border-color: var(--primary); transform: scale(1.05); }
+        .quiz-option.correct { border-color: #4caf50; background: #e8f5e9; animation: popIn 0.4s; }
+        .quiz-option.wrong { border-color: #f44336; background: #ffebee; animation: shake 0.5s; }
+
+        /* ============ ステージ10：お話⇄しき（文章の選択肢） ============ */
+        .quiz-options-text { flex-direction: column; align-items: stretch; gap: 8px; }
+        .quiz-options-text .quiz-option {
+            text-align: left; font-size: 0.88rem; font-weight: 600; line-height: 1.55;
+            min-width: 0; width: 100%; padding: 10px 14px;
+        }
+        .quiz-options-text .quiz-option:hover { transform: none; }
+
+        /* ============ ステージ11：しきの きもち（りゆう カード・複数選択） ============ */
+        .reason-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .reason-card {
+            display: flex; align-items: center; gap: 8px; text-align: left;
+            padding: 10px 14px; border-radius: 16px; border: 3px solid #ddd; background: #fff;
+            cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600;
+            line-height: 1.4; transition: all 0.2s; color: var(--text); width: 100%;
+        }
+        .reason-card:hover { border-color: var(--primary); }
+        .reason-icon { font-size: 1.2rem; flex-shrink: 0; }
+        .reason-card.selected { border-color: var(--primary); background: #fff5ed; }
+        .reason-card.correct { border-color: #4caf50; background: #e8f5e9; animation: popIn 0.4s; }
+        .reason-card.wrong-selected { border-color: #f44336; background: #ffebee; animation: shake 0.5s; }
+        .reason-card.missed { border-color: #ff9800; background: #fff3e0; animation: shake 0.5s; }
+        .reason-card.neutral { opacity: 0.5; }
+
+        /* ============ あなうめ れんしゅう（電卓入力） ============ */
+        .calc-quiz-expr {
+            background: #fafafa; border: 2px dashed #e0e0e0; border-radius: 18px;
+            padding: 16px 14px; text-align: center; font-size: 1.25rem; font-weight: 800;
+            color: var(--text); letter-spacing: 0.5px; line-height: 1.8;
+        }
+        .calc-quiz-expr .blank {
+            display: inline-block; min-width: 34px; padding: 2px 10px; margin: 0 2px;
+            border-radius: 10px; border: 3px solid var(--primary); background: #fff5ed;
+            color: var(--primary); font-weight: 800; transition: all 0.2s;
+        }
+        .calc-quiz-expr .blank.filled { background: #fff; color: var(--text); border-color: #ffd08a; }
+        .calc-quiz-expr .blank.correct { border-color: #4caf50; background: #e8f5e9; color: #2e7d32; animation: popIn 0.4s; }
+        .calc-quiz-expr .blank.wrong { border-color: #f44336; background: #ffebee; color: #c62828; animation: shake 0.5s; }
+
+        /* ============ ステージ9：お話の図（絵文字グループ） ============ */
+        .story-diagram { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .story-group {
+            background: #fafafa; border: 2px dashed #e0e0e0; border-radius: 14px;
+            padding: 8px 10px; min-width: 88px; max-width: 150px; text-align: center;
+        }
+        .story-group-label { font-size: 0.7rem; color: #777; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+        .story-icons { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; align-items: center; }
+        .story-icon { font-size: 1.05rem; line-height: 1; }
+        .story-icon-more { font-size: 0.72rem; color: #999; font-weight: 700; margin-left: 2px; }
+
+        .calc-pad { display: grid; grid-template-columns: repeat(3, 58px); gap: 8px; justify-content: center; }
+        .calc-key {
+            width: 58px; height: 46px; border-radius: 14px; border: 2px solid #eee; background: #fff;
+            font-size: 1.1rem; font-weight: 800; color: var(--text); cursor: pointer; transition: all 0.2s;
+            font-family: var(--font);
+        }
+        .calc-key:active { transform: scale(0.92); background: #f5f5f5; }
+        .calc-key:disabled { opacity: 0.4; cursor: not-allowed; }
+        .calc-key.calc-key-clear { color: var(--accent); }
+        .calc-key.calc-key-wide { grid-column: span 3; background: var(--primary); color: #fff; border-color: var(--primary); }
+        .calc-key.calc-key-wide:active { background: #f07a2e; }
+
+        .progress-bar { display: flex; gap: 4px; justify-content: center; margin: 2px 0; }
+        .progress-dot { width: 10px; height: 10px; border-radius: 50%; background: #ddd; transition: all 0.3s; }
+        .progress-dot.active { background: var(--primary); transform: scale(1.3); }
+        .progress-dot.done { background: #4caf50; }
+
+        .balance-scene {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            padding: 8px; background: #fafafa; border-radius: 18px; border: 2px solid #eee;
+        }
+        .balance { position: relative; width: 240px; height: 96px; display: flex; align-items: center; justify-content: center; }
+        .balance .beam {
+            position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+            width: 200px; height: 7px; background: #8d6e63; border-radius: 4px;
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center;
+        }
+        .balance .pivot {
+            position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+            width: 16px; height: 42px; background: #5d4037; border-radius: 4px;
+        }
+        .balance .pan {
+            position: absolute; top: 34px; width: 68px; height: 42px;
+            background: #d7ccc8; border-radius: 0 0 34px 34px; border: 3px solid #8d6e63;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.95rem; font-weight: 700; color: #3e2723; transition: all 0.5s; padding-top: 4px;
+        }
+        .balance .pan.left { left: 18px; }
+        .balance .pan.right { right: 18px; }
+        .balance.tilted .beam { transform: translateX(-50%) rotate(12deg); }
+        .balance.tilted .pan.left { transform: translateY(13px); }
+        .balance.tilted .pan.right { transform: translateY(-13px); }
+
+        .confetti { position: fixed; pointer-events: none; z-index: 100; animation: confettiFall 1.5s ease-out forwards; }
+        @keyframes confettiFall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
+        }
+
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mt-8 { margin-top: 8px; }
+        .mt-4 { margin-top: 4px; }
+
+        @media (max-width: 720px) {
+            .app { aspect-ratio: auto; min-height: 92vh; }
+            .stage-select { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <div class="header">
+            <h1>🧮 たしざん だいぼうけん</h1>
+            <button class="back-btn" id="backBtn" title="ホームへ">🏠</button>
+        </div>
+        <div class="content" id="content"></div>
+    </div>
+
+    <script>
+        // ============================================================
+        // アプリ状態
+        // ============================================================
+        const state = {
+            currentScreen: 'home',
+            stage: 0,
+            completedStages: new Set(),
+            stepIndex: 0,
+            practiceCorrect: 0,
+            storyPracticeCorrect: 0,
+            thinkingPracticeCorrect: 0,
+        };
+
+        // ============================================================
+        // ユーティリティ
+        // ============================================================
+        function el(tag, attrs = {}, children = []) {
+            const e = document.createElement(tag);
+            for (const [k, v] of Object.entries(attrs)) {
+                if (k === 'class') e.className = v;
+                else if (k === 'onclick') e.onclick = v;
+                else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+                else if (k === 'style') e.style.cssText = v;
+                else e.setAttribute(k, v);
+            }
+            for (const c of children) {
+                if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+                else if (c) e.appendChild(c);
+            }
+            return e;
+        }
+
+        function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+        function shuffle(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        function clearContent() {
+            // #content を「クリア」ではなく、丸ごと新しいノードに差し替える。
+            // こうすることで、直前のステージのボタン操作（await runChain / await sleep
+            // などの非同期アニメーション）が完了前に画面遷移された場合でも、
+            // 古いクロージャが参照している要素は「切り離された（画面に表示されない）」
+            // ノードのままになり、新しい画面の下に前のステージの文言が
+            // 差し込まれてしまう不具合を防げる。
+            const old = document.getElementById('content');
+            const fresh = old.cloneNode(false); // 属性(id/class)だけコピーし中身は空
+            old.replaceWith(fresh);
+            fresh.scrollTop = 0;
+            return fresh;
+        }
+
+        function showScreen(screenName) {
+            state.currentScreen = screenName;
+            clearContent();
+            if (screenName === 'home') renderHome();
+            else if (screenName === 'stage-select') renderStageSelect();
+            else if (screenName === 'stage') renderStage();
+        }
+
+        function goHome() { showScreen('home'); }
+
+        function showMessage(text, speaker = '🧑‍🏫') {
+            return el('div', { class: 'message-box' }, [
+                el('span', { class: 'speaker' }, [speaker + ' ']),
+                text
+            ]);
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        function spawnConfetti() {
+            for (let i = 0; i < 20; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = (Math.random() * 100) + '%';
+                c.style.top = '30%';
+                c.style.width = (6 + Math.random() * 8) + 'px';
+                c.style.height = (6 + Math.random() * 8) + 'px';
+                c.style.background = ['#ff6b6b', '#ffd700', '#4ecdc4', '#ff8c42', '#a78bfa'][Math.floor(Math.random() * 5)];
+                c.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                c.style.animationDuration = (0.8 + Math.random() * 0.8) + 's';
+                document.body.appendChild(c);
+                setTimeout(() => c.remove(), 1600);
+            }
+        }
+
+        // ============================================================
+        // 式エンジン（SVGで全トークンを一元管理し、Y軸中心を完全に揃える）
+        // ============================================================
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+        function sv(tag, attrs = {}) {
+            const e = document.createElementNS(SVG_NS, tag);
+            for (const k in attrs) e.setAttribute(k, attrs[k]);
+            return e;
+        }
+
+        class ExprEngine {
+            constructor(host) {
+                this.host = host;
+                this.host.classList.add('expr-host');
+                this.svg = sv('svg', { class: 'expr-svg', preserveAspectRatio: 'xMinYMid meet' });
+                this.host.innerHTML = '';
+                this.host.appendChild(this.svg);
+
+                this.defs = sv('defs');
+                this.svg.appendChild(this.defs);
+                const marker = sv('marker', {
+                    id: 'exprArrowHead_' + Math.random().toString(36).slice(2),
+                    viewBox: '0 0 10 10', refX: '8', refY: '5',
+                    markerWidth: '6.5', markerHeight: '6.5', orient: 'auto-start-reverse'
+                });
+                marker.appendChild(sv('path', { d: 'M0,0 L10,5 L0,10 Z', fill: 'var(--swap)' }));
+                this.defs.appendChild(marker);
+                this.markerId = marker.id;
+
+                this.gArrow = sv('g', { class: 'layer-arrow' });
+                this.gDecor = sv('g', { class: 'layer-decor' });
+                this.gMain = sv('g', { class: 'layer-main' });
+                this.svg.appendChild(this.gArrow);
+                this.svg.appendChild(this.gDecor);
+                this.svg.appendChild(this.gMain);
+
+                this.fontSize = 32;
+                this.numBox = 56;
+                this.opGap = 14;
+                this.eqGap = 24;
+                this.padX = 16;
+                this.topSpace = 44;   // 矢印用の上部余白
+                this.decorSpace = 60; // 下線・答え用の下部余白
+
+                this.history = [];
+                this.current = { nums: [], ops: [], parenPos: null };
+                this.pendingCalc = null;
+                this.highlightMap = new Map();
+                this.opHighlightMap = new Map();
+                this.swapArrow = null;
+                this.parenActive = false;
+                this.tapHandler = null;
+            }
+
+            reset(nums, ops = [], parenPos = null) {
+                this.history = [];
+                const filledOps = nums.slice(0, -1).map((_, i) => ops[i] || '+');
+                this.current = { nums: [...nums], ops: filledOps, parenPos };
+                this.pendingCalc = null;
+                this.highlightMap.clear();
+                this.opHighlightMap.clear();
+                this.swapArrow = null;
+                this.parenActive = false;
+                this._render();
+            }
+
+            // si: そのトークンが属する式のセグメント番号（history中の位置、または現在の式なら history.length）
+            highlight(indices, cls = 'hl-gold') {
+                const si = this.history.length;
+                indices.forEach(i => this.highlightMap.set(si + '_' + i, cls));
+                this._render();
+            }
+            unhighlight(indices) {
+                const si = this.history.length;
+                indices.forEach(i => this.highlightMap.delete(si + '_' + i));
+                this._render();
+            }
+            clearHighlight() { this.highlightMap.clear(); this.opHighlightMap.clear(); this._render(); }
+
+            // 過去のセグメント（history中の特定の式）のトークンを狙ってハイライトする
+            highlightAt(si, indices, cls = 'hl-blue') {
+                indices.forEach(i => this.highlightMap.set(si + '_' + i, cls));
+                this._render();
+            }
+            opHighlightAt(si, indices, cls = 'op-hl-blue') {
+                indices.forEach(i => this.opHighlightMap.set(si + '_' + i, cls));
+                this._render();
+            }
+
+            async flashWrong(indices) {
+                const si = this.history.length;
+                indices.forEach(i => this.highlightMap.set(si + '_' + i, 'hl-bad'));
+                this._render();
+                await sleep(550);
+                indices.forEach(i => this.highlightMap.delete(si + '_' + i));
+                this._render();
+            }
+
+            showCalc(indices, result) {
+                this.pendingCalc = { indices: [...indices], result, si: this.history.length };
+                this._render();
+                // 下線と答えは初回表示のときだけポップさせる（再描画のたびに再生させない）
+                const underline = this.gDecor.querySelector('.calc-underline');
+                const rtext = this.gDecor.querySelector('.calc-result');
+                if (underline) underline.classList.add('calc-pop-once');
+                if (rtext) rtext.classList.add('calc-pop-once');
+            }
+            clearCalc() { this.pendingCalc = null; this._render(); }
+
+            setParenActive(on) { this.parenActive = on; this._render(); }
+
+            showSwap(i, j) { this.swapArrow = { i, j }; this._render(); }
+            clearSwap() { this.swapArrow = null; this._render(); }
+
+            setCurrentValue(index, value) { this.current.nums[index] = value; this._render(); }
+
+            setTappable(handler) {
+                this.tapHandler = handler;
+                this.host.classList.toggle('tappable', !!handler);
+                this._render();
+            }
+
+            // 「＝」でつないだ新しい式を、左から1要素ずつ強調表示→出現、を繰り返しながら組み立てる。
+            // どの数字/演算子が新しい式のどの要素に対応するかを自動判定し、コピー元を青くハイライトしてから
+            // 対応する要素を右辺に追加していく。計算で合体した部分は、既に表示されている下線＋答えの
+            // ハイライト（pendingCalc）がそのまま「対応」の役目を果たすので、追加のハイライトはしない。
+            async _revealNewSegment(newNums, newOps, newParenPos, opts = {}) {
+                const oldSeg = this.current;
+                const oldSegSi = this.history.length;
+                const mergedIndices = (this.pendingCalc && this.pendingCalc.si === oldSegSi)
+                    ? [...this.pendingCalc.indices].sort((a, b) => a - b) : [];
+                const mergeStart = mergedIndices.length ? mergedIndices[0] : -1;
+                const mergeCount = mergedIndices.length;
+
+                const numSource = opts.numSource || newNums.map((_, k) => {
+                    if (mergeStart < 0 || k < mergeStart) return { kind: 'copy', oldIdx: k };
+                    if (k === mergeStart) return { kind: 'result' };
+                    return { kind: 'copy', oldIdx: k + (mergeCount - 1) };
+                });
+                const opSource = opts.opSource || newOps.map((_, k) => {
+                    if (mergeStart < 0) return k;
+                    return k < mergeStart ? k : k + (mergeCount - 1);
+                });
+                const copyClass = opts.copyClass || 'hl-blue';
+                const opCopyClass = copyClass === 'hl-blue' ? 'op-hl-blue' : 'op-hl-gold';
+
+                // 元の式をhistoryへ送り、新しい式は空から組み立てていく
+                this.history.push(oldSeg);
+                this.current = { nums: [], ops: [], parenPos: null };
+                this.swapArrow = null;
+                this.parenActive = false;
+                this._render();
+                await sleep(opts.eqDelay ?? 500);
+
+                for (let k = 0; k < newNums.length; k++) {
+                    const src = numSource[k];
+                    if (src.kind === 'copy') {
+                        // ① 左辺の数字だけを光らせる
+                        this.highlightAt(oldSegSi, [src.oldIdx], copyClass);
+                        await sleep(opts.preDelay ?? 650);
+                        // ② 右辺に数字を出す
+                        this.current.nums.push(newNums[k]);
+                        this.current.parenPos = newParenPos || null;
+                        this._render();
+                        this._popLastNum();
+                        await sleep(opts.popDelay ?? 550);
+                        // ③ 光っていた左辺の数字を元に戻し、次の要素に移る前に一呼吸おく
+                        this.highlightMap.delete(oldSegSi + '_' + src.oldIdx);
+                        this._render();
+                        await sleep(opts.settleDelay ?? 250);
+                    } else {
+                        // ① 左辺の下線＋答えだけを光らせる
+                        if (this.pendingCalc) this.pendingCalc.active = true;
+                        this._render();
+                        await sleep(opts.preDelay ?? 650);
+                        // ② 右辺に答えを出す
+                        this.current.nums.push(newNums[k]);
+                        this.current.parenPos = newParenPos || null;
+                        this._render();
+                        this._popLastNum();
+                        await sleep(opts.popDelay ?? 550);
+                        // ③ 光っていた下線＋答えを元に戻す
+                        if (this.pendingCalc) this.pendingCalc.active = false;
+                        this._render();
+                        await sleep(opts.settleDelay ?? 250);
+                    }
+
+                    if (k < newNums.length - 1) {
+                        const opIdx = opSource[k];
+                        // ① 左辺の演算子だけを光らせる
+                        this.opHighlightAt(oldSegSi, [opIdx], opCopyClass);
+                        await sleep(opts.preDelay ?? 650);
+                        // ② 右辺に演算子を出す
+                        this.current.ops.push(newOps[k]);
+                        this._render();
+                        this._popLastOp();
+                        await sleep(opts.popDelay ?? 500);
+                        // ③ 光っていた左辺の演算子を元に戻す
+                        this.opHighlightMap.delete(oldSegSi + '_' + opIdx);
+                        this._render();
+                        await sleep(opts.settleDelay ?? 250);
+                    }
+                }
+
+                await sleep(opts.finalHold ?? 400);
+                this.pendingCalc = null;
+                this.highlightMap.clear();
+                this.opHighlightMap.clear();
+                this._render();
+            }
+
+            // 直近に追加した数字/演算子にだけ、軽いポップアニメーションをつける
+            // (最後の数字・最後の演算子を別々に指定し、無関係な要素まで拾わないようにする)
+            _popLastNum() {
+                const nums = this.gMain.querySelectorAll('.num-token');
+                if (nums.length) nums[nums.length - 1].classList.add('token-pop');
+            }
+            _popLastOp() {
+                const ops = this.gMain.querySelectorAll('.op-text');
+                if (ops.length) ops[ops.length - 1].classList.add('token-pop');
+            }
+
+            async commitStep(newNums, newOps = [], newParenPos = null) {
+                await this._revealNewSegment(newNums, newOps, newParenPos);
+            }
+
+            async commitFinal(result) {
+                await this._revealNewSegment([result], [], null);
+                // 最終カードをやさしく強調
+                const last = this.gMain.querySelectorAll('.num-token');
+                if (last.length) last[last.length - 1].classList.add('hl-final');
+            }
+
+            // 交換法則：2つの数を入れ替えた新しい式を「＝」でつないで表示する
+            async commitSwap(i, j, opts = {}) {
+                const cur = this.current;
+                const newNums = [...cur.nums];
+                [newNums[i], newNums[j]] = [newNums[j], newNums[i]];
+                const newOps = [...cur.ops];
+                const newParenPos = cur.parenPos;
+                const numSource = newNums.map((_, k) => {
+                    if (k === i) return { kind: 'copy', oldIdx: j };
+                    if (k === j) return { kind: 'copy', oldIdx: i };
+                    return { kind: 'copy', oldIdx: k };
+                });
+                const opSource = newOps.map((_, k) => k);
+                await this._revealNewSegment(newNums, newOps, newParenPos, {
+                    numSource, opSource, copyClass: opts.copyClass || 'hl-blue'
+                });
+            }
+
+            _measure(str, fontSize, weight) {
+                const t = sv('text', { 'font-size': fontSize, 'font-weight': weight || 800 });
+                t.textContent = str;
+                t.style.opacity = 0;
+                this.svg.appendChild(t);
+                let w;
+                try { w = t.getComputedTextLength(); } catch (e) { w = str.length * fontSize * 0.62; }
+                this.svg.removeChild(t);
+                return w;
+            }
+
+            _buildTokens(seg, isCurrent) {
+                const tokens = [];
+                const { nums, ops, parenPos } = seg;
+                for (let i = 0; i < nums.length; i++) {
+                    if (parenPos && i === parenPos.start) tokens.push({ type: 'paren', value: '(' });
+                    tokens.push({ type: 'num', value: nums[i], idx: i, current: isCurrent });
+                    if (parenPos && i === parenPos.end) tokens.push({ type: 'paren', value: ')' });
+                    if (i < ops.length) tokens.push({ type: 'op', value: ops[i], idx: i, current: isCurrent });
+                }
+                return tokens;
+            }
+
+            _render() {
+                this.gMain.innerHTML = '';
+                this.gDecor.innerHTML = '';
+                this.gArrow.innerHTML = '';
+
+                const fs = this.fontSize;
+                const numBox = this.numBox;
+                const topSpace = this.topSpace;
+                const decorSpace = this.decorSpace;
+                const centerY = topSpace + numBox / 2;
+
+                let x = this.padX;
+                const allTokens = [];
+                const segs = [...this.history.map(s => ({ seg: s, isCurrent: false })), { seg: this.current, isCurrent: true }];
+
+                segs.forEach((entry, si) => {
+                    if (si > 0) {
+                        const w = this._measure('=', fs + 4, 800);
+                        allTokens.push({ type: 'eq', value: '=', x, w, cx: x + w / 2 });
+                        x += w + this.eqGap;
+                    }
+                    this._buildTokens(entry.seg, entry.isCurrent).forEach(tok => {
+                        tok.si = si;
+                        if (tok.type === 'num') {
+                            allTokens.push({ ...tok, x, w: numBox, cx: x + numBox / 2 });
+                            x += numBox + this.opGap;
+                        } else if (tok.type === 'op') {
+                            const w = this._measure(tok.value, fs, 800) + 8;
+                            allTokens.push({ ...tok, x, w, cx: x + w / 2 });
+                            x += w + this.opGap;
+                        } else if (tok.type === 'paren') {
+                            const w = this._measure(tok.value, fs * 1.3, 800);
+                            allTokens.push({ ...tok, x, w, cx: x + w / 2 });
+                            x += w + 3;
+                        }
+                    });
+                });
+                x += this.padX - this.opGap;
+                const totalW = Math.max(x, 240);
+                const totalH = topSpace + numBox + decorSpace;
+
+                allTokens.forEach(tok => {
+                    if (tok.type === 'num') {
+                        const hlCls = this.highlightMap.get(tok.si + '_' + tok.idx);
+                        const canTap = tok.current && this.tapHandler;
+                        const g = sv('g', { class: 'num-token' + (hlCls ? ' ' + hlCls : '') + (canTap ? ' tap-on' : '') });
+                        g.appendChild(sv('rect', { x: tok.x, y: topSpace, width: tok.w, height: numBox, rx: 12, ry: 12, class: 'num-rect' }));
+                        const text = sv('text', {
+                            x: tok.cx, y: centerY, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+                            class: 'num-text', 'font-size': fs
+                        });
+                        text.textContent = tok.value;
+                        g.appendChild(text);
+                        if (canTap) g.addEventListener('click', () => this.tapHandler(tok.idx));
+                        this.gMain.appendChild(g);
+                    } else if (tok.type === 'op') {
+                        const opHlCls = this.opHighlightMap.get(tok.si + '_' + tok.idx);
+                        const text = sv('text', {
+                            x: tok.cx, y: centerY, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+                            class: 'op-text' + (opHlCls ? ' ' + opHlCls : ''),
+                            'font-size': fs
+                        });
+                        text.textContent = tok.value;
+                        this.gMain.appendChild(text);
+                    } else if (tok.type === 'eq') {
+                        const text = sv('text', {
+                            x: tok.cx, y: centerY, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+                            class: 'eq-text', 'font-size': fs + 4
+                        });
+                        text.textContent = tok.value;
+                        this.gMain.appendChild(text);
+                    } else if (tok.type === 'paren') {
+                        const text = sv('text', {
+                            x: tok.cx, y: centerY, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+                            class: 'paren-text' + (this.parenActive ? ' paren-pulse' : ''), 'font-size': fs * 1.3
+                        });
+                        text.textContent = tok.value;
+                        this.gMain.appendChild(text);
+                    }
+                });
+
+                if (this.pendingCalc) {
+                    const numToks = allTokens.filter(t => t.type === 'num' && t.si === this.pendingCalc.si);
+                    const first = numToks.find(t => t.idx === this.pendingCalc.indices[0]);
+                    const lastIdx = this.pendingCalc.indices[this.pendingCalc.indices.length - 1];
+                    const last = numToks.find(t => t.idx === lastIdx);
+                    if (first && last) {
+                        const activeCls = this.pendingCalc.active ? ' result-active' : '';
+                        const ux1 = first.x, ux2 = last.x + last.w;
+                        const uy = topSpace + numBox + 10;
+                        this.gDecor.appendChild(sv('line', { x1: ux1, y1: uy, x2: ux2, y2: uy, class: 'calc-underline' + activeCls }));
+                        const cx = (ux1 + ux2) / 2;
+                        const rtext = sv('text', {
+                            x: cx, y: uy + 27, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+                            class: 'calc-result' + activeCls, 'font-size': fs * 0.9
+                        });
+                        rtext.textContent = this.pendingCalc.result;
+                        this.gDecor.appendChild(rtext);
+                    }
+                }
+
+                if (this.swapArrow) {
+                    const numToks = allTokens.filter(t => t.type === 'num' && t.current);
+                    const a = numToks.find(t => t.idx === this.swapArrow.i);
+                    const b = numToks.find(t => t.idx === this.swapArrow.j);
+                    if (a && b) {
+                        const y = topSpace - 2;
+                        const midX = (a.cx + b.cx) / 2;
+                        const archY = y - 28;
+                        const d = `M ${a.cx} ${y} Q ${midX} ${archY} ${b.cx} ${y}`;
+                        this.gArrow.appendChild(sv('path', {
+                            d, class: 'swap-arrow',
+                            'marker-start': `url(#${this.markerId})`, 'marker-end': `url(#${this.markerId})`
+                        }));
+                    }
+                }
+
+                this.svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+                const cw = this.host.clientWidth || totalW;
+                let dispH = totalH * (cw / totalW);
+                dispH = Math.max(110, Math.min(230, dispH));
+                this.svg.style.height = dispH + 'px';
+            }
+        }
+
+        function makeExprHost(parent) {
+            const host = el('div', {});
+            parent.appendChild(host);
+            return new ExprEngine(host);
+        }
+
+        // 「ハイライト→下線と答え→式をつなげる」を宣言的に実行する
+        // chainSteps: [{ indices, result, next:{nums,ops,parenPos} }, ..., { indices, result, final:true }]
+        async function runChain(engine, chainSteps, opts = {}) {
+            const hl = opts.hlClass || 'hl-gold';
+            for (const step of chainSteps) {
+                engine.highlight(step.indices, step.hlClass || hl);
+                await sleep(step.preDelay ?? 600);
+                engine.showCalc(step.indices, step.result);
+                await sleep(step.calcDelay ?? 900);
+                if (step.final) {
+                    await engine.commitFinal(step.result);
+                } else {
+                    await engine.commitStep(step.next.nums, step.next.ops || [], step.next.parenPos || null);
+                }
+                await sleep(180);
+            }
+        }
+
+        // ============================================================
+        // ホーム画面
+        // ============================================================
+        function renderHome() {
+            const content = document.getElementById('content');
+            content.appendChild(el('div', { class: 'text-center', style: 'display:flex; flex-direction:column; justify-content:center; align-items:center; gap:10px; flex:1;' }, [
+                el('div', { style: 'font-size:3.2rem;' }, ['🧮']),
+                el('h2', { style: 'font-size:1.35rem; color:var(--primary);' }, ['たしざん だいぼうけん']),
+                el('p', { style: 'color:#777;' }, ['〜けいさんの じゅんばんを マスターしよう！〜']),
+                el('button', {
+                    class: 'btn btn-primary',
+                    style: 'font-size:1.1rem; padding:14px 36px;',
+                    onclick: () => showScreen('stage-select')
+                }, ['🚀 スタート！']),
+                el('div', { style: 'display:flex; gap:8px; justify-content:center; flex-wrap:wrap;' }, [
+                    el('span', { style: 'background:#f0f0f0; border-radius:20px; padding:5px 12px; font-size:0.78rem;' }, ['🔄 いれかえ']),
+                    el('span', { style: 'background:#f0f0f0; border-radius:20px; padding:5px 12px; font-size:0.78rem;' }, ['（） かっこ']),
+                    el('span', { style: 'background:#f0f0f0; border-radius:20px; padding:5px 12px; font-size:0.78rem;' }, ['＝ イコール']),
+                ]),
+            ]));
+        }
+
+        // ============================================================
+        // ステージ選択
+        // ============================================================
+        function renderStageSelect() {
+            const content = document.getElementById('content');
+            content.appendChild(el('h2', { class: 'stage-title' }, ['ステージを えらぼう']));
+            content.appendChild(el('p', { class: 'stage-subtitle' }, ['クリアしたステージには ✅ がつくよ']));
+
+            const stages = [
+                { id: 1, icon: '➡️', name: 'ひだりから\nけいさん' },
+                { id: 2, icon: '（）', name: 'かっこちゃん\nとうじょう' },
+                { id: 3, icon: '❓', name: 'どっちが先？\nクイズ' },
+                { id: 4, icon: '✨', name: 'こたえは\nおなじ！' },
+                { id: 5, icon: '🎯', name: 'きりのいい\nかず' },
+                { id: 6, icon: '🔄', name: 'いれかえ\nわざ' },
+                { id: 7, icon: '⚖️', name: '＝の\nルール' },
+                { id: 8, icon: '🔢', name: 'あなうめ\nれんしゅう' },
+                { id: 9, icon: '🏫', name: 'お話と\nじゅんばん' },
+                { id: 10, icon: '📖', name: 'お話と\nしき' },
+                { id: 11, icon: '💡', name: 'しきの\nきもち' },
+            ];
+
+            const grid = el('div', { class: 'stage-select' });
+            stages.forEach((s) => {
+                const isCompleted = state.completedStages.has(s.id);
+                const btn = el('button', {
+                    class: 'stage-btn' + (isCompleted ? ' completed' : ''),
+                    onclick: () => {
+                        state.stage = s.id; state.stepIndex = 0;
+                        if (s.id === 8) state.practiceCorrect = 0;
+                        if (s.id === 10) state.storyPracticeCorrect = 0;
+                        if (s.id === 11) state.thinkingPracticeCorrect = 0;
+                        showScreen('stage');
+                    }
+                }, [
+                    el('span', { class: 'stage-icon' }, [s.icon + (isCompleted ? ' ✅' : '')]),
+                    s.name.split('\n')[0], el('br'), s.name.split('\n')[1] || ''
+                ]);
+                grid.appendChild(btn);
+            });
+            content.appendChild(grid);
+
+            content.appendChild(el('div', { class: 'mt-8 text-center' }, [
+                el('button', { class: 'btn btn-outline btn-small', onclick: goHome }, ['🏠 ホームへ'])
+            ]));
+        }
+
+        // ============================================================
+        // ステージレンダリング
+        // ============================================================
+        function renderStage() {
+            const content = document.getElementById('content');
+            const s = state.stage;
+            const step = state.stepIndex;
+            switch (s) {
+                case 1: renderStage1(content, step); break;
+                case 2: renderStage2(content, step); break;
+                case 3: renderStage3(content, step); break;
+                case 4: renderStage4(content, step); break;
+                case 5: renderStage5(content, step); break;
+                case 6: renderStage6(content, step); break;
+                case 7: renderStage7(content, step); break;
+                case 8: renderStage8(content, step); break;
+                case 9: renderStage9(content, step); break;
+                case 10: renderStage10(content, step); break;
+                case 11: renderStage11(content, step); break;
+                default: renderHome();
+            }
+        }
+
+        function nextStep() { state.stepIndex++; clearContent(); renderStage(); }
+        function completeStage(stageId) { state.completedStages.add(stageId); spawnConfetti(); }
+
+        function stageHeader(title, subtitle, totalSteps, currentStep) {
+            const header = el('div', { class: 'text-center' }, [
+                el('h2', { class: 'stage-title' }, [title]),
+                el('p', { class: 'stage-subtitle' }, [subtitle]),
+            ]);
+            const dots = el('div', { class: 'progress-bar' });
+            for (let i = 0; i < totalSteps; i++) {
+                dots.appendChild(el('span', { class: 'progress-dot' + (i === currentStep ? ' active' : (i < currentStep ? ' done' : '')) }));
+            }
+            header.appendChild(dots);
+            return header;
+        }
+
+        function homeBtn() {
+            return el('div', { class: 'text-center mt-4' }, [
+                el('button', { class: 'btn btn-outline btn-small', onclick: () => showScreen('stage-select') }, ['🏠 ステージへ'])
+            ]);
+        }
+
+        // ============================================================
+        // ステージ1：左から順に計算
+        // ============================================================
+        function renderStage1(content, step) {
+            const steps = [
+                { title: '① ひだりから けいさんしよう', subtitle: 'みほんを みてみよう' },
+                { title: '① ひだりから けいさんしよう', subtitle: 'じぶんで やってみよう' },
+                { title: '① ひだりから けいさんしよう', subtitle: 'もっと れんしゅう！' },
+            ];
+            content.appendChild(stageHeader('ステージ1：ひだりから けいさん', steps[step]?.subtitle || '', steps.length, step));
+
+            if (step === 0) {
+                content.appendChild(showMessage('3つの かずを たすとき、ふつうは ひだりから じゅんばんに けいさんするよ。', '🧑‍🏫'));
+                const engine = makeExprHost(content);
+                engine.reset([2, 4, 3]);
+
+                const btn = el('button', { class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        await runChain(engine, [
+                            { indices: [0, 1], result: 6, next: { nums: [6, 3], ops: ['+'] } },
+                            { indices: [0, 1], result: 9, final: true },
+                        ]);
+                        spawnConfetti();
+                        btn.disabled = false;
+                        btn.textContent = 'わかった！→';
+                        btn.onclick = nextStep;
+                    } }, ['▶ けいさんしてみる']);
+                content.appendChild(el('div', { class: 'row-center' }, [btn]));
+                content.appendChild(homeBtn());
+
+            } else if (step === 1) {
+                content.appendChild(showMessage('つぎの けいさんを ひだりから してみよう！', '🧑‍🏫'));
+                const engine = makeExprHost(content);
+                engine.reset([5, 7, 2]);
+
+                const options = [14, 12, 10];
+                const optDiv = el('div', { class: 'quiz-options mt-4' });
+                options.forEach(opt => {
+                    optDiv.appendChild(el('button', {
+                        class: 'quiz-option',
+                        onclick: async () => {
+                            if (opt === 14) {
+                                optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                                await runChain(engine, [
+                                    { indices: [0, 1], result: 12, next: { nums: [12, 2], ops: ['+'] } },
+                                    { indices: [0, 1], result: 14, final: true },
+                                ]);
+                                spawnConfetti();
+                                content.appendChild(showMessage('せいかい！5+7=12、12+2=14 だね！', '🎉'));
+                                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                    el('button', { class: 'btn btn-primary', onclick: nextStep }, ['つぎへ →'])
+                                ]));
+                            } else {
+                                const b = optDiv.querySelectorAll('.quiz-option')[options.indexOf(opt)];
+                                b.classList.add('wrong'); b.onclick = null;
+                            }
+                        }
+                    }, [String(opt)]));
+                });
+                content.appendChild(optDiv);
+                content.appendChild(homeBtn());
+
+            } else if (step === 2) {
+                content.appendChild(showMessage('もう いちもん！ ひだりから じゅんばんに けいさんしよう。', '🧑‍🏫'));
+                const engine = makeExprHost(content);
+                engine.reset([8, 3, 6]);
+
+                const options = [15, 17, 11];
+                const optDiv = el('div', { class: 'quiz-options mt-4' });
+                options.forEach(opt => {
+                    optDiv.appendChild(el('button', {
+                        class: 'quiz-option',
+                        onclick: async () => {
+                            if (opt === 17) {
+                                optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                                await runChain(engine, [
+                                    { indices: [0, 1], result: 11, next: { nums: [11, 6], ops: ['+'] } },
+                                    { indices: [0, 1], result: 17, final: true },
+                                ]);
+                                spawnConfetti();
+                                completeStage(1);
+                                content.appendChild(showMessage('せいかい！ 8+3=11、11+6=17 だね！ ステージ1クリア！', '🎉'));
+                                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                    el('button', {
+                                        class: 'btn btn-secondary',
+                                        onclick: () => { state.stage = 2; state.stepIndex = 0; showScreen('stage'); }
+                                    }, ['ステージ2へ →'])
+                                ]));
+                            } else {
+                                const b = optDiv.querySelectorAll('.quiz-option')[options.indexOf(opt)];
+                                b.classList.add('wrong'); b.onclick = null;
+                            }
+                        }
+                    }, [String(opt)]));
+                });
+                content.appendChild(optDiv);
+                content.appendChild(homeBtn());
+            }
+        }
+
+        // ============================================================
+        // ステージ2：（）と出会う
+        // ============================================================
+        function renderStage2(content, step) {
+            const steps = [
+                { title: '② かっこちゃん とうじょう', subtitle: '（）の やくそくを しろう' },
+                { title: '② かっこちゃん とうじょう', subtitle: '（）の なかを さきに！' },
+                { title: '② かっこちゃん とうじょう', subtitle: 'れんしゅうしよう' },
+            ];
+            content.appendChild(stageHeader('ステージ2：（）と であう', steps[step]?.subtitle || '', steps.length, step));
+
+            if (step === 0) {
+                content.appendChild(showMessage('「かっこちゃん」は とくべつな しるし。かっこの なかを さきに けいさんするよ！', '🧑‍🏫'));
+                const engine = makeExprHost(content);
+                engine.reset([2, 4, 3], ['+', '+'], { start: 1, end: 2 });
+
+                const btn = el('button', { class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        engine.setParenActive(true);
+                        await runChain(engine, [
+                            { indices: [1, 2], result: 7, next: { nums: [2, 7], ops: ['+'] } },
+                        ]);
+                        await runChain(engine, [
+                            { indices: [0, 1], result: 9, final: true },
+                        ]);
+                        spawnConfetti();
+                        btn.disabled = false;
+                        btn.textContent = 'わかった！→';
+                        btn.onclick = nextStep;
+                    } }, ['▶ けいさんしてみる']);
+                content.appendChild(el('div', { class: 'row-center' }, [btn]));
+                content.appendChild(homeBtn());
+
+            } else if (step === 1) {
+                content.appendChild(showMessage('かっこの なかを さきに けいさんするよ。 3+(6+2) は？', '🧑‍🏫'));
+                const engine = makeExprHost(content);
+                engine.reset([3, 6, 2], ['+', '+'], { start: 1, end: 2 });
+
+                const options = [11, 5, 9];
+                const optDiv = el('div', { class: 'quiz-options mt-4' });
+                options.forEach(opt => {
+                    optDiv.appendChild(el('button', {
+                        class: 'quiz-option',
+                        onclick: async () => {
+                            if (opt === 11) {
+                                optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                                engine.setParenActive(true);
+                                await runChain(engine, [
+                                    { indices: [1, 2], result: 8, next: { nums: [3, 8], ops: ['+'] } },
+                                    { indices: [0, 1], result: 11, final: true },
+                                ]);
+                                spawnConfetti();
+                                content.appendChild(showMessage('せいかい！ 6+2=8、3+8=11 だね！', '🎉'));
+                                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                    el('button', { class: 'btn btn-primary', onclick: nextStep }, ['つぎへ →'])
+                                ]));
+                            } else {
+                                const b = optDiv.querySelectorAll('.quiz-option')[options.indexOf(opt)];
+                                b.classList.add('wrong'); b.onclick = null;
+                            }
+                        }
+                    }, [String(opt)]));
+                });
+                content.appendChild(optDiv);
+                content.appendChild(homeBtn());
+
+            } else if (step === 2) {
+                content.appendChild(showMessage('もう いちもん！ (5+4)+3 は？', '🧑‍🏫'));
+                const engine = makeExprHost(content);
+                engine.reset([5, 4, 3], ['+', '+'], { start: 0, end: 1 });
+
+                const options = [12, 9, 7];
+                const optDiv = el('div', { class: 'quiz-options mt-4' });
+                options.forEach(opt => {
+                    optDiv.appendChild(el('button', {
+                        class: 'quiz-option',
+                        onclick: async () => {
+                            if (opt === 12) {
+                                optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                                engine.setParenActive(true);
+                                await runChain(engine, [
+                                    { indices: [0, 1], result: 9, next: { nums: [9, 3], ops: ['+'] } },
+                                    { indices: [0, 1], result: 12, final: true },
+                                ]);
+                                spawnConfetti();
+                                completeStage(2);
+                                content.appendChild(showMessage('せいかい！ 5+4=9、9+3=12！ ステージ2クリア！', '🎉'));
+                                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                    el('button', {
+                                        class: 'btn btn-secondary',
+                                        onclick: () => { state.stage = 3; state.stepIndex = 0; showScreen('stage'); }
+                                    }, ['ステージ3へ →'])
+                                ]));
+                            } else {
+                                const b = optDiv.querySelectorAll('.quiz-option')[options.indexOf(opt)];
+                                b.classList.add('wrong'); b.onclick = null;
+                            }
+                        }
+                    }, [String(opt)]));
+                });
+                content.appendChild(optDiv);
+                content.appendChild(homeBtn());
+            }
+        }
+
+        // ============================================================
+        // ステージ3：どっちが先？クイズ
+        // ============================================================
+        function renderStage3(content, step) {
+            const steps = [
+                { title: '③ どっちが先？クイズ', subtitle: 'つぎに けいさんするのは？' },
+                { title: '③ どっちが先？クイズ', subtitle: 'もう いちもん！' },
+                { title: '③ どっちが先？クイズ', subtitle: 'さいごの もんだい' },
+            ];
+            content.appendChild(stageHeader('ステージ3：どっちが先？', steps[step]?.subtitle || '', steps.length, step));
+
+            const quizData = [
+                { nums: [2, 4, 3], parenPos: null, correctIdx: [0, 1], explain: 'ひだりから じゅんばんに！ 2+4を さきに。' },
+                { nums: [3, 6, 2], parenPos: { start: 1, end: 2 }, correctIdx: [1, 2], explain: '（）の なかを さきに！ 6+2を さきに。' },
+                { nums: [5, 4, 3], parenPos: { start: 0, end: 1 }, correctIdx: [0, 1], explain: '（）の なかを さきに！ 5+4を さきに。' },
+            ];
+            const q = quizData[step];
+            content.appendChild(showMessage('つぎに けいさんする ばしょを タップしてね！', '🧑‍🏫'));
+
+            const engine = makeExprHost(content);
+            engine.reset(q.nums, ['+', '+'], q.parenPos);
+
+            let answered = false;
+            engine.setTappable((idx) => {
+                if (answered) return;
+                if (q.correctIdx.includes(idx)) {
+                    answered = true;
+                    engine.setTappable(null);
+                    engine.highlight(q.correctIdx, 'hl-blue');
+                    spawnConfetti();
+                    content.appendChild(showMessage('せいかい！ ' + q.explain, '🎉'));
+                    if (step === 2) {
+                        completeStage(3);
+                        content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                            el('button', {
+                                class: 'btn btn-secondary',
+                                onclick: () => { state.stage = 4; state.stepIndex = 0; showScreen('stage'); }
+                            }, ['ステージ4へ →'])
+                        ]));
+                    } else {
+                        content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                            el('button', { class: 'btn btn-primary', onclick: nextStep }, ['つぎへ →'])
+                        ]));
+                    }
+                } else {
+                    engine.flashWrong([idx]);
+                }
+            });
+            content.appendChild(homeBtn());
+        }
+
+        // ============================================================
+        // ステージ4：答えは同じ！発見
+        // ============================================================
+        function renderStage4(content, step) {
+            const steps = [
+                { title: '④ こたえは おなじ！', subtitle: 'じゅんばんを かえても？' },
+                { title: '④ こたえは おなじ！', subtitle: 'たしかめてみよう' },
+            ];
+            content.appendChild(stageHeader('ステージ4：こたえは おなじ！', steps[step]?.subtitle || '', steps.length, step));
+
+            if (step === 0) {
+                content.appendChild(showMessage('3つの かずを たすとき、じゅんばんを かえても こたえは おなじに なるよ。', '🧑‍🏫'));
+                content.appendChild(showMessage('2+4+3 と 2+(4+3)、どちらも こたえは？', '🤔'));
+
+                const engine1 = makeExprHost(content);
+                engine1.reset([2, 4, 3]);
+                const engine2 = makeExprHost(content);
+                engine2.reset([2, 4, 3], ['+', '+'], { start: 1, end: 2 });
+
+                const btn = el('button', { class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        await runChain(engine1, [
+                            { indices: [0, 1], result: 6, next: { nums: [6, 3], ops: ['+'] } },
+                            { indices: [0, 1], result: 9, final: true },
+                        ]);
+                        engine2.setParenActive(true);
+                        await runChain(engine2, [
+                            { indices: [1, 2], result: 7, next: { nums: [2, 7], ops: ['+'] } },
+                            { indices: [0, 1], result: 9, final: true },
+                        ]);
+                        spawnConfetti();
+                        content.appendChild(showMessage('ほら！ どちらも 9に なったね！ じゅんばんを かえても こたえは おなじ！', '🎉'));
+                        btn.disabled = false;
+                        btn.textContent = 'つぎへ →';
+                        btn.onclick = nextStep;
+                    } }, ['▶ けいさんして くらべる']);
+                content.appendChild(el('div', { class: 'row-center' }, [btn]));
+                content.appendChild(homeBtn());
+
+            } else if (step === 1) {
+                content.appendChild(showMessage('こんどは 5+3+7 で たしかめてみよう！', '🧑‍🏫'));
+                const engine1 = makeExprHost(content);
+                engine1.reset([5, 3, 7]);
+                const engine2 = makeExprHost(content);
+                engine2.reset([5, 3, 7], ['+', '+'], { start: 0, end: 1 });
+
+                const btn = el('button', { class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        await runChain(engine1, [
+                            { indices: [0, 1], result: 8, next: { nums: [8, 7], ops: ['+'] } },
+                            { indices: [0, 1], result: 15, final: true },
+                        ]);
+                        engine2.setParenActive(true);
+                        await runChain(engine2, [
+                            { indices: [0, 1], result: 8, next: { nums: [8, 7], ops: ['+'] } },
+                            { indices: [0, 1], result: 15, final: true },
+                        ]);
+                        spawnConfetti();
+                        completeStage(4);
+                        content.appendChild(showMessage('また おなじ 15に なった！ ステージ4クリア！', '🎉'));
+                        content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                            el('button', {
+                                class: 'btn btn-secondary',
+                                onclick: () => { state.stage = 5; state.stepIndex = 0; showScreen('stage'); }
+                            }, ['ステージ5へ →'])
+                        ]));
+                    } }, ['▶ くらべてみる']);
+                content.appendChild(el('div', { class: 'row-center' }, [btn]));
+                content.appendChild(homeBtn());
+            }
+        }
+
+        // ============================================================
+        // ステージ5：きりのいい数を探せ
+        // ============================================================
+        function renderStage5(content, step) {
+            const steps = [
+                { title: '⑤ きりのいい かずを さがせ！', subtitle: 'たして 20や30に なる ペア' },
+                { title: '⑤ きりのいい かずを さがせ！', subtitle: 'じぶんで みつけよう' },
+            ];
+            content.appendChild(stageHeader('ステージ5：きりのいい かず', steps[step]?.subtitle || '', steps.length, step));
+
+            const data = step === 0
+                ? { nums: [7, 26, 13], target: 20, correctExplain: '7と13で ちょうど20！ きりのいい かずだね！', isFinal: false }
+                : { nums: [9, 31, 11], target: 20, correctExplain: '9と11で 20！ きりのいい ペアを さがすと あんざんが かんたん！', isFinal: true };
+
+            if (step === 0) {
+                content.appendChild(showMessage('7+26+13 の なかで、たすと きりのいい かずに なる ペアが あるよ！', '🧑‍🏫'));
+                content.appendChild(showMessage('どれと どれを たすと 20に なるかな？', '🤔'));
+            } else {
+                content.appendChild(showMessage('こんどは 9+31+11。たすと 20に なる ペアを みつけてね！', '🧑‍🏫'));
+            }
+
+            const engine = makeExprHost(content);
+            engine.reset(data.nums);
+
+            let tapped = [];
+            let answered = false;
+            engine.setTappable((idx) => {
+                if (answered) return;
+                if (tapped.includes(idx)) {
+                    tapped = tapped.filter(t => t !== idx);
+                    engine.unhighlight([idx]);
+                    return;
+                }
+                tapped.push(idx);
+                engine.highlight([idx], 'hl-gold');
+                if (tapped.length === 2) {
+                    const [a, b] = tapped;
+                    if (data.nums[a] + data.nums[b] === data.target) {
+                        answered = true;
+                        engine.setTappable(null);
+                        engine.highlight([a, b], 'hl-blue');
+                        spawnConfetti();
+                        if (data.isFinal) {
+                            completeStage(5);
+                            content.appendChild(showMessage('せいかい！ ' + data.correctExplain, '🎉'));
+                            content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                el('button', {
+                                    class: 'btn btn-secondary',
+                                    onclick: () => { state.stage = 6; state.stepIndex = 0; showScreen('stage'); }
+                                }, ['ステージ6へ →'])
+                            ]));
+                        } else {
+                            content.appendChild(showMessage('せいかい！ ' + data.correctExplain, '🎉'));
+                            content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                el('button', { class: 'btn btn-primary', onclick: nextStep }, ['つぎへ →'])
+                            ]));
+                        }
+                    } else {
+                        content.appendChild(showMessage('ちがうよ！ もういちど！', '😅'));
+                        const toClear = [...tapped];
+                        tapped = [];
+                        engine.unhighlight(toClear);
+                        setTimeout(() => { content.querySelectorAll('.message-box').forEach(m => m.remove()); }, 1200);
+                    }
+                }
+            });
+            content.appendChild(homeBtn());
+        }
+
+        // ============================================================
+        // ステージ6：遠くにいても仲良しペア（いれかえわざ）
+        // ============================================================
+        function renderStage6(content, step) {
+            const steps = [
+                { title: '⑥ とおくにいても なかよしペア', subtitle: 'いれかえわざを つかおう！' },
+                { title: '⑥ とおくにいても なかよしペア', subtitle: 'じぶんで いれかえよう' },
+            ];
+            content.appendChild(stageHeader('ステージ6：いれかえわざ', steps[step]?.subtitle || '', steps.length, step));
+
+            if (step === 0) {
+                content.appendChild(showMessage('14+8+6。14と6は なかよしペア（20）だけど、はなれてる…', '🧑‍🏫'));
+                content.appendChild(showMessage('8を とばして 14+6+8 の じゅんばんに いれかえよう！', '💡'));
+
+                const engine = makeExprHost(content);
+                engine.reset([14, 8, 6]);
+
+                const btn = el('button', { class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        // 1番目(8)と2番目(6)を入れ替える様子を曲線矢印で示す
+                        engine.highlight([1, 2], 'hl-blue');
+                        engine.showSwap(1, 2);
+                        await sleep(750);
+                        engine.clearSwap();
+                        engine.clearHighlight();
+                        await sleep(200);
+                        // 入れ替え前後も「＝」でつないで表示する
+                        await engine.commitSwap(1, 2);
+                        await sleep(300);
+
+                        await runChain(engine, [
+                            { indices: [0, 1], result: 20, next: { nums: [20, 8], ops: ['+'] } },
+                            { indices: [0, 1], result: 28, final: true },
+                        ]);
+                        spawnConfetti();
+                        content.appendChild(showMessage('14+6+8 = 20+8 = 28！ いれかえても こたえは おなじ！', '🎉'));
+                        btn.disabled = false;
+                        btn.textContent = 'つぎへ →';
+                        btn.onclick = nextStep;
+                    } }, ['🔄 いれかえわざ！']);
+                content.appendChild(el('div', { class: 'row-center' }, [btn]));
+                content.appendChild(homeBtn());
+
+            } else if (step === 1) {
+                content.appendChild(showMessage('こんどは 12+5+8。たすと 20に なる ペアは？ いれかえて けいさんしよう！', '🧑‍🏫'));
+                const engine = makeExprHost(content);
+                engine.reset([12, 5, 8]);
+
+                const options = [25, 17, 20];
+                const optDiv = el('div', { class: 'quiz-options mt-4' });
+                options.forEach(opt => {
+                    optDiv.appendChild(el('button', {
+                        class: 'quiz-option',
+                        onclick: async () => {
+                            if (opt === 25) {
+                                optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                                // 8(idx2)と5(idx1)を入れ替え：12+8+5
+                                engine.highlight([1, 2], 'hl-blue');
+                                engine.showSwap(1, 2);
+                                await sleep(750);
+                                engine.clearSwap();
+                                engine.clearHighlight();
+                                await sleep(200);
+                                // 入れ替え前後も「＝」でつないで表示する
+                                await engine.commitSwap(1, 2);
+                                await sleep(300);
+
+                                await runChain(engine, [
+                                    { indices: [0, 1], result: 20, next: { nums: [20, 5], ops: ['+'] } },
+                                    { indices: [0, 1], result: 25, final: true },
+                                ]);
+                                spawnConfetti();
+                                completeStage(6);
+                                content.appendChild(showMessage('12+8=20、20+5=25！ いれかえわざ だいせいこう！ ステージ6クリア！', '🎉'));
+                                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                    el('button', {
+                                        class: 'btn btn-secondary',
+                                        onclick: () => { state.stage = 7; state.stepIndex = 0; showScreen('stage'); }
+                                    }, ['ステージ7へ →'])
+                                ]));
+                            } else {
+                                const b = optDiv.querySelectorAll('.quiz-option')[options.indexOf(opt)];
+                                b.classList.add('wrong'); b.onclick = null;
+                            }
+                        }
+                    }, [String(opt)]));
+                });
+                content.appendChild(optDiv);
+                content.appendChild(homeBtn());
+            }
+        }
+
+        // ============================================================
+        // ステージ7：＝のルールを守ろう
+        // ============================================================
+        function renderStage7(content, step) {
+            const steps = [
+                { title: '⑦ ＝の ルールを まもろう！', subtitle: '＝の ひだりと みぎは おなじ' },
+                { title: '⑦ ＝の ルールを まもろう！', subtitle: 'まちがいを みつけよう' },
+                { title: '⑦ ＝の ルールを まもろう！', subtitle: 'ただしい かきかた' },
+            ];
+            content.appendChild(stageHeader('ステージ7：＝の ルール', steps[step]?.subtitle || '', steps.length, step));
+
+            if (step === 0) {
+                content.appendChild(showMessage('「＝」は てんびんの しるし。ひだりと みぎが おなじ おおきさだよ、ということ。', '🧑‍🏫'));
+                const balanceScene = el('div', { class: 'balance-scene' });
+                const balance = el('div', { class: 'balance' });
+                balance.innerHTML = `
+                    <div class="beam"></div>
+                    <div class="pivot"></div>
+                    <div class="pan left">7+13</div>
+                    <div class="pan right">20</div>
+                `;
+                balanceScene.appendChild(balance);
+                balanceScene.appendChild(el('p', { style: 'font-weight:700; color:#4caf50;' }, ['7+13 = 20 は つりあっている！']));
+                content.appendChild(balanceScene);
+
+                const btn = el('button', { class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        await sleep(500);
+                        content.appendChild(showMessage('＝の ひだり(7+13)と みぎ(20)が おなじ おおきさだから、つりあうよ。', '⚖️'));
+                        btn.disabled = false;
+                        btn.textContent = 'つぎへ →';
+                        btn.onclick = nextStep;
+                    } }, ['▶ てんびんを みてみる']);
+                content.appendChild(el('div', { class: 'text-center' }, [btn]));
+                content.appendChild(homeBtn());
+
+            } else if (step === 1) {
+                content.appendChild(showMessage('これは ダメ！ 7+13=20+26=46 と かくと…', '⚠️'));
+                // 誤った書き方をそのまま連結表示（エンジンのhistory機構を静的に流用）
+                const engine = makeExprHost(content);
+                engine.history = [{ nums: [7, 13], ops: ['+'], parenPos: null }, { nums: [20, 26], ops: ['+'], parenPos: null }];
+                engine.current = { nums: [46], ops: [], parenPos: null };
+                engine._render();
+
+                const balanceScene = el('div', { class: 'balance-scene' });
+                const balance = el('div', { class: 'balance tilted' });
+                balance.innerHTML = `
+                    <div class="beam"></div>
+                    <div class="pivot"></div>
+                    <div class="pan left">20</div>
+                    <div class="pan right">46</div>
+                `;
+                balanceScene.appendChild(balance);
+                balanceScene.appendChild(el('p', { style: 'font-weight:700; color:#f44336;' }, ['20 = 46 は つりあわない！ ちがうよ！']));
+                content.appendChild(balanceScene);
+
+                const btn = el('button', { class: 'btn btn-accent mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        content.appendChild(showMessage('＝の ひだりと みぎが おなじじゃないと だめ！ 20と46は ちがう おおきさ。', '⚠️'));
+                        btn.disabled = false;
+                        btn.textContent = 'つぎへ →';
+                        btn.onclick = nextStep;
+                    } }, ['▶ なぜ ダメ？']);
+                content.appendChild(el('div', { class: 'text-center' }, [btn]));
+                content.appendChild(homeBtn());
+
+            } else if (step === 2) {
+                content.appendChild(showMessage('ただしい かきかたは これ！ 7+13+26 = 20+26 = 46', '✅'));
+                const engine = makeExprHost(content);
+                engine.reset([7, 13, 26]);
+
+                const btn = el('button', { class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        await runChain(engine, [
+                            { indices: [0, 1], result: 20, next: { nums: [20, 26], ops: ['+'] } },
+                            { indices: [0, 1], result: 46, final: true },
+                        ]);
+
+                        const balanceScene = el('div', { class: 'balance-scene' });
+                        const balance = el('div', { class: 'balance' });
+                        balance.innerHTML = `
+                            <div class="beam"></div>
+                            <div class="pivot"></div>
+                            <div class="pan left">20+26</div>
+                            <div class="pan right">46</div>
+                        `;
+                        balanceScene.appendChild(balance);
+                        balanceScene.appendChild(el('p', { style: 'font-weight:700; color:#4caf50;' }, ['20+26 = 46 は つりあっている！']));
+                        content.appendChild(balanceScene);
+
+                        content.appendChild(showMessage('＝の ひだりと みぎが いつも おなじに なるように かこうね！', '🧑‍🏫'));
+                        completeStage(7);
+                        content.appendChild(showMessage('🎉 ぜんステージ クリア！ おめでとう！ これで きみも けいさん マスター！', '🏆'));
+                        btn.remove();
+                        content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                            el('button', { class: 'btn btn-secondary', onclick: () => showScreen('stage-select') }, ['🏠 ステージへ']),
+                            el('button', { class: 'btn btn-outline', onclick: goHome }, ['ホームへ'])
+                        ]));
+                    } }, ['▶ ただしい かきかたを みる']);
+                content.appendChild(el('div', { class: 'text-center' }, [btn]));
+                content.appendChild(homeBtn());
+            }
+        }
+
+        // ============================================================
+        // ステージ8：あなうめ れんしゅう（式変形の穴埋め・電卓入力）
+        // ============================================================
+        const PRACTICE_ROUND = 5;
+
+        // 電卓ボタン（0〜9、⌫、こたえる）を作る
+        function buildCalcPad(onDigit, onBackspace, onSubmit) {
+            const pad = el('div', { class: 'calc-pad' });
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(d => {
+                pad.appendChild(el('button', { class: 'calc-key', onclick: () => onDigit(d) }, [d]));
+            });
+            pad.appendChild(el('button', { class: 'calc-key calc-key-clear', onclick: onBackspace }, ['⌫']));
+            pad.appendChild(el('button', { class: 'calc-key', onclick: () => onDigit('0') }, ['0']));
+            pad.appendChild(el('button', { class: 'calc-key calc-key-wide', onclick: onSubmit }, ['✅ こたえる']));
+            return pad;
+        }
+
+        // かっこの かきかえ もんだいを 1つ 作る（例：(7+12)+8 = 7+(□+8)、こたえは 12）
+        function genParenProblem() {
+            const a = randInt(2, 9), b = randInt(2, 29), c = randInt(2, 9);
+            const total = a + b + c;
+            if (Math.random() < 0.5) {
+                return { given: `(${a} + ${b}) + ${c}`, before: `${a} + (`, after: ` + ${c})`, answer: b, total };
+            }
+            return { given: `${a} + (${b} + ${c})`, before: `(${a} + `, after: `) + ${c}`, answer: b, total };
+        }
+
+        // くふうして けいさんする もんだいを 1つ 作る（とちゅうの こたえ→さいごの こたえ の 2かい あなうめ）
+        function genCalcProblem() {
+            const a = randInt(2, 30), b = randInt(2, 30), c = randInt(2, 30);
+            const groupFirst = Math.random() < 0.5;
+            const given = groupFirst ? `(${a} + ${b}) + ${c}` : `${a} + (${b} + ${c})`;
+            const partial = groupFirst ? a + b : b + c;
+            const before2 = groupFirst ? '' : `${a} + `;
+            const after2 = groupFirst ? ` + ${c}` : '';
+            const total = a + b + c;
+            return { given, partial, before2, after2, total };
+        }
+
+        function renderParenQuestion(content, onCorrect) {
+            const p = genParenProblem();
+            let typed = '';
+
+            content.appendChild(showMessage('たす じゅんじょを かえた しきに かきかえよう。□に あてはまる かずは？', '🧑‍🏫'));
+
+            const blank = el('span', { class: 'blank' }, ['？']);
+            const exprBox = el('div', { class: 'calc-quiz-expr' }, [
+                el('div', {}, [`${p.given} = ${p.total}`]),
+                el('div', { class: 'mt-4' }, [p.before, blank, p.after, ` = ${p.total}`]),
+            ]);
+            content.appendChild(exprBox);
+            const feedback = el('div', {});
+            content.appendChild(feedback);
+
+            function updateBlank() {
+                blank.textContent = typed === '' ? '？' : typed;
+                blank.className = 'blank' + (typed ? ' filled' : '');
+            }
+            function submit() {
+                if (typed === '') return;
+                if (parseInt(typed, 10) === p.answer) {
+                    blank.className = 'blank correct';
+                    padWrap.querySelectorAll('.calc-key').forEach(k => k.disabled = true);
+                    feedback.appendChild(showMessage(`せいかい！ たす じゅんじょを かえても、こたえは ${p.total} で おなじだね。`, '🎉'));
+                    feedback.appendChild(el('div', { class: 'text-center mt-4' }, [
+                        el('button', { class: 'btn btn-primary', onclick: onCorrect }, ['つぎの もんだいへ →'])
+                    ]));
+                } else {
+                    blank.className = 'blank wrong';
+                    typed = '';
+                    setTimeout(() => { blank.className = 'blank'; updateBlank(); }, 600);
+                }
+            }
+            const padWrap = buildCalcPad(
+                (d) => { if (typed.length < 2) { typed += d; updateBlank(); } },
+                () => { typed = typed.slice(0, -1); updateBlank(); },
+                submit
+            );
+            content.appendChild(padWrap);
+        }
+
+        function renderCalcQuestion(content, onCorrect) {
+            const p = genCalcProblem();
+            let typed = '';
+            let stage = 1; // 1: とちゅうの こたえ、2: さいごの こたえ
+
+            content.appendChild(showMessage('くふうして けいさんしよう。□に あてはまる かずを こたえてね。', '🧑‍🏫'));
+
+            const blank1 = el('span', { class: 'blank' }, ['？']);
+            const blank2 = el('span', { class: 'blank' }, ['？']);
+            const exprBox = el('div', { class: 'calc-quiz-expr' }, [
+                el('div', {}, [p.given]),
+                el('div', { class: 'mt-4' }, ['= ', p.before2, blank1, p.after2]),
+                el('div', { class: 'mt-4' }, ['= ', blank2]),
+            ]);
+            content.appendChild(exprBox);
+            const feedback = el('div', {});
+            content.appendChild(feedback);
+
+            function activeBlank() { return stage === 1 ? blank1 : blank2; }
+            function updateBlank() {
+                const b = activeBlank();
+                b.textContent = typed === '' ? '？' : typed;
+                b.className = 'blank' + (typed ? ' filled' : '');
+            }
+            function submit() {
+                if (typed === '') return;
+                const answer = stage === 1 ? p.partial : p.total;
+                const b = activeBlank();
+                if (parseInt(typed, 10) === answer) {
+                    b.className = 'blank correct';
+                    typed = '';
+                    if (stage === 1) {
+                        stage = 2;
+                        updateBlank();
+                    } else {
+                        padWrap.querySelectorAll('.calc-key').forEach(k => k.disabled = true);
+                        feedback.appendChild(showMessage('せいかい！ くふうすると けいさんが しやすく なることも あるね。', '🎉'));
+                        feedback.appendChild(el('div', { class: 'text-center mt-4' }, [
+                            el('button', { class: 'btn btn-primary', onclick: onCorrect }, ['つぎの もんだいへ →'])
+                        ]));
+                    }
+                } else {
+                    b.className = 'blank wrong';
+                    typed = '';
+                    setTimeout(() => { b.className = 'blank'; updateBlank(); }, 600);
+                }
+            }
+            const padWrap = buildCalcPad(
+                (d) => { if (typed.length < 3) { typed += d; updateBlank(); } },
+                () => { typed = typed.slice(0, -1); updateBlank(); },
+                submit
+            );
+            content.appendChild(padWrap);
+        }
+
+        function renderStage8(content, step) {
+            const total = PRACTICE_ROUND;
+            const correct = Math.min(state.practiceCorrect || 0, total);
+            content.appendChild(stageHeader('ステージ8：あなうめ れんしゅう', `${correct} / ${total} もん せいかい`, total, correct));
+
+            if (correct >= total) {
+                if (!state.completedStages.has(8)) completeStage(8);
+                content.appendChild(showMessage(`${total}もん ぜんぶ せいかい！ あなうめの めいじんだね！`, '🎉'));
+                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                    el('button', {
+                        class: 'btn btn-primary',
+                        onclick: () => { state.practiceCorrect = 0; showScreen('stage'); }
+                    }, ['🔄 もういちど れんしゅうする'])
+                ]));
+                content.appendChild(homeBtn());
+                return;
+            }
+
+            const onCorrect = () => { state.practiceCorrect = (state.practiceCorrect || 0) + 1; showScreen('stage'); };
+            if (Math.random() < 0.5) renderParenQuestion(content, onCorrect);
+            else renderCalcQuestion(content, onCorrect);
+
+            content.appendChild(homeBtn());
+        }
+
+        // ============================================================
+        // ステージ9：お話と じゅんばん（文章題＋図で「どこから足しても同じ」）
+        // ============================================================
+
+        // お話の図を作る（絵文字グループ）。人数が多くても絵文字を省略せず全部表示する。
+        function renderGroupDiagram(groups) {
+            return el('div', { class: 'story-diagram' }, groups.map(g => {
+                const unit = g.unit || 'にん';
+                const icons = Array.from({ length: g.count }, () => el('span', { class: 'story-icon' }, [g.icon]));
+                const iconsRow = el('div', { class: 'story-icons' }, icons);
+                return el('div', { class: 'story-group' }, [
+                    el('div', { class: 'story-group-label' }, [`${g.label}：${g.count}${unit}`]),
+                    iconsRow
+                ]);
+            }));
+        }
+
+        function renderStage9(content, step) {
+            const steps = [
+                { subtitle: 'お話を 図で かんがえよう' },
+                { subtitle: 'じぶんで たしかめよう' },
+                { subtitle: 'れんしゅうもんだい' },
+            ];
+            content.appendChild(stageHeader('ステージ9：お話と じゅんばん', steps[step]?.subtitle || '', steps.length, step));
+
+            if (step === 0) {
+                content.appendChild(showMessage('こうていで 1年生が 7人 あそんでいます。そこへ 1年生が 12人、2年生が 8人 きました。ぜんぶで なんにんに なるかな？', '🧑‍🏫'));
+                content.appendChild(renderGroupDiagram([
+                    { label: '1年生（さいしょ）', count: 7, icon: '🧒' },
+                    { label: '1年生（あとから）', count: 12, icon: '🧒' },
+                    { label: '2年生（あとから）', count: 8, icon: '👦' },
+                ]));
+
+                content.appendChild(el('div', { style: 'text-align:center; font-weight:700; color:var(--secondary); font-size:0.85rem;' }, ['しほさんの かんがえ：さいしょの ふたりを たす']));
+                const engineA = makeExprHost(content);
+                engineA.reset([7, 12, 8]);
+
+                content.appendChild(el('div', { style: 'text-align:center; font-weight:700; color:var(--primary); font-size:0.85rem; margin-top:2px;' }, ['こうたさんの かんがえ：あとから きた 人数を たす']));
+                const engineB = makeExprHost(content);
+                engineB.reset([7, 12, 8], ['+', '+'], { start: 1, end: 2 });
+
+                const btn = el('button', {
+                    class: 'btn btn-primary mt-4', onclick: async () => {
+                        btn.disabled = true;
+                        await runChain(engineA, [
+                            { indices: [0, 1], result: 19, next: { nums: [19, 8], ops: ['+'] } },
+                            { indices: [0, 1], result: 27, final: true },
+                        ]);
+                        engineB.setParenActive(true);
+                        await runChain(engineB, [
+                            { indices: [1, 2], result: 20, next: { nums: [7, 20], ops: ['+'] } },
+                            { indices: [0, 1], result: 27, final: true },
+                        ]);
+                        content.appendChild(showMessage('どちらも こたえは 27。たす じゅんじょを かえても、こたえは おなじに なるね！', '🎉'));
+                        btn.textContent = 'わかった！→';
+                        btn.disabled = false;
+                        btn.onclick = nextStep;
+                    }
+                }, ['▶ ふたりの けいさんを みてみよう']);
+                content.appendChild(el('div', { class: 'row-center' }, [btn]));
+                content.appendChild(homeBtn());
+
+            } else if (step === 1) {
+                content.appendChild(showMessage('こうえんで 子どもが 6人 あそんでいます。そこへ 5人、9人が きました。ぜんぶで なんにんに なるかな？', '🧑‍🏫'));
+                content.appendChild(renderGroupDiagram([
+                    { label: 'さいしょ', count: 6, icon: '🧒' },
+                    { label: 'あとから①', count: 5, icon: '🧒' },
+                    { label: 'あとから②', count: 9, icon: '🧒' },
+                ]));
+                const engine = makeExprHost(content);
+                engine.reset([6, 5, 9]);
+
+                const options = [20, 18, 21];
+                const optDiv = el('div', { class: 'quiz-options mt-4' });
+                options.forEach(opt => {
+                    optDiv.appendChild(el('button', {
+                        class: 'quiz-option',
+                        onclick: async () => {
+                            if (opt === 20) {
+                                optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                                await runChain(engine, [
+                                    { indices: [0, 1], result: 11, next: { nums: [11, 9], ops: ['+'] } },
+                                    { indices: [0, 1], result: 20, final: true },
+                                ]);
+                                const followUp = el('div', {});
+                                content.appendChild(showMessage('せいかい！ べつの じゅんばんで けいさんしても、おなじ 20人に なるか たしかめてみよう。', '🎉'));
+                                content.appendChild(followUp);
+                                const btn2 = el('button', {
+                                    class: 'btn btn-secondary mt-4', onclick: async () => {
+                                        btn2.disabled = true;
+                                        const engine2 = makeExprHost(followUp);
+                                        engine2.reset([6, 5, 9], ['+', '+'], { start: 1, end: 2 });
+                                        engine2.setParenActive(true);
+                                        await runChain(engine2, [
+                                            { indices: [1, 2], result: 14, next: { nums: [6, 14], ops: ['+'] } },
+                                            { indices: [0, 1], result: 20, final: true },
+                                        ]);
+                                        followUp.appendChild(showMessage('やっぱり 20人。じゅんばんを かえても こたえは かわらないね！', '✨'));
+                                        followUp.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                            el('button', { class: 'btn btn-primary', onclick: nextStep }, ['つぎへ →'])
+                                        ]));
+                                    }
+                                }, ['▶ べつの じゅんばんでも ためす']);
+                                content.appendChild(el('div', { class: 'row-center' }, [btn2]));
+                            } else {
+                                const b = optDiv.querySelectorAll('.quiz-option')[options.indexOf(opt)];
+                                b.classList.add('wrong'); b.onclick = null;
+                            }
+                        }
+                    }, [String(opt)]));
+                });
+                content.appendChild(optDiv);
+                content.appendChild(homeBtn());
+
+            } else if (step === 2) {
+                content.appendChild(showMessage('やおやさんに りんごが 9こ、みかんが 14こ とどきました。あとから りんごが 6こ とどきました。くだものは ぜんぶで なんこに なるかな？', '🧑‍🏫'));
+                content.appendChild(renderGroupDiagram([
+                    { label: 'りんご（さいしょ）', count: 9, icon: '🍎', unit: 'こ' },
+                    { label: 'みかん', count: 14, icon: '🍊', unit: 'こ' },
+                    { label: 'りんご（あとから）', count: 6, icon: '🍎', unit: 'こ' },
+                ]));
+                const engine = makeExprHost(content);
+                engine.reset([9, 14, 6], ['+', '+'], { start: 1, end: 2 });
+
+                const options = [29, 23, 20];
+                const optDiv = el('div', { class: 'quiz-options mt-4' });
+                options.forEach(opt => {
+                    optDiv.appendChild(el('button', {
+                        class: 'quiz-option',
+                        onclick: async () => {
+                            if (opt === 29) {
+                                optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                                engine.setParenActive(true);
+                                await runChain(engine, [
+                                    { indices: [1, 2], result: 20, next: { nums: [9, 20], ops: ['+'] } },
+                                    { indices: [0, 1], result: 29, final: true },
+                                ]);
+                                spawnConfetti();
+                                completeStage(9);
+                                content.appendChild(showMessage('せいかい！ 14+6=20 を さきに けいさんすると きりが いいね。ぜんぶで 29こ！ ステージ9クリア！', '🎉'));
+                                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                    el('button', { class: 'btn btn-secondary', onclick: () => showScreen('stage-select') }, ['🏠 ステージへ'])
+                                ]));
+                            } else {
+                                const b = optDiv.querySelectorAll('.quiz-option')[options.indexOf(opt)];
+                                b.classList.add('wrong'); b.onclick = null;
+                            }
+                        }
+                    }, [String(opt)]));
+                });
+                content.appendChild(optDiv);
+                content.appendChild(homeBtn());
+            }
+        }
+
+        // ============================================================
+        // ステージ10：お話と しきの れんしゅう（お話⇄しき の双方向へんかん）
+        // ============================================================
+        const STORY_PRACTICE_ROUND = 5;
+
+        // お話のテンプレート集。呼ぶたびに数字をランダム生成する（ジェネレータ関数方式）
+        const STORY_TEMPLATES = [
+            {
+                gen: () => {
+                    const a = randInt(2, 9), b = randInt(2, 15), c = randInt(2, 9);
+                    return {
+                        text: `こうえんで こどもが ${a}人 あそんでいます。そこへ ${b}人、${c}人が きました。ぜんぶで なんにんに なるかな？`,
+                        groups: [
+                            { label: 'さいしょ', count: a, icon: '🧒', unit: 'にん' },
+                            { label: 'あとから①', count: b, icon: '🧒', unit: 'にん' },
+                            { label: 'あとから②', count: c, icon: '🧒', unit: 'にん' },
+                        ],
+                        nums: [a, b, c],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = randInt(2, 9), b = randInt(2, 15), c = randInt(2, 9);
+                    return {
+                        text: `やおやさんに りんごが ${a}こ、みかんが ${b}こ とどきました。あとから りんごが ${c}こ とどきました。くだものは ぜんぶで なんこに なるかな？`,
+                        groups: [
+                            { label: 'りんご（さいしょ）', count: a, icon: '🍎', unit: 'こ' },
+                            { label: 'みかん', count: b, icon: '🍊', unit: 'こ' },
+                            { label: 'りんご（あとから）', count: c, icon: '🍎', unit: 'こ' },
+                        ],
+                        nums: [a, b, c],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = randInt(2, 9), b = randInt(2, 15), c = randInt(2, 9);
+                    return {
+                        text: `どうぶつえんに うさぎが ${a}ひき います。そこへ ${b}ひき、${c}ひき の うさぎが はこばれて きました。うさぎは ぜんぶで なんびきに なるかな？`,
+                        groups: [
+                            { label: 'さいしょ', count: a, icon: '🐰', unit: 'ひき' },
+                            { label: 'あとから①', count: b, icon: '🐰', unit: 'ひき' },
+                            { label: 'あとから②', count: c, icon: '🐰', unit: 'ひき' },
+                        ],
+                        nums: [a, b, c],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = randInt(2, 9), b = randInt(2, 15), c = randInt(2, 9);
+                    return {
+                        text: `としょかんに 本が ${a}さつ あります。きょう ${b}さつ、あした ${c}さつ ふえる よていです。本は ぜんぶで なんさつに なるかな？`,
+                        groups: [
+                            { label: 'いま', count: a, icon: '📚', unit: 'さつ' },
+                            { label: 'きょう', count: b, icon: '📚', unit: 'さつ' },
+                            { label: 'あした', count: c, icon: '📚', unit: 'さつ' },
+                        ],
+                        nums: [a, b, c],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = randInt(2, 9), b = randInt(2, 15), c = randInt(2, 9);
+                    return {
+                        text: `すいそうに きんぎょが ${a}ひき います。そこへ ${b}ひき、${c}ひき の きんぎょを いれました。きんぎょは ぜんぶで なんびきに なるかな？`,
+                        groups: [
+                            { label: 'さいしょ', count: a, icon: '🐠', unit: 'ひき' },
+                            { label: 'あとから①', count: b, icon: '🐠', unit: 'ひき' },
+                            { label: 'あとから②', count: c, icon: '🐠', unit: 'ひき' },
+                        ],
+                        nums: [a, b, c],
+                    };
+                }
+            },
+        ];
+
+        function genStoryInstance() {
+            const idx = randInt(0, STORY_TEMPLATES.length - 1);
+            return { idx, ...STORY_TEMPLATES[idx].gen() };
+        }
+
+        // お話→式：お話と図を見せて、あう式を3択でえらばせる
+        function renderStoryToExprQuestion(content, onCorrect) {
+            const inst = genStoryInstance();
+            const [a, b, c] = inst.nums;
+
+            content.appendChild(showMessage('お話を よんで、あう しきを えらぼう。', '🧑‍🏫'));
+            content.appendChild(showMessage(inst.text, '🧑‍🏫'));
+            content.appendChild(renderGroupDiagram(inst.groups));
+
+            const correct = `${a}＋${b}＋${c}`;
+            // 誤答A：どれか1つの数字を読みまちがえた式
+            const wrongNums = [...inst.nums];
+            const wrongIdx = randInt(0, 2);
+            wrongNums[wrongIdx] = Math.max(1, wrongNums[wrongIdx] + (Math.random() < 0.5 ? 1 : -1) * randInt(1, 3));
+            const wrongA = wrongNums.join('＋');
+            // 誤答B：さいごの グループを たしわすれた式
+            const wrongB = `${a}＋${b}`;
+            const options = shuffle([correct, wrongA, wrongB]);
+
+            const feedback = el('div', {});
+            const optDiv = el('div', { class: 'quiz-options mt-4' });
+            options.forEach((opt, i) => {
+                optDiv.appendChild(el('button', {
+                    class: 'quiz-option',
+                    onclick: () => {
+                        const btn = optDiv.children[i];
+                        if (opt === correct) {
+                            optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                            feedback.appendChild(showMessage('せいかい！ お話の かずを じゅんばんに たすと、この しきに なるね。', '🎉'));
+                            feedback.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                el('button', { class: 'btn btn-primary', onclick: onCorrect }, ['つぎの もんだいへ →'])
+                            ]));
+                        } else {
+                            btn.classList.add('wrong'); btn.onclick = null;
+                        }
+                    }
+                }, [opt]));
+            });
+            content.appendChild(optDiv);
+            content.appendChild(feedback);
+        }
+
+        // 式→お話：式を見せて（ExprEngineで静的表示）、あうお話を3択でえらばせる
+        function renderExprToStoryQuestion(content, onCorrect) {
+            const inst = genStoryInstance();
+            const [a, b, c] = inst.nums;
+
+            content.appendChild(showMessage('この しきに あう お話は どれかな？', '🧑‍🏫'));
+            const engine = makeExprHost(content);
+            engine.reset([a, b, c]);
+
+            // 誤答：べつの お話テンプレートから2つえらぶ（ちがう場面のお話にする）
+            const otherIdxs = shuffle(STORY_TEMPLATES.map((_, i) => i).filter(i => i !== inst.idx)).slice(0, 2);
+            const distractorTexts = otherIdxs.map(i => STORY_TEMPLATES[i].gen().text);
+            const options = shuffle([inst.text, ...distractorTexts]);
+
+            const feedback = el('div', {});
+            const optDiv = el('div', { class: 'quiz-options quiz-options-text mt-4' });
+            options.forEach((opt, i) => {
+                optDiv.appendChild(el('button', {
+                    class: 'quiz-option',
+                    onclick: () => {
+                        const btn = optDiv.children[i];
+                        if (opt === inst.text) {
+                            optDiv.querySelectorAll('.quiz-option').forEach(b => b.classList.add('hidden'));
+                            feedback.appendChild(showMessage(`せいかい！ ${a}＋${b}＋${c} は この お話の しきだね。`, '🎉'));
+                            feedback.appendChild(el('div', { class: 'text-center mt-4' }, [
+                                el('button', { class: 'btn btn-primary', onclick: onCorrect }, ['つぎの もんだいへ →'])
+                            ]));
+                        } else {
+                            btn.classList.add('wrong'); btn.onclick = null;
+                        }
+                    }
+                }, [opt]));
+            });
+            content.appendChild(optDiv);
+            content.appendChild(feedback);
+        }
+
+        function renderStage10(content, step) {
+            const total = STORY_PRACTICE_ROUND;
+            const correct = Math.min(state.storyPracticeCorrect || 0, total);
+            content.appendChild(stageHeader('ステージ10：お話と しき', `${correct} / ${total} もん せいかい`, total, correct));
+
+            if (correct >= total) {
+                if (!state.completedStages.has(10)) completeStage(10);
+                content.appendChild(showMessage(`${total}もん ぜんぶ せいかい！ お話と しきの めいじんだね！`, '🎉'));
+                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                    el('button', {
+                        class: 'btn btn-primary',
+                        onclick: () => { state.storyPracticeCorrect = 0; showScreen('stage'); }
+                    }, ['🔄 もういちど れんしゅうする'])
+                ]));
+                content.appendChild(homeBtn());
+                return;
+            }
+
+            const onCorrect = () => { state.storyPracticeCorrect = (state.storyPracticeCorrect || 0) + 1; showScreen('stage'); };
+            if (Math.random() < 0.5) renderStoryToExprQuestion(content, onCorrect);
+            else renderExprToStoryQuestion(content, onCorrect);
+
+            content.appendChild(homeBtn());
+        }
+
+        // ============================================================
+        // ステージ11：しきの きもち（式から 考えを 読みとる・複数選択）
+        // ============================================================
+        const THINKING_PRACTICE_ROUND = 5;
+
+        // りゆうカードの3しゅるい（けいさん／なかま／とき）。ラベルの文言は固定で、
+        // 問題ごとに どれが正しいかが 変わる（複数正解もある）。
+        const REASON_DEFS = [
+            { key: 'round', icon: '🧮', label: 'たすと きりのいい数に なるから、けいさんが かんたんに なる' },
+            { key: 'category', icon: '🎒', label: 'おなじ なかまの ものを まとめたから' },
+            { key: 'phase', icon: '⏰', label: 'おなじ ときの できごとを まとめたから' },
+        ];
+
+        // お話のテンプレート集。すべて「買い物の金額（円）」を たす お話にする ―
+        // 種類が ちがう ものでも「円」なら たす いみが 自然に なりたつ（教科書 p.83 と おなじ形）。
+        // ①②は「とき」がおなじ、②③は「なかま」がおなじ、という構造は固定にし、金額だけ ランダム生成する。
+        function yen() { return randInt(1, 18) * 5; } // 5,10,...,90円（教科書の15,40,30円と おなじ ふんいき）
+
+        const THINKING_TEMPLATES = [
+            {
+                gen: () => {
+                    const a = yen(), b = yen(), c = yen();
+                    return {
+                        text: `おかしやさんで、${a}円の あめと ${b}円の けしゴムを 買いました。えんぴつを 買いわすれたので、店に もどり、${c}円の えんぴつを 買いました。ぜんぶで いくら つかいましたか。`,
+                        items: [
+                            { count: a, label: 'あめ', icon: '🍬', category: 'おかし', phase: 'first' },
+                            { count: b, label: 'けしゴム', icon: '📎', category: 'ぶんぼうぐ', phase: 'first' },
+                            { count: c, label: 'えんぴつ', icon: '✏️', category: 'ぶんぼうぐ', phase: 'later' },
+                        ],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = yen(), b = yen(), c = yen();
+                    return {
+                        text: `スーパーで、${a}円の ぎゅうにゅうと ${b}円の りんごを 買いました。みかんを 買いわすれたので、店に もどり、${c}円の みかんを 買いました。ぜんぶで いくら つかいましたか。`,
+                        items: [
+                            { count: a, label: 'ぎゅうにゅう', icon: '🥛', category: 'のみもの', phase: 'first' },
+                            { count: b, label: 'りんご', icon: '🍎', category: 'くだもの', phase: 'first' },
+                            { count: c, label: 'みかん', icon: '🍊', category: 'くだもの', phase: 'later' },
+                        ],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = yen(), b = yen(), c = yen();
+                    return {
+                        text: `ほんやさんで、${a}円の ノートと ${b}円の えほんを 買いました。ずかんを 買いわすれたので、店に もどり、${c}円の ずかんを 買いました。ぜんぶで いくら つかいましたか。`,
+                        items: [
+                            { count: a, label: 'ノート', icon: '📓', category: 'ぶんぼうぐ', phase: 'first' },
+                            { count: b, label: 'えほん', icon: '📖', category: 'ほん', phase: 'first' },
+                            { count: c, label: 'ずかん', icon: '📚', category: 'ほん', phase: 'later' },
+                        ],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = yen(), b = yen(), c = yen();
+                    return {
+                        text: `ペットショップで、${a}円の おやつと ${b}円の くびわを 買いました。おもちゃを 買いわすれたので、店に もどり、${c}円の おもちゃを 買いました。ぜんぶで いくら つかいましたか。`,
+                        items: [
+                            { count: a, label: 'おやつ', icon: '🍖', category: 'たべもの', phase: 'first' },
+                            { count: b, label: 'くびわ', icon: '📿', category: 'ぐっず', phase: 'first' },
+                            { count: c, label: 'おもちゃ', icon: '🧸', category: 'ぐっず', phase: 'later' },
+                        ],
+                    };
+                }
+            },
+            {
+                gen: () => {
+                    const a = yen(), b = yen(), c = yen();
+                    return {
+                        text: `おもちゃやさんで、${a}円の クッキーと ${b}円の にんぎょうを 買いました。くるまの おもちゃを 買いわすれたので、店に もどり、${c}円の くるまを 買いました。ぜんぶで いくら つかいましたか。`,
+                        items: [
+                            { count: a, label: 'クッキー', icon: '🍪', category: 'おかし', phase: 'first' },
+                            { count: b, label: 'にんぎょう', icon: '🪆', category: 'おもちゃ', phase: 'first' },
+                            { count: c, label: 'くるま', icon: '🚗', category: 'おもちゃ', phase: 'later' },
+                        ],
+                    };
+                }
+            },
+        ];
+
+        function genThinkingInstance(forceIdx = null) {
+            const idx = forceIdx !== null ? forceIdx : randInt(0, THINKING_TEMPLATES.length - 1);
+            return { idx, ...THINKING_TEMPLATES[idx].gen() };
+        }
+
+        // 買った ものを 1こずつ（金額つき）で 表示する図。renderGroupDiagramは 個数分だけ
+        // アイコンを ならべる方式なので、金額の表示には 使わない。
+        function renderPriceItems(items) {
+            return el('div', { class: 'story-diagram' }, items.map(it => el('div', { class: 'story-group' }, [
+                el('div', { style: 'font-size:2rem; text-align:center;' }, [it.icon]),
+                el('div', { class: 'story-group-label' }, [`${it.label}：${it.count}円`]),
+            ])));
+        }
+
+        // 式を見せて、あてはまる りゆうカードを ぜんぶ えらばせる（複数選択・完全一致で せいかい）
+        function renderReasonQuestion(content, inst, groupIdx, onCorrect) {
+            const items = inst.items;
+            const pair = groupIdx === 0 ? [0, 1] : [1, 2];
+            const [i1, i2] = pair;
+            const truth = {
+                round: (items[i1].count + items[i2].count) % 10 === 0,
+                category: items[i1].category === items[i2].category,
+                phase: items[i1].phase === items[i2].phase,
+            };
+
+            content.appendChild(showMessage(inst.text, '🧑‍🏫'));
+            content.appendChild(renderPriceItems(items));
+
+            const nums = items.map(it => it.count);
+            const engine = makeExprHost(content);
+            if (groupIdx === 0) engine.reset(nums, ['+', '+'], { start: 0, end: 1 });
+            else engine.reset(nums, ['+', '+'], { start: 1, end: 2 });
+            engine.setParenActive(true);
+
+            content.appendChild(showMessage(`どうして ${items[i1].label}と ${items[i2].label}を さきに たしたのかな？ あてはまる りゆうを ぜんぶ えらぼう。`, '🤔'));
+
+            const cardsDiv = el('div', { class: 'reason-cards' });
+            const cardEls = REASON_DEFS.map(def => {
+                const card = el('button', { class: 'reason-card' }, [
+                    el('span', { class: 'reason-icon' }, [def.icon]),
+                    el('span', { class: 'reason-text' }, [def.label]),
+                ]);
+                card.onclick = () => card.classList.toggle('selected');
+                cardsDiv.appendChild(card);
+                return { def, card };
+            });
+            content.appendChild(cardsDiv);
+
+            const feedback = el('div', {});
+            const submitBtn = el('button', { class: 'btn btn-primary mt-4' }, ['✅ たしかめる']);
+            submitBtn.onclick = () => {
+                let allCorrect = true;
+                cardEls.forEach(({ def, card }) => {
+                    const selected = card.classList.contains('selected');
+                    const isTrue = truth[def.key];
+                    card.classList.remove('selected', 'correct', 'wrong-selected', 'missed', 'neutral');
+                    if (isTrue && selected) card.classList.add('correct');
+                    else if (!isTrue && selected) { card.classList.add('wrong-selected'); allCorrect = false; }
+                    else if (isTrue && !selected) { card.classList.add('missed'); allCorrect = false; }
+                    else card.classList.add('neutral');
+                });
+                feedback.innerHTML = '';
+                if (allCorrect) {
+                    submitBtn.disabled = true;
+                    cardEls.forEach(({ card }) => { card.onclick = null; });
+                    const note = truth.round
+                        ? ''
+                        : ' この もんだいは、たす じゅんじょを かえても 計算の むずかしさは あまり かわらないよ。だから、おはなしの ないよう（なかま・とき）で えらんでも いいんだよ。';
+                    feedback.appendChild(showMessage('せいかい！ りゆうを ちゃんと せつめい できたね！' + note, '🎉'));
+                    feedback.appendChild(el('div', { class: 'text-center mt-4' }, [
+                        el('button', { class: 'btn btn-secondary', onclick: onCorrect }, ['つぎへ →'])
+                    ]));
+                } else {
+                    feedback.appendChild(showMessage('おしい！ もういちど かんがえてみよう。', '😅'));
+                    setTimeout(() => {
+                        cardEls.forEach(({ card }) => card.classList.remove('correct', 'wrong-selected', 'missed', 'neutral'));
+                        feedback.innerHTML = '';
+                    }, 1400);
+                }
+            };
+            content.appendChild(submitBtn);
+            content.appendChild(feedback);
+        }
+
+        // ガイド導入：おかしやさんの お話で、①②の まとめかたと ②③の まとめかたを
+        // じゅんばんに 体験する（教科書のあみさん・りくさんに あたる部分）
+        function renderThinkingIntro(content) {
+            content.appendChild(stageHeader('ステージ11：しきの きもち', 'しきを つくった 人の かんがえを よみとろう', 1, 0));
+            content.appendChild(showMessage('しき、とくに（　）の つかいかたには、その人が どう かんがえたかが かくれているよ。', '🧑‍🏫'));
+
+            const introInst = genThinkingInstance(0);
+            const wrap = el('div', {});
+            content.appendChild(wrap);
+
+            function showSecond() {
+                wrap.innerHTML = '';
+                wrap.appendChild(showMessage('こんどは、べつの まとめかたを みてみよう。', '🧑‍🏫'));
+                renderReasonQuestion(wrap, introInst, 1, () => {
+                    wrap.innerHTML = '';
+                    wrap.appendChild(showMessage('しきの （　）には、けいさんが かんたんに なる りゆうの ときも、おはなしの ながれ（なかま・とき）の りゆうの ときも あるんだね。これから、いろんな おはなしで れんしゅうしよう！', '🎉'));
+                    wrap.appendChild(el('div', { class: 'text-center mt-4' }, [
+                        el('button', {
+                            class: 'btn btn-primary',
+                            onclick: () => { state.stepIndex = 1; showScreen('stage'); }
+                        }, ['れんしゅうへ →'])
+                    ]));
+                });
+            }
+
+            renderReasonQuestion(wrap, introInst, 0, showSecond);
+            content.appendChild(homeBtn());
+        }
+
+        function renderStage11(content, step) {
+            if (step === 0) {
+                renderThinkingIntro(content);
+                return;
+            }
+
+            const total = THINKING_PRACTICE_ROUND;
+            const correct = Math.min(state.thinkingPracticeCorrect || 0, total);
+            content.appendChild(stageHeader('ステージ11：しきの きもち', `${correct} / ${total} もん せいかい`, total, correct));
+
+            if (correct >= total) {
+                if (!state.completedStages.has(11)) completeStage(11);
+                content.appendChild(showMessage(`${total}もん ぜんぶ せいかい！ しきに かくれた 気もちが よめるように なったね！`, '🎉'));
+                content.appendChild(el('div', { class: 'text-center mt-4' }, [
+                    el('button', {
+                        class: 'btn btn-primary',
+                        onclick: () => { state.thinkingPracticeCorrect = 0; showScreen('stage'); }
+                    }, ['🔄 もういちど れんしゅうする'])
+                ]));
+                content.appendChild(homeBtn());
+                return;
+            }
+
+            const inst = genThinkingInstance();
+            const groupIdx = Math.random() < 0.5 ? 0 : 1;
+            const onCorrect = () => { state.thinkingPracticeCorrect = (state.thinkingPracticeCorrect || 0) + 1; showScreen('stage'); };
+            renderReasonQuestion(content, inst, groupIdx, onCorrect);
+
+            content.appendChild(homeBtn());
+        }
+
+        // ============================================================
+        // バックボタン／初期表示
+        // ============================================================
+        document.getElementById('backBtn').addEventListener('click', () => {
+            if (state.currentScreen === 'stage') {
+                if (confirm('ステージを ちゅうだんして ホームへ もどる？')) showScreen('home');
+            } else {
+                showScreen('home');
+            }
+        });
+
+        showScreen('home');
+    </script>
+</body>
+</html>

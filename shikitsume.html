@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>四角形のしきつめアプリ</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif;
+      background-color: #f1f5f9;
+    }
+
+    /* --- メニュー（表紙）画面 --- */
+    #menu-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, #e0f2fe 0%, #fef3c7 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .menu-title {
+      font-size: 32px;
+      font-weight: bold;
+      color: #0f172a;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 4px rgba(255,255,255,0.8);
+    }
+    .menu-subtitle {
+      font-size: 18px;
+      color: #475569;
+      margin-bottom: 30px;
+    }
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 900px;
+      width: 100%;
+    }
+    .shape-card {
+      background: #ffffff;
+      border: 3px solid #cbd5e1;
+      border-radius: 20px;
+      padding: 20px 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+      transition: all 0.15s ease;
+    }
+    .shape-card:hover, .shape-card:active {
+      transform: translateY(-4px);
+      border-color: #3b82f6;
+      box-shadow: 0 10px 20px rgba(59,130,246,0.2);
+    }
+    .shape-card svg {
+      width: 90px;
+      height: 90px;
+      margin-bottom: 12px;
+    }
+    .shape-card-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1e293b;
+    }
+
+    /* --- メインアプリ画面 --- */
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+    }
+    header {
+      background-color: #ffffff;
+      border-bottom: 2px solid #e2e8f0;
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      z-index: 10;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #0f172a;
+    }
+    button {
+      font-size: 15px;
+      font-weight: bold;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+      transition: all 0.1s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .btn-primary   { background-color: #3b82f6; color: white; }
+    .btn-warning   { background-color: #f59e0b; color: white; }
+    .btn-danger    { background-color: #ef4444; color: white; }
+    .btn-secondary { background-color: #64748b; color: white; }
+    .btn-menu      { background-color: #0284c7; color: white; }
+    .btn-zoom      { background-color: #475569; color: white; padding: 6px 12px; }
+    .btn-active    { outline: 3px solid #93c5fd; }
+
+    /* スナップボタン専用スタイル */
+    .btn-snap-on {
+      background-color: #10b981;
+      color: white;
+      box-shadow: 0 3px 6px rgba(16, 185, 129, 0.3);
+    }
+    .btn-snap-off {
+      background-color: #94a3b8;
+      color: #f8fafc;
+      box-shadow: none;
+      opacity: 0.75;
+    }
+
+    /* 効果音ボタン専用スタイル */
+    .btn-sound-on {
+      background-color: #06b6d4;
+      color: white;
+      box-shadow: 0 3px 6px rgba(6, 182, 212, 0.3);
+    }
+    .btn-sound-off {
+      background-color: #94a3b8;
+      color: #f8fafc;
+      box-shadow: none;
+      opacity: 0.75;
+    }
+
+    .zoom-group {
+      display: flex;
+      align-items: center;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      gap: 4px;
+    }
+    .zoom-val {
+      font-size: 14px;
+      font-weight: bold;
+      min-width: 48px;
+      text-align: center;
+      color: #334155;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      background-color: #ffffff;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    .legend {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: bold;
+      pointer-events: none;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 表紙（形選択）画面 -->
+<div id="menu-screen">
+  <div class="menu-title">しかくけい の しきつめ</div>
+  <div class="menu-subtitle">しきつめたい 形（かたち）を選ぼう！</div>
+  <div class="menu-grid">
+    <div class="shape-card" onclick="selectShape('SQUARE')">
+      <svg viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" fill="#E9D5FF" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">正方形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('RECTANGLE')">
+      <svg viewBox="0 0 100 100"><rect x="10" y="25" width="80" height="50" fill="#FEF08A" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">長方形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('PARALLELOGRAM')">
+      <svg viewBox="0 0 100 100"><polygon points="30,25 90,25 70,75 10,75" fill="#E9D5FF" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">平行四辺形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('RHOMBUS')">
+      <svg viewBox="0 0 100 100"><polygon points="50,10 88,50 50,90 12,50" fill="#FEF08A" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">ひし形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('TRAPEZOID')">
+      <svg viewBox="0 0 100 100"><polygon points="25,25 75,25 90,75 10,75" fill="#E9D5FF" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">台形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('GENERAL')">
+      <svg viewBox="0 0 100 100"><polygon points="20,20 85,15 75,80 15,85" fill="#FEF08A" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">一般の四角形</div>
+    </div>
+  </div>
+</div>
+
+<!-- メインアプリ画面 -->
+<div id="app-container" style="display:none;">
+  <header>
+    <div class="header-left">
+      <button class="btn-menu" onclick="showMenu()">◀ えらびなおす</button>
+      <div class="title" id="mode-title">かたちをつくる画面</div>
+    </div>
+    
+    <div class="header-right">
+      <!-- 効果音 ON/OFF -->
+      <button id="btn-toggle-sound" class="btn-sound-on" onclick="toggleSound()">🔊 音 ON</button>
+
+      <!-- 拡大・縮小 -->
+      <div class="zoom-group">
+        <button class="btn-zoom" onclick="zoomOut()">－ 縮小</button>
+        <span class="zoom-val" id="zoom-text">100%</span>
+        <button class="btn-zoom" onclick="zoomIn()">＋ 拡大</button>
+      </div>
+
+      <!-- 編集モード時 -->
+      <button id="btn-finish-edit" class="btn-primary" onclick="switchToTileMode()">しきつめる ➔</button>
+
+      <!-- 敷き詰めモード時 -->
+      <button id="btn-add-quad" class="btn-primary" style="display:none;" onclick="addQuad()">＋ しかくけい</button>
+      <button id="btn-toggle-snap" class="btn-snap-on" style="display:none;" onclick="toggleSnap()">🧲 スナップ ON</button>
+      <button id="btn-toggle-sectors" class="btn-warning btn-active" style="display:none;" onclick="toggleSectors()">扇形 ON</button>
+      <button id="btn-clear" class="btn-danger" style="display:none;" onclick="clearQuads()">ぜんぶ消す</button>
+      <button id="btn-back-edit" class="btn-secondary" style="display:none;" onclick="switchToEditMode()">◀ 形を変える</button>
+    </div>
+  </header>
+
+  <div id="canvas-container">
+    <canvas id="mainCanvas"></canvas>
+    
+    <!-- 一般四角形専用の角度凡例 -->
+    <div class="legend" id="legend" style="display:none;">
+      <div class="legend-item"><div class="legend-color" style="background:#EF4444;"></div>角あ（赤）</div>
+      <div class="legend-item"><div class="legend-color" style="background:#3B82F6;"></div>角い（青）</div>
+      <div class="legend-item"><div class="legend-color" style="background:#F59E0B;"></div>角う（黄）</div>
+      <div class="legend-item"><div class="legend-color" style="background:#10B981;"></div>角え（緑）</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- 定数 & 設定 ---
+const ANGLE_COLORS = ['#EF4444', '#3B82F6', '#F59E0B', '#10B981']; 
+const FILL_COLORS = ['#E9D5FF', '#FEF08A']; // 薄い紫, 薄い黄色
+
+// アプリ状態
+let appState = 'EDIT'; // 'EDIT' または 'TILE'
+let currentShapeType = 'GENERAL'; // SQUARE, RECTANGLE, PARALLELOGRAM, RHOMBUS, TRAPEZOID, GENERAL
+let showSectors = true; 
+let snapEnabled = true; // スナップのON/OFFフラグ
+let soundEnabled = true; // 効果音のON/OFFフラグ
+let zoomScale = 1.0; 
+
+// 各図形の変形用パラメータ
+let shapeParams = {
+  SQUARE: { side: 160 },
+  RECTANGLE: { width: 200, height: 120 },
+  PARALLELOGRAM: { base: 180, height: 120, slant: 40 },
+  RHOMBUS: { d1: 220, d2: 140 },
+  TRAPEZOID: { bBottom: 220, bTop: 120, height: 110, offset: 0 },
+  GENERAL: {
+    points: [
+      { x: -100, y: -70 },
+      { x: 90,   y: -85 },
+      { x: 120,  y: 80 },
+      { x: -70,  y: 95 }
+    ]
+  }
+};
+
+// 基準四角形の中心相対座標 [A, B, C, D]
+let basePoints = [];
+
+// 敷き詰めパーツ群
+let quads = [];
+let activeQuad = null; 
+let selectedHandle = null; 
+let dragOffsetX = 0, dragOffsetY = 0;
+let dragStartPos = { x: 0, y: 0 };
+let isDragging = false;
+
+// Canvas setup
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+
+// --- Web Audio API による効果音生成エンジン ---
+let audioCtx = null;
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playSound(type) {
+  if (!soundEnabled) return;
+  const c = getAudioContext();
+  if (!c) return;
+
+  const now = c.currentTime;
+
+  if (type === 'snap') {
+    // スナップ吸着音（ポンッ！）
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(now);
+    osc.stop(now + 0.1);
+
+  } else if (type === 'add') {
+    // 図形追加音（ポロンッ♪）
+    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+      gain.gain.setValueAtTime(0.2, now + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.12);
+      osc.connect(gain);
+      gain.connect(c.destination);
+      osc.start(now + idx * 0.04);
+      osc.stop(now + idx * 0.04 + 0.12);
+    });
+
+  } else if (type === 'tap') {
+    // 色切り替え・タップ音（コッ）
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(650, now);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(now);
+    osc.stop(now + 0.05);
+
+  } else if (type === 'clear') {
+    // ぜんぶ消す音（シュンッ）
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(120, now + 0.18);
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(now);
+    osc.stop(now + 0.18);
+
+  } else if (type === 'toggle') {
+    // ボタン切り替え音（ピッ）
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(now);
+    osc.stop(now + 0.06);
+  }
+}
+
+// ズーム処理
+function zoomIn() {
+  playSound('toggle');
+  zoomScale = Math.min(2.0, zoomScale + 0.15);
+  updateZoomUI();
+}
+function zoomOut() {
+  playSound('toggle');
+  zoomScale = Math.max(0.3, zoomScale - 0.15);
+  updateZoomUI();
+}
+function updateZoomUI() {
+  document.getElementById('zoom-text').innerText = `${Math.round(zoomScale * 100)}%`;
+  draw();
+}
+
+// 図形の中心相対座標を定義・再計算
+function updateBasePoints() {
+  if (currentShapeType === 'SQUARE') {
+    const s = shapeParams.SQUARE.side;
+    basePoints = [
+      { x: -s/2, y: s/2 },   // Bottom-Left
+      { x: s/2,  y: s/2 },   // Bottom-Right
+      { x: s/2,  y: -s/2 },  // Top-Right
+      { x: -s/2, y: -s/2 }   // Top-Left
+    ];
+  } else if (currentShapeType === 'RECTANGLE') {
+    const w = shapeParams.RECTANGLE.width;
+    const h = shapeParams.RECTANGLE.height;
+    basePoints = [
+      { x: -w/2, y: h/2 },
+      { x: w/2,  y: h/2 },
+      { x: w/2,  y: -h/2 },
+      { x: -w/2, y: -h/2 }
+    ];
+  } else if (currentShapeType === 'PARALLELOGRAM') {
+    const b = shapeParams.PARALLELOGRAM.base;
+    const h = shapeParams.PARALLELOGRAM.height;
+    const s = shapeParams.PARALLELOGRAM.slant;
+    basePoints = [
+      { x: -b/2 - s/2, y: h/2 },
+      { x: b/2 - s/2,  y: h/2 },
+      { x: b/2 + s/2,  y: -h/2 },
+      { x: -b/2 + s/2, y: -h/2 }
+    ];
+  } else if (currentShapeType === 'RHOMBUS') {
+    const d1 = shapeParams.RHOMBUS.d1;
+    const d2 = shapeParams.RHOMBUS.d2;
+    basePoints = [
+      { x: -d1/2, y: 0 },
+      { x: 0,     y: d2/2 },
+      { x: d1/2,  y: 0 },
+      { x: 0,     y: -d2/2 }
+    ];
+  } else if (currentShapeType === 'TRAPEZOID') {
+    const b1 = shapeParams.TRAPEZOID.bBottom;
+    const b2 = shapeParams.TRAPEZOID.bTop;
+    const h  = shapeParams.TRAPEZOID.height;
+    const ox = shapeParams.TRAPEZOID.offset;
+    basePoints = [
+      { x: -b1/2,      y: h/2 },
+      { x: b1/2,       y: h/2 },
+      { x: ox + b2/2,  y: -h/2 },
+      { x: ox - b2/2,  y: -h/2 }
+    ];
+  } else if (currentShapeType === 'GENERAL') {
+    const pts = shapeParams.GENERAL.points;
+    let cx = 0, cy = 0;
+    pts.forEach(p => { cx += p.x; cy += p.y; });
+    cx /= 4; cy /= 4;
+    basePoints = pts.map(p => ({ x: p.x - cx, y: p.y - cy }));
+  }
+}
+
+// 画面遷移・選択
+function showMenu() {
+  playSound('toggle');
+  document.getElementById('menu-screen').style.display = 'flex';
+  document.getElementById('app-container').style.display = 'none';
+}
+
+function selectShape(type) {
+  playSound('toggle');
+  currentShapeType = type;
+  quads = [];
+  document.getElementById('menu-screen').style.display = 'none';
+  document.getElementById('app-container').style.display = 'flex';
+  
+  const isGeneral = (type === 'GENERAL');
+  document.getElementById('btn-toggle-sectors').style.display = isGeneral ? 'inline-flex' : 'none';
+  document.getElementById('legend').style.display = (isGeneral && showSectors && appState === 'TILE') ? 'flex' : 'none';
+
+  updateBasePoints();
+  switchToEditMode();
+  resizeCanvas();
+}
+
+function switchToEditMode() {
+  playSound('toggle');
+  appState = 'EDIT';
+  const names = {
+    SQUARE: '正方形', RECTANGLE: '長方形', PARALLELOGRAM: '平行四辺形',
+    RHOMBUS: 'ひし形', TRAPEZOID: '台形', GENERAL: '一般の四角形'
+  };
+  document.getElementById('mode-title').innerText = `${names[currentShapeType]}のかたちをつくる`;
+  document.getElementById('btn-finish-edit').style.display = 'inline-flex';
+  document.getElementById('btn-add-quad').style.display = 'none';
+  document.getElementById('btn-toggle-snap').style.display = 'none';
+  document.getElementById('btn-toggle-sectors').style.display = 'none';
+  document.getElementById('btn-clear').style.display = 'none';
+  document.getElementById('btn-back-edit').style.display = 'none';
+  document.getElementById('legend').style.display = 'none';
+  draw();
+}
+
+function switchToTileMode() {
+  playSound('toggle');
+  appState = 'TILE';
+  document.getElementById('mode-title').innerText = 'しきつめ画面';
+  document.getElementById('btn-finish-edit').style.display = 'none';
+  document.getElementById('btn-add-quad').style.display = 'inline-flex';
+  document.getElementById('btn-toggle-snap').style.display = 'inline-flex';
+  
+  const isGeneral = (currentShapeType === 'GENERAL');
+  if (isGeneral) {
+    document.getElementById('btn-toggle-sectors').style.display = 'inline-flex';
+    document.getElementById('legend').style.display = showSectors ? 'flex' : 'none';
+  } else {
+    document.getElementById('btn-toggle-sectors').style.display = 'none';
+    document.getElementById('legend').style.display = 'none';
+  }
+
+  document.getElementById('btn-clear').style.display = 'inline-flex';
+  document.getElementById('btn-back-edit').style.display = 'inline-flex';
+
+  if (quads.length === 0) {
+    addQuad(false);
+  }
+  draw();
+}
+
+function addQuad(playAudio = true) {
+  if (playAudio) playSound('add');
+  const cx = (canvas.width / 2) / zoomScale + (Math.random() - 0.5) * 40;
+  const cy = (canvas.height / 2) / zoomScale + (Math.random() - 0.5) * 40;
+  quads.push({
+    id: Date.now() + Math.random(),
+    x: cx,
+    y: cy,
+    rotation: 0,
+    colorIdx: 0,
+    isAnimating: false
+  });
+  draw();
+}
+
+function clearQuads() {
+  playSound('clear');
+  quads = [];
+  addQuad(false);
+}
+
+function toggleSnap() {
+  snapEnabled = !snapEnabled;
+  playSound('toggle');
+  const btn = document.getElementById('btn-toggle-snap');
+  if (snapEnabled) {
+    btn.innerText = '🧲 スナップ ON';
+    btn.className = 'btn-snap-on';
+  } else {
+    btn.innerText = '🧲 スナップ OFF';
+    btn.className = 'btn-snap-off';
+  }
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  if (soundEnabled) playSound('toggle');
+  const btn = document.getElementById('btn-toggle-sound');
+  if (soundEnabled) {
+    btn.innerText = '🔊 音 ON';
+    btn.className = 'btn-sound-on';
+  } else {
+    btn.innerText = '🔇 音 OFF';
+    btn.className = 'btn-sound-off';
+  }
+}
+
+function toggleSectors() {
+  playSound('toggle');
+  showSectors = !showSectors;
+  const btn = document.getElementById('btn-toggle-sectors');
+  btn.innerText = showSectors ? '扇形 ON' : '扇形 OFF';
+  btn.classList.toggle('btn-active', showSectors);
+  document.getElementById('legend').style.display = showSectors ? 'flex' : 'none';
+  draw();
+}
+
+function resizeCanvas() {
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+  draw();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// --- 幾何計算 ---
+function localToWorld(pt, qX, qY, rot) {
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+  return {
+    x: qX + pt.x * cos - pt.y * sin,
+    y: qY + pt.x * sin + pt.y * cos
+  };
+}
+
+function isPointInPolygon(pt, vertices) {
+  let inside = false;
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const xi = vertices[i].x, yi = vertices[i].y;
+    const xj = vertices[j].x, yj = vertices[j].y;
+    const intersect = ((yi > pt.y) !== (yj > pt.y)) &&
+      (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// --- スナップ処理（自然な回転角度優先＆滑らかアニメーション） ---
+function checkAndApplySnap(q) {
+  if (!snapEnabled || q.isAnimating) return;
+
+  const localEdges = [];
+  for (let i = 0; i < 4; i++) {
+    const p1 = basePoints[i];
+    const p2 = basePoints[(i + 1) % 4];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    localEdges.push({
+      idx: i,
+      mid: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+      length: Math.hypot(dx, dy),
+      angle: Math.atan2(dy, dx)
+    });
+  }
+
+  let bestSnap = null;
+  let minCost = Infinity;
+  const maxDistance = 60 / zoomScale; 
+
+  const otherQuads = quads.filter(other => other.id !== q.id);
+
+  for (const target of otherQuads) {
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        if (Math.abs(localEdges[i].length - localEdges[j].length) > 5) continue;
+
+        const targetMidWorld = localToWorld(localEdges[j].mid, target.x, target.y, target.rotation);
+        const targetEdgeAngleWorld = target.rotation + localEdges[j].angle;
+
+        const orientations = [{ rotDiff: Math.PI }, { rotDiff: 0 }];
+
+        for (const ori of orientations) {
+          const candRot = targetEdgeAngleWorld - localEdges[i].angle + ori.rotDiff;
+          const cos = Math.cos(candRot);
+          const sin = Math.sin(candRot);
+          
+          const rotatedActiveMid = {
+            x: localEdges[i].mid.x * cos - localEdges[i].mid.y * sin,
+            y: localEdges[i].mid.x * sin + localEdges[i].mid.y * cos
+          };
+          
+          const candX = targetMidWorld.x - rotatedActiveMid.x;
+          const candY = targetMidWorld.y - rotatedActiveMid.y;
+
+          const dist = Math.hypot(candX - q.x, candY - q.y);
+
+          if (dist <= maxDistance) {
+            let angleDiff = Math.abs(candRot - q.rotation) % (Math.PI * 2);
+            if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+            const cost = dist + angleDiff * (45 / zoomScale);
+
+            if (cost < minCost) {
+              minCost = cost;
+              bestSnap = { x: candX, y: candY, rotation: candRot };
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (bestSnap) {
+    const dX = Math.abs(q.x - bestSnap.x);
+    const dY = Math.abs(q.y - bestSnap.y);
+    let dR = Math.abs(q.rotation - bestSnap.rotation) % (Math.PI * 2);
+    if (dR > Math.PI) dR = Math.PI * 2 - dR;
+
+    if (dX > 1 || dY > 1 || dR > 0.03) {
+      animateSnapTo(q, bestSnap.x, bestSnap.y, bestSnap.rotation);
+    }
+  }
+}
+
+function animateSnapTo(q, targetX, targetY, targetRot) {
+  playSound('snap');
+  q.isAnimating = true;
+
+  const startX = q.x;
+  const startY = q.y;
+  const startRot = q.rotation;
+
+  let diffRot = targetRot - startRot;
+  while (diffRot > Math.PI) diffRot -= Math.PI * 2;
+  while (diffRot < -Math.PI) diffRot += Math.PI * 2;
+
+  const startTime = performance.now();
+  const duration = 220; 
+
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1.0);
+    const ease = 1 - Math.pow(1 - progress, 2);
+
+    q.x = startX + (targetX - startX) * ease;
+    q.y = startY + (targetY - startY) * ease;
+    q.rotation = startRot + diffRot * ease;
+
+    draw();
+
+    if (progress < 1.0) {
+      requestAnimationFrame(step);
+    } else {
+      q.x = targetX;
+      q.y = targetY;
+      q.rotation = targetRot;
+      q.isAnimating = false;
+      draw();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// --- 描画処理 ---
+/* 
+  ★ インナーストローク（内側描画）処理 ★
+  clip() を使用して図形の内側だけに線を描画します。
+  これにより外側に線がはみ出さず、頂点座標と見た目の角が一致します。
+*/
+function drawQuadShape(ctx, worldVertices, fillColor) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(worldVertices[0].x, worldVertices[0].y);
+  for (let i = 1; i < 4; i++) {
+    ctx.lineTo(worldVertices[i].x, worldVertices[i].y);
+  }
+  ctx.closePath();
+
+  // 1. 塗りつぶし
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+
+  // 2. 図形の内側のみに描画を制限（クリッピング）
+  ctx.clip();
+
+  // 3. 2倍の太さで線を描画（外側半分がカットされ、完璧な内側ストロークになります）
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = (3 / zoomScale) * 2;
+  ctx.lineJoin = 'miter';
+  ctx.miterLimit = 3;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawQuadSectors(ctx, worldVertices) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(worldVertices[0].x, worldVertices[0].y);
+  for (let i = 1; i < 4; i++) {
+    ctx.lineTo(worldVertices[i].x, worldVertices[i].y);
+  }
+  ctx.closePath();
+  ctx.clip();
+
+  const radius = 42; 
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.fillStyle = ANGLE_COLORS[i];
+    ctx.arc(worldVertices[i].x, worldVertices[i].y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1.5 / zoomScale;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawHandle(ctx, x, y, label, color = '#3B82F6') {
+  ctx.beginPath();
+  ctx.arc(x, y, 16 / Math.sqrt(zoomScale), 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 3 / zoomScale;
+  ctx.stroke();
+
+  if (label) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x, y);
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.scale(zoomScale, zoomScale);
+
+  const CX = (canvas.width / 2) / zoomScale;
+  const CY = (canvas.height / 2) / zoomScale;
+
+  if (appState === 'EDIT') {
+    const worldPts = basePoints.map(p => ({ x: CX + p.x, y: CY + p.y }));
+    drawQuadShape(ctx, worldPts, '#F1F5F9');
+
+    if (currentShapeType === 'GENERAL') {
+      drawQuadSectors(ctx, worldPts);
+      worldPts.forEach((p, idx) => drawHandle(ctx, p.x, p.y, ['あ','い','う','え'][idx], ANGLE_COLORS[idx]));
+    } else if (currentShapeType === 'SQUARE') {
+      drawHandle(ctx, worldPts[2].x, worldPts[2].y, '変形');
+    } else if (currentShapeType === 'RECTANGLE') {
+      drawHandle(ctx, worldPts[2].x, worldPts[2].y, '変形');
+    } else if (currentShapeType === 'PARALLELOGRAM') {
+      drawHandle(ctx, worldPts[1].x, worldPts[1].y, '底辺');
+      drawHandle(ctx, worldPts[2].x, worldPts[2].y, '高さ');
+    } else if (currentShapeType === 'RHOMBUS') {
+      drawHandle(ctx, worldPts[2].x, worldPts[2].y, '横');
+      drawHandle(ctx, worldPts[1].x, worldPts[1].y, '縦');
+    } else if (currentShapeType === 'TRAPEZOID') {
+      drawHandle(ctx, worldPts[1].x, worldPts[1].y, '下底');
+      drawHandle(ctx, worldPts[2].x, worldPts[2].y, '上底');
+    }
+
+  } else {
+    quads.forEach(q => {
+      const worldPts = basePoints.map(p => localToWorld(p, q.x, q.y, q.rotation));
+      
+      drawQuadShape(ctx, worldPts, FILL_COLORS[q.colorIdx]);
+
+      if (currentShapeType === 'GENERAL' && showSectors) {
+        drawQuadSectors(ctx, worldPts);
+      }
+
+      if (q === activeQuad && !q.isAnimating) {
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, 8 / zoomScale, 0, Math.PI * 2);
+        ctx.fillStyle = '#3B82F6';
+        ctx.fill();
+
+        const handlePos = localToWorld({ x: 0, y: -75 }, q.x, q.y, q.rotation);
+        ctx.beginPath();
+        ctx.moveTo(q.x, q.y);
+        ctx.lineTo(handlePos.x, handlePos.y);
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 2 / zoomScale;
+        ctx.stroke();
+
+        drawHandle(ctx, handlePos.x, handlePos.y, '回転');
+      }
+    });
+  }
+
+  ctx.restore();
+}
+
+// --- タッチ・マウス制御 ---
+function getPointerPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: (clientX - rect.left) / zoomScale,
+    y: (clientY - rect.top) / zoomScale
+  };
+}
+
+function handlePointerDown(e) {
+  const pos = getPointerPos(e);
+  dragStartPos = { ...pos };
+  isDragging = false;
+
+  const CX = (canvas.width / 2) / zoomScale;
+  const CY = (canvas.height / 2) / zoomScale;
+
+  if (appState === 'EDIT') {
+    const worldPts = basePoints.map(p => ({ x: CX + p.x, y: CY + p.y }));
+
+    if (currentShapeType === 'GENERAL') {
+      worldPts.forEach((p, idx) => {
+        if (Math.hypot(p.x - pos.x, p.y - pos.y) < 30 / zoomScale) selectedHandle = idx;
+      });
+    } else if (currentShapeType === 'SQUARE' || currentShapeType === 'RECTANGLE') {
+      if (Math.hypot(worldPts[2].x - pos.x, worldPts[2].y - pos.y) < 30 / zoomScale) selectedHandle = 'C';
+    } else if (currentShapeType === 'PARALLELOGRAM' || currentShapeType === 'TRAPEZOID') {
+      if (Math.hypot(worldPts[1].x - pos.x, worldPts[1].y - pos.y) < 30 / zoomScale) selectedHandle = 'B';
+      if (Math.hypot(worldPts[2].x - pos.x, worldPts[2].y - pos.y) < 30 / zoomScale) selectedHandle = 'C';
+    } else if (currentShapeType === 'RHOMBUS') {
+      if (Math.hypot(worldPts[2].x - pos.x, worldPts[2].y - pos.y) < 30 / zoomScale) selectedHandle = 'C';
+      if (Math.hypot(worldPts[1].x - pos.x, worldPts[1].y - pos.y) < 30 / zoomScale) selectedHandle = 'B';
+    }
+  } else {
+    if (activeQuad && !activeQuad.isAnimating) {
+      const handlePos = localToWorld({ x: 0, y: -75 }, activeQuad.x, activeQuad.y, activeQuad.rotation);
+      if (Math.hypot(handlePos.x - pos.x, handlePos.y - pos.y) < 25 / zoomScale) {
+        selectedHandle = 'ROTATE';
+        return;
+      }
+    }
+
+    activeQuad = null;
+    for (let i = quads.length - 1; i >= 0; i--) {
+      const q = quads[i];
+      if (q.isAnimating) continue;
+
+      const worldPts = basePoints.map(p => localToWorld(p, q.x, q.y, q.rotation));
+      if (isPointInPolygon(pos, worldPts)) {
+        activeQuad = q;
+        dragOffsetX = pos.x - q.x;
+        dragOffsetY = pos.y - q.y;
+        
+        quads.splice(i, 1);
+        quads.push(q);
+        break;
+      }
+    }
+  }
+  draw();
+}
+
+function handlePointerMove(e) {
+  const pos = getPointerPos(e);
+
+  if (Math.hypot(pos.x - dragStartPos.x, pos.y - dragStartPos.y) > 5) {
+    isDragging = true;
+  }
+
+  const CX = (canvas.width / 2) / zoomScale;
+  const CY = (canvas.height / 2) / zoomScale;
+
+  if (appState === 'EDIT') {
+    if (selectedHandle !== null) {
+      if (currentShapeType === 'SQUARE') {
+        const side = Math.max(60, Math.min(360, Math.max((pos.x - CX) * 2, (CY - pos.y) * 2)));
+        shapeParams.SQUARE.side = side;
+      } else if (currentShapeType === 'RECTANGLE') {
+        shapeParams.RECTANGLE.width = Math.max(60, Math.min(450, (pos.x - CX) * 2));
+        shapeParams.RECTANGLE.height = Math.max(60, Math.min(350, (CY - pos.y) * 2));
+      } else if (currentShapeType === 'PARALLELOGRAM') {
+        if (selectedHandle === 'B') {
+          shapeParams.PARALLELOGRAM.base = Math.max(60, Math.min(450, (pos.x - CX + shapeParams.PARALLELOGRAM.slant / 2) * 2));
+        } else if (selectedHandle === 'C') {
+          shapeParams.PARALLELOGRAM.height = Math.max(60, Math.min(350, (CY - pos.y) * 2));
+          shapeParams.PARALLELOGRAM.slant = Math.max(-150, Math.min(150, (pos.x - CX - shapeParams.PARALLELOGRAM.base / 2) * 2));
+        }
+      } else if (currentShapeType === 'RHOMBUS') {
+        if (selectedHandle === 'C') {
+          shapeParams.RHOMBUS.d1 = Math.max(60, Math.min(450, (pos.x - CX) * 2));
+        } else if (selectedHandle === 'B') {
+          shapeParams.RHOMBUS.d2 = Math.max(60, Math.min(450, (pos.y - CY) * 2));
+        }
+      } else if (currentShapeType === 'TRAPEZOID') {
+        if (selectedHandle === 'B') {
+          shapeParams.TRAPEZOID.bBottom = Math.max(60, Math.min(450, (pos.x - CX) * 2));
+        } else if (selectedHandle === 'C') {
+          shapeParams.TRAPEZOID.height = Math.max(60, Math.min(350, (CY - pos.y) * 2));
+          shapeParams.TRAPEZOID.bTop = Math.max(40, Math.min(400, (pos.x - CX) * 2));
+        }
+      } else if (currentShapeType === 'GENERAL') {
+        shapeParams.GENERAL.points[selectedHandle] = { x: pos.x - CX, y: pos.y - CY };
+      }
+
+      updateBasePoints();
+      draw();
+    }
+  } else {
+    if (selectedHandle === 'ROTATE' && activeQuad) {
+      activeQuad.rotation = Math.atan2(pos.y - activeQuad.y, pos.x - activeQuad.x) + Math.PI / 2;
+      draw();
+    } else if (activeQuad && (e.buttons > 0 || e.touches) && !activeQuad.isAnimating) {
+      activeQuad.x = pos.x - dragOffsetX;
+      activeQuad.y = pos.y - dragOffsetY;
+      draw();
+    }
+  }
+}
+
+function handlePointerUp() {
+  if (appState === 'TILE' && activeQuad && !activeQuad.isAnimating) {
+    if (!isDragging) {
+      playSound('tap');
+      activeQuad.colorIdx = (activeQuad.colorIdx + 1) % FILL_COLORS.length;
+      draw();
+    } else {
+      checkAndApplySnap(activeQuad);
+    }
+  }
+  selectedHandle = null;
+}
+
+// イベントリスナー登録
+canvas.addEventListener('mousedown', handlePointerDown);
+canvas.addEventListener('mousemove', handlePointerMove);
+window.addEventListener('mouseup', handlePointerUp);
+
+canvas.addEventListener('touchstart', (e) => { handlePointerDown(e); e.preventDefault(); }, { passive: false });
+canvas.addEventListener('touchmove', (e) => { handlePointerMove(e); e.preventDefault(); }, { passive: false });
+window.addEventListener('touchend', handlePointerUp);
+
+// 初期起動
+showMenu();
+</script>
+</body>
+</html>
