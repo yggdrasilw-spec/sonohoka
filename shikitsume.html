@@ -129,6 +129,24 @@
     .btn-halfshift-on  { background-color: #f97316; color: white; box-shadow: 0 3px 6px rgba(249,115,22,0.3); }
     .btn-halfshift-off { background-color: #94a3b8; color: #f8fafc; box-shadow: none; opacity: 0.75; }
 
+    .btn-pen-type {
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: bold;
+      border-radius: 8px;
+      border: 1.5px solid #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
+      cursor: pointer;
+      box-shadow: none;
+    }
+    .btn-pen-type.active {
+      background: #8b5cf6;
+      color: white;
+      border-color: #7c3aed;
+      box-shadow: 0 2px 5px rgba(139,92,246,0.3);
+    }
+
     .zoom-group {
       display: flex;
       align-items: center;
@@ -190,12 +208,32 @@
       <div class="shape-card-title">ひし形</div>
     </div>
     <div class="shape-card" onclick="selectShape('TRAPEZOID')">
-      <svg viewBox="0 0 100 100"><polygon points="25,25 75,25 90,75 10,75" fill="#E9D5FF" stroke="#334155" stroke-width="4"/></svg>
+      <svg viewBox="0 0 100 100"><polygon points="38,25 78,25 90,75 10,75" fill="#E9D5FF" stroke="#334155" stroke-width="4"/></svg>
       <div class="shape-card-title">台形</div>
     </div>
     <div class="shape-card" onclick="selectShape('GENERAL')">
       <svg viewBox="0 0 100 100"><polygon points="20,20 85,15 75,80 15,85" fill="#FEF08A" stroke="#334155" stroke-width="4"/></svg>
       <div class="shape-card-title">一般の四角形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('GENERAL_TRIANGLE')">
+      <svg viewBox="0 0 100 100"><polygon points="15,80 85,80 35,25" fill="#FED7AA" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">一般三角形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('HEXAGON')">
+      <svg viewBox="0 0 100 100"><polygon points="50,12 85,32 85,72 50,92 15,72 15,32" fill="#E9D5FF" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">正六角形</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('PENTAGON')">
+      <svg viewBox="0 0 100 100"><polygon points="50,15 88,42 74,85 26,85 12,42" fill="#FEF08A" stroke="#334155" stroke-width="4"/></svg>
+      <div class="shape-card-title">五角形 (15種)</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('ESCHER_BIRD')">
+      <svg viewBox="0 0 100 100"><path d="M 18,46 Q 30,26 45,34 Q 65,14 78,32 Q 92,44 80,62 Q 86,76 72,82 Q 56,68 40,76 Q 32,58 18,46 Z" fill="#BBF7D0" stroke="#334155" stroke-width="4"/><circle cx="34" cy="38" r="3" fill="#334155"/></svg>
+      <div class="shape-card-title">とり (鳥)</div>
+    </div>
+    <div class="shape-card" onclick="selectShape('ESCHER_FISH')">
+      <svg viewBox="0 0 100 100"><path d="M 14,50 Q 32,25 56,36 Q 84,20 78,50 Q 84,80 56,64 Q 32,75 14,50 Z" fill="#FED7AA" stroke="#334155" stroke-width="4"/><circle cx="28" cy="48" r="3" fill="#334155"/></svg>
+      <div class="shape-card-title">さかな (魚)</div>
     </div>
   </div>
 </div>
@@ -221,6 +259,7 @@
       <!-- しきつめモード時 -->
       <button id="btn-add-shape"    class="btn-primary"       style="display:none;" onclick="addQuad()">＋ 図形</button>
       <button id="btn-add-flipped"  class="btn-primary"       style="display:none;" onclick="addFlippedTriangle()">＋ ひっくり返し</button>
+      <button id="btn-auto-tile"    class="btn-primary"       style="display:none; background-color:#8b5cf6;" onclick="startAutoTile()">✨ 自動しきつめ</button>
       <button id="btn-toggle-snap"  class="btn-snap-on"       style="display:none;" onclick="toggleSnap()">🧲 スナップ ON</button>
       <button id="btn-snap45"       class="btn-rot45-off"     style="display:none;" onclick="toggleSnap45()">🔁 45°固定 OFF</button>
       <button id="btn-half-shift"   class="btn-halfshift-off" style="display:none;" onclick="toggleHalfShift()">↔ 半分ずらし OFF</button>
@@ -232,12 +271,18 @@
 
   <div id="canvas-container">
     <canvas id="mainCanvas"></canvas>
-    <!-- 一般四角形専用の角度凡例 -->
+    <!-- 五角形タイプセレクタ（A〜O / 15種類） -->
+    <div id="pentagon-bar" style="display:none; position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,0.96); padding:6px 12px; border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,0.15); border:2px solid #cbd5e1; z-index:20; max-width:94vw; overflow-x:auto; white-space:nowrap; gap:6px; align-items:center;">
+      <span style="font-weight:bold; font-size:13px; color:#475569; margin-right:4px;">タイプ:</span>
+      <div id="pentagon-types-container" style="display:inline-flex; gap:5px;"></div>
+      <span id="pentagon-info" style="font-size:12px; color:#475569; font-weight:bold; margin-left:8px;"></span>
+    </div>
+    <!-- 一般四角形・一般三角形専用の角度凡例 -->
     <div class="legend" id="legend" style="display:none;">
       <div class="legend-item"><div class="legend-color" style="background:#EF4444;"></div>角あ（赤）</div>
       <div class="legend-item"><div class="legend-color" style="background:#3B82F6;"></div>角い（青）</div>
       <div class="legend-item"><div class="legend-color" style="background:#F59E0B;"></div>角う（黄）</div>
-      <div class="legend-item"><div class="legend-color" style="background:#10B981;"></div>角え（緑）</div>
+      <div class="legend-item" id="legend-angle-d"><div class="legend-color" style="background:#10B981;"></div>角え（緑）</div>
     </div>
   </div>
 </div>
@@ -263,14 +308,87 @@ let rectFlashUntil    = 0;
 let rectFlashLabel    = '';
 let rectFlashRafId    = null;
 
+// 一般三角形 スナップ関連
+let triSnapType       = null; // 'ISOSCELES' | 'EQUILATERAL' | null
+let triSnapLockUntil  = 0;
+let triFlashUntil     = 0;
+let triFlashLabel     = '';
+let triFlashRafId     = null;
+
+// 台形 左右対称スナップ関連
+let trapAtSym         = false;
+let trapSnapLockUntil = 0;
+let trapFlashUntil    = 0;
+let trapFlashLabel    = '';
+let trapFlashRafId    = null;
+
+// 五角形（15種類）データ
+let currentPentagonIdx = 0;
+let autoTileTimer      = null;
+
+const PENTAGON_TYPES = [
+  { label: 'A', name: 'Type 1', desc: 'ラインハルト (1918) 平行2辺', points: [{x:-60,y:55},{x:60,y:55},{x:60,y:-17},{x:0,y:-77},{x:-60,y:-17}],
+    tile: { unit: [{x:0,y:-30,rot:0,c:0},{x:0,y:30,rot:Math.PI,c:1}], dx:120, dy:120, shiftX:60 } },
+  { label: 'B', name: 'Type 2', desc: 'ラインハルト (1918) 2組の等辺', points: [{x:-68,y:64},{x:52,y:70},{x:82,y:-20},{x:10,y:-80},{x:-74,y:-32}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:145, dy:130, shiftX:0 } },
+  { label: 'C', name: 'Type 3', desc: 'ラインハルト (1918) 3角が120°', points: [{x:-73,y:44},{x:47,y:74},{x:89,y:-4},{x:5,y:-82},{x:-67,y:-34}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:150, dy:135, shiftX:75 } },
+  { label: 'D', name: 'Type 4', desc: 'ラインハルト (1918) 直角2つ(カイト)', points: [{x:0,y:96},{x:72,y:12},{x:54,y:-60},{x:-54,y:-60},{x:-72,y:12}],
+    tile: { unit: [{x:-42,y:-42,rot:0,c:0},{x:42,y:-42,rot:Math.PI/2,c:1},{x:42,y:42,rot:Math.PI,c:2},{x:-42,y:42,rot:-Math.PI/2,c:3}], dx:168, dy:168, shiftX:0 } },
+  { label: 'E', name: 'Type 5', desc: 'ラインハルト (1918) 60°と120°', points: [{x:-64,y:62},{x:56,y:62},{x:86,y:-28},{x:2,y:-82},{x:-82,y:-16}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:150, dy:130, shiftX:75 } },
+  { label: 'F', name: 'Type 6', desc: 'カーシュナー (1968) 4等辺', points: [{x:-56,y:62},{x:64,y:50},{x:76,y:-28},{x:-8,y:-76},{x:-74,y:-10}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:145, dy:130, shiftX:70 } },
+  { label: 'G', name: 'Type 7', desc: 'カーシュナー (1968)', points: [{x:-66,y:70},{x:66,y:58},{x:78,y:-32},{x:0,y:-74},{x:-78,y:-20}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:150, dy:135, shiftX:75 } },
+  { label: 'H', name: 'Type 8', desc: 'カーシュナー (1968)', points: [{x:-67,y:55},{x:59,y:73},{x:83,y:-23},{x:-13,y:-71},{x:-61,y:-35}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:145, dy:130, shiftX:70 } },
+  { label: 'I', name: 'Type 9', desc: 'ジェームズ (1975)', points: [{x:-52,y:74},{x:74,y:50},{x:56,y:-52},{x:-10,y:-76},{x:-70,y:2}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:145, dy:135, shiftX:70 } },
+  { label: 'J', name: 'Type 10', desc: 'ライス (1977) 直角1つ', points: [{x:-71,y:56},{x:49,y:74},{x:79,y:-16},{x:19,y:-76},{x:-77,y:-40}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:150, dy:130, shiftX:75 } },
+  { label: 'K', name: 'Type 11', desc: 'ライス (1977)', points: [{x:-74,y:40},{x:40,y:76},{x:82,y:4},{x:16,y:-68},{x:-62,y:-50}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:150, dy:135, shiftX:75 } },
+  { label: 'L', name: 'Type 12', desc: 'ライス (1977)', points: [{x:-60,y:65},{x:60,y:59},{x:78,y:-25},{x:-6,y:-79},{x:-72,y:-19}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:145, dy:135, shiftX:70 } },
+  { label: 'M', name: 'Type 13', desc: 'ライス (1977)', points: [{x:-70,y:52},{x:50,y:76},{x:80,y:-8},{x:2,y:-74},{x:-64,y:-44}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:145, dy:135, shiftX:70 } },
+  { label: 'N', name: 'Type 14', desc: 'シュタイン (1985)', points: [{x:-67,y:68},{x:77,y:56},{x:65,y:-52},{x:-20,y:-65},{x:-61,y:-4}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:150, dy:130, shiftX:75 } },
+  { label: 'O', name: 'Type 15', desc: 'マンら (2015) 30年ぶり新発見!', points: [{x:-66,y:53},{x:54,y:77},{x:84,y:-19},{x:6,y:-79},{x:-78,y:-31}],
+    tile: { unit: [{x:-35,y:-30,rot:0,c:0},{x:35,y:30,rot:Math.PI,c:1}], dx:150, dy:135, shiftX:75 } }
+];
+
+// エッシャータイル（鳥・魚）データ
+const ESCHER_BIRD_PTS = [
+  {"x":-76,"y":-44},{"x":-51,"y":-64},{"x":-16,"y":-54},{"x":24,"y":-79},{"x":49,"y":-59},
+  {"x":64,"y":-44},{"x":84,"y":-14},{"x":54,"y":16},{"x":79,"y":41},{"x":64,"y":56},
+  {"x":49,"y":41},{"x":24,"y":21},{"x":-16,"y":46},{"x":-51,"y":36},{"x":-76,"y":56},
+  {"x":-61,"y":41},{"x":-86,"y":16},{"x":-56,"y":-14}
+];
+const ESCHER_BIRD_TILE = { dx: 140, dy: 100, eye: { x: -45, y: -45 } };
+
+const ESCHER_FISH_PTS = [
+  {"x":-72,"y":-38},{"x":-37,"y":-63},{"x":3,"y":-48},{"x":33,"y":-58},{"x":58,"y":-38},
+  {"x":83,"y":-13},{"x":43,"y":7},{"x":83,"y":27},{"x":58,"y":52},{"x":33,"y":32},
+  {"x":3,"y":42},{"x":-37,"y":27},{"x":-72,"y":52},{"x":-47,"y":27},{"x":-87,"y":7},
+  {"x":-47,"y":-13}
+];
+const ESCHER_FISH_TILE = { dx: 130, dy: 90, eye: { x: -48, y: -30 } };
+
 // 各図形の変形パラメータ
 let shapeParams = {
   SQUARE:        { side: 160 },
   RECTANGLE:     { width: 200, height: 120 },
   PARALLELOGRAM: { base: 180, height: 120, slant: 40 },
   RHOMBUS:       { d1: 220, d2: 140 },
-  TRAPEZOID:     { bBottom: 220, bTop: 120, height: 110, offset: 0 },
+  TRAPEZOID:     { bBottom: 230, xTopLeft: -40, xTopRight: 90, height: 120 },
   TRIANGLE:      { base: 180, height: 180 },  // 初期は直角二等辺三角形
+  GENERAL_TRIANGLE: { base: 200, height: 160, topX: -40 },
+  HEXAGON:          { radius: 95 },
+  PENTAGON:         { scale: 1.0 },
+  ESCHER_BIRD:      { scale: 1.0 },
+  ESCHER_FISH:      { scale: 1.0 },
   GENERAL: {
     points: [
       { x: -100, y: -70 },
@@ -389,10 +507,12 @@ function updateBasePoints() {
       ]; break;
     }
     case 'TRAPEZOID': {
-      const {bBottom:b1, bTop:b2, height:h, offset:ox} = shapeParams.TRAPEZOID;
+      const {bBottom:b1, xTopLeft:x3, xTopRight:x2, height:h} = shapeParams.TRAPEZOID;
       basePoints = [
-        {x: -b1/2,    y:  h/2}, {x:  b1/2,    y:  h/2},
-        {x:  ox+b2/2, y: -h/2}, {x:  ox-b2/2, y: -h/2}
+        {x: -b1/2, y:  h/2}, // 0: 左下
+        {x:  b1/2, y:  h/2}, // 1: 右下
+        {x:  x2,   y: -h/2}, // 2: 右上
+        {x:  x3,   y: -h/2}  // 3: 左上
       ]; break;
     }
     case 'TRIANGLE': {
@@ -403,6 +523,40 @@ function updateBasePoints() {
         {x:  b/2, y:  h/2},  // B: 右下
         {x: -b/2, y: -h/2}   // C: 左上
       ]; break;
+    }
+    case 'GENERAL_TRIANGLE': {
+      const {base:b, height:h, topX:tx} = shapeParams.GENERAL_TRIANGLE;
+      // 頂点順: A=左下, B=右下, C=頂点
+      basePoints = [
+        {x: -b/2, y:  h/2},  // A: 左下
+        {x:  b/2, y:  h/2},  // B: 右下
+        {x:  tx,  y: -h/2}   // C: 頂点
+      ]; break;
+    }
+    case 'HEXAGON': {
+      const r = shapeParams.HEXAGON.radius;
+      basePoints = [];
+      for (let i = 0; i < 6; i++) {
+        const ang = i * Math.PI / 3;
+        basePoints.push({ x: r * Math.cos(ang), y: r * Math.sin(ang) });
+      }
+      break;
+    }
+    case 'PENTAGON': {
+      const type = PENTAGON_TYPES[currentPentagonIdx] || PENTAGON_TYPES[0];
+      const sc = shapeParams.PENTAGON.scale || 1.0;
+      basePoints = type.points.map(p => ({ x: p.x * sc, y: p.y * sc }));
+      break;
+    }
+    case 'ESCHER_BIRD': {
+      const sc = shapeParams.ESCHER_BIRD.scale || 1.0;
+      basePoints = ESCHER_BIRD_PTS.map(p => ({ x: p.x * sc, y: p.y * sc }));
+      break;
+    }
+    case 'ESCHER_FISH': {
+      const sc = shapeParams.ESCHER_FISH.scale || 1.0;
+      basePoints = ESCHER_FISH_PTS.map(p => ({ x: p.x * sc, y: p.y * sc }));
+      break;
     }
     case 'GENERAL': {
       const pts = shapeParams.GENERAL.points;
@@ -415,9 +569,9 @@ function updateBasePoints() {
   }
 }
 
-// 三角形のひっくり返し（y軸鏡映: 直角を右下に移動）
+// 図形のひっくり返し（y軸鏡映）
 function computeBasePoints(isFlipped) {
-  if (isFlipped && currentShapeType === 'TRIANGLE') {
+  if (isFlipped && (currentShapeType === 'TRIANGLE' || currentShapeType === 'GENERAL_TRIANGLE' || currentShapeType === 'PENTAGON' || currentShapeType === 'ESCHER_BIRD' || currentShapeType === 'ESCHER_FISH')) {
     return basePoints.map(p => ({x: -p.x, y: p.y}));
   }
   return basePoints;
@@ -438,10 +592,15 @@ function selectShape(type) {
   halfShiftEnabled  = false;
   rectAt2to1        = false;
   rectFlashUntil    = 0;
+  triSnapType       = null;
+  triFlashUntil     = 0;
+  trapAtSym         = false;
+  trapFlashUntil    = 0;
   snapEnabled       = true;
 
   // ボタン視覚リセット
-  document.getElementById('btn-snap45').innerText      = '🔁 45°固定 OFF';
+  const rotLabel = type === 'HEXAGON' ? '60°固定' : '45°固定';
+  document.getElementById('btn-snap45').innerText      = `🔁 ${rotLabel} OFF`;
   document.getElementById('btn-snap45').className      = 'btn-rot45-off';
   document.getElementById('btn-half-shift').innerText  = '↔ 半分ずらし OFF';
   document.getElementById('btn-half-shift').className  = 'btn-halfshift-off';
@@ -458,17 +617,57 @@ function selectShape(type) {
 function switchToEditMode() {
   playSound('toggle');
   appState = 'EDIT';
+  if (autoTileTimer) { clearInterval(autoTileTimer); autoTileTimer = null; }
   const names = {
     SQUARE:'正方形', RECTANGLE:'長方形', PARALLELOGRAM:'平行四辺形',
-    RHOMBUS:'ひし形', TRAPEZOID:'台形', TRIANGLE:'直角三角形', GENERAL:'一般の四角形'
+    RHOMBUS:'ひし形', TRAPEZOID:'台形', TRIANGLE:'直角三角形',
+    GENERAL_TRIANGLE:'一般三角形', HEXAGON:'正六角形', PENTAGON:'五角形',
+    ESCHER_BIRD:'とり (鳥)', ESCHER_FISH:'さかな (魚)', GENERAL:'一般の四角形'
   };
   document.getElementById('mode-title').innerText = `${names[currentShapeType]}のかたちをつくる`;
   document.getElementById('btn-finish-edit').style.display = 'inline-flex';
-  ['btn-add-shape','btn-add-flipped','btn-toggle-snap','btn-snap45',
+  ['btn-add-shape','btn-add-flipped','btn-auto-tile','btn-toggle-snap','btn-snap45',
    'btn-half-shift','btn-toggle-sectors','btn-clear','btn-back-edit'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
   document.getElementById('legend').style.display = 'none';
+
+  // 五角形バー
+  const penBar = document.getElementById('pentagon-bar');
+  if (currentShapeType === 'PENTAGON') {
+    penBar.style.display = 'flex';
+    initPentagonBar();
+  } else {
+    penBar.style.display = 'none';
+  }
+
+  draw();
+}
+
+function initPentagonBar() {
+  const container = document.getElementById('pentagon-types-container');
+  container.innerHTML = '';
+  PENTAGON_TYPES.forEach((t, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-pen-type' + (idx === currentPentagonIdx ? ' active' : '');
+    btn.innerText = t.label;
+    btn.title = `${t.label}: ${t.name} (${t.desc})`;
+    btn.onclick = () => selectPentagonType(idx);
+    container.appendChild(btn);
+  });
+  updatePentagonInfo();
+}
+
+function updatePentagonInfo() {
+  const t = PENTAGON_TYPES[currentPentagonIdx];
+  document.getElementById('pentagon-info').innerText = `${t.label}: ${t.name} 【${t.desc}】`;
+}
+
+function selectPentagonType(idx) {
+  playSound('toggle');
+  currentPentagonIdx = idx;
+  initPentagonBar();
+  updateBasePoints();
   draw();
 }
 
@@ -477,26 +676,43 @@ function switchToTileMode() {
   appState = 'TILE';
   document.getElementById('mode-title').innerText = 'しきつめ画面';
   document.getElementById('btn-finish-edit').style.display = 'none';
+  document.getElementById('pentagon-bar').style.display = 'none';
+
+  const isTri = currentShapeType === 'TRIANGLE' || currentShapeType === 'GENERAL_TRIANGLE';
+  const isGeneralAny = currentShapeType === 'GENERAL' || currentShapeType === 'GENERAL_TRIANGLE';
+  const isEscher = currentShapeType === 'ESCHER_BIRD' || currentShapeType === 'ESCHER_FISH';
+  const canHalfShift = !isGeneralAny && currentShapeType !== 'HEXAGON' && currentShapeType !== 'PENTAGON' && !isEscher;
+  const canFlip = isTri || currentShapeType === 'PENTAGON' || isEscher;
 
   const addBtn = document.getElementById('btn-add-shape');
-  addBtn.innerText = currentShapeType === 'TRIANGLE' ? '＋ 三角形' : '＋ しかくけい';
+  addBtn.innerText = currentShapeType === 'PENTAGON' ? '＋ 五角形' :
+                     currentShapeType === 'HEXAGON' ? '＋ 六角形' :
+                     currentShapeType === 'ESCHER_BIRD' ? '＋ 鳥' :
+                     currentShapeType === 'ESCHER_FISH' ? '＋ 魚' :
+                     isTri ? '＋ 三角形' : '＋ しかくけい';
   addBtn.style.display = 'inline-flex';
 
-  // 「ひっくり返し」ボタン: 三角形のみ
-  document.getElementById('btn-add-flipped').style.display =
-    currentShapeType === 'TRIANGLE' ? 'inline-flex' : 'none';
+  // 「ひっくり返し」ボタン
+  document.getElementById('btn-add-flipped').style.display = canFlip ? 'inline-flex' : 'none';
+
+  // 「自動しきつめ」ボタン: 五角形、六角形、鳥、魚で表示
+  const canAutoTile = currentShapeType === 'PENTAGON' || currentShapeType === 'HEXAGON' || isEscher;
+  document.getElementById('btn-auto-tile').style.display = canAutoTile ? 'inline-flex' : 'none';
 
   document.getElementById('btn-toggle-snap').style.display = 'inline-flex';
+
+  const rotLabel = currentShapeType === 'HEXAGON' ? '60°固定' : '45°固定';
+  document.getElementById('btn-snap45').innerText = snap45Enabled ? `🔁 ${rotLabel} ON` : `🔁 ${rotLabel} OFF`;
   document.getElementById('btn-snap45').style.display      = 'inline-flex';
 
-  // 半分ずらし: GENERAL以外で表示
-  document.getElementById('btn-half-shift').style.display =
-    currentShapeType !== 'GENERAL' ? 'inline-flex' : 'none';
+  // 半分ずらし
+  document.getElementById('btn-half-shift').style.display = canHalfShift ? 'inline-flex' : 'none';
 
-  // 扇形: GENERALのみ
-  if (currentShapeType === 'GENERAL') {
+  // 扇形: GENERAL, GENERAL_TRIANGLE で表示
+  if (isGeneralAny) {
     document.getElementById('btn-toggle-sectors').style.display = 'inline-flex';
     document.getElementById('legend').style.display = showSectors ? 'flex' : 'none';
+    document.getElementById('legend-angle-d').style.display = currentShapeType === 'GENERAL' ? 'flex' : 'none';
   } else {
     document.getElementById('btn-toggle-sectors').style.display = 'none';
     document.getElementById('legend').style.display = 'none';
@@ -507,6 +723,114 @@ function switchToTileMode() {
 
   if (quads.length === 0) addQuad(false);
   draw();
+}
+
+// ===== 自動敷き詰め =====
+function startAutoTile() {
+  if (autoTileTimer) {
+    clearInterval(autoTileTimer);
+    autoTileTimer = null;
+  }
+  playSound('add');
+  quads = [];
+  draw();
+
+  const CX = (canvas.width / 2) / zoomScale;
+  const CY = (canvas.height / 2) / zoomScale;
+  const pieces = [];
+
+  if (currentShapeType === 'PENTAGON') {
+    const t = PENTAGON_TYPES[currentPentagonIdx] || PENTAGON_TYPES[0];
+    const sc = shapeParams.PENTAGON.scale || 1.0;
+    const cfg = t.tile || { unit: [{x:0, y:0, rot:0, c:0}], dx: 140, dy: 130, shiftX: 0 };
+    const dx = cfg.dx * sc;
+    const dy = cfg.dy * sc;
+    const shX = (cfg.shiftX || 0) * sc;
+
+    for (let r = -3; r <= 3; r++) {
+      for (let c = -3; c <= 3; c++) {
+        const ox = c * dx + (Math.abs(r) % 2 !== 0 ? shX : 0);
+        const oy = r * dy;
+        cfg.unit.forEach(u => {
+          const px = CX + ox + u.x * sc;
+          const py = CY + oy + u.y * sc;
+          if (px >= -120 && px <= canvas.width / zoomScale + 120 &&
+              py >= -120 && py <= canvas.height / zoomScale + 120) {
+            pieces.push({
+              x: px, y: py,
+              rot: u.rot,
+              colorIdx: u.c % FILL_COLORS.length,
+              isFlipped: u.flip || false,
+              dist: Math.hypot(px - CX, py - CY)
+            });
+          }
+        });
+      }
+    }
+  } else if (currentShapeType === 'HEXAGON') {
+    const r = shapeParams.HEXAGON.radius;
+    const dx = r * 1.5;
+    const dy = r * Math.sqrt(3);
+    for (let row = -3; row <= 3; row++) {
+      for (let col = -3; col <= 3; col++) {
+        const px = CX + col * dx;
+        const py = CY + row * dy + (Math.abs(col) % 2 !== 0 ? dy / 2 : 0);
+        if (px >= -100 && px <= canvas.width / zoomScale + 100 &&
+            py >= -100 && py <= canvas.height / zoomScale + 100) {
+          pieces.push({
+            x: px, y: py, rot: 0,
+            colorIdx: (Math.abs(col + row * 2)) % FILL_COLORS.length,
+            isFlipped: false,
+            dist: Math.hypot(px - CX, py - CY)
+          });
+        }
+      }
+    }
+  } else if (currentShapeType === 'ESCHER_BIRD' || currentShapeType === 'ESCHER_FISH') {
+    const isBird = currentShapeType === 'ESCHER_BIRD';
+    const cfg = isBird ? ESCHER_BIRD_TILE : ESCHER_FISH_TILE;
+    const sc = (isBird ? shapeParams.ESCHER_BIRD.scale : shapeParams.ESCHER_FISH.scale) || 1.0;
+    const dx = cfg.dx * sc;
+    const dy = cfg.dy * sc;
+
+    for (let r = -3; r <= 3; r++) {
+      for (let c = -4; c <= 4; c++) {
+        const px = CX + c * dx;
+        const py = CY + r * dy;
+        if (px >= -100 && px <= canvas.width / zoomScale + 100 &&
+            py >= -100 && py <= canvas.height / zoomScale + 100) {
+          pieces.push({
+            x: px, y: py, rot: 0,
+            colorIdx: (Math.abs(c * 2 + r * 3)) % FILL_COLORS.length,
+            isFlipped: false,
+            dist: Math.hypot(px - CX, py - CY)
+          });
+        }
+      }
+    }
+  }
+
+  pieces.sort((a, b) => a.dist - b.dist);
+
+  let i = 0;
+  autoTileTimer = setInterval(() => {
+    if (i >= pieces.length) {
+      clearInterval(autoTileTimer);
+      autoTileTimer = null;
+      return;
+    }
+    const p = pieces[i++];
+    playSound('tap');
+    quads.push({
+      id: Date.now() + Math.random(),
+      x: p.x, y: p.y,
+      rotation: p.rot,
+      colorIdx: p.colorIdx,
+      isAnimating: false,
+      isFlipped: p.isFlipped
+    });
+    draw();
+  }, 50);
 }
 
 // ===== 図形追加 =====
@@ -559,7 +883,8 @@ function toggleSnap45() {
   snap45Enabled = !snap45Enabled;
   playSound('toggle');
   const btn = document.getElementById('btn-snap45');
-  btn.innerText = snap45Enabled ? '🔁 45°固定 ON' : '🔁 45°固定 OFF';
+  const rotLabel = currentShapeType === 'HEXAGON' ? '60°固定' : '45°固定';
+  btn.innerText = snap45Enabled ? `🔁 ${rotLabel} ON` : `🔁 ${rotLabel} OFF`;
   btn.className = snap45Enabled ? 'btn-rot45-on' : 'btn-rot45-off';
 }
 
@@ -629,6 +954,59 @@ function buildEdges(pts) {
 
 function checkAndApplySnap(q) {
   if (!snapEnabled || q.isAnimating) return;
+
+  // エッシャー図形（鳥・魚）のグリッド＆角度スナップ
+  if (currentShapeType === 'ESCHER_BIRD' || currentShapeType === 'ESCHER_FISH') {
+    const isBird = currentShapeType === 'ESCHER_BIRD';
+    const cfg = isBird ? ESCHER_BIRD_TILE : ESCHER_FISH_TILE;
+    const sc = (isBird ? shapeParams.ESCHER_BIRD.scale : shapeParams.ESCHER_FISH.scale) || 1.0;
+    const dx = cfg.dx * sc;
+    const dy = cfg.dy * sc;
+    const maxDist = 65 / zoomScale;
+    let bestSnap = null, minCost = Infinity;
+
+    for (const target of quads) {
+      if (target.id === q.id) continue;
+      let dR = Math.abs(q.rotation - target.rotation) % (Math.PI * 2);
+      if (dR > Math.PI) dR = Math.PI * 2 - dR;
+      if (dR > 0.45) continue;
+
+      const neighbors = [
+        { c: 1, r: 0 }, { c: -1, r: 0 },
+        { c: 0, r: 1 }, { c: 0, r: -1 },
+        { c: 1, r: 1 }, { c: -1, r: 1 },
+        { c: 1, r: -1 }, { c: -1, r: -1 }
+      ];
+
+      const cos = Math.cos(target.rotation), sin = Math.sin(target.rotation);
+
+      for (const n of neighbors) {
+        const localX = n.c * dx;
+        const localY = n.r * dy;
+        const candX = target.x + localX * cos - localY * sin;
+        const candY = target.y + localX * sin + localY * cos;
+        const dist = Math.hypot(candX - q.x, candY - q.y);
+
+        if (dist <= maxDist) {
+          const cost = dist + dR * (45 / zoomScale);
+          if (cost < minCost) {
+            minCost = cost;
+            bestSnap = { x: candX, y: candY, rotation: target.rotation };
+          }
+        }
+      }
+    }
+
+    if (bestSnap) {
+      const dX = Math.abs(q.x - bestSnap.x), dY = Math.abs(q.y - bestSnap.y);
+      let dR = Math.abs(q.rotation - bestSnap.rotation) % (Math.PI * 2);
+      if (dR > Math.PI) dR = Math.PI * 2 - dR;
+      if (dX > 1 || dY > 1 || dR > 0.03) {
+        animateSnapTo(q, bestSnap.x, bestSnap.y, bestSnap.rotation);
+      }
+    }
+    return;
+  }
 
   const pts         = computeBasePoints(q.isFlipped||false);
   const localEdges  = buildEdges(pts);
@@ -749,6 +1127,28 @@ function animateRectFlash() {
   }
 }
 
+// ===== 一般三角形（正三角形・二等辺三角形）フラッシュアニメーション =====
+function animateTriFlash() {
+  if (Date.now() < triFlashUntil) {
+    draw();
+    triFlashRafId = requestAnimationFrame(animateTriFlash);
+  } else {
+    triFlashRafId = null;
+    draw();
+  }
+}
+
+// ===== 台形 左右対称フラッシュアニメーション =====
+function animateTrapFlash() {
+  if (Date.now() < trapFlashUntil) {
+    draw();
+    trapFlashRafId = requestAnimationFrame(animateTrapFlash);
+  } else {
+    trapFlashRafId = null;
+    draw();
+  }
+}
+
 // ===== 描画処理 =====
 
 // 頂点数可変のポリゴン描画（インナーストローク）
@@ -769,7 +1169,7 @@ function drawPolygonShape(ctx, verts, fillColor) {
   ctx.restore();
 }
 
-// 一般四角形の角度扇形描画
+// 一般四角形・一般三角形の角度扇形描画
 function drawQuadSectors(ctx, verts) {
   ctx.save();
   ctx.beginPath();
@@ -821,6 +1221,29 @@ function drawRightAngleMark(ctx, A, B, C, size) {
   ctx.restore();
 }
 
+// 鳥・魚の目玉描画
+function drawTileEye(ctx, qX, qY, rot, isFlipped) {
+  if (currentShapeType === 'ESCHER_BIRD' || currentShapeType === 'ESCHER_FISH') {
+    const isBird = currentShapeType === 'ESCHER_BIRD';
+    const cfg = isBird ? ESCHER_BIRD_TILE : ESCHER_FISH_TILE;
+    const sc = (isBird ? shapeParams.ESCHER_BIRD.scale : shapeParams.ESCHER_FISH.scale) || 1.0;
+    const localEye = { x: (isFlipped ? -cfg.eye.x : cfg.eye.x) * sc, y: cfg.eye.y * sc };
+    const eyeW = localToWorld(localEye, qX, qY, rot);
+
+    ctx.save();
+    // 白目
+    ctx.beginPath();
+    ctx.arc(eyeW.x, eyeW.y, 4.5 / zoomScale, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF'; ctx.fill();
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5 / zoomScale; ctx.stroke();
+    // 黒目
+    ctx.beginPath();
+    ctx.arc(eyeW.x, eyeW.y, 2.3 / zoomScale, 0, Math.PI * 2);
+    ctx.fillStyle = '#0f172a'; ctx.fill();
+    ctx.restore();
+  }
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
@@ -831,13 +1254,20 @@ function draw() {
 
   if (appState === 'EDIT') {
     const wPts = basePoints.map(p => ({x: CX+p.x, y: CY+p.y}));
-    const isFlashing = Date.now() < rectFlashUntil;
+    const isFlashing = (currentShapeType === 'RECTANGLE' && Date.now() < rectFlashUntil) ||
+                       (currentShapeType === 'GENERAL_TRIANGLE' && Date.now() < triFlashUntil) ||
+                       (currentShapeType === 'TRAPEZOID' && Date.now() < trapFlashUntil);
+    const flashLabel = currentShapeType === 'RECTANGLE' ? rectFlashLabel :
+                       currentShapeType === 'GENERAL_TRIANGLE' ? triFlashLabel : trapFlashLabel;
+    const flashUntil = currentShapeType === 'RECTANGLE' ? rectFlashUntil :
+                       currentShapeType === 'GENERAL_TRIANGLE' ? triFlashUntil : trapFlashUntil;
 
     drawPolygonShape(ctx, wPts, '#F1F5F9');
+    drawTileEye(ctx, CX, CY, 0, false);
 
-    // 長方形 2:1 フラッシュエフェクト
+    // スナップ時のフラッシュエフェクト
     if (isFlashing) {
-      const elapsed = Date.now() - (rectFlashUntil - 700);
+      const elapsed = Date.now() - (flashUntil - 700);
       if (Math.floor(elapsed / 110) % 2 === 0) {
         ctx.save();
         ctx.beginPath();
@@ -854,7 +1284,7 @@ function draw() {
       ctx.fillStyle='#B45309';
       ctx.font=`bold ${20/zoomScale}px sans-serif`;
       ctx.textAlign='center'; ctx.textBaseline='top';
-      ctx.fillText(rectFlashLabel, CX, maxY + 14/zoomScale);
+      ctx.fillText(flashLabel, CX, maxY + 14/zoomScale);
       ctx.restore();
     }
 
@@ -862,6 +1292,25 @@ function draw() {
     if (currentShapeType === 'GENERAL') {
       drawQuadSectors(ctx, wPts);
       wPts.forEach((p, idx) => drawHandle(ctx, p.x, p.y, ['あ','い','う','え'][idx], ANGLE_COLORS[idx]));
+
+    } else if (currentShapeType === 'GENERAL_TRIANGLE') {
+      if (showSectors) drawQuadSectors(ctx, wPts);
+      // wPts[0]=左下(角あ), wPts[1]=右下(角い/底辺), wPts[2]=頂点(角う/頂点)
+      drawHandle(ctx, wPts[0].x, wPts[0].y, 'あ', ANGLE_COLORS[0]);
+      drawHandle(ctx, wPts[1].x, wPts[1].y, '底辺', ANGLE_COLORS[1]);
+      drawHandle(ctx, wPts[2].x, wPts[2].y, '頂点', ANGLE_COLORS[2]);
+
+    } else if (currentShapeType === 'HEXAGON') {
+      drawHandle(ctx, wPts[0].x, wPts[0].y, '大きさ');
+
+    } else if (currentShapeType === 'PENTAGON') {
+      drawHandle(ctx, wPts[1].x, wPts[1].y, '大きさ');
+
+    } else if (currentShapeType === 'ESCHER_BIRD') {
+      drawHandle(ctx, wPts[3].x, wPts[3].y, '大きさ');
+
+    } else if (currentShapeType === 'ESCHER_FISH') {
+      drawHandle(ctx, wPts[1].x, wPts[1].y, '大きさ');
 
     } else if (currentShapeType === 'SQUARE') {
       drawHandle(ctx, wPts[2].x, wPts[2].y, '変形');
@@ -879,7 +1328,8 @@ function draw() {
 
     } else if (currentShapeType === 'TRAPEZOID') {
       drawHandle(ctx, wPts[1].x, wPts[1].y, '下底');
-      drawHandle(ctx, wPts[2].x, wPts[2].y, '上底');
+      drawHandle(ctx, wPts[2].x, wPts[2].y, '右上');
+      drawHandle(ctx, wPts[3].x, wPts[3].y, '左上');
 
     } else if (currentShapeType === 'TRIANGLE') {
       // 直角マーク（wPts[0]=直角, wPts[1]=底辺方向, wPts[2]=高さ方向）
@@ -905,8 +1355,11 @@ function draw() {
       const wPts = pts.map(p => localToWorld(p, q.x, q.y, q.rotation));
 
       drawPolygonShape(ctx, wPts, FILL_COLORS[q.colorIdx % FILL_COLORS.length]);
+      drawTileEye(ctx, q.x, q.y, q.rotation, q.isFlipped);
 
-      if (currentShapeType === 'GENERAL' && showSectors) drawQuadSectors(ctx, wPts);
+      if ((currentShapeType === 'GENERAL' || currentShapeType === 'GENERAL_TRIANGLE') && showSectors) {
+        drawQuadSectors(ctx, wPts);
+      }
 
       if (q === activeQuad && !q.isAnimating) {
         // 中心点
@@ -947,15 +1400,30 @@ function handlePointerDown(e) {
       wPts.forEach((_, idx) => { if (hit(idx)) selectedHandle=idx; });
     } else if (currentShapeType === 'SQUARE' || currentShapeType === 'RECTANGLE') {
       if (hit(2)) selectedHandle='C';
-    } else if (currentShapeType === 'PARALLELOGRAM' || currentShapeType === 'TRAPEZOID') {
+    } else if (currentShapeType === 'PARALLELOGRAM') {
       if (hit(1)) selectedHandle='B';
       if (hit(2)) selectedHandle='C';
+    } else if (currentShapeType === 'TRAPEZOID') {
+      if (hit(1)) selectedHandle='B';  // 下底
+      if (hit(2)) selectedHandle='C';  // 右上
+      if (hit(3)) selectedHandle='D';  // 左上
     } else if (currentShapeType === 'RHOMBUS') {
       if (hit(2)) selectedHandle='C';
       if (hit(1)) selectedHandle='B';
     } else if (currentShapeType === 'TRIANGLE') {
       if (hit(1)) selectedHandle='B';  // 底辺
       if (hit(2)) selectedHandle='C';  // 高さ
+    } else if (currentShapeType === 'GENERAL_TRIANGLE') {
+      if (hit(1)) selectedHandle='B';  // 底辺
+      if (hit(2)) selectedHandle='C';  // 頂点
+    } else if (currentShapeType === 'HEXAGON') {
+      if (hit(0)) selectedHandle='RADIUS';
+    } else if (currentShapeType === 'PENTAGON') {
+      if (hit(1)) selectedHandle='P_SCALE';
+    } else if (currentShapeType === 'ESCHER_BIRD') {
+      if (hit(3)) selectedHandle='BIRD_SCALE';
+    } else if (currentShapeType === 'ESCHER_FISH') {
+      if (hit(1)) selectedHandle='FISH_SCALE';
     }
 
   } else { // TILE モード
@@ -1041,10 +1509,52 @@ function handlePointerMove(e) {
       if (selectedHandle==='B') shapeParams.RHOMBUS.d2 = Math.max(60, Math.min(450, (pos.y-CY)*2));
 
     } else if (currentShapeType === 'TRAPEZOID') {
-      if (selectedHandle==='B') shapeParams.TRAPEZOID.bBottom = Math.max(60, Math.min(450, (pos.x-CX)*2));
-      if (selectedHandle==='C') {
-        shapeParams.TRAPEZOID.height = Math.max(60, Math.min(350, (CY-pos.y)*2));
-        shapeParams.TRAPEZOID.bTop   = Math.max(40, Math.min(400, (pos.x-CX)*2));
+      if (Date.now() < trapSnapLockUntil) {
+        // ロック中
+      } else {
+        let b1 = shapeParams.TRAPEZOID.bBottom;
+        let x2 = shapeParams.TRAPEZOID.xTopRight;
+        let x3 = shapeParams.TRAPEZOID.xTopLeft;
+        let h  = shapeParams.TRAPEZOID.height;
+
+        if (selectedHandle === 'B') {
+          b1 = Math.max(60, Math.min(450, (pos.x - CX) * 2));
+        } else if (selectedHandle === 'C') {
+          h  = Math.max(60, Math.min(350, (CY - pos.y) * 2));
+          x2 = Math.max(x3 + 30, Math.min(250, pos.x - CX));
+        } else if (selectedHandle === 'D') {
+          h  = Math.max(60, Math.min(350, (CY - pos.y) * 2));
+          x3 = Math.min(x2 - 30, Math.max(-250, pos.x - CX));
+        }
+
+        // 左右対称（等脚台形）判定: (xTopRight + xTopLeft)/2 が 0 に近い
+        const offset = (x2 + x3) / 2;
+        const SNAP_SYM = 12;
+
+        if (!trapAtSym && Math.abs(offset) < SNAP_SYM) {
+          const halfTop = (x2 - x3) / 2;
+          x3 = -halfTop;
+          x2 =  halfTop;
+          trapAtSym = true;
+          trapSnapLockUntil = Date.now() + 420;
+          trapFlashUntil    = Date.now() + 700;
+          trapFlashLabel    = '左右対称な台形！';
+          playSound('special');
+          if (!trapFlashRafId) animateTrapFlash();
+        } else if (trapAtSym) {
+          if (Math.abs(offset) > SNAP_SYM * 1.8) {
+            trapAtSym = false;
+          } else {
+            const halfTop = (x2 - x3) / 2;
+            x3 = -halfTop;
+            x2 =  halfTop;
+          }
+        }
+
+        shapeParams.TRAPEZOID.bBottom   = b1;
+        shapeParams.TRAPEZOID.xTopRight = x2;
+        shapeParams.TRAPEZOID.xTopLeft  = x3;
+        shapeParams.TRAPEZOID.height    = h;
       }
 
     } else if (currentShapeType === 'TRIANGLE') {
@@ -1052,6 +1562,94 @@ function handlePointerMove(e) {
       if (selectedHandle==='B') shapeParams.TRIANGLE.base   = Math.max(60, Math.min(450, (pos.x-CX)*2));
       // 高さハンドル(C): y方向でheight変更
       if (selectedHandle==='C') shapeParams.TRIANGLE.height = Math.max(60, Math.min(350, (CY-pos.y)*2));
+
+    } else if (currentShapeType === 'GENERAL_TRIANGLE') {
+      if (Date.now() < triSnapLockUntil) {
+        // ロック中
+      } else {
+        let b  = shapeParams.GENERAL_TRIANGLE.base;
+        let h  = shapeParams.GENERAL_TRIANGLE.height;
+        let tx = shapeParams.GENERAL_TRIANGLE.topX;
+
+        if (selectedHandle === 'B') {
+          b = Math.max(60, Math.min(450, (pos.x-CX)*2));
+        } else if (selectedHandle === 'C') {
+          h  = Math.max(60, Math.min(350, (CY-pos.y)*2));
+          tx = Math.max(-250, Math.min(250, pos.x-CX));
+        }
+
+        const eqH = b * Math.sqrt(3) / 2;
+        const SNAP_X = 14;
+        const SNAP_H = 14;
+
+        const isNearCenter = Math.abs(tx) < SNAP_X;
+        const isNearEqH    = Math.abs(h - eqH) < SNAP_H;
+
+        if (isNearCenter && isNearEqH) {
+          if (triSnapType !== 'EQUILATERAL') {
+            tx = 0;
+            h  = eqH;
+            triSnapType = 'EQUILATERAL';
+            triSnapLockUntil = Date.now() + 420;
+            triFlashUntil    = Date.now() + 700;
+            triFlashLabel    = '正三角形！';
+            playSound('special');
+            if (!triFlashRafId) animateTriFlash();
+          } else {
+            tx = 0;
+            h  = eqH;
+          }
+        } else if (isNearCenter) {
+          if (triSnapType !== 'ISOSCELES' && triSnapType !== 'EQUILATERAL') {
+            tx = 0;
+            triSnapType = 'ISOSCELES';
+            triSnapLockUntil = Date.now() + 420;
+            triFlashUntil    = Date.now() + 700;
+            triFlashLabel    = '二等辺三角形！';
+            playSound('special');
+            if (!triFlashRafId) animateTriFlash();
+          } else if (triSnapType === 'ISOSCELES') {
+            tx = 0;
+          }
+        } else {
+          if (Math.abs(tx) > SNAP_X * 1.8) {
+            triSnapType = null;
+          }
+        }
+
+        shapeParams.GENERAL_TRIANGLE.base   = b;
+        shapeParams.GENERAL_TRIANGLE.height = h;
+        shapeParams.GENERAL_TRIANGLE.topX   = tx;
+      }
+
+    } else if (currentShapeType === 'HEXAGON') {
+      if (selectedHandle === 'RADIUS') {
+        shapeParams.HEXAGON.radius = Math.max(50, Math.min(240, Math.hypot(pos.x - CX, pos.y - CY)));
+      }
+
+    } else if (currentShapeType === 'PENTAGON') {
+      if (selectedHandle === 'P_SCALE') {
+        const p1 = PENTAGON_TYPES[currentPentagonIdx].points[1];
+        const origR = Math.hypot(p1.x, p1.y);
+        const curR = Math.hypot(pos.x - CX, pos.y - CY);
+        shapeParams.PENTAGON.scale = Math.max(0.5, Math.min(2.4, curR / origR));
+      }
+
+    } else if (currentShapeType === 'ESCHER_BIRD') {
+      if (selectedHandle === 'BIRD_SCALE') {
+        const p3 = ESCHER_BIRD_PTS[3];
+        const origR = Math.hypot(p3.x, p3.y);
+        const curR = Math.hypot(pos.x - CX, pos.y - CY);
+        shapeParams.ESCHER_BIRD.scale = Math.max(0.5, Math.min(2.4, curR / origR));
+      }
+
+    } else if (currentShapeType === 'ESCHER_FISH') {
+      if (selectedHandle === 'FISH_SCALE') {
+        const p1 = ESCHER_FISH_PTS[1];
+        const origR = Math.hypot(p1.x, p1.y);
+        const curR = Math.hypot(pos.x - CX, pos.y - CY);
+        shapeParams.ESCHER_FISH.scale = Math.max(0.5, Math.min(2.4, curR / origR));
+      }
 
     } else if (currentShapeType === 'GENERAL') {
       shapeParams.GENERAL.points[selectedHandle] = {x: pos.x-CX, y: pos.y-CY};
@@ -1063,8 +1661,11 @@ function handlePointerMove(e) {
   } else { // TILE モード
     if (selectedHandle==='ROTATE' && activeQuad) {
       let rot = Math.atan2(pos.y-activeQuad.y, pos.x-activeQuad.x) + Math.PI/2;
-      // 45°固定モード
-      if (snap45Enabled) rot = Math.round(rot / (Math.PI/4)) * (Math.PI/4);
+      // 回転固定モード（六角形は60°、他は45°）
+      if (snap45Enabled) {
+        const step = currentShapeType === 'HEXAGON' ? (Math.PI / 3) : (Math.PI / 4);
+        rot = Math.round(rot / step) * step;
+      }
       activeQuad.rotation = rot;
       draw();
 
