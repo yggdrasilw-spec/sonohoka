@@ -645,8 +645,14 @@ function checkAndApplySnap(q) {
 
     for (let i=0; i<n; i++) {
       for (let j=0; j<tn; j++) {
-        // 辺の長さが近いペアのみ試す
-        if (Math.abs(localEdges[i].length - tEdges[j].length) > 5) continue;
+        const lenI = localEdges[i].length;
+        const lenJ = tEdges[j].length;
+
+        const isSameLength = Math.abs(lenI - lenJ) <= 6;
+        // 1:2 の長さ比（短辺と長辺）
+        const isRatio1to2  = Math.abs(lenI - 2 * lenJ) <= 6 || Math.abs(2 * lenI - lenJ) <= 6;
+
+        if (!isSameLength && !isRatio1to2) continue;
 
         const tMidW     = localToWorld(tEdges[j].mid, target.x, target.y, target.rotation);
         const tEdgeAngW = target.rotation + tEdges[j].angle;
@@ -661,22 +667,43 @@ function checkAndApplySnap(q) {
           const baseX = tMidW.x - rotMid.x;
           const baseY = tMidW.y - rotMid.y;
 
-          // 半分ずらし: 辺方向に ±halfLength シフトした候補も追加
           const edgeAngW = candRot + localEdges[i].angle;
-          const halfL    = localEdges[i].length / 2;
-          const shifts   = halfShiftEnabled ? [0, 1, -1] : [0];
 
-          for (const sh of shifts) {
-            const candX = baseX + sh * Math.cos(edgeAngW) * halfL;
-            const candY = baseY + sh * Math.sin(edgeAngW) * halfL;
-            const dist  = Math.hypot(candX-q.x, candY-q.y);
+          if (isSameLength) {
+            // 同等長: 中点合わせ(0) と、半分ずらし有効時の ±halfL (1, -1)
+            const halfL    = lenI / 2;
+            const shifts   = halfShiftEnabled ? [0, 1, -1] : [0];
 
-            if (dist <= maxDist) {
-              let dR = Math.abs(candRot - q.rotation) % (Math.PI*2);
-              if (dR > Math.PI) dR = Math.PI*2 - dR;
-              // 半分ずらし候補は少しコスト高め（ぴったり合う方を優先）
-              const cost = dist + dR*(45/zoomScale) + (sh!==0 ? 8 : 0);
-              if (cost < minCost) { minCost=cost; bestSnap={x:candX, y:candY, rotation:candRot}; }
+            for (const sh of shifts) {
+              const candX = baseX + sh * Math.cos(edgeAngW) * halfL;
+              const candY = baseY + sh * Math.sin(edgeAngW) * halfL;
+              const dist  = Math.hypot(candX-q.x, candY-q.y);
+
+              if (dist <= maxDist) {
+                let dR = Math.abs(candRot - q.rotation) % (Math.PI*2);
+                if (dR > Math.PI) dR = Math.PI*2 - dR;
+                // 半分ずらし候補は少しコスト高め（ぴったり合う方を優先）
+                const cost = dist + dR*(45/zoomScale) + (sh!==0 ? 8 : 0);
+                if (cost < minCost) { minCost=cost; bestSnap={x:candX, y:candY, rotation:candRot}; }
+              }
+            }
+          } else if (isRatio1to2) {
+            // 違う長さ同士（短辺と長辺）:
+            // 長辺の半分に短辺を合わせる（長辺中点から短辺中点のオフセットは ±(maxL / 4)）
+            const maxL = Math.max(lenI, lenJ);
+            const shiftDist = maxL / 4;
+
+            for (const dir of [1, -1]) {
+              const candX = baseX + dir * Math.cos(edgeAngW) * shiftDist;
+              const candY = baseY + dir * Math.sin(edgeAngW) * shiftDist;
+              const dist  = Math.hypot(candX-q.x, candY-q.y);
+
+              if (dist <= maxDist) {
+                let dR = Math.abs(candRot - q.rotation) % (Math.PI*2);
+                if (dR > Math.PI) dR = Math.PI*2 - dR;
+                const cost = dist + dR*(45/zoomScale) + 4;
+                if (cost < minCost) { minCost=cost; bestSnap={x:candX, y:candY, rotation:candRot}; }
+              }
             }
           }
         }
