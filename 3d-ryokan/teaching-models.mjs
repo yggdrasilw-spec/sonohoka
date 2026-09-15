@@ -36,8 +36,11 @@ export function createTeachingModel(d){
  const w=d.width,h=d.height,z=d.depth,white=material('#f6f2df'),blue=material('#80b4c0'),metal=material('#abb6b7',{metalness:.75,roughness:.25});
  if(d.kind==='book'||d.kind==='card'){
   const cover=Math.min(z*.12,.0006),c=material(d.kind==='card'?'#fffbec':z>.015?'#6a8c64':'#b48665');
-  box(g,w,h,z,white,0,h/2);box(g,w,h,cover,c,0,h/2,z/2-cover/2);box(g,w,h,cover,c,0,h/2,-z/2+cover/2);
-  if(d.kind==='book'){box(g,.004,h,z,c,-w/2+.002,h/2);for(let i=1;i<Math.min(20,z/.0003);i++)box(g,w-.005,.00025,.0001,material('#c9c5b4'),.002,h*.2+i*h*.026,z/2-.00006);}
+  // The page block is inset: no page face shares the cover's outer plane.
+  const inset=Math.min(.001,w*.01,h*.01);
+  box(g,w-inset*2,h-inset*2,z-cover*2,white,0,h/2);
+  box(g,w,h,cover,c,0,h/2,z/2-cover/2);box(g,w,h,cover,c,0,h/2,-z/2+cover/2);
+  if(d.kind==='book')box(g,.003,h,z-cover*2,c,-w/2+.0015,h/2);
  }else if(d.kind==='measure'){
   const outer=w/2,inner=d.innerDiameter/2,bottom=.0025;
   const points=[[0,0],[outer,0],[outer,h],[inner,h],[inner,bottom],[0,bottom]].map(([x,y])=>new T.Vector2(x,y));

@@ -1,9 +1,12 @@
 import * as THREE from './vendor/three.module.js';
-import {createHand,createTeachingModel} from './teaching-models.mjs';
-import {catalog,handReference,buildQuestions} from './catalog.mjs';
+import {createTeachingModel} from './teaching-models.mjs?v=20260915-1';
+import {catalog,buildQuestions} from './catalog.mjs';
 import { items, tub, calibrationFrustum, waterDepth, clamp, smooth } from './units.mjs';
+import {createCharacter} from './character-rig.mjs';
+import {graspProfile,graspPose} from './grasp.mjs?v=20260915-1';
 const $=id=>document.getElementById(id), V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 const canvas=$('world'),stage=$('stage');
+const qa=new URLSearchParams(location.search);
 let sideOn=false,showDimensions=false,quizIndex=0;
 const questions=buildQuestions();
 const grid=document.querySelector('.object-grid');
@@ -46,25 +49,9 @@ for(const x of [.075,.805])for(const z of [-.335,.075]){box(deskScene,[.042,.65,
 const rug=box(deskScene,[1.25,.008,.9],[-.36,.005,.54],'#a8b49a');
 for(let i=0;i<11;i++)box(deskScene,[1.21,.001,.006],[-.36,.01,.15+i*.078],'#b8c2a8');
 const heightMark=group(deskScene,[-.95,0,.0]);rod(heightMark,[0,0,0],[0,1.3,0],.003,'#7b9776');for(let i=0;i<=13;i++)rod(heightMark,[-.025,i*.1,0],[.025,i*.1,0],.002,'#7b9776');label(heightMark,'130 cm',.26,.065,[0,1.37,0]);
-const skin='#e3ad83',shirt='#d5a45e',shorts='#607c66',hair='#4b3f33';
-function createCharacter(){
- const root=group(scene),body=group(root);ball(body,[.135,.19,.085],[0,.805,0],shirt);ball(body,[.13,.09,.085],[0,.64,0],shorts);cylinder(body,.035,.10,[0,1.043,0],skin);
- for(const x of [-.12,.12])ball(body,[.05,.05,.057],[x,.935,0],shirt); const head=group(body,[0,1.181,0]);head.scale.set(.80,.82,.85);ball(head,[.12,.143,.111],[0,0,0],skin);
- const hairCap=mesh(new THREE.SphereGeometry(1,32,24,0,Math.PI*2,0,Math.PI*.56),mat(hair),head,[0,.005,-.008],[.123,.145,.113]);
- for(const x of [-.044,.044]){ball(head,[.011,.006,.005],[x,.006,.102],'#383c31');ball(head,[.002,.002,.001],[x-.002,.011,.11],'#fff8df');ball(head,[.019,.008,.002],[x*1.48,-.028,.099],'#d99579');const brow=ball(head,[.018,.003,.003],[x,.041,.101],hair);brow.rotation.z=x*2;}
- ball(head,[.013,.014,.012],[0,-.016,.112],skin);const smile=new THREE.CatmullRomCurve3([V(-.018,-.046,.102),V(0,-.052,.108),V(.018,-.046,.102)]);mesh(new THREE.TubeGeometry(smile,14,.0018,5,false),mat('#965f49'),head);
- for(const x of [-.12,.12])ball(head,[.018,.026,.013],[x,-.01,0],skin);
- // Small fringe locks, collar, seams and toes.
- for(let i=0;i<5;i++){const lock=ball(head,[.031,.03,.012],[-.086+i*.041,.075+Math.sin(i)*.013,.083],hair);lock.rotation.z=-.4;}
- for(const x of [-.034,.034]){const collar=ball(body,[.029,.011,.013],[x,.98,.071],'#f4e4bd');collar.rotation.z=x>0?.4:-.4;}ball(body,[.006,.006,.003],[0,.922,.081],'#91703f');
- const arms=[-1,1].map(sign=>({sign,upper:mesh(cylinderGeo,mat(shirt),root),lower:mesh(cylinderGeo,mat(skin),root),elbow:ball(root,[.027,.027,.027],[0,0,0],skin),hand:group(root)}));
- for(const a of arms){const hand=createHand(a.sign);a.hand.add(hand);a.fingers=hand;}
- const legs=[-1,1].map(sign=>({sign,upper:mesh(cylinderGeo,mat(shorts),root),lower:mesh(cylinderGeo,mat(skin),root),knee:ball(root,[.038,.038,.038],[0,0,0],skin),foot:ball(root,[.048,.032,.083],[0,0,0],'#e9dfb9')}));
- return {root,body,head,arms,legs,handWorld:V(),pose:0};
-}
-const kid=createCharacter();
-function armPose(a,target){const shoulder=V(a.sign*.143,.96-sit*.5,0),d=target.clone().sub(shoulder),distance=Math.min(d.length(),.359),u=d.normalize(),bend=V(a.sign*.8,-.8,.1);bend.addScaledVector(u,-bend.dot(u)).normalize();const elbow=shoulder.clone().addScaledVector(u,distance/2).addScaledVector(bend,Math.sqrt(Math.max(0,.18*.18-distance*distance/4)));setRod(a.upper,shoulder,elbow,.032);setRod(a.lower,elbow,target,.024);a.elbow.position.copy(elbow);a.hand.position.copy(target);}
-function legPose(l,hip,knee,ankle){setRod(l.upper,hip,knee,.042);setRod(l.lower,knee,ankle,.027);l.knee.position.copy(knee);l.foot.position.copy(ankle).add(V(0,-.008,.026));}
+
+let kid;
+try{kid=await createCharacter(scene);}catch(error){$('loading').textContent='人物モデルを読み込めませんでした。ページを再読み込みしてください。';throw error;}
 function makeItem(id){const d=items[id];if(d.kind){const model=createTeachingModel(d);model.userData.id=id;scene.add(model);
  if(d.kind==='measure'){for(let ml=d.stepMl;ml<=d.capacityMl;ml+=d.stepMl){const y=.0025+ml/1e6/(Math.PI*(d.innerDiameter/2)**2);label(model,String(ml),d.width*.23,d.height*.048,[0,y,d.depth/2+.0003],'#e5f2eb','#31515d');}}
  else if(d.kind!=='syringe'&&d.kind!=='card'){label(model,d.kind==='book'?d.name:d.value+' '+d.unit,d.width*.75,Math.min(d.height*.14,.025),[0,d.height*.46,d.depth/2+.0003],'#f5f0de','#3d624f');}
@@ -95,11 +82,14 @@ const cubeGroup=group(bathScene,[-.55,.068,.7]);cubeGroup.visible=false;const li
 for(let i=0;i<200;i++){const x=i%10,y=Math.floor(i/100),z=Math.floor(i/10)%10;literCubes.push(box(cubeGroup,[.1,.1,.1],[x*.103,y*.103,z*.103],i%10%2?'#76b7b9':'#91c6c4',{roughness:.25}));}
 label(cubeGroup,'1 L × 200 = 200 L',.7,.1,[.46,.38,.48]);
 const literExample=box(bathScene,[.1,.1,.1],[-.93,.07,.5],'#87bdbe');label(bathScene,'1 L',.14,.05,[-.93,.17,.55]);
-let mode='desk',item='ruler',view='wide',action=null,held=false,inBath=false,showCubes=false,waterL=200,displayL=200,pourUntil=0;
+let mode='desk',item='masuDL',view='wide',action=null,held=false,inBath=false,showCubes=false,waterL=200,displayL=200,pourUntil=0;
 let cal=null,realPending=false;try{const saved=JSON.parse(localStorage.getItem('ryokan-real-size-v1'));if(saved?.ppm>=1.5&&saved.ppm<=12&&saved.dpr===devicePixelRatio)cal=saved;}catch{}
 let camTarget=V(0,.68,0),camGoal=V(0,.68,0),camPosGoal=V(2.4,2.0,3.6),realPan=V(),orbitYaw=.5,orbitPitch=.3,orbitRadius=3.8,manualOrbit=false;
-const homeDesk=V(-.57,0,.48),atDesk=V(-.04,0,.22),bathHome=V(-.88,0,.55),bathSeat=V(-.22,.13,-.12);
-let bodyPosition=homeDesk.clone(),bodyRotation=0,armRight=V(.17,.66,.06),armLeft=V(-.17,.66,.06),sit=0;
+const homeDesk=V(-.57,0,.48),atDesk=V(.10,0,.22),bathHome=V(-.88,0,.55),bathSeat=V(-.22,.13,-.12);
+let bodyPosition=homeDesk.clone(),bodyRotation=0,sit=0;
+
+const tableItem=V(.27,.701,.035),presentPosition=V(.10,0,.56);
+let gripAmount=0,objectLocal=V();
 let w=1,h=1,lastTime=performance.now(),clock=0;
 function status(t){$('status').textContent=t;}
 function updateUI(){
@@ -122,56 +112,75 @@ function updateUI(){
  $('gesture').textContent=view==='real'?'実寸固定 · ドラッグで上下左右に移動':'ドラッグで回転 · ホイールで近づく';
  $('tipText').textContent=mode==='desk'?'全体 → 手元 → 実寸。見方を変えると、同じ30cmがどう見える？':'200Lは、1Lの200個分。水面の高さだけでなく、おふろ全体の広さも見てみよう。';
  if(view==='real'){$('scaleLine').style.width=cal.ppm*50+'px';$('annotation').textContent='正面の長さを実寸で表示。収まらない部分はドラッグ。';}
- else $('annotation').textContent=mode==='desk'?(held?'手に持てた！ 手元にぐっと近づいてみよう。':'ものを選んだら、歩いて取りにいこう。'):(inBath?'水着で入浴中。おふろと身体の大きさを見てね。':showCubes?'10cm角の1Lを200個。おふろと同じ縮尺。':'この水が200L。からだとくらべてみよう。');
+ else $('annotation').textContent=mode==='desk'?(held?'手に持てた！ 手元にぐっと近づいてみよう。':'ものを選んだら、歩いて取りにいこう。'):(inBath?'身体の大きさを比較する表示です。':showCubes?'10cm角の1Lを200個。おふろと同じ縮尺。':'この水が200L。からだとくらべてみよう。');
  for(const [key,m]of Object.entries(objectModels))m.visible=mode==='desk'&&key===item;
- mat(shirt).color.set(mode==='bath'?'#6c94a1':shirt);mat(shorts).color.set(mode==='bath'?'#547f91':shorts);deskScene.visible=mode==='desk';bathScene.visible=mode==='bath';cubeGroup.visible=showCubes;canvas.setAttribute('aria-label',mode==='desk'?`身長130cmのキャラクター。${items[item].name}を${held?'手に持っています':'机に置いています'}。${view==='real'?'実寸表示':view==='hand'?'手元拡大':'全体表示'}`:`おふろの水${waterL}L。キャラクターは${inBath?'入浴中':'おふろの外'}。${showCubes?'1Lのブロック200個を比較表示':''}`);
+ deskScene.visible=mode==='desk';bathScene.visible=mode==='bath';cubeGroup.visible=showCubes;canvas.setAttribute('aria-label',mode==='desk'?`身長130cmのキャラクター。${items[item].name}を${held?'手に持っています':'机に置いています'}。${view==='real'?'実寸表示':view==='hand'?'手元拡大':'全体表示'}`:`おふろの水${waterL}L。キャラクターは${inBath?'入浴中':'おふろの外'}。${showCubes?'1Lのブロック200個を比較表示':''}`);
 }
 function setView(next){if(next==='real'&&!cal){realPending=true;openCalibration();return;}view=next;realPan.set(0,0,0);manualOrbit=false;if(mode==='desk'&&(next==='hand'||next==='real')&&!held&&!action)startPickup();updateUI();}
-function startPickup(){if(held||action)return;stage.scrollIntoView({behavior:'smooth',block:'center'});action={type:'pickup',start:clock,duration:3.4,from:bodyPosition.clone()};status('机へ歩いて、手を伸ばしています…');updateUI();}
-function startPut(){if(!held||action)return;view='wide';manualOrbit=false;action={type:'put',start:clock,duration:1.6};status('ものを机にもどしています…');updateUI();}
-function switchMode(next){mode=next;action=null;held=false;sit=0;inBath=false;view='wide';manualOrbit=false;realPan.set(0,0,0);bodyPosition.copy(next==='desk'?homeDesk:bathHome);bodyRotation=0;armRight.set(.17,.66,.06);armLeft.set(-.17,.66,.06);updateUI();status(next==='desk'?'ものを選んで、手に持ってみよう。':`おふろの水はいま${waterL}L。中に入って身体とくらべよう。`);}
+function startPickup(){if(held||action)return;stage.scrollIntoView({behavior:'smooth',block:'center'});action={type:'pickup',start:clock,duration:5.2,from:bodyPosition.clone(),fromRotation:bodyRotation};status('机へ歩いて、手を伸ばしています…');updateUI();}
+function startPut(){if(!held||action)return;view='wide';manualOrbit=false;action={type:'put',start:clock,duration:3.8};status('ものを机にもどしています…');updateUI();}
+function switchMode(next){mode=next;action=null;held=false;sit=0;inBath=false;view='wide';manualOrbit=false;realPan.set(0,0,0);bodyPosition.copy(next==='desk'?homeDesk:bathHome);bodyRotation=0;updateUI();status(next==='desk'?'ものを選んで、手に持ってみよう。':`おふろの水はいま${waterL}L。中に入って身体とくらべよう。`);}
 function bathAction(){if(action)return;stage.scrollIntoView({behavior:'smooth',block:'center'});view='wide';manualOrbit=false;action={type:inBath?'exit':'enter',start:clock,duration:4.2};status(inBath?'おふろから出ています…':'ふちをまたいで、おふろに入っています…');updateUI();}
 function animateActions(){
  let walk=0;const t=action?clamp((clock-action.start)/action.duration,0,1):0;
+ const d=items[item],{large}=graspProfile(d,item);
+ atDesk.x=large?.27:.10;
+ const contact=V(atDesk.x-tableItem.x,.701,atDesk.z-tableItem.z),present=V(large?0:-.09,.81,.27);
+ gripAmount=held?1:0;
  if(action?.type==='pickup'){
- if(t<.48){const p=smooth(t/.48);bodyPosition.copy(action.from).lerp(atDesk,p);walk=Math.sin(t*34)*.11;bodyRotation=-Math.sin(Math.PI*p)*.3;armRight.set(.17,.66,walk);}
- else if(t<.72){const p=smooth((t-.48)/.24);bodyRotation=0;armRight.copy(V(.17,.66,.06)).lerp(V(.31,.744,-.185),p);}
- else{held=true;armRight.copy(V(.31,.744,-.185)).lerp(V(.22,.88,.23),smooth((t-.72)/.28));}
- }else if(action?.type==='put'){armRight.copy(V(.22,.88,.23)).lerp(V(.31,.744,-.185),smooth(Math.min(t/.65,1)));if(t>.65){held=false;armRight.lerp(V(.17,.66,.06),smooth((t-.65)/.35));}}
- else if(action?.type==='enter'||action?.type==='exit'){
- const p=action.type==='enter'?t:1-t;
- if(p<.3){bodyPosition.copy(bathHome).lerp(V(-.75,0,.32),smooth(p/.3));sit=0;bodyRotation=smooth(p/.3)*Math.PI/2;walk=Math.sin(p*42)*.13;}
- else if(p<.72){const q=smooth((p-.3)/.42);bodyPosition.copy(V(-.75,0,.32)).lerp(V(-.22,.66,-.12),q);bodyPosition.y+=Math.sin(q*Math.PI)*.50;sit=Math.sin(q*Math.PI)*.65;bodyRotation=Math.PI/2;}
- else{const q=smooth((p-.72)/.28);bodyPosition.copy(V(-.22,.66,-.12)).lerp(bathSeat,q);sit=q;bodyRotation=Math.PI/2;}
- armRight.copy(V(.21,.68,.12));armLeft.copy(V(-.21,.68,.12));
+  if(t<.32){
+   const direction=atDesk.clone().sub(action.from),heading=Math.atan2(direction.x,direction.z);
+   if(t<.07){bodyPosition.copy(action.from);bodyRotation=THREE.MathUtils.lerp(action.fromRotation||0,heading,smooth(t/.07));}
+   else if(t<.26){const p=smooth((t-.07)/.19);bodyPosition.copy(action.from).lerp(atDesk,p);bodyRotation=heading;walk=Math.sin(p*Math.PI*6)*.045;}
+   else{bodyPosition.copy(atDesk);bodyRotation=THREE.MathUtils.lerp(heading,Math.PI,smooth((t-.26)/.06));}
+  }
+  else if(t<.52){bodyPosition.copy(atDesk);bodyRotation=Math.PI;}
+  else if(t<.64){gripAmount=smooth((t-.52)/.12);}
+  else if(t<.80){held=true;gripAmount=1;objectLocal.copy(contact).lerp(contact.clone().add(V(0,.15,0)),smooth((t-.64)/.16));}
+  else{held=true;const p=smooth((t-.80)/.20);bodyPosition.copy(atDesk).lerp(presentPosition,smooth((t-.80)/.09));bodyRotation=Math.PI*(1-smooth((t-.89)/.11));objectLocal.copy(contact.clone().add(V(0,.15,0))).lerp(present,p);}
+ }else if(action?.type==='put'){
+  if(t<.30){const p=smooth(t/.30);bodyPosition.copy(presentPosition).lerp(atDesk,smooth((t-.12)/.18));bodyRotation=Math.PI*smooth(t/.12);objectLocal.copy(present).lerp(contact.clone().add(V(0,.15,0)),p);}
+  else if(t<.60){objectLocal.copy(contact.clone().add(V(0,.15,0))).lerp(contact,smooth((t-.30)/.30));}
+  else if(t<.75){held=false;gripAmount=1-smooth((t-.60)/.15);}
+  else{held=false;gripAmount=0;}
+ }else if(action?.type==='enter'||action?.type==='exit'){
+  const p=action.type==='enter'?t:1-t;
+  if(p<.3){bodyPosition.copy(bathHome).lerp(V(-.75,0,.32),smooth(p/.3));sit=0;bodyRotation=smooth(p/.3)*Math.PI/2;walk=Math.sin(p*42)*.06;}
+  else if(p<.72){const q=smooth((p-.3)/.42);bodyPosition.copy(V(-.75,0,.32)).lerp(V(-.22,.66,-.12),q);bodyPosition.y+=Math.sin(q*Math.PI)*.5;sit=Math.sin(q*Math.PI)*.65;bodyRotation=Math.PI/2;}
+  else{const q=smooth((p-.72)/.28);bodyPosition.copy(V(-.22,.66,-.12)).lerp(bathSeat,q);sit=q;bodyRotation=Math.PI/2;}
  }
- if(action&&t>=1){const type=action.type;action=null;if(type==='pickup'){held=true;bodyPosition.copy(atDesk);bodyRotation=0;armRight.set(.22,.88,.23);status('手に持てたよ。「手元にズーム」で、手と物を近くから見てみよう。');}if(type==='put'){held=false;armRight.set(.17,.66,.06);status('机にもどしたよ。別のものも持ってみよう。');}if(type==='enter'){inBath=true;sit=1;bodyPosition.copy(bathSeat);status('おふろに入ったよ。200Lの水と身体の大きさをくらべよう。');}if(type==='exit'){inBath=false;sit=0;bodyPosition.copy(bathHome);bodyRotation=0;status('おふろから出たよ。');}updateUI();}
- if(!action){armLeft.set(-.17,.66,.06);if(mode==='desk'&&held&&(items[item].width>.10||items[item].kind==='bucket'))armLeft.set(.04,.87,.24);if(mode==='desk'&&held)armRight.set(.22,.88,.23);else if(mode==='desk')armRight.set(.17,.66,.06);}
- kid.root.position.copy(bodyPosition);kid.root.rotation.y=bodyRotation;kid.body.position.y=sit*-.5;kid.head.rotation.z=mode==='desk'&&held?-.04:Math.sin(clock*.7)*.025;
- const breath=action?0:Math.sin(clock*2)*.002;kid.body.position.y+=breath;
- for(const a of kid.arms){const target=(a.sign===1?armRight:armLeft).clone();target.y-=sit*.5;armPose(a,target);}
- for(const leg of kid.legs){const x=leg.sign*.075,hip=V(x,.63-sit*.5,0),knee=V(x,.34-sit*.11,sit*.24+walk*leg.sign),ankle=V(x,.04,sit*.37+walk*leg.sign);legPose(leg,hip,knee,ankle);}
- kid.root.updateMatrixWorld(true);kid.arms[1].hand.getWorldPosition(kid.handWorld);
- const m=objectModels[item],d=items[item],large=d.kind==='bucket'||d.kind==='kettle'||d.width>.10;
- for(const a of kid.arms){const active=held&&(a.sign===1||large);a.fingers.userData.pose(active?(large?.35:d.kind==='book'||d.kind==='card'?.45:1.05):.08);a.hand.rotation.set(active?-Math.PI/2:0,0,0);}
- if(held){m.position.copy(kid.handWorld).add(V(large?-.12:0,large?-.04:-Math.min(d.height*.35,.06),large?.14:.10));}else m.position.set(.27,.701,.035);
- m.rotation.set(0,sideOn?Math.PI/2:0,0);
-
+ if(action&&t>=1){const type=action.type;action=null;
+  if(type==='pickup'){held=true;gripAmount=1;bodyPosition.copy(presentPosition);bodyRotation=0;objectLocal.copy(present);status('手に持てたよ。手元や横から、ものと手をくらべよう。');}
+  if(type==='put'){held=false;gripAmount=0;status('机にもどしたよ。');}
+  if(type==='enter'){inBath=true;sit=1;bodyPosition.copy(bathSeat);status('おふろと身体の大きさをくらべよう。');}
+  if(type==='exit'){inBath=false;sit=0;bodyPosition.copy(bathHome);bodyRotation=0;status('おふろから出たよ。');}updateUI();
+ }
+ if(held&&!action)objectLocal.copy(present);
+ kid.root.position.copy(bodyPosition);kid.root.rotation.y=bodyRotation;kid.root.updateMatrixWorld(true);
+ const m=objectModels[item];
+ if(held){m.position.copy(kid.root.localToWorld(objectLocal.clone()));m.quaternion.copy(kid.root.quaternion);}
+ else{m.position.copy(tableItem);m.rotation.set(0,Math.PI,0);}
+ // Holding frame is attached to the object; camera-side inspection never rotates it out of the fingers.
+ const objectPosition=kid.root.worldToLocal(m.position.clone());
+ let reach=held?1:0;
+ if(action?.type==='pickup')reach=t<.32?0:smooth((t-.32)/.20);
+ if(action?.type==='put')reach=t<.75?1:1-smooth((t-.75)/.25);
+ kid.pose({...graspPose(d,item,objectPosition,reach,gripAmount),sit,walk});
 }
 function updateCamera(dt){
  const obj=objectModels[item];
  if(view==='real'&&cal){const fr=calibrationFrustum(w,h,cal.ppm);Object.assign(realCamera,fr);realCamera.updateProjectionMatrix();const center=obj.position.clone().add(V(0,Math.min(items[item].height/2,h/(cal.ppm*1000)*.2),0)).add(realPan);realCamera.position.copy(center).add(V(0,0,2));realCamera.lookAt(center);return;}
- if(view==='hand'){camGoal.copy(obj.position).add(V(0,items[item].height*.42,0));camPosGoal.copy(camGoal).add(sideOn?V(0,0,.75):V(.24,.12,.75));}
+ if(view==='hand'){camGoal.copy(obj.position).add(V(0,items[item].height*.42,0));camPosGoal.copy(camGoal).add(sideOn?V(.75,.08,0):V(.24,.12,.75));}
  else if(mode==='bath'){camGoal.set(.08,.52,showCubes?.48:0);camPosGoal.set(showCubes?3.3:2.35,showCubes?3.15:2.4,showCubes?4.3:3.5);}
  else {camGoal.set(-.06,.71,.1);camPosGoal.set(2.15,1.9,3.65);}
  if(w/h<.9&&view==='wide'){camPosGoal.sub(camGoal).multiplyScalar(1.22).add(camGoal);}
  if(manualOrbit){camPosGoal.copy(camGoal).add(V(Math.sin(orbitYaw)*Math.cos(orbitPitch)*orbitRadius,Math.sin(orbitPitch)*orbitRadius,Math.cos(orbitYaw)*Math.cos(orbitPitch)*orbitRadius));}
  const k=1-Math.exp(-dt*5);camTarget.lerp(camGoal,k);camera.position.lerp(camPosGoal,k);camera.lookAt(camTarget);
 }
-function frame(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;clock+=dt;animateActions();displayL+=(waterL-displayL)*(1-Math.exp(-dt*3));const depth=waterDepth(displayL,sit*15*Math.min(displayL/200,1));water.visible=waterSurface.visible=displayL>.1;water.scale.y=Math.max(.0001,depth);water.position.y=.137+depth/2;waterSurface.position.y=.138+depth;
+function frame(now){const dt=qa.has('qa')?1:Math.min((now-lastTime)/1000,.05);lastTime=now;if(!qa.has('qa'))clock+=dt;animateActions();displayL+=(waterL-displayL)*(1-Math.exp(-dt*3));const depth=waterDepth(displayL,sit*15*Math.min(displayL/200,1));water.visible=waterSurface.visible=displayL>.1;water.scale.y=Math.max(.0001,depth);water.position.y=.137+depth/2;waterSurface.position.y=.138+depth;
  const positions=waterSurface.geometry.attributes.position;for(let i=0;i<positions.count;i++){positions.setZ(i,Math.sin(positions.getX(i)*18+clock*1.8)*Math.cos(positions.getY(i)*15+clock)*.0012);}positions.needsUpdate=true;
  stream.visible=clock<pourUntil;stream.scale.y=Math.max(.02,.82-(.138+depth));stream.position.y=(.82+.138+depth)/2;
- updateCamera(dt);renderer.render(scene,view==='real'&&cal?realCamera:camera);requestAnimationFrame(frame);
+ updateCamera(dt);renderer.render(scene,view==='real'&&cal?realCamera:camera);if(!qa.has('qa'))requestAnimationFrame(frame);
 }
 function resize(){w=stage.clientWidth;h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(cal&&cal.dpr!==devicePixelRatio){cal=null;if(view==='real'){view='hand';status('表示倍率が変わりました。実寸は定規で再調整してください。');}updateUI();}}
 new ResizeObserver(resize).observe(stage);
@@ -187,7 +196,7 @@ $('home').onclick=()=>{manualOrbit=false;realPan.set(0,0,0);};
 $('cubes').onclick=()=>{showCubes=!showCubes;view='wide';manualOrbit=false;updateUI();status(showCubes?'1L（10cm角）を200個ならべたよ。いまのおふろの水量とは独立した、200Lの比較用だよ。':'ブロックをしまったよ。');};
 $('drain').onclick=()=>{waterL=0;updateUI();status('水を抜いています。');};$('fill').onclick=()=>{waterL=200;pourUntil=clock+2;updateUI();status('200Lまで水を入れています。');};
 for(const b of document.querySelectorAll('[data-add]'))b.onclick=()=>{const add=Math.min(Number(b.dataset.add),200-waterL);waterL+=add;pourUntil=clock+1.2;updateUI();status(`${add}L入れたよ。いま${waterL}L。${waterL===200?'200Lになった！':''}`);};
-for(const b of document.querySelectorAll('[data-item]'))b.onclick=()=>{if(action)return;item=b.dataset.item;sideOn=false;held=false;bodyPosition.copy(homeDesk);armRight.set(.17,.66,.06);view='wide';manualOrbit=false;updateUI();status(`${items[item].name}を選んだよ。歩いて取りにいこう。`);};
+for(const b of document.querySelectorAll('[data-item]'))b.onclick=()=>{if(action)return;item=b.dataset.item;sideOn=false;held=false;bodyRotation=0;bodyPosition.copy(homeDesk);view='wide';manualOrbit=false;updateUI();status(`${items[item].name}を選んだよ。歩いて取りにいこう。`);};
 
 $('sideItem').onclick=()=>{if(action)return;sideOn=!sideOn;view=cal&&view==='real'?'real':'hand';manualOrbit=false;updateUI();};
 $('dimensionToggle').onclick=()=>{showDimensions=!showDimensions;$('dimensionToggle').classList.toggle('active',showDimensions);updateUI();};
@@ -205,6 +214,13 @@ let pointer=null;canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,
 canvas.addEventListener('pointermove',e=>{if(!pointer)return;const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;pointer={x:e.clientX,y:e.clientY};if(view==='real'&&cal){realPan.x-=dx/(cal.ppm*1000);realPan.y+=dy/(cal.ppm*1000);}else {manualOrbit=true;orbitYaw-=dx*.006;orbitPitch=clamp(orbitPitch+dy*.004,.05,1.2);}});canvas.addEventListener('pointerup',()=>pointer=null);canvas.addEventListener('pointercancel',()=>pointer=null);
 canvas.addEventListener('wheel',e=>{e.preventDefault();if(view==='real')return;if(!manualOrbit){const o=camera.position.clone().sub(camTarget);orbitRadius=o.length();orbitYaw=Math.atan2(o.x,o.z);orbitPitch=Math.asin(o.y/orbitRadius);}manualOrbit=true;orbitRadius=clamp(orbitRadius*Math.exp(e.deltaY*.001),.25,8);},{passive:false});
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();$('loading').hidden=false;$('loading').textContent='3D表示が中断されました。ページを再読み込みしてください。';});
+if(qa.has('qa')){
+ item=qa.get('item')||'masuDL';view=qa.get('view')||'hand';sideOn=qa.get('side')==='1';
+ if(qa.get('qa')==='hold'){held=true;bodyPosition.copy(presentPosition);}
+ else if(qa.get('qa')==='pickup'){action={type:'pickup',start:0,duration:1,from:homeDesk.clone()};for(let f=0;f<=Number(qa.get('t')||.52);f+=.005){clock=f;animateActions();}}
+ else if(qa.get('qa')==='bath'){mode='bath';sit=1;bodyPosition.copy(bathSeat);bodyRotation=Math.PI/2;}
+ animateActions();const report=document.createElement('pre');report.id='rig-report';report.textContent=JSON.stringify(kid.diagnostics,null,2);document.body.append(report);resize();updateCamera(10);
+}
 resize();camera.position.copy(camPosGoal);updateUI();$('loading').hidden=true;requestAnimationFrame(frame);
 
 
