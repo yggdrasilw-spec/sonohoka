@@ -7,7 +7,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;}
-body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;overflow-x:hidden;}
+html,body{height:100%;overflow:hidden;}
+body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;position:relative;}
+#app-stage{position:absolute;top:0;left:0;width:1040px;transform-origin:0 0;opacity:0;}
 
 .app-header{background:linear-gradient(135deg,#ff8a5c,#e35d3a);color:#fff;text-align:center;
   padding:10px 16px 8px;box-shadow:0 3px 10px rgba(0,0,0,.15);}
@@ -44,23 +46,36 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   font-family:'Noto Sans JP',sans-serif;}
 .mode-btn.active{background:#8e44ad;color:#fff;border-color:#6c3483;}
 .mode-btn:hover:not(.active){background:#f3e8fb;border-color:#8e44ad;}
+.timing-btn{padding:3px 12px;font-size:11px;font-weight:bold;border:1.5px solid #ccc;
+  border-radius:14px;background:#fff;cursor:pointer;transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;}
+.timing-btn.active{background:#1a7f9c;color:#fff;border-color:#146680;}
+.timing-btn:hover:not(.active){background:#e6f5fa;border-color:#1a7f9c;}
+.timing-interval{display:inline-flex;align-items:center;gap:4px;}
+.timing-interval input{width:44px;padding:2px 4px;font-size:11px;border:1.5px solid #ccc;
+  border-radius:8px;font-family:'Noto Sans JP',sans-serif;text-align:right;}
 .err-msg{color:#e74c3c;font-size:12px;font-weight:bold;text-align:center;margin-top:4px;display:none;}
 
-.main-area{display:flex;gap:12px;padding:12px;max-width:980px;margin:0 auto;align-items:flex-start;}
+.main-area{display:flex;gap:12px;padding:12px 8px;width:100%;max-width:none;margin:0;
+  align-items:flex-start;justify-content:center;overflow:visible;}
+
+/* 数図ブロックは問題ごとに縦横同比率で拡大する。transformはレイアウト寸法を
+   変えないため、tile-slotが拡大後の実占有幅・高さを受け持つ。 */
+.tile-slot{flex:0 0 auto;position:relative;overflow:visible;}
 
 /* ===== タイル図エリア：<table>で列位置を保証 ===== */
-.tile-area{flex:0 0 auto;background:#fff;border-radius:12px;
-  box-shadow:0 4px 14px rgba(0,0,0,.08);position:relative;overflow:visible;}
+.tile-area{display:inline-block;width:max-content;background:#fff;border-radius:12px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08);position:relative;overflow:visible;transform-origin:top left;}
 
 #tile-table{border-collapse:collapse;table-layout:fixed;border-radius:12px;overflow:hidden;}
 
 /* col要素は表示/非表示と幅をJSが一括設定する。
    theadとtbodyが同じ<col>を共有するため、列のズレは構造的に発生しない。*/
 #tile-table col.col-label{width:28px;}
-#tile-table col.col-sen{width:110px;}
-#tile-table col.col-hyaku{width:124px;}
-#tile-table col.col-juu{width:124px;}
-#tile-table col.col-ichi{width:110px;}
+#tile-table col.col-sen{width:143px;}
+#tile-table col.col-hyaku{width:161px;}
+#tile-table col.col-juu{width:161px;}
+#tile-table col.col-ichi{width:143px;}
 
 #tile-table thead th{
   font-size:10px;font-weight:bold;padding:6px 0;height:30px;
@@ -74,10 +89,10 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 
 #tile-table tbody td{
   position:relative;text-align:center;vertical-align:middle;
-  box-sizing:border-box;height:86px;border-bottom:1px dashed #e0e0e0;
+  box-sizing:border-box;height:112px;border-bottom:1px dashed #e0e0e0;
 }
 #tile-table tbody tr:last-child td{border-bottom:none;}
-#tile-table tbody tr.tile-result-row td{border-top:3px solid #444;height:94px;}
+#tile-table tbody tr.tile-result-row td{border-top:3px solid #444;height:122px;}
 
 #tile-table td.td-label{font-size:15px;font-weight:bold;color:#4a9eff;background:#fff;}
 #tile-table td.td-label.minus{color:#e35d3a;}
@@ -112,11 +127,21 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 #bridge1000-layer{position:absolute;top:0;left:0;width:100%;height:100%;
   pointer-events:none;overflow:visible;z-index:90;}
 
-.right-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-width:190px;}
+.right-panel{flex:0 0 auto;width:auto;display:flex;flex-direction:column;gap:10px;min-width:0;}
+/* ===== 筆算＋テキストの可変ズーム =====
+   数図ブロックの表（.tile-area）が桁数やくり下げの都合で縦に大きくなったとき、
+   筆算・テキストの中身が相対的に小さく見えるのを防ぐため、JS(syncRightPanelZoom)で
+   ひっ算svgとテキスト部分の中身だけをtransform:scale()で拡大する。
+   hissan-box・step-box自体の幅は今まで通り右カラムいっぱいに広がったままにし、
+   拡大の必要がない問題（表があまり大きくならない問題）では今までとまったく同じ
+   大きさのまま（＝縮み込むことはない）にするのがポイント。 */
+#hissan-scale-outer{position:relative;}
+#step-scale-outer{position:relative;}
+#step-scale-inner{width:230px;margin:0 auto;}
 .hissan-box{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);
   padding:10px 14px 14px;}
 .hissan-title{font-size:12px;font-weight:bold;color:#666;margin-bottom:4px;text-align:center;}
-.hissan-inner{display:flex;justify-content:center;}
+.hissan-inner{display:flex;justify-content:center;align-items:center;}
 #hissan-svg{display:block;}
 
 .step-box{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);
@@ -125,7 +150,8 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   width:24px;height:24px;line-height:24px;text-align:center;font-size:13px;
   font-weight:bold;margin-right:6px;}
 .step-title{font-size:14px;font-weight:bold;color:#333;margin-bottom:8px;display:flex;align-items:center;}
-.step-desc{font-size:13px;color:#444;line-height:1.9;}
+.step-desc{font-size:13px;color:#444;line-height:1.9;min-height:100px;height:auto;overflow:visible;
+  padding-right:4px;}
 .step-desc .ic{color:#c2185b;font-weight:bold;}
 .step-desc .jc{color:#b7950b;font-weight:bold;}
 .step-desc .hc{color:#1a5276;font-weight:bold;}
@@ -164,13 +190,20 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
 }
 .glow-pop{animation:glowPulse .5s ease-out forwards;}
 
-@media(max-width:640px){
-  .main-area{flex-direction:column;}
-  .tile-area{flex:none;width:100%;}
+/* 「この位は0で、くり下げに使えない」を示す、赤く点滅する枠・数字。
+   波及的繰り下がり（0の位をまたいで、さらに上の位から借りる）のとき、
+   筆算の黒字の0、および図解の空っぽの枠の両方に同じ見た目で使う。 */
+@keyframes zeroPulse{
+  0%{opacity:.5;filter:drop-shadow(0 0 0px #e53935);}
+  50%{opacity:1;filter:drop-shadow(0 0 8px #e53935) drop-shadow(0 0 16px #ff8a80);}
+  100%{opacity:.5;filter:drop-shadow(0 0 0px #e53935);}
 }
+.zero-glow-frame,.zero-glow-text{animation:zeroPulse 1.1s ease-in-out infinite;}
+
 </style>
 </head>
 <body>
+<div id="app-stage">
 <div class="app-header"><h1>ひき算の ひっ算</h1></div>
 
 <div class="input-area">
@@ -203,10 +236,21 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
       <button class="mode-btn active" id="mode-btn-tile" onclick="setDisplayMode('tile')">🟨 タイル</button>
       <button class="mode-btn" id="mode-btn-card" onclick="setDisplayMode('card')">🔢 カード</button>
     </span>
+    <span class="mode-row">
+      <span class="mode-row-label">みせる じゅんばん：</span>
+      <button class="timing-btn active" id="timing-btn-sync" onclick="setTimingMode('sync')">同時</button>
+      <button class="timing-btn" id="timing-btn-tile-first" onclick="setTimingMode('tile-first')">図→筆算</button>
+      <button class="timing-btn" id="timing-btn-hissan-first" onclick="setTimingMode('hissan-first')">筆算→図</button>
+      <span class="timing-interval" id="timing-interval-box" style="display:none;">
+        <input type="number" id="timing-interval-input" step="0.1" min="0" max="5" value="0.4" onchange="setTimingInterval(this.value)">
+        <span style="font-size:11px;color:#888;">秒</span>
+      </span>
+    </span>
   </div>
 </div>
 
 <div class="main-area">
+  <div class="tile-slot" id="tile-slot">
   <div class="tile-area" id="tile-area">
     <table id="tile-table">
       <colgroup>
@@ -229,26 +273,26 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
         <!-- A行：ひかれる数 -->
         <tr id="row-a">
           <td class="td-label" id="lbl-a"></td>
-          <td class="td-sen" id="col-sen-a">    <svg id="svg-sen-a"   width="110" height="86" viewBox="0 0 110 86"></svg></td>
-          <td class="td-hyaku" id="col-hyaku-a"><svg id="svg-hyaku-a" width="124" height="86" viewBox="0 0 124 86"></svg></td>
-          <td class="td-juu">                   <svg id="svg-juu-a"   width="124" height="86" viewBox="0 0 124 86"></svg></td>
-          <td class="td-ichi">                  <svg id="svg-ichi-a"  width="110" height="86" viewBox="0 0 110 86"></svg></td>
+          <td class="td-sen" id="col-sen-a">    <svg id="svg-sen-a"   width="143" height="112" viewBox="0 0 143 112"></svg></td>
+          <td class="td-hyaku" id="col-hyaku-a"><svg id="svg-hyaku-a" width="161" height="112" viewBox="0 0 161 112"></svg></td>
+          <td class="td-juu">                   <svg id="svg-juu-a"   width="161" height="112" viewBox="0 0 161 112"></svg></td>
+          <td class="td-ichi">                  <svg id="svg-ichi-a"  width="143" height="112" viewBox="0 0 143 112"></svg></td>
         </tr>
         <!-- B行：ひく数 -->
         <tr id="row-b">
           <td class="td-label minus">－</td>
-          <td class="td-sen" id="col-sen-b">    <svg id="svg-sen-b"   width="110" height="86" viewBox="0 0 110 86"></svg></td>
-          <td class="td-hyaku" id="col-hyaku-b"><svg id="svg-hyaku-b" width="124" height="86" viewBox="0 0 124 86"></svg></td>
-          <td class="td-juu">                   <svg id="svg-juu-b"   width="124" height="86" viewBox="0 0 124 86"></svg></td>
-          <td class="td-ichi">                  <svg id="svg-ichi-b"  width="110" height="86" viewBox="0 0 110 86"></svg></td>
+          <td class="td-sen" id="col-sen-b">    <svg id="svg-sen-b"   width="143" height="112" viewBox="0 0 143 112"></svg></td>
+          <td class="td-hyaku" id="col-hyaku-b"><svg id="svg-hyaku-b" width="161" height="112" viewBox="0 0 161 112"></svg></td>
+          <td class="td-juu">                   <svg id="svg-juu-b"   width="161" height="112" viewBox="0 0 161 112"></svg></td>
+          <td class="td-ichi">                  <svg id="svg-ichi-b"  width="143" height="112" viewBox="0 0 143 112"></svg></td>
         </tr>
         <!-- 答え行 -->
-        <tr class="tile-result-row" id="row-ans" style="display:none;">
+        <tr class="tile-result-row" id="row-ans">
           <td class="td-label equals">＝</td>
-          <td class="td-sen" id="col-sen-ans">    <svg id="svg-sen-ans"   width="110" height="94" viewBox="0 0 110 94"></svg></td>
-          <td class="td-hyaku" id="col-hyaku-ans"><svg id="svg-hyaku-ans" width="124" height="94" viewBox="0 0 124 94"></svg></td>
-          <td class="td-juu">                                  <svg id="svg-juu-ans"   width="124" height="94" viewBox="0 0 124 94"></svg></td>
-          <td class="td-ichi">                                 <svg id="svg-ichi-ans"  width="110" height="94" viewBox="0 0 110 94"></svg></td>
+          <td class="td-sen" id="col-sen-ans">    <svg id="svg-sen-ans"   width="143" height="122" viewBox="0 0 143 122"></svg></td>
+          <td class="td-hyaku" id="col-hyaku-ans"><svg id="svg-hyaku-ans" width="161" height="122" viewBox="0 0 161 122"></svg></td>
+          <td class="td-juu">                                  <svg id="svg-juu-ans"   width="161" height="122" viewBox="0 0 161 122"></svg></td>
+          <td class="td-ichi">                                 <svg id="svg-ichi-ans"  width="143" height="122" viewBox="0 0 143 122"></svg></td>
         </tr>
       </tbody>
     </table>
@@ -257,20 +301,27 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
     <svg id="bridge1000-layer"></svg>
     <svg id="anim-layer"></svg>
   </div>
+  </div><!-- /#tile-slot -->
 
   <div class="right-panel">
     <div class="hissan-box">
       <div class="hissan-title">ひっ算</div>
-      <div class="hissan-inner">
-        <svg id="hissan-svg" width="210" height="230" viewBox="0 0 210 230"></svg>
+      <div id="hissan-scale-outer">
+        <div class="hissan-inner">
+          <svg id="hissan-svg" width="210" height="230" viewBox="0 0 210 230"></svg>
+        </div>
       </div>
     </div>
     <div class="step-box">
-      <div class="step-title">
-        <span class="step-number" id="step-num">1</span>
-        <span id="step-title-text"></span>
+      <div id="step-scale-outer">
+        <div id="step-scale-inner">
+          <div class="step-title">
+            <span class="step-number" id="step-num">1</span>
+            <span id="step-title-text"></span>
+          </div>
+          <div class="step-desc" id="step-desc"></div>
+        </div>
       </div>
-      <div class="step-desc" id="step-desc"></div>
     </div>
   </div>
 </div>
@@ -281,20 +332,21 @@ body{background:#f5f0e8;font-family:'Noto Sans JP',sans-serif;min-height:100vh;o
   <button class="nav-btn next" id="btn-next" onclick="goStep(1)">すすむ ▶</button>
   <button class="voice-btn" id="btn-voice" onclick="toggleVoice()" title="読み上げON/OFF">🔊</button>
 </div>
+</div>
 
 <script>
 // ============================================================
 // SVG ユーティリティ
 // ============================================================
 const NS='http://www.w3.org/2000/svg';
-const U=5.5;
+const U=7.15;
 const FC='#f5c542', SC='#c8960a', SC5='#7a5500';
 // 百の位タイルを、縦横どちらにも少しずつずらして斜めに並べる際の間隔。
 // 静的表示(renderHyakus)・出現アニメ(appear-hyaku)・くり下げアニメ(borrow-h-to-j系)・
 // 対消滅アニメ(annihilate-hyaku)のすべてで、この値と並べ方の計算式を統一して使うことで、
 // アニメ前後の表示位置のずれを防ぐ。枠が広がってもタイル自体の大きさは変えたくないため、
 // タイルの縮尺だけは常にHYAKU_TILE_REF_H基準で計算する（枠の高さ自体はupdateLayoutで動的に広げる）。
-const HYAKU_STEP_X=24, HYAKU_STEP_Y=20, HYAKU_TILE_REF_H=86;
+const HYAKU_STEP_X=31.2, HYAKU_STEP_Y=26, HYAKU_TILE_REF_H=112;
 // 1列目(1〜5枚目)の最大枚数。6枚目以降は2列目として右にHYAKU_ROW2_OFFSET_TILES枚分ずらして開始する。
 const HYAKU_ROW1_MAX=5;
 const HYAKU_ROW2_OFFSET_TILES=2;
@@ -362,6 +414,18 @@ function mk(tag,a,parent){
   for(const[k,v]of Object.entries(a))e.setAttribute(k,v);
   if(parent)parent.appendChild(e);
   return e;
+}
+
+// 「この位は0で、くり下げに使えない」ことを、図解（タイル／カード）側でも示す共通ヘルパー。
+// その位にタイルが1枚も無い（count+ghost===0）ときに、svgEl中央へ赤い破線の点滅する
+// 空枠だけを描く（「0」の文字は出さない＝「この箱（位）がまるごと空っぽ」であることを
+// 枠の大きさだけで示す。筆算側の数字は別途zero-glow-textで赤く点滅表示される）。
+function renderZeroGlowFrame(svgEl){
+  if(!svgEl)return;
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2])||143;
+  const H=parseInt(svgEl.getAttribute('height'))||112;
+  mk('rect',{x:W/2-39,y:H/2-31.2,width:78,height:62.4,rx:13,fill:'none',
+    stroke:'#e53935','stroke-width':3,'stroke-dasharray':'6,4',class:'zero-glow-frame'},svgEl);
 }
 function eio(t){return t<.5?2*t*t:-1+(4-2*t)*t;}
 
@@ -465,7 +529,7 @@ function drawIchi(parent,count,svgW,svgH,alpha,hColor,ghostCount,lentGhostCount)
 // ===== render系（SVGに静的描画）=====
 // じゅうの棒を「5本・すきま・5本」とグルーピングして並べたときのx座標(先頭からの相対オフセット)を返す。
 // renderSticksと、くり下げアニメーション側（複数箇所）で同じ式を使うことで、見た目の食い違いを防ぐ。
-const STICK_W=U+1, STICK_GAP=5, STICK_GROUP_GAP=16;
+const STICK_W=U+1.3, STICK_GAP=6.5, STICK_GROUP_GAP=20.8;
 function stickLayout(count){
   const xs=[0];
   for(let i=1;i<count;i++){
@@ -489,7 +553,7 @@ function renderSticks(svgEl,count,alpha,hColor,strokeColor,ghostCount,lentGhostC
   lentGhostCount=lentGhostCount||0;
   const total=count+ghostCount;
   if(!total)return[];
-  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||112;
   const centers=stickCenters(total,W,H);
   for(let i=0;i<total;i++){
     const isGhost=i>=count;
@@ -519,7 +583,7 @@ function renderHyakus(svgEl,count,alpha,hColor,strokeColor,ghostCount,lentGhostC
   lentGhostCount=lentGhostCount||0;
   const total=count+ghostCount;
   if(!total)return[];
-  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||112;
   const u=U,G=u*.15,side=10*u+9*G;
   // タイル自体の縮尺は、枠の高さ(H)ではなく常に基準の高さ(HYAKU_TILE_REF_H)で計算する。
   // こうしておくことで、枚数が増えて枠(H)が縦に広がっても、タイル1枚1枚の大きさは変わらない。
@@ -560,7 +624,7 @@ function renderSens(svgEl,count,alpha,hColor,strokeColor,ghostCount,lentGhostCou
   lentGhostCount=lentGhostCount||0;
   const total=count+ghostCount;
   if(!total)return[];
-  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||112;
   const u=U,G=u*.15,W10=10*u+9*G,H10=10*u+9*G;
   const OX=u*.35,OY=u*.35;
   // スケールをセルに収める
@@ -600,23 +664,27 @@ function renderSens(svgEl,count,alpha,hColor,strokeColor,ghostCount,lentGhostCou
 function renderIchi(svgEl,count,alpha,hColor,ghostCount,lentGhostCount){
   svgEl.innerHTML='';
   if(!count && !ghostCount)return[];
-  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||112;
   return drawIchi(svgEl,count,W,H,alpha??1,hColor,ghostCount,lentGhostCount);
 }
 
 // ============================================================
 // カード方式（タイルの代わりに「1」「10」「100」と書かれた数字カードで表す）
 // 並べ方は、タイル方式の一の位(drawIchi)にならい「5枚を横一列、6枚目からは
-// 下の段」という横長のレイアウトに統一する。くり下げてきた「10」のかたまりの
+// 下の段」というカード専用レイアウトにする。10枚なら5枚×2段にそろえる。くり下げてきた「10」のかたまりの
 // 表示（bridge10-layer／bridge100-layer）も同じ並べ方にそろえる。
 // ============================================================
 let DISPLAY_MODE='tile'; // 'tile'：実物タイル／'card'：数字カード
 
+// カード方式はタイル方式と横幅の性質がかなり違うため、専用の寸法・折り返し数を使う。
+// 5枚/段。10枚のくり下げを必ず5枚×2段で見せる。
+// 旧4枚/段とほぼ同じ列幅に収まるよう、カード本体と間隔を少し小さくする。
+const CARD_LAYOUT={perRow:5,gapX:5,rowGap:7,margin:8};
 const CARD_CFG={
-  ichi : {label:'1',   w:34,h:26,fs:13,bg:'#fce4ec',stroke:'#e91e63',tc:'#880e4f'},
-  juu  : {label:'10',  w:34,h:26,fs:13,bg:'#fff9cc',stroke:'#d4ac0d',tc:'#6b5700'},
-  hyaku: {label:'100', w:34,h:26,fs:12,bg:'#cce8f4',stroke:'#2980b9',tc:'#1a5276'},
-  sen  : {label:'1000',w:34,h:26,fs:10,bg:'#e8e8e8',stroke:'#555',   tc:'#333'}
+  ichi : {label:'1',   w:31,h:26,fs:13,bg:'#fce4ec',stroke:'#e91e63',tc:'#880e4f'},
+  juu  : {label:'10',  w:31,h:26,fs:13,bg:'#fff9cc',stroke:'#d4ac0d',tc:'#6b5700'},
+  hyaku: {label:'100', w:31,h:26,fs:12,bg:'#cce8f4',stroke:'#2980b9',tc:'#1a5276'},
+  sen  : {label:'1000',w:31,h:26,fs:10.5,bg:'#e8e8e8',stroke:'#555',   tc:'#333'}
 };
 
 // カード1枚を描く（中心座標cx,cy基準。drawStick/drawHyakuScaled等と座標系をそろえる）
@@ -642,11 +710,11 @@ function cardBoxPositions(count,ghostCount,place,svgW,svgH){
   const total=count+ghostCount;
   if(!total)return{pos:[],scale:1};
   const cfg=CARD_CFG[place];
-  const gapX=6,rGap=8,margin=6;
-  const nRows=Math.ceil(total/5);
+  const {perRow,gapX,rowGap:rGap,margin}=CARD_LAYOUT;
+  const nRows=Math.ceil(total/perRow);
   let maxRowW=0;
   for(let r=0;r<nRows;r++){
-    const inRow=(r===nRows-1)?(total-r*5):5;
+    const inRow=(r===nRows-1)?(total-r*perRow):perRow;
     maxRowW=Math.max(maxRowW,inRow*cfg.w+(inRow-1)*gapX);
   }
   const needH=nRows*cfg.h+(nRows-1)*rGap;
@@ -659,7 +727,7 @@ function cardBoxPositions(count,ghostCount,place,svgW,svgH){
   const sy=svgH/2-totH/2+h/2;
   const pos=[];let drawn=0;
   for(let r=0;r<nRows&&drawn<total;r++){
-    const inRow=Math.min(5,total-drawn);
+    const inRow=Math.min(perRow,total-drawn);
     const rowW=inRow*w+(inRow-1)*gx;
     const sx=svgW/2-rowW/2+w/2;
     const cy=sy+r*(h+gy);
@@ -675,7 +743,7 @@ function renderCardGeneric(svgEl,count,place,alpha,hColor,ghostCount,lentGhostCo
   lentGhostCount=lentGhostCount||0;
   const total=count+ghostCount;
   if(!total)return[];
-  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||86;
+  const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]),H=parseInt(svgEl.getAttribute('height'))||112;
   const{pos}=cardBoxPositions(count,ghostCount,place,W,H);
   pos.forEach((p,i)=>{
     const isGhost=i>=count;
@@ -703,13 +771,13 @@ function renderIchiCard(svgEl,count,alpha,hColor,ghostCount,lentGhostCount){retu
 // 自然な大きさで「5枚ずつ横一列」に並べる（tile版のbridgeIchiPositions/bridgeStickPositionsに対応）。
 function bridgeCardPositions(total,hc,place){
   const cfg=CARD_CFG[place];
-  const gapX=6,rGap=8;
-  const nRows=Math.ceil(total/5);
+  const {perRow,gapX,rowGap:rGap}=CARD_LAYOUT;
+  const nRows=Math.ceil(total/perRow);
   const totH=nRows*cfg.h+(nRows-1)*rGap;
   const sy=hc.y-totH/2+cfg.h/2;
   const pos=[];let drawn=0;
   for(let r=0;r<nRows&&drawn<total;r++){
-    const inRow=(r===nRows-1)?(total-drawn):5;
+    const inRow=Math.min(perRow,total-drawn);
     const rowW=inRow*cfg.w+(inRow-1)*gapX;
     const sx=hc.x-rowW/2+cfg.w/2;
     const cy=sy+r*(cfg.h+rGap);
@@ -722,13 +790,13 @@ function bridgeCardPositions(total,hc,place){
 // （updateLayoutから呼ばれる。桁数が増えても同じ式で対応できる）。
 function cardNeedWidth(maxCount,place){
   const cfg=CARD_CFG[place];
-  const perRow=Math.min(5,Math.max(1,maxCount));
-  return perRow*cfg.w+(perRow-1)*6+16;
+  const cols=Math.min(CARD_LAYOUT.perRow,Math.max(1,maxCount));
+  return cols*cfg.w+(cols-1)*CARD_LAYOUT.gapX+CARD_LAYOUT.margin*2;
 }
 function cardNeedHeight(maxCount,place){
   const cfg=CARD_CFG[place];
-  const nRows=Math.max(1,Math.ceil(maxCount/5));
-  return nRows*cfg.h+(nRows-1)*8+16;
+  const nRows=Math.max(1,Math.ceil(maxCount/CARD_LAYOUT.perRow));
+  return nRows*cfg.h+(nRows-1)*CARD_LAYOUT.rowGap+CARD_LAYOUT.margin*2;
 }
 
 // ============================================================
@@ -757,7 +825,7 @@ function cardGetPositions(place){
   return (svgEl,count)=>{
     if(!count)return[];
     const W=parseInt(svgEl.getAttribute('viewBox').split(' ')[2]);
-    const H=parseInt(svgEl.getAttribute('height'))||86;
+    const H=parseInt(svgEl.getAttribute('height'))||112;
     const{pos}=cardBoxPositions(count,0,place,W,H);
     return pos.map(p=>({cx:p.cx,cy:p.cy}));
   };
@@ -791,7 +859,7 @@ function cardAnnihilatePairs(opts){
   const n=Math.min(posA.length,posB.length);
   if(n===0){onAllDone&&onAllDone();return;}
   const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-  const destX=tileRect.width-20, destY=20;
+  const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20;
   const STAGGER=230;
   let doneCount=0;
   function runPair(i){
@@ -841,15 +909,18 @@ function drawHissan(svgEl,state){
   svgEl.innerHTML='';
   const S=state;
 
-  // ノートのマス目（薄いグレーの格子）を背景に敷く。
-  // 1マス＝1つの数字・記号の大きさ(HG)にして、数字の列（H2X,HJX,HIXなど）とぴったり重なるようにする。
-  // 1000のとき(has4)はせんのくらいの、さらに1つ左に－記号を書くスペースが要るため、
-  // グリッド・viewBoxの左端を1マス分広げる。
-  const VBW=210,VBH=230,gx0=(S.has4?(HSX-HG*1.5):(HSX-HG/2));
-  svgEl.setAttribute('viewBox',`${S.has4?-38:0} 0 ${S.has4?248:210} ${VBH}`);
-  svgEl.setAttribute('width',S.has4?248:210);
-  for(let gx=gx0;gx<=VBW;gx+=HG)mk('line',{x1:gx,y1:0,x2:gx,y2:VBH,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
-  for(let gy=0;gy<=VBH;gy+=HG)mk('line',{x1:S.has4?-38:0,y1:gy,x2:VBW,y2:gy,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
+  // 実際に使う桁＋「－」記号の1マスだけをviewBoxに含める。
+  // 2桁・3桁の問題で未使用列の白い余白を残さず、縦長の筆算として見せる。
+  const aDigits=numA>=1000?4:(numA>=100?3:(numA>=10?2:1));
+  const leftmostCol=aDigits>=4?HSX:(aDigits===3?H2X:(aDigits===2?HJX:HIX));
+  const VBX=leftmostCol-HG*1.5;
+  const VB_RIGHT=210,VBH=230,VBW=VB_RIGHT-VBX;
+  const gx0=VBX;
+  svgEl.setAttribute('viewBox',`${VBX} 0 ${VBW} ${VBH}`);
+  svgEl.setAttribute('width',VBW);
+  svgEl.setAttribute('height',VBH);
+  for(let gx=gx0;gx<=VB_RIGHT;gx+=HG)mk('line',{x1:gx,y1:0,x2:gx,y2:VBH,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
+  for(let gy=0;gy<=VBH;gy+=HG)mk('line',{x1:VBX,y1:gy,x2:VB_RIGHT,y2:gy,stroke:'#000','stroke-width':.5,opacity:.08},svgEl);
 
   function txt(content,x,y,fs,fw,color,cls){
     const t=mk('text',{x,y,'font-size':fs||34,'font-weight':fw||'bold',
@@ -863,7 +934,6 @@ function drawHissan(svgEl,state){
   }
 
   // － 記号（ひく数の、いちばん大きい位の1つ左のマスに書く。addition app の＋記号と同じルール）
-  const leftmostCol=S.has4?HSX:(S.has3?H2X:HJX);
   const minusX=leftmostCol-HG;
   if(S.showMinus) txt('－',minusX,HROW2_Y-6,20,'bold','#e35d3a');
 
@@ -878,6 +948,10 @@ function drawHissan(svgEl,state){
   if(S.hlJuu){hl(HJX-18,HROW1_Y-32,38,38,'#fff9cc');hl(HJX-18,HROW2_Y-32,38,38,'#fff9cc');}
   if(S.hlHyaku&&S.has3){hl(H2X-18,HROW1_Y-32,38,38,'#cce8f4');hl(H2X-18,HROW2_Y-32,38,38,'#cce8f4');}
   if(S.hlSen&&S.has4){hl(HSX-18,HROW1_Y-32,38,38,'#e8e8e8');}
+  // 「この位は0で、くり下げに使えない」の強調：赤い破線の点滅する枠を、
+  // ひかれる数（A行）のその位の数字に重ねて描く。
+  if(S.zeroGlowJuu) mk('rect',{x:HJX-19,y:HROW1_Y-33,width:38,height:40,rx:6,fill:'none',stroke:'#e53935','stroke-width':3,'stroke-dasharray':'5,3',class:'zero-glow-frame'},svgEl);
+  if(S.zeroGlowHyaku&&S.has3) mk('rect',{x:H2X-19,y:HROW1_Y-33,width:38,height:40,rx:6,fill:'none',stroke:'#e53935','stroke-width':3,'stroke-dasharray':'5,3',class:'zero-glow-frame'},svgEl);
 
   // 数字A行（ひかれる数）：せんのくらい。くり下げ後は斜線＋小さい0で上書き表示。
   if(S.showAS&&S.has4){
@@ -927,6 +1001,8 @@ function drawHissan(svgEl,state){
       const ct=mk('text',{x:H2X,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
       ct.textContent=S.hDisplayOverride;
       if(S.bridge1000Pop)ct.setAttribute('class','pop-in');
+    } else if(S.zeroGlowHyaku){
+      txt(S.aH,H2X,HROW1_Y,34,'bold','#e53935','zero-glow-text');
     } else {
       txt(S.aH,H2X,HROW1_Y,34,'bold','#222');
     }
@@ -956,6 +1032,8 @@ function drawHissan(svgEl,state){
       txt(S.aJ,HJX,HROW1_Y,34,'bold','#bbb');
       const ct=mk('text',{x:HJX,y:HROW1_Y-26,'font-size':17,'font-weight':'bold',fill:'#e35d3a','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
       ct.textContent=S.jDisplayOverride;
+    } else if(S.zeroGlowJuu){
+      txt(S.aJ,HJX,HROW1_Y,34,'bold','#e53935','zero-glow-text');
     } else {
       txt(S.aJ,HJX,HROW1_Y,34,'bold','#222');
     }
@@ -1031,7 +1109,13 @@ function drawHissan(svgEl,state){
 // アニメーションエンジン
 // ============================================================
 let animId=null;
-function cancelAnim(){if(animId){cancelAnimationFrame(animId);animId=null;}}
+// 逐次モードで「一呼吸」を待っている間のsetTimeout ID。
+// cancelAnim()でtweenと一緒に確実に止められるようにする。
+let breathTimer=null;
+function cancelAnim(){
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  if(breathTimer){clearTimeout(breathTimer);breathTimer=null;}
+}
 // SVG要素の現在のviewBox幅を取得（updateLayoutで動的変更されるため都度取得）
 function vbW(id){
   const svg=document.getElementById(id);
@@ -1055,31 +1139,39 @@ function tween(ms,onFrame,onDone){
 }
 
 // SVG座標 → アニメレイヤー座標
+// 【重要】getBoundingClientRect()はscale適用後の「画面ピクセル」を返すが、
+// anim-layerはviewBoxを持たない「設計ピクセル」座標系。ここで計算している値は
+// すべて画面ピクセル差分どうしの比・差なので、最後にcurrentScale×数図ローカル倍率で割って
+// 設計ピクセルへ変換してから返す。
 function svgToLayer(svgEl,svgX,svgY){
   const tileRect=document.getElementById('tile-area').getBoundingClientRect();
   const svgRect=svgEl.getBoundingClientRect();
   const vbW=parseFloat(svgEl.getAttribute('viewBox').split(' ')[2]);
   const vbH=parseFloat(svgEl.getAttribute('viewBox').split(' ')[3]);
   return{
-    x:(svgRect.left-tileRect.left)+svgX*(svgRect.width/vbW),
-    y:(svgRect.top-tileRect.top)+svgY*(svgRect.height/vbH)
+    x:((svgRect.left-tileRect.left)+svgX*(svgRect.width/vbW))/(currentScale*stableTilePanelFactor),
+    y:((svgRect.top-tileRect.top)+svgY*(svgRect.height/vbH))/(currentScale*stableTilePanelFactor)
   };
 }
 
 // ヘッダー要素の中心座標（layer基準）
+// ここも全項が画面ピクセル差分のみで構成されているため、丸ごとcurrentScaleで割る。
 function hdrCenter(id){
   const el=document.getElementById(id);
   const tileRect=document.getElementById('tile-area').getBoundingClientRect();
   const r=el.getBoundingClientRect();
-  return{x:r.left-tileRect.left+r.width/2, y:r.top-tileRect.top+r.height/2};
+  return{x:(r.left-tileRect.left+r.width/2)/(currentScale*stableTilePanelFactor), y:(r.top-tileRect.top+r.height/2)/(currentScale*stableTilePanelFactor)};
 }
 
 // ヘッダー要素の「真上」座標（ヘッダー上辺のすぐ外）
+// x成分は画面ピクセル差分のみなのでcurrentScaleで割る。y成分は
+// 「ヘッダー上辺(画面ピクセル差分→設計ピクセル)」に、固定オフセット定数-18
+// （すでに設計ピクセル単位の値）を後から足すので、-18自体は割ってはいけない。
 function aboveHdr(id){
   const el=document.getElementById(id);
   const tileRect=document.getElementById('tile-area').getBoundingClientRect();
   const r=el.getBoundingClientRect();
-  return{x:r.left-tileRect.left+r.width/2, y:r.top-tileRect.top-18};
+  return{x:(r.left-tileRect.left+r.width/2)/(currentScale*stableTilePanelFactor), y:(r.top-tileRect.top)/(currentScale*stableTilePanelFactor)-18};
 }
 
 // ============================================================
@@ -1130,6 +1222,12 @@ function bridgeHyakuPositions(total,hc,su){
 // ============================================================
 let numA=47,numB=18,stepIdx=0,steps=[],animBusy=false;
 let calcMethod='bridge'; // 'bridge'(ブリッジ計算：筆算に書き込む) or 'normal'(通常のくり下がり計算)
+// 表示タイミング切替：'sync'(同時)／'tile-first'(図→筆算)／'hissan-first'(筆算→図)。
+// 問題を切り替えても保持したいので、setProblem等ではリセットしない。
+let timingMode='sync';
+// 逐次モードのときだけ、筆算側・図解側の間に入れる「一呼吸」の秒数(ms)。
+// 調整ボックスから変更できるようconstではなくletにする。
+let breathMs=400;
 function cloneState(s){return JSON.parse(JSON.stringify(s));}
 
 // ============================================================
@@ -1304,12 +1402,16 @@ function buildSteps(){
     showBridgeAnsJ:false,bridgeAnsJPop:false,bridgeAnsJVal:0,
     showBridgePlusJ:false,bridgePlusJPop:false,
     showAnsI:false,showAnsJ:false,showAnsH:false,showAnsS:false,
-    hlIchi:false,hlJuu:false,hlHyaku:false,hlSen:false,ansBox:false
+    hlIchi:false,hlJuu:false,hlHyaku:false,hlSen:false,ansBox:false,
+    // 波及的繰り下がりで「この位は0だから、さらに上の位から借りよう」と
+    // なったとき、その0の位を筆算の数字上で赤く点滅させて強調する。
+    zeroGlowJuu:false,zeroGlowHyaku:false
   };
 
   const tBase={
     senA:{count:0,alpha:1,hl:null,ghost:0},
-    hyakuA:{count:0,alpha:1,hl:null,ghost:0}, juuA:{count:0,alpha:1,hl:null,ghost:0}, ichiA:{count:0,alpha:1,hl:null,ghost:0},
+    // zeroGlow: 波及的繰り下がりで「この位は0で貸せない」ことを図解でも強調するためのフラグ。
+    hyakuA:{count:0,alpha:1,hl:null,ghost:0,zeroGlow:false}, juuA:{count:0,alpha:1,hl:null,ghost:0,zeroGlow:false}, ichiA:{count:0,alpha:1,hl:null,ghost:0},
     hyakuB:{count:0,alpha:1,hl:null,ghost:0}, juuB:{count:0,alpha:1,hl:null,ghost:0}, ichiB:{count:0,alpha:1,hl:null,ghost:0},
     hyakuAns:{count:0,alpha:1,hl:null,ghost:0}, juuAns:{count:0,alpha:1,hl:null,ghost:0}, ichiAns:{count:0,alpha:1,hl:null,ghost:0},
     showAnsRow:false,
@@ -1333,6 +1435,23 @@ function buildSteps(){
 
   const list=[];
   function prev(){return list.length?cloneState(list[list.length-1]):{h:cloneState(hBase),t:cloneState(tBase),title:'',desc:'',anim:null};}
+
+  // ============================================================
+  // 波及的繰り下がり共通ヘルパー：「この位は0だから、くり下げに使えない」を
+  // 筆算の数字（p.h側）と、タイル/カード図解の空っぽの枠（p.t側）の
+  // 両方に、同じ赤い点滅表示で反映する。呼び出し側は、この位が実際に
+  // 貸し出されて0でなくなるステップで、対応するp.h.zeroGlowXxxをfalseに
+  // 戻すこと（p.tの方はオブジェクトを丸ごと差し替えると自然に消える）。
+  // ============================================================
+  function markZeroCantLend(p,place){
+    if(place==='juu'){
+      p.h.zeroGlowJuu=true;
+      if(p.t.juuA)p.t.juuA.zeroGlow=true;
+    } else if(place==='hyaku'){
+      p.h.zeroGlowHyaku=true;
+      if(p.t.hyakuA)p.t.hyakuA.zeroGlow=true;
+    }
+  }
 
   // Step0: 空スタート
   {
@@ -1481,20 +1600,55 @@ function buildSteps(){
     }
     // カスケード：十の位がもともと0で貸せないので、先に百の位から十の位へ1借りる
     if(needCascadeForI){
+      // まず「じゅうのくらいは0だから、いちのくらいに貸せない。ひゃくのくらいから
+      // 借りよう」と宣言する。has4のとき（1000のとき）はこの直後、ひゃくのくらいも
+      // 0だったと分かり、せんのくらいまでさかのぼることになる。宣言と実行を分ける
+      // ことで、「どの位を見て、なぜ次の位に進むのか」を順番に追えるようにする。
+      {
+        const p=prev();
+        p.title=`じゅうのくらいは ${aJ}… ひゃくのくらいから かりよう`;
+        p.desc=`<span class="jc">じゅうのくらい</span>を 見てみましょう。<br>`
+          +`じゅうのくらいは <span class="jc">${aJ}</span>なので、<br>`
+          +`いちのくらいに かす ことが できません。<br>`
+          +`<span class="hc">ひゃくのくらい</span>から <span class="cc">1</span> くり下げられるか 見てみます。`;
+        p.h.hlJuu=true;
+        markZeroCantLend(p,'juu');
+        p.anim=null;
+        list.push(p);
+      }
       // 百の位もともと0（1000のとき）なので、先にせんのくらいから1くり下げて10にする
       if(has4){
+        // ステップ0: 「ひゃくのくらいも0だ」と気づく（宣言のみ・アニメーションなし）。
+        // じゅうのくらいのグロウはここで消し、ひゃくのくらいのグロウに切り替える。
+        {
+          const p=prev();
+          p.title=`ひゃくのくらいも 0… せんのくらいから かりよう`;
+          p.desc=`<span class="hc">ひゃくのくらい</span>を 見てみましょう。<br>`
+            +`ひゃくのくらいも <span class="hc">0</span>なので、<br>`
+            +`じゅうのくらいに かす ことが できません。<br>`
+            +`さきに <span class="sc">せんのくらい</span>から <span class="cc">1</span> くり下げられるか 見てみます。`;
+          p.h.hlJuu=false;p.h.hlHyaku=true;
+          p.h.zeroGlowJuu=false;
+          if(p.t.juuA)p.t.juuA.zeroGlow=false;
+          markZeroCantLend(p,'hyaku');
+          p.anim=null;
+          list.push(p);
+        }
         // ステップ1: せんのくらいの1000の塊を、赤枠で囲んでひゃくのくらいへ移動する
         // （百の位から十の位への borrow-h-to-j-move と同じタイミング・演出）。
         // 元あった場所(せんのくらい)には半透明のタイルを痕跡として残す。
+        // ひゃくのくらいのグロウは、実際にくり下げアニメーションが始まる
+        // このステップで消す（少し間を置いてから、借りるアニメーションに移る）。
         {
           const p=prev();
-          p.title=`ひゃくのくらいは 0… せんのくらいから くり下げる`;
-          p.desc=`<span class="hc">ひゃくのくらい</span>は <span class="hc">0</span>なので、<br>`
-            +`じゅうのくらいに かす ことが できません。<br>`
-            +`さきに <span class="sc">せんのくらい</span>から <span class="hc">ひゃくのくらい</span>へ <span class="cc">1</span> くり下げます。`;
+          p.title=`せんのくらいから ひゃくのくらいへ くり下げる`;
+          p.desc=`<span class="sc">せんのくらい</span>から <span class="hc">ひゃくのくらい</span>へ、<br>`
+            +`<span class="cc">1</span> くり下げます。`;
           p.h.borrowFromS=true;p.h.borrowSPop=true;p.h.hlSen=true;
           p.t.senA={count:0,alpha:1,hl:null,ghost:1,lentGhost:1};
           p.t.hyakuA={count:0,alpha:1,hl:null,ghost:0};
+          p.h.zeroGlowHyaku=false;
+          if(p.t.hyakuA)p.t.hyakuA.zeroGlow=false;
           p.anim='borrow-s-to-h-move';
           list.push(p);
         }
@@ -1507,6 +1661,10 @@ function buildSteps(){
             +`バラバラに して <span class="cc">100が10まい</span> にします。`;
           p.h.showBridge1000=true;p.h.bridge1000Pop=true;
           p.h.hAfterBorrow=aHb;
+          // ひゃくのくらいは、せんのくらいから借りて10になったので、
+          // もう「0で貸せない」状態ではなくなった。強調表示を消す。
+          p.h.zeroGlowHyaku=false;
+          if(p.t.hyakuA)p.t.hyakuA.zeroGlow=false;
           p.t.bridgeSen={show:true,count:10};
           p.anim='unbundle-1000-to-h';
           list.push(p);
@@ -1522,6 +1680,10 @@ function buildSteps(){
         // 出るまでずっと表示したままにする（borrowFromSは false に戻さない）。
         p.h.borrowSPop=false;p.h.hlSen=false;
         p.h.borrowFromH=true;p.h.borrowHPop=true;p.h.hlHyaku=true;
+        // じゅうのくらいはここでひゃくのくらいから受け取るので、
+        // 「0で貸せない」強調はもう不要。
+        p.h.zeroGlowJuu=false;
+        if(p.t.juuA)p.t.juuA.zeroGlow=false;
         // 浮いていた「10」の表示(showBridge1000)は役目を終える。ただしdrawHissan側では、
         // この「10」の表示位置(タイトル付近＝HBORROW_Y)はそのまま動かさず、その場で
         // 斜線を引く。最終的な値(hAfterBorrowJ)は、黒字の0の真上に赤字で書く。
@@ -1689,16 +1851,47 @@ function buildSteps(){
     list.push(p);
   } else {
     // 十の位でも繰り下がりが必要（3桁のとき）
+    // まず「じゅうのくらいから{bJ}はひけない…ひゃくのくらいから借りよう」と
+    // 宣言してから、実際にひゃくのくらいを見に行く。has4のとき（1000のとき）は
+    // このあと、ひゃくのくらいも0だったと分かり、せんのくらいまでさかのぼる。
+    {
+      const p=prev();
+      p.title=`${jAfterBorrowI}から${bJ}は ひけない…`;
+      p.desc=`<span class="jc">じゅうのくらい</span>を 見てみましょう。<br>`
+        +`<span class="jc">${jAfterBorrowI}</span> から <span class="jc">${bJ}</span> は ひけません。<br>`
+        +`<span class="hc">ひゃくのくらい</span>から <span class="cc">1</span> くり下げられるか 見てみます。`;
+      p.h.hlIchi=false;p.h.hlJuu=true;
+      // じゅうのくらい自体が0で「ひけない」場合（例：1000－40）は、
+      // その0も強調しておく。
+      if(jAfterBorrowI===0)markZeroCantLend(p,'juu');
+      p.anim=null;
+      list.push(p);
+    }
     if(has4){
       {
         const p=prev();
-        p.title=`ひゃくのくらいは 0… せんのくらいから くり下げる`;
-        p.desc=`<span class="hc">ひゃくのくらい</span>は <span class="hc">0</span>なので、<br>`
+        p.title=`ひゃくのくらいも 0… せんのくらいから かりよう`;
+        p.desc=`<span class="hc">ひゃくのくらい</span>を 見てみましょう。<br>`
+          +`ひゃくのくらいも <span class="hc">0</span>なので、<br>`
           +`じゅうのくらいに かす ことが できません。<br>`
-          +`さきに <span class="sc">せんのくらい</span>から <span class="hc">ひゃくのくらい</span>へ <span class="cc">1</span> くり下げます。`;
+          +`さきに <span class="sc">せんのくらい</span>から <span class="cc">1</span> くり下げられるか 見てみます。`;
+        p.h.hlJuu=false;p.h.hlHyaku=true;
+        p.h.zeroGlowJuu=false;
+        if(p.t.juuA)p.t.juuA.zeroGlow=false;
+        markZeroCantLend(p,'hyaku');
+        p.anim=null;
+        list.push(p);
+      }
+      {
+        const p=prev();
+        p.title=`せんのくらいから ひゃくのくらいへ くり下げる`;
+        p.desc=`<span class="sc">せんのくらい</span>から <span class="hc">ひゃくのくらい</span>へ、<br>`
+          +`<span class="cc">1</span> くり下げます。`;
         p.h.borrowFromS=true;p.h.borrowSPop=true;p.h.hlSen=true;
         p.t.senA={count:0,alpha:1,hl:null,ghost:1,lentGhost:1};
         p.t.hyakuA={count:0,alpha:1,hl:null,ghost:0};
+        p.h.zeroGlowHyaku=false;
+        if(p.t.hyakuA)p.t.hyakuA.zeroGlow=false;
         p.anim='borrow-s-to-h-move';
         list.push(p);
       }
@@ -1709,22 +1902,17 @@ function buildSteps(){
           +`バラバラに して <span class="cc">100が10まい</span> にします。`;
         p.h.showBridge1000=true;p.h.bridge1000Pop=true;
         p.h.hAfterBorrow=aHb;
+        // ひゃくのくらいは、せんのくらいから借りて10になったので、
+        // もう「0で貸せない」状態ではなくなった。強調表示を消す。
+        p.h.zeroGlowHyaku=false;
+        if(p.t.hyakuA)p.t.hyakuA.zeroGlow=false;
+        // せんのくらいの補助計算（黒字1に斜線＋赤字0）は表示したまま維持するが、
+        // ポップイン演出／ハイライトは、この先ずっと再生され続けないよう消しておく。
+        p.h.borrowSPop=false;p.h.hlSen=false;
         p.t.bridgeSen={show:true,count:10};
         p.anim='unbundle-1000-to-h';
         list.push(p);
       }
-    }
-    {
-      const p=prev();
-      p.title=`${jAfterBorrowI}から${bJ}は ひけない…`;
-      p.desc=`<span class="jc">じゅうのくらい</span>を 見てみましょう。<br>`
-        +`<span class="jc">${jAfterBorrowI}</span> から <span class="jc">${bJ}</span> は ひけません。<br>`
-        +`<span class="hc">ひゃくのくらい</span>から <span class="cc">1</span> くり下げます。`;
-      // せんのくらいの補助計算（黒字1に斜線＋赤字0）は表示したまま維持する。
-      p.h.borrowSPop=false;p.h.hlSen=false;
-      p.h.hlIchi=false;p.h.hlJuu=true;
-      p.anim=null;
-      list.push(p);
     }
     {
       const p=prev();
@@ -1733,6 +1921,10 @@ function buildSteps(){
         +`<span class="cc">1まい</span> を じゅうのくらいに くり下げます。<br>`
         +`ひゃくのくらいは のこり <span class="hc">${hAfterBorrowJ}</span> になります。`;
       p.h.borrowFromH=true;p.h.borrowHPop=true;p.h.hlHyaku=true;
+      // じゅうのくらいはここでひゃくのくらいから受け取るので、
+      // 「0で貸せない」強調はもう不要。
+      p.h.zeroGlowJuu=false;
+      if(p.t.juuA)p.t.juuA.zeroGlow=false;
       // 浮いていた「10」の表示(showBridge1000)は役目を終える。位置(タイトル付近)は
       // 動かさず、has4のとき(せんのくらいから借りた「10」が本当に存在するとき)だけ
       // hDisplayOverrideでその場に斜線を引く。has4でなければ通常の1回借り表示にする。
@@ -1942,27 +2134,29 @@ function paintTiles(ts){
   rSen  (document.getElementById('svg-sen-a'),   ts.senA.count,  ts.senA.alpha,  ts.senA.hl,null,ts.senA.ghost,ts.senA.lentGhost);
   rHyaku(document.getElementById('svg-hyaku-a'), ts.hyakuA.count,ts.hyakuA.alpha,ts.hyakuA.hl,null,ts.hyakuA.ghost,ts.hyakuA.lentGhost);
   rJuu  (document.getElementById('svg-juu-a'),   ts.juuA.count,  ts.juuA.alpha,  ts.juuA.hl,null,ts.juuA.ghost,ts.juuA.lentGhost);
+  // 「くり下げようとしたが、この位は0で貸せない」の強調表示（波及的繰り下がり用）。
+  // タイルが1枚も無い（count+ghostが0の）ときだけ、空枠として重ねて描く。
+  if(ts.hyakuA.zeroGlow && !ts.hyakuA.count && !ts.hyakuA.ghost) renderZeroGlowFrame(document.getElementById('svg-hyaku-a'));
+  if(ts.juuA.zeroGlow && !ts.juuA.count && !ts.juuA.ghost) renderZeroGlowFrame(document.getElementById('svg-juu-a'));
   rIchi (document.getElementById('svg-ichi-a'),  ts.ichiA.count, ts.ichiA.alpha, ts.ichiA.hl,ts.ichiA.ghost);
   rHyaku(document.getElementById('svg-hyaku-b'), ts.hyakuB.count,ts.hyakuB.alpha,ts.hyakuB.hl,null,ts.hyakuB.ghost);
   rJuu  (document.getElementById('svg-juu-b'),   ts.juuB.count,  ts.juuB.alpha,  ts.juuB.hl,null,ts.juuB.ghost);
   rIchi (document.getElementById('svg-ichi-b'),  ts.ichiB.count, ts.ichiB.alpha, ts.ichiB.hl,ts.ichiB.ghost);
   document.getElementById('svg-sen-b').innerHTML=''; // ひく数は1000未満なので、せんのくらいは常に空
 
-  const rowAns=document.getElementById('row-ans');
+  // 答え行は最初から表示しておき（枠の高さを固定して、行の出現でちらつかない
+  // ようにする）、showAnsRowがfalseの間は中のタイルだけを空にしておく。
   if(ts.showAnsRow){
-    rowAns.style.display='table-row';
     rHyaku(document.getElementById('svg-hyaku-ans'), ts.hyakuAns.count,ts.hyakuAns.alpha,ts.hyakuAns.hl,null,ts.hyakuAns.ghost);
     rJuu  (document.getElementById('svg-juu-ans'),   ts.juuAns.count,  ts.juuAns.alpha,  ts.juuAns.hl,null,ts.juuAns.ghost);
     rIchi (document.getElementById('svg-ichi-ans'),  ts.ichiAns.count, ts.ichiAns.alpha, ts.ichiAns.hl,ts.ichiAns.ghost);
   } else {
-    rowAns.style.display='none';
-    // 答え行が非表示のときは、中のSVGも必ず空にしておく。
+    // 答えがまだ確定していない間は、中のSVGを必ず空にしておく。
     // ここでクリアしておかないと、以前の問題や以前のステップで
     // 十の位・百の位の答え欄に描かれたタイルがDOMに残ったままになり、
-    // 後続の対消滅アニメーション（annihilate-ichi等）内で答え行を
-    // 一時的にtable-rowへ切り替える瞬間に、そのタイルが一瞬だけ
-    // 見えてしまう（現在の答えとは無関係な、古い個数のタイルが
-    // ちらつくバグの原因になっていた）。
+    // 後続の対消滅アニメーション（annihilate-ichi等）で答え欄に
+    // タイルが描かれ始める瞬間に、その古い個数のタイルが
+    // 一瞬だけ見えてしまう（現在の答えとは無関係な、ちらつきの原因になっていた）。
     document.getElementById('svg-hyaku-ans').innerHTML='';
     document.getElementById('svg-juu-ans').innerHTML='';
     document.getElementById('svg-ichi-ans').innerHTML='';
@@ -2258,7 +2452,7 @@ function runAnim(animType,prevState,nextState,onDone){
       })();
       return;
     }
-    const W=vbW(id),H=86;
+    const W=vbW(id),H=112;
     const centers=stickCenters(count,W,H);
     let si=0;
     (function next(){
@@ -2290,7 +2484,7 @@ function runAnim(animType,prevState,nextState,onDone){
       })();
       return;
     }
-    const W=110,H=86;
+    const W=143,H=112;
     const tmp=mk('svg',{width:0,height:0,style:'position:absolute;visibility:hidden'});
     document.body.appendChild(tmp);
     const pos=drawIchi(tmp,count,W,H,1,null);
@@ -2392,7 +2586,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const order=Array.from({length:n},(_,i)=>n-1-i);
 
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const destX=tileRect.width-20, destY=20; // tile-area内の右上付近の固定点（全ペア共通の移動先）
+    const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20; // tile-area内の右上付近の固定点（全ペア共通の移動先）
 
     const STAGGER=230; // 1ペアあたりの開始ディレイ（線アニメ220msより長くして重なりを避ける）
     let doneCount=0;
@@ -2513,7 +2707,7 @@ function runAnim(animType,prevState,nextState,onDone){
       drawUnit:'ichi', unitSize:U,
       getPositions:(svgEl,count)=>{
         if(DISPLAY_MODE==='card') return cardGetPositions('ichi')(svgEl,count);
-        const W=110,H=svgEl===document.getElementById('svg-ichi-ans')?94:86;
+        const W=143,H=svgEl===document.getElementById('svg-ichi-ans')?122:112;
         const tmp=mk('svg',{width:0,height:0});
         return drawIchi(tmp,count,W,H,1,null);
       }
@@ -2560,7 +2754,7 @@ function runAnim(animType,prevState,nextState,onDone){
       src=bridgeStickPositions(10,hdrCenter('hdr-juu'))[baseCount-1];
     } else {
       const svgJA=document.getElementById('svg-juu-a');
-      const W=vbW('svg-juu-a'),H=86;
+      const W=vbW('svg-juu-a'),H=112;
       // 最後の1本（一番右）を借りる対象とする
       const srcLocal=stickCenters(baseCount,W,H)[baseCount-1];
       src=svgToLayer(svgJA,srcLocal.cx,srcLocal.cy);
@@ -2770,7 +2964,7 @@ function runAnim(animType,prevState,nextState,onDone){
       return;
     }
     const svgIA=document.getElementById('svg-ichi-a');
-    const W=110,H=86;
+    const W=143,H=112;
     renderIchi(svgIA,aI,1,null); // 元の一の位はそのまま
     // 10個を、いちのくらいのタイトル位置(hdr-ichi)中心に通常サイズで展開して表示
     // (十の位の波及的繰り下がりと同じ「タイトル位置中心・フルサイズ」ロジック)
@@ -2825,7 +3019,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIB=document.getElementById('svg-ichi-b');
     const svgIAns=document.getElementById('svg-ichi-ans');
-    const W=110,H=86;
+    const W=143,H=112;
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
     // 借りてきた10個の座標（unbundle-10・renderBridgeTenと同じ計算＝いちのくらいヘッダー中心）
     const hc=hdrCenter('hdr-ichi');
@@ -2859,7 +3053,7 @@ function runAnim(animType,prevState,nextState,onDone){
       return g;
     });
 
-    const destX=tileRect.width-20, destY=20; // runAnnihilationと同じ「右上の固定点」に統一
+    const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20; // runAnnihilationと同じ「右上の固定点」に統一
     const STAGGER=230; // 線アニメ220msより長くして重なりを避ける
     let doneCount=0;
 
@@ -2989,7 +3183,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIB=document.getElementById('svg-ichi-b');
     const svgIAns=document.getElementById('svg-ichi-ans');
-    const W=110,H=86;
+    const W=143,H=112;
 
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
     // 借りてきた10個の座標（unbundle-10・renderBridgeTenと同じ計算＝いちのくらいヘッダー中心）
@@ -3022,7 +3216,7 @@ function runAnim(animType,prevState,nextState,onDone){
       return g;
     });
 
-    const destX=tileRect.width-20, destY=20;
+    const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20;
     const STAGGER=230;
     let doneCount=0;
 
@@ -3083,7 +3277,7 @@ function runAnim(animType,prevState,nextState,onDone){
       // まとめて答え欄(iAns個)へ移動する。
       document.getElementById('row-ans').style.display='table-row';
       const iAns2=remainTen+aI;
-      const posAns=drawIchi(mk('svg',{width:0,height:0}),iAns2,W,94,1,null);
+      const posAns=drawIchi(mk('svg',{width:0,height:0}),iAns2,W,122,1,null);
       const lDestAll=posAns.map(p=>svgToLayer(svgIAns,p.cx,p.cy));
 
       // 移動開始時に、元の位置(A列/一の位の上)は全てghost化して残しておく
@@ -3153,7 +3347,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const tenMinusB=10-bI;
     const svgIA=document.getElementById('svg-ichi-a');
     const svgIAns=document.getElementById('svg-ichi-ans');
-    const W=110,H=86,HA=94;
+    const W=143,H=112,HA=122;
     // 答え欄(row-ans)の表示・座標計算は、必ずsvgIAnsのレイアウトが確定してから行う。
     // ここで先に表示しておかないと、getBoundingClientRectが幅0の不正な値を返し、
     // 移動先座標が誤って算出されてしまう。
@@ -3223,7 +3417,7 @@ function runAnim(animType,prevState,nextState,onDone){
       getPositions:(svgEl,count)=>{
         if(!count) return [];
         if(DISPLAY_MODE==='card') return cardGetPositions('juu')(svgEl,count);
-        const W=vbW('svg-juu-a'),H=svgEl===document.getElementById('svg-juu-ans')?94:86;
+        const W=vbW('svg-juu-a'),H=svgEl===document.getElementById('svg-juu-ans')?122:112;
         return stickCenters(count,W,H);
       }
     });
@@ -3315,7 +3509,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const su2=U;
     const pos10=bridgeStickPositions(10,hc);
     const WB=vbW('svg-juu-b');
-    const posBLocal=stickCenters(bJ,WB,86);
+    const posBLocal=stickCenters(bJ,WB,112);
     const posB=posBLocal.map(p=>svgToLayer(svgJB,p.cx,p.cy));
     const usedTen=pos10.slice(available-n,available); // 対消滅に使う側
     const bOrder=Array.from({length:n},(_,i)=>i).sort((i,j)=>posB[j].x-posB[i].x);
@@ -3352,7 +3546,7 @@ function runAnim(animType,prevState,nextState,onDone){
     });
 
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const destX=tileRect.width-20, destY=20;
+    const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20;
     const STAGGER=230;
     let doneCount=0;
 
@@ -3403,7 +3597,7 @@ function runAnim(animType,prevState,nextState,onDone){
       renderSticks(svgJB,0,1,null,null,bJ);
       // 残った借用分(remainTen本=jAns本)を答え欄へ移動する。
       document.getElementById('row-ans').style.display='table-row';
-      const posAns=stickCenters(remainTen,vbW('svg-juu-ans'),94);
+      const posAns=stickCenters(remainTen,vbW('svg-juu-ans'),122);
       const lDestAll=posAns.map(p=>svgToLayer(svgJAns,p.cx,p.cy));
 
       const remainSrc=pos10.slice(0,remainTen); // 既にlayer座標
@@ -3486,7 +3680,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const pos10=bridgeStickPositions(10,hc);
 
     // Bの十の位(bJ本)の座標
-    const posBLocal=juuPosBridge(bJ,W,86);
+    const posBLocal=juuPosBridge(bJ,W,112);
     const posB=posBLocal.map(p=>svgToLayer(svgJB,p.cx,p.cy));
 
     const n=Math.min(10,bJ);
@@ -3511,7 +3705,7 @@ function runAnim(animType,prevState,nextState,onDone){
     });
 
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const destX=tileRect.width-20, destY=20;
+    const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20;
     const STAGGER=230;
     let doneCount=0;
 
@@ -3633,7 +3827,7 @@ function runAnim(animType,prevState,nextState,onDone){
     const posRemain=pos10Full.slice(0,remainTen);
 
     // すでに(繰り下げ前から)十の位A列に表示されている棒(jAfterBorrowI本、+既存ghost分)の座標
-    const posAExistingFull=juuPosBridge(jAfterBorrowI+existingGhostA,W,86);
+    const posAExistingFull=juuPosBridge(jAfterBorrowI+existingGhostA,W,112);
     const posAExistingActive=posAExistingFull.slice(0,jAfterBorrowI);
     const posAExistingLayer=posAExistingActive.map(p=>svgToLayer(svgJA,p.cx,p.cy));
 
@@ -3661,7 +3855,7 @@ function runAnim(animType,prevState,nextState,onDone){
 
     // 答え欄の目標座標
     const jAns2=remainTen+jAfterBorrowI;
-    const posAns=juuPosBridge(jAns2,W,94);
+    const posAns=juuPosBridge(jAns2,W,122);
     const lDestAll=posAns.map(p=>svgToLayer(svgJAns,p.cx,p.cy));
 
     setTimeout(()=>{
@@ -3761,11 +3955,11 @@ function runAnim(animType,prevState,nextState,onDone){
     const pos10=bridgeStickPositions(10,hc);
 
     // Bの十の位(bJ本)の座標
-    const posBLocal=juuPos(bJ,W,86);
+    const posBLocal=juuPos(bJ,W,112);
     const posB=posBLocal.map(p=>svgToLayer(svgJB,p.cx,p.cy));
 
     // すでに(繰り下げ前から)十の位A列に表示されている棒(jAfterBorrowI本、+既存ghost分)の座標
-    const posAExistingFull=juuPos(jAfterBorrowI+existingGhostA,W,86);
+    const posAExistingFull=juuPos(jAfterBorrowI+existingGhostA,W,112);
     const posAExistingActive=posAExistingFull.slice(0,jAfterBorrowI);
     const posAExistingLayer=posAExistingActive.map(p=>svgToLayer(svgJA,p.cx,p.cy));
 
@@ -3791,7 +3985,7 @@ function runAnim(animType,prevState,nextState,onDone){
     });
 
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const destX=tileRect.width-20, destY=20;
+    const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20;
     const STAGGER=230;
     let doneCount=0;
 
@@ -3849,7 +4043,7 @@ function runAnim(animType,prevState,nextState,onDone){
       // まとめて答え欄(jAns本)へ移動する。
       document.getElementById('row-ans').style.display='table-row';
       const jAns2=remainTen+jAfterBorrowI;
-      const posAns=juuPos(jAns2,W,94);
+      const posAns=juuPos(jAns2,W,122);
       const lDestAll=posAns.map(p=>svgToLayer(svgJAns,p.cx,p.cy));
 
       // 移動開始時に、元の位置(A列/ヘッダー上)は全てghost化して残しておく
@@ -3963,8 +4157,8 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgHB=document.getElementById('svg-hyaku-b');
     const svgHAns=document.getElementById('svg-hyaku-ans');
     const pos10=bridgeHyakuPositions(10,hc,su);
-    const WB=vbW('svg-hyaku-b');
-    const posBLocal=Array.from({length:bH},(_,i)=>hyakuTilePos(i,bH,WB,86,su));
+    const WB=vbW('svg-hyaku-b'),HB=vbH('svg-hyaku-b');
+    const posBLocal=Array.from({length:bH},(_,i)=>hyakuTilePos(i,bH,WB,HB,su));
     const posB=posBLocal.map(p=>svgToLayer(svgHB,p.cx,p.cy));
     const usedTen=pos10.slice(available-n,available);
     const bOrder=Array.from({length:n},(_,i)=>i).sort((i,j)=>posB[j].x-posB[i].x);
@@ -4001,7 +4195,7 @@ function runAnim(animType,prevState,nextState,onDone){
     });
 
     const tileRect=document.getElementById('tile-area').getBoundingClientRect();
-    const destX=tileRect.width-20, destY=20;
+    const destX=tileRect.width/(currentScale*stableTilePanelFactor)-20, destY=20;
     const STAGGER=230;
     let doneCount=0;
 
@@ -4050,8 +4244,8 @@ function runAnim(animType,prevState,nextState,onDone){
       layer.innerHTML='';
       renderHyakus(svgHB,0,1,null,null,bH);
       document.getElementById('row-ans').style.display='table-row';
-      const WAns=vbW('svg-hyaku-ans');
-      const posAns=Array.from({length:remainTen},(_,i)=>hyakuTilePos(i,remainTen,WAns,94,su));
+      const WAns=vbW('svg-hyaku-ans'),HAns=vbH('svg-hyaku-ans');
+      const posAns=Array.from({length:remainTen},(_,i)=>hyakuTilePos(i,remainTen,WAns,HAns,su));
       const lDestAll=posAns.map(p=>svgToLayer(svgHAns,p.cx,p.cy));
 
       const remainSrc=pos10.slice(0,remainTen);
@@ -4098,7 +4292,7 @@ function runAnim(animType,prevState,nextState,onDone){
       getPositions:(svgEl,count)=>{
         if(!count) return [];
         if(DISPLAY_MODE==='card') return cardGetPositions('hyaku')(svgEl,count);
-        const W=vbW('svg-hyaku-a'),H=parseInt(svgEl.getAttribute('height'))||86;
+        const W=vbW('svg-hyaku-a'),H=parseInt(svgEl.getAttribute('height'))||112;
         return Array.from({length:count},(_,i)=>hyakuTilePos(i,count,W,H,su));
       }
     });
@@ -4116,7 +4310,7 @@ function runAnim(animType,prevState,nextState,onDone){
 
 // 千タイルスケール計算
 function getSenScale(){
-  const W=110,H=86,u=U,G=u*.15,W10=10*u+9*G,H10=10*u+9*G,OX=u*.35,OY=u*.35;
+  const W=143,H=112,u=U,G=u*.15,W10=10*u+9*G,H10=10*u+9*G,OX=u*.35,OY=u*.35;
   const needW=W10+9*OX,needH=H10+9*OY;
   return u*Math.min((W-6)/needW,(H-6)/needH);
 }
@@ -4144,20 +4338,33 @@ function updateLayout(){
   document.getElementById('colgrp-hyaku').style.display=has3?'table-column':'none';
   document.querySelectorAll('.th-hyaku, .td-hyaku').forEach(el=>{el.style.display=hyakuDisp;});
 
-  // ---- 十の位の幅・高さ：くり下げで一時的に増える本数も考慮 ----
-  // 表示しうる最大本数：A行のaJ本、もしくは(借りてきた後の)十の位の本数+10(ブリッジ表示)
-  const maxJuuCount=Math.max(aJ,bJ,10+aJ,1);
+  // ---- 十の位の幅・高さ：実際に起こり得るくり下げだけを考慮 ----
+  // 以前は常に「10+aJ」ぶんを確保していたため、カード表示では不要な高さまで大きくなっていた。
+  // 一の位で借りるか／さらに百の位から十の位へ借りるかを先に判定し、必要なときだけ増やす。
+  const borrowToIchi=(bI>aI);
+  let juuForSub=aJ;
+  if(borrowToIchi){
+    if(aJ>0)juuForSub=aJ-1;
+    else if(has3)juuForSub=9; // 0の十の位をまたぐ連続くり下げ後
+  }
+  const borrowToJuu=has3&&(bJ>juuForSub);
+  const passThroughJuu=has3&&borrowToIchi&&aJ===0;
+  // カード方式では、借りてきた10枚はbridge100-layer側に別グループで描くため、
+  // 「今ある十のカード＋10」を同じセルに押し込む必要はない。セル本体とbridgeの大きい方だけ確保する。
+  const maxJuuCountCard=Math.max(aJ,bJ,juuForSub,(borrowToJuu||passThroughJuu)?10:0,1);
+  // タイル方式は既存挙動を変えないため、従来どおり十分な幅を確保する。
+  const maxJuuCountTile=Math.max(aJ,bJ,10+aJ,1);
   let juuWidth,juuHeight,juuHeightAns;
   if(DISPLAY_MODE==='card'){
-    // カード方式：5枚で1段・あふれたら次の段という固定レイアウトなので、
+    // カード方式：4枚で1段・あふれたら次の段という固定レイアウトなので、
     // cardNeedWidth/cardNeedHeightで実際に必要な幅・高さを逆算する。
-    juuWidth=Math.max(124,Math.round(cardNeedWidth(maxJuuCount,'juu')));
-    juuHeight=Math.max(86,Math.round(cardNeedHeight(maxJuuCount,'juu')));
-    juuHeightAns=juuHeight+8;
+    juuWidth=Math.max(161,Math.round(cardNeedWidth(maxJuuCountCard,'juu')));
+    juuHeight=Math.max(112,Math.round(cardNeedHeight(maxJuuCountCard,'juu')));
+    juuHeightAns=juuHeight+10;
   } else {
-    const juuNeedW=stickLayout(Math.min(maxJuuCount,19)).totW+16; // renderSticksと同じ計算式（5本グループ間隔込み）＋余白
-    juuWidth=Math.max(124,Math.round(juuNeedW));
-    juuHeight=86;juuHeightAns=94;
+    const juuNeedW=stickLayout(Math.min(maxJuuCountTile,19)).totW+21; // renderSticksと同じ計算式（5本グループ間隔込み）＋余白
+    juuWidth=Math.max(161,Math.round(juuNeedW));
+    juuHeight=112;juuHeightAns=122;
   }
   document.querySelector('col.col-juu').style.width=juuWidth+'px';
   ['svg-juu-a','svg-juu-b'].forEach(id=>{
@@ -4187,16 +4394,16 @@ function updateLayout(){
   const maxHyakuCount=has4?Math.max(aH,1,10):Math.max(aH,1);
   let hyakuWidth,hyakuHeight,hyakuHeightAns;
   if(DISPLAY_MODE==='card'){
-    hyakuWidth=Math.max(124,Math.round(cardNeedWidth(maxHyakuCount,'hyaku')));
-    hyakuHeight=Math.max(86,Math.round(cardNeedHeight(maxHyakuCount,'hyaku')));
-    hyakuHeightAns=hyakuHeight+8;
+    hyakuWidth=Math.max(161,Math.round(cardNeedWidth(maxHyakuCount,'hyaku')));
+    hyakuHeight=Math.max(112,Math.round(cardNeedHeight(maxHyakuCount,'hyaku')));
+    hyakuHeightAns=hyakuHeight+10;
   } else {
     const hyakuFp=hyakuFootprint(maxHyakuCount,hyakuRefSu());
-    const hyakuNeedW=hyakuFp.width+16; // 左右の余白
-    hyakuWidth=Math.max(124,Math.round(hyakuNeedW));
-    const hyakuNeedH=hyakuFp.height+8; // 上下の余白
-    hyakuHeight=Math.max(86,Math.round(hyakuNeedH));
-    hyakuHeightAns=hyakuHeight+8; // 答え行はもともと86→94のように+8高くする慣例に合わせる
+    const hyakuNeedW=hyakuFp.width+21; // 左右の余白
+    hyakuWidth=Math.max(161,Math.round(hyakuNeedW));
+    const hyakuNeedH=hyakuFp.height+10; // 上下の余白
+    hyakuHeight=Math.max(112,Math.round(hyakuNeedH));
+    hyakuHeightAns=hyakuHeight+10; // 答え行はもともと112→122のように+10高くする慣例に合わせる
   }
   document.getElementById('colgrp-hyaku').style.width=hyakuWidth+'px';
   ['svg-hyaku-a','svg-hyaku-b'].forEach(id=>{
@@ -4213,18 +4420,18 @@ function updateLayout(){
   }
 
   // ---- 一の位の幅・高さ：カード方式では、じゅうのくらいから借りてきた「10このカード」が
-  // bridge10-layer（ヘッダー中心・5枚×2段の固定レイアウト）にあふれずに収まるよう、
+  // bridge10-layer（ヘッダー中心・4枚基準で折り返す固定レイアウト）にあふれずに収まるよう、
   // あらかじめ列の幅を広げておく。cardNeedWidth(5枚ぶん)を確保しておけば、
   // カードは常に縮小されない一定サイズのまま表示され、枠からはみ出すこともない。
-  // タイル方式は今まで通り固定サイズ(110×86)のままでよい。
-  const maxIchiCount=Math.max(aI,bI,10,1);
+  // タイル方式は今まで通り固定サイズ(143×112)のままでよい。
+  const maxIchiCount=Math.max(aI,bI,borrowToIchi?10:0,1);
   let ichiWidth,ichiHeight,ichiHeightAns;
   if(DISPLAY_MODE==='card'){
-    ichiWidth=Math.max(110,Math.round(cardNeedWidth(maxIchiCount,'ichi')));
-    ichiHeight=Math.max(86,Math.round(cardNeedHeight(maxIchiCount,'ichi')));
-    ichiHeightAns=ichiHeight+8;
+    ichiWidth=Math.max(143,Math.round(cardNeedWidth(maxIchiCount,'ichi')));
+    ichiHeight=Math.max(112,Math.round(cardNeedHeight(maxIchiCount,'ichi')));
+    ichiHeightAns=ichiHeight+10;
   } else {
-    ichiWidth=110;ichiHeight=86;ichiHeightAns=94;
+    ichiWidth=143;ichiHeight=112;ichiHeightAns=122;
   }
   document.querySelector('col.col-ichi').style.width=ichiWidth+'px';
   ['svg-ichi-a','svg-ichi-b'].forEach(id=>{
@@ -4240,37 +4447,338 @@ function updateLayout(){
     svg.setAttribute('viewBox',`0 0 ${ichiWidth} ${ichiHeightAns}`);
   }
 
+  relayoutResponsiveCanvas();
+}
+
+// ============================================================
+// 右カラム（筆算＋テキスト）の「問題全体で固定」ズーム
+// ============================================================
+// 【コンパクト縦長レイアウトの方針】
+// ・右パネルは画面の余り幅を吸収しない。筆算＋説明に必要な幅だけ使う。
+// ・全ステップの説明文と筆算外形を問題生成時に測り、倍率は問題内で固定する。
+// ・数図が高い場合だけ右欄の中身を拡大し、その倍率に必要な幅だけ増やす。
+// ・右欄を広げたせいで全体倍率（＝数図の見た目）が下がる拡大はしない。
+// ・小さい問題は2つの縦長カードを中央へ寄せ、最終fitは高さを最大限使う。
+// ============================================================
+const STEP_CONTENT_W=230;
+const HISSAN_CONTENT_W=210;
+const RP_ZOOM_MAX=2.2;
+const BASE_STAGE_W=1040;
+const MAX_STAGE_W=1600;
+const RIGHT_PANEL_BOX_HPAD=28; // hissan-box / step-box の左右padding 14px×2
+const MAIN_AREA_HPAD=16;      // .main-area の左右padding 8px×2
+const MAIN_AREA_VPAD=24;      // .main-area の上下padding 12px×2
+const MAIN_AREA_GAP=12;
+let stableRightPanelFactor=1;
+let stableRightPanelHeightFactor=1;
+let stableStepNaturalH=132;
+let stableHissanNaturalW=HISSAN_CONTENT_W;
+let stableHissanNaturalH=230;
+let stableRightPanelW=258;
+let stageDesignWidth=BASE_STAGE_W;
+const TILE_ZOOM_MAX=2.4;
+let stableTilePanelFactor=1;
+let stableTileNaturalW=1;
+let stableTileNaturalH=1;
+
+function measureMaxStepNaturalHeight(){
+  const stepInner=document.getElementById('step-scale-inner');
+  const titleEl=document.getElementById('step-title-text');
+  const descEl=document.getElementById('step-desc');
+  if(!stepInner||!titleEl||!descEl)return 132;
+
+  stepInner.style.transform='none';
+  stepInner.style.width=STEP_CONTENT_W+'px';
+  stepInner.style.height='auto';
+  descEl.style.height='auto';
+  descEl.style.overflow='visible';
+
+  const current=steps[stepIdx]||steps[0];
+  let maxH=0;
+  const list=steps.length?steps:[{title:titleEl.innerHTML,desc:descEl.innerHTML}];
+  for(const st of list){
+    titleEl.innerHTML=st.title||'';
+    descEl.innerHTML=st.desc||'';
+    maxH=Math.max(maxH,stepInner.offsetHeight,stepInner.scrollHeight);
+  }
+  if(current){
+    titleEl.innerHTML=current.title||'';
+    descEl.innerHTML=current.desc||'';
+  }
+  return Math.max(100,Math.ceil(maxH));
+}
+
+function measureHissanNaturalEnvelope(){
+  if(!steps.length)return{w:HISSAN_CONTENT_W,h:230};
+  let maxW=0,maxH=0;
+  for(const st of steps){
+    const probe=document.createElementNS(NS,'svg');
+    drawHissan(probe,st.h);
+    maxW=Math.max(maxW,parseFloat(probe.getAttribute('width'))||HISSAN_CONTENT_W);
+    maxH=Math.max(maxH,parseFloat(probe.getAttribute('height'))||230);
+  }
+  return{w:Math.max(1,maxW),h:Math.max(1,maxH)};
+}
+
+function usefulBasePanelWidth(){
+  return Math.ceil(Math.max(stableHissanNaturalW,STEP_CONTENT_W)+RIGHT_PANEL_BOX_HPAD);
+}
+
+function applyStableRightPanelScale(panelW){
+  const hissanOuter=document.getElementById('hissan-scale-outer');
+  const hissanSvg=document.getElementById('hissan-svg');
+  const stepOuter=document.getElementById('step-scale-outer');
+  const stepInner=document.getElementById('step-scale-inner');
+  const rightPanel=document.querySelector('.right-panel');
+  const tileArea=document.querySelector('.tile-area');
+  if(!hissanOuter||!hissanSvg||!stepOuter||!stepInner||!rightPanel||!tileArea)return;
+
+  hissanSvg.style.transform='none';
+  stepInner.style.transform='none';
+  hissanOuter.style.height='';
+  stepOuter.style.height='';
+  stepInner.style.height='auto';
+  stepInner.style.width=STEP_CONTENT_W+'px';
+
+  stableStepNaturalH=measureMaxStepNaturalHeight();
+  const env=measureHissanNaturalEnvelope();
+  stableHissanNaturalW=env.w;
+  stableHissanNaturalH=env.h;
+
+  const basePanelW=usefulBasePanelWidth();
+  stableRightPanelW=Math.max(basePanelW,Math.ceil(panelW||basePanelW));
+  rightPanel.style.width=stableRightPanelW+'px';
+
+  hissanOuter.style.height=stableHissanNaturalH+'px';
+  stepInner.style.height=stableStepNaturalH+'px';
+  stepOuter.style.height=stableStepNaturalH+'px';
+
+  const basePanelH=rightPanel.offsetHeight;
+  const naturalContentH=stableHissanNaturalH+stableStepNaturalH;
+  const fixedChromeH=Math.max(0,basePanelH-naturalContentH);
+  const tileH=tileArea.offsetHeight;
+
+  const targetPanelH=Math.max(basePanelH,tileH);
+  const factorHeightRaw=(targetPanelH-fixedChromeH)/Math.max(1,naturalContentH);
+  stableRightPanelHeightFactor=Math.min(RP_ZOOM_MAX,Math.max(1,factorHeightRaw));
+
+  const factorWidth=Math.min(
+    hissanOuter.clientWidth/stableHissanNaturalW,
+    stepOuter.clientWidth/STEP_CONTENT_W
+  );
+  let factor=Math.min(stableRightPanelHeightFactor,factorWidth,RP_ZOOM_MAX);
+  factor=Math.max(0.1,factor);
+  stableRightPanelFactor=factor;
+
+  hissanSvg.style.transformOrigin='top center';
+  hissanSvg.style.transform=`scale(${factor})`;
+  hissanOuter.style.height=(stableHissanNaturalH*factor)+'px';
+
+  stepInner.style.transformOrigin='top center';
+  stepInner.style.transform=`scale(${factor})`;
+  stepOuter.style.height=(stableStepNaturalH*factor)+'px';
+}
+
+function resetTilePanelScale(){
+  const tileArea=document.getElementById('tile-area');
+  const tileSlot=document.getElementById('tile-slot');
+  if(!tileArea||!tileSlot)return;
+
+  // 前回の拡大後サイズを測定に混ぜない。
+  // tile-areaは表そのものにぴったり縮むため、ここで一度slotの固定寸法を解除してから
+  // 自然幅・自然高を取り直す。これをしないと、前回のslot幅をtile-areaが吸収して
+  // 「表の横の謎の余白」が自然幅として蓄積される。
+  tileArea.style.transform='none';
+  tileArea.style.width='max-content';
+  tileSlot.style.width='auto';
+  tileSlot.style.height='auto';
+  stableTilePanelFactor=1;
+
+  const table=document.getElementById('tile-table');
+  stableTileNaturalW=Math.max(1,Math.ceil(table?table.offsetWidth:tileArea.offsetWidth));
+  stableTileNaturalH=Math.max(1,Math.ceil(tileArea.offsetHeight));
+  tileSlot.style.width=stableTileNaturalW+'px';
+  tileSlot.style.height=stableTileNaturalH+'px';
+}
+
+function applyTilePanelScale(factor){
+  const tileArea=document.getElementById('tile-area');
+  const tileSlot=document.getElementById('tile-slot');
+  if(!tileArea||!tileSlot)return;
+  stableTilePanelFactor=Math.max(1,Math.min(TILE_ZOOM_MAX,factor||1));
+  tileArea.style.transformOrigin='top left';
+  tileArea.style.transform=`scale(${stableTilePanelFactor})`;
+  tileSlot.style.width=(stableTileNaturalW*stableTilePanelFactor)+'px';
+  tileSlot.style.height=(stableTileNaturalH*stableTilePanelFactor)+'px';
+}
+
+function currentTableWidth(){
+  const tileSlot=document.getElementById('tile-slot');
+  return tileSlot?Math.ceil(tileSlot.offsetWidth):0;
+}
+
+function stageWidthForPanel(panelW){
+  return Math.max(BASE_STAGE_W,currentTableWidth()+MAIN_AREA_GAP+MAIN_AREA_HPAD+panelW);
+}
+
+function relayoutResponsiveCanvas(){
+  const stage=document.getElementById('app-stage');
+  const rightPanel=document.querySelector('.right-panel');
+  const tileArea=document.getElementById('tile-area');
+  if(!stage||!rightPanel||!tileArea||!steps.length)return;
+
+  // 毎回まず数図のローカル拡大を解除し、問題そのものの自然寸法を基準に計算する。
+  resetTilePanelScale();
+
+  stage.style.width=BASE_STAGE_W+'px';
+  applyStableRightPanelScale();
+  const basePanelW=usefulBasePanelWidth();
+  const baselineW=Math.min(MAX_STAGE_W,stageWidthForPanel(basePanelW));
+  stageDesignWidth=baselineW;
+  stage.style.width=baselineW+'px';
+  applyStableRightPanelScale(basePanelW);
+
+  const baselineH=Math.max(1,stage.scrollHeight);
+  const scaleByHeight=window.innerHeight/baselineH;
+  const noShrinkMaxW=Math.min(MAX_STAGE_W,window.innerWidth/Math.max(.01,scaleByHeight));
+
+  const desiredPanelW=Math.ceil(
+    Math.max(stableHissanNaturalW,STEP_CONTENT_W)*stableRightPanelHeightFactor+RIGHT_PANEL_BOX_HPAD
+  );
+  const maxPanelWithoutShrink=Math.max(
+    basePanelW,
+    Math.floor(noShrinkMaxW-stableTileNaturalW-MAIN_AREA_GAP-MAIN_AREA_HPAD)
+  );
+  const targetPanelW=Math.max(basePanelW,Math.min(desiredPanelW,maxPanelWithoutShrink));
+  rightPanel.style.width=targetPanelW+'px';
+  applyStableRightPanelScale(targetPanelW);
+
+  // 右側が高い2桁・3桁問題では、数図も同じ高さまで縦横同比率で拡大する。
+  // 横幅制約で全体倍率が下がる直前を上限とし、不要な空白ではなく中身を大きくする。
+  const desiredTileFactor=Math.max(1,rightPanel.offsetHeight/stableTileNaturalH);
+  const availableTileW=Math.max(
+    stableTileNaturalW,
+    noShrinkMaxW-targetPanelW-MAIN_AREA_GAP-MAIN_AREA_HPAD
+  );
+  const maxTileFactorByWidth=Math.max(1,availableTileW/stableTileNaturalW);
+  const targetTileFactor=Math.min(TILE_ZOOM_MAX,desiredTileFactor,maxTileFactorByWidth);
+  applyTilePanelScale(targetTileFactor);
+
+  stableRightPanelW=targetPanelW;
+  const targetW=Math.min(MAX_STAGE_W,stageWidthForPanel(targetPanelW));
+  stageDesignWidth=targetW;
+  stage.style.width=targetW+'px';
+  fitStage();
 }
 
 // ============================================================
 // UI更新
 // ============================================================
+// ============================================================
+// 筆算側・図解側を独立した2つのアクションとして扱うための共通インターフェース。
+// ============================================================
+// 筆算側：たし算アプリのhissanSplitに相当する「借りの分割アニメ」は、
+// この引き算アプリのdrawHissanには存在しない（借りの見せ方はCSSのpop-in演出のみで、
+// JS側で完了を待つ必要がある多段アニメーションではない）。そのため、このアプリでは
+// 常に「即座に最終形を描いてonDone」の分岐のみを通る。prevHは今は使わないが、
+// 将来の拡張やたし算アプリとの対称性のために引数として残す。
+function runHissanSide(step,prevH,onDone){
+  drawHissan(document.getElementById('hissan-svg'),step.h);
+  onDone();
+}
+
+// 図解側：step.animがあればrunAnimで再生して完了後に最終状態を描き、
+// なければ即座に最終状態を描いてonDoneを呼ぶ。
+function runTileSide(step,prevT,onDone){
+  if(!step.anim){
+    paintTiles(step.t);
+    onDone();
+    return;
+  }
+  paintTiles(prevT);
+  runAnim(step.anim,prevT,step.t,()=>{
+    paintTiles(step.t);
+    onDone();
+  });
+}
+
 function updateUI(skipAnim){
   const step=steps[stepIdx];
   const total=steps.length;
   document.getElementById('step-num').textContent=stepIdx+1;
   document.getElementById('step-title-text').innerHTML=step.title;
   document.getElementById('step-desc').innerHTML=step.desc;
+  // 右パネルの倍率は問題生成時に全ステップを測って固定済み。
+  // ステップ送りでは倍率・箱の高さを変更しない。
   speakStep(step.desc);
   document.getElementById('step-ind').textContent=`${stepIdx+1} / ${total}`;
-  document.getElementById('btn-prev').disabled=animBusy||(stepIdx===0);
-  document.getElementById('btn-next').disabled=animBusy||(stepIdx===total-1);
-  drawHissan(document.getElementById('hissan-svg'),step.h);
 
-  if(skipAnim||!step.anim){paintTiles(step.t);return;}
-
-  const prevT=stepIdx>0?steps[stepIdx-1].t:step.t;
-  paintTiles(prevT);
-  animBusy=true;
-  document.getElementById('btn-next').disabled=true;
-  document.getElementById('btn-prev').disabled=true;
-
-  runAnim(step.anim,prevT,step.t,()=>{
+  if(skipAnim){
+    document.getElementById('btn-prev').disabled=(stepIdx===0);
+    document.getElementById('btn-next').disabled=(stepIdx===total-1);
+    drawHissan(document.getElementById('hissan-svg'),step.h);
     paintTiles(step.t);
+    return;
+  }
+
+  const prevH=stepIdx>0?steps[stepIdx-1].h:step.h;
+  const prevT=stepIdx>0?steps[stepIdx-1].t:step.t;
+
+  // anim・分割アニメの有無に関わらず、逐次モードでは「一呼吸」の間を挟むため、
+  // 全ステップで一律にanimBusyをロックする（漏れなく統一管理する）。
+  animBusy=true;
+  document.getElementById('btn-prev').disabled=true;
+  document.getElementById('btn-next').disabled=true;
+
+  function finish(){
     animBusy=false;
     document.getElementById('btn-prev').disabled=(stepIdx===0);
     document.getElementById('btn-next').disabled=(stepIdx===total-1);
-  });
+  }
+
+  if(timingMode==='tile-first'){
+    // 図→筆算：図解側が終わってから一呼吸おいて筆算側
+    runTileSide(step,prevT,()=>{
+      breathTimer=setTimeout(()=>{
+        breathTimer=null;
+        runHissanSide(step,prevH,finish);
+      },breathMs);
+    });
+  } else if(timingMode==='hissan-first'){
+    // 筆算→図：筆算側が終わってから一呼吸おいて図解側
+    runHissanSide(step,prevH,()=>{
+      breathTimer=setTimeout(()=>{
+        breathTimer=null;
+        runTileSide(step,prevT,finish);
+      },breathMs);
+    });
+  } else {
+    // 同時：両方を間を入れずに同時開始
+    let doneCount=0;
+    function onOneDone(){doneCount++;if(doneCount>=2)finish();}
+    runHissanSide(step,prevH,onOneDone);
+    runTileSide(step,prevT,onOneDone);
+  }
+}
+
+// 「みせる じゅんばん」トグル：'sync'（同時）／'tile-first'（図→筆算）／'hissan-first'（筆算→図）。
+// 問題を切り替えても設定は保持したいので、ここではグローバル変数を書き換えるだけにする。
+function setTimingMode(mode){
+  if(animBusy||mode===timingMode)return;
+  timingMode=mode;
+  document.getElementById('timing-btn-sync').classList.toggle('active',mode==='sync');
+  document.getElementById('timing-btn-tile-first').classList.toggle('active',mode==='tile-first');
+  document.getElementById('timing-btn-hissan-first').classList.toggle('active',mode==='hissan-first');
+  document.getElementById('timing-interval-box').style.display=(mode==='sync')?'none':'inline-flex';
+}
+
+// 間隔調整ボックス：0〜5秒の範囲にクランプしてbreathMs(ms)に反映する。
+function setTimingInterval(val){
+  let sec=parseFloat(val);
+  if(!Number.isFinite(sec))sec=0.4;
+  sec=Math.min(5,Math.max(0,sec));
+  breathMs=Math.round(sec*1000);
+  document.getElementById('timing-interval-input').value=sec;
 }
 
 function goStep(dir){
@@ -4293,8 +4801,8 @@ function setProblem(a,b){
     btn.classList.toggle('active',btn.textContent.replace(/\s/g,'')==`${a}－${b}`);
   });
   document.getElementById('anim-layer').innerHTML='';
-  updateLayout();
   steps=buildSteps();
+  updateLayout();
   updateUI(true);
 }
 
@@ -4320,8 +4828,8 @@ function setMethod(m){
   cancelAnim();
   document.getElementById('anim-layer').innerHTML='';
   stepIdx=0;
-  updateLayout();
   steps=buildSteps();
+  updateLayout();
   updateUI(true);
 }
 
@@ -4337,8 +4845,8 @@ function generateFromInput(){
   numA=va;numB=vb;stepIdx=0;
   cancelAnim();
   document.getElementById('anim-layer').innerHTML='';
-  updateLayout();
   steps=buildSteps();
+  updateLayout();
   updateUI(true);
 }
 
@@ -4356,12 +4864,52 @@ document.addEventListener('keydown',e=>{
   goStep(e.key==='ArrowRight'?1:-1);
 });
 
+// ============================================================
+// 画面フィット表示（16:9などの想定比率にぴったり、それ以外の比率でも
+// レイアウトを組み替えず「そのまま」拡大縮小して画面内に収める）
+// ------------------------------------------------------------
+// #app-stageは幅STAGE_Wの固定デザインキャンバス。fitStage()はその自然な
+// 高さ(scrollHeight)を測り、画面いっぱいに収まる倍率scaleを計算して
+// transform:scale()で拡大縮小する。
+//
+// 【重要】この倍率(currentScale)は、getBoundingClientRect()を使って
+// アニメーションの移動先などを計算している関数（svgToLayer/hdrCenter/
+// aboveHdrや、各ステップ関数内のtileRect差分計算など）でも使われる。
+// getBoundingClientRect()はscale適用後の「画面ピクセル」を返すが、
+// anim-layer/bridge10-layer/bridge100-layer/bridge1000-layerはviewBoxを
+// 持たないため、その内部座標は「拡大縮小前の設計ピクセル」のまま。
+// そのため、画面ピクセルの差分はcurrentScale×数図ローカル倍率で割ってから使う必要がある
+// （固定オフセット定数まで割ってしまわないよう、割り算は
+// 画面ピクセル由来の部分にだけ適用すること）。
+// ============================================================
+let currentScale=1;
+function fitStage(){
+  const stage=document.getElementById('app-stage');
+  // transform:scale()はレイアウト上のボックスサイズ自体は変えないため、
+  // scrollHeightは常に「拡大縮小前の自然な高さ」を返す。
+  const stageH=stage.scrollHeight;
+  const stageW=stage.offsetWidth||stageDesignWidth||BASE_STAGE_W;
+  const scale=Math.min(window.innerWidth/stageW, window.innerHeight/stageH);
+  currentScale=scale;
+  const left=(window.innerWidth-stageW*scale)/2;
+  const top=(window.innerHeight-stageH*scale)/2;
+  stage.style.transform=`translate(${left}px,${top}px) scale(${scale})`;
+  stage.style.opacity='1';
+}
+
 // 初期化
-updateLayout();
 steps=buildSteps();
+updateLayout();
 warmupTTS();
 updateUI(true);
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,warmupTTS,{once:true}));
+
+fitStage();
+window.addEventListener('resize',relayoutResponsiveCanvas);
+new ResizeObserver(fitStage).observe(document.getElementById('app-stage'));
+if(document.fonts&&document.fonts.ready){
+  document.fonts.ready.then(()=>{relayoutResponsiveCanvas();});
+}
 </script>
 </body>
 </html>

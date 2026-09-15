@@ -495,6 +495,145 @@
       color: #ffe082;
     }
     .mode2-only { display: none; }
+
+    /* --- 参考動画ボタン（モードボタンと同じ段） --- */
+    .video-btn {
+      flex: 0 0 auto;
+      background: linear-gradient(180deg, #6a1b9a 0%, #4a148c 100%);
+      border-color: #ce93d8;
+    }
+    .video-btn:hover { border-color: #ffe082; }
+
+    /* --- 参考動画ポップアップ ---
+       #scale-stage の外（body直下）に置き、ゲーム画面の拡大縮小の影響を受けず、
+       常に読みやすいサイズで表示する。 */
+    #video-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 14, 18, 0.72);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #video-modal-overlay.show { display: flex; }
+
+    #video-modal-box {
+      width: min(560px, 100%);
+      max-height: 86vh;
+      overflow-y: auto;
+      background: #263238;
+      border: 2px solid #ce93d8;
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+      padding: 20px 22px;
+      color: #eceff1;
+      font-family: "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif;
+    }
+    #video-modal-box h2 {
+      font-size: 17px;
+      color: #ffe082;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #video-modal-box .video-modal-sub {
+      font-size: 12px;
+      color: #b0bec5;
+      margin-bottom: 14px;
+    }
+    #video-modal-close {
+      float: right;
+      background: #455a64;
+      border: 1px solid #78909c;
+      color: #fff;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+    }
+    #video-modal-close:hover { background: #607d8b; }
+
+    #video-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .video-category-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .video-category-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #80deea;
+      border-bottom: 1px solid #455a64;
+      padding-bottom: 4px;
+      margin: 6px 0 2px;
+    }
+    .video-card {
+      display: flex;
+      gap: 12px;
+      background: #1c2833;
+      border: 1px solid #455a64;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .video-card img {
+      width: 96px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #37474f;
+      flex-shrink: 0;
+    }
+    .video-card .video-card-body { flex: 1; min-width: 0; }
+    .video-card .video-card-series {
+      font-size: 11px;
+      color: #ce93d8;
+      font-weight: bold;
+    }
+    .video-card .video-card-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      margin: 2px 0 6px;
+    }
+    .video-card .video-card-range {
+      display: inline-block;
+      font-size: 12px;
+      color: #ffe082;
+      background: rgba(255, 224, 130, 0.12);
+      border: 1px solid rgba(255, 224, 130, 0.4);
+      border-radius: 6px;
+      padding: 2px 8px;
+      margin-bottom: 6px;
+    }
+    .video-card .video-card-note {
+      font-size: 12px;
+      color: #cfd8dc;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .video-card .video-card-link {
+      display: inline-block;
+      background: #6a1b9a;
+      border: 1px solid #ce93d8;
+      color: #fff8e1;
+      font-size: 12px;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+    .video-card .video-card-link:hover { background: #7b1fa2; }
   </style>
 </head>
 <body>
@@ -507,6 +646,7 @@
     <div id="mode-switch-bar">
       <button class="mode-btn active" id="mode-btn-1" onclick="switchMode('MODE1')">🔬 モード1：断面（横から見る）</button>
       <button class="mode-btn" id="mode-btn-2" onclick="switchMode('MODE2')">🗺️ モード2：俯瞰（上から見る）</button>
+      <button class="mode-btn video-btn" id="video-btn" onclick="openVideoModal()">📺 参考動画</button>
     </div>
 
     <!-- Status Bar -->
@@ -664,6 +804,16 @@
       </div>
     </div>
   </div>
+  </div>
+
+  <!-- 参考動画ポップアップ（#scale-stageの外＝拡大縮小の影響を受けない） -->
+  <div id="video-modal-overlay" onclick="if(event.target===this) closeVideoModal()">
+    <div id="video-modal-box">
+      <button id="video-modal-close" onclick="closeVideoModal()">✕</button>
+      <h2>📺 参考動画</h2>
+      <div class="video-modal-sub">この単元の理解を深めるための動画です。あとから追加できます。</div>
+      <div id="video-list"></div>
+    </div>
   </div>
 
 <script>
@@ -3560,6 +3710,138 @@ function fitStage() {
 window.addEventListener('resize', fitStage);
 window.addEventListener('DOMContentLoaded', fitStage);
 fitStage();
+
+// --- 参考動画ポップアップ ---
+// ここに配列を追加していくだけで、参考動画をあとから増やせる。
+// category が同じものは見出しでまとめて表示される。
+// duration（動画全体の長さ）が分かる場合だけ指定。分からない場合は省略してよい。
+const referenceVideos = [
+  {
+    category: 'NHK for School',
+    program: 'NHK for School',
+    series: 'ピタゴラスイッチ',
+    title: 'ビーバーのダム（歌）→ビーバーミニ解説',
+    thumbnail: 'https://edu.web.nhk/das/image/D0005260/D0005260645_00000_S_001.jpg',
+    url: 'https://edu.web.nhk/school/watch/bangumi/?das_id=D0005260645_00000#in=427&out=600',
+    rangeLabel: '7:07〜10:00（2分53秒）',
+    note: 'リンクを開くと自動で 7:07〜10:00 の範囲が再生されます。'
+  },
+  {
+    category: 'いきもの.com',
+    program: 'いきもの.com',
+    series: 'WEB動物図鑑',
+    title: 'アメリカビーバー',
+    thumbnail: 'https://ikimonopedia.com/wp-content/uploads/2026/06/f48bcf5b-50dfc15c.jpg',
+    url: 'https://ikimonopedia.com/american-beaver/',
+    rangeLabel: 'ページ内に動画2本（5分48秒／1分00秒）',
+    note: 'ページ内の埋め込み動画が子供向けで参考になります。言葉はやや難しいですが、網羅的で詳しい情報が読めます。'
+  },
+  {
+    category: 'どうぶつ奇想天外！ ビーバーシリーズ',
+    program: 'どうぶつ奇想天外／WAKUWAKU',
+    title: '巨木を倒し、巨大ダムをつくる名建築家…ビーバーくんの日常はもう大変！ダム決壊に天敵出現で大忙し（完全版）',
+    thumbnail: 'https://i.ytimg.com/vi/I5ASBaLtqKU/hqdefault.jpg',
+    url: 'https://youtu.be/I5ASBaLtqKU',
+    rangeLabel: '16分24秒',
+    note: 'かなりわかりやすい上、ビーバーのアテレコが可愛いです。'
+  },
+  {
+    category: 'どうぶつ奇想天外！ ビーバーシリーズ',
+    program: 'どうぶつ奇想天外／WAKUWAKU',
+    title: '【驚異の建築技術】凍った湖に生きるビーバー家族のダム修理に密着！カナダの森の優しい住人たち',
+    thumbnail: 'https://i.ytimg.com/vi/Wa_RcwZuv10/hqdefault.jpg',
+    url: 'https://youtu.be/Wa_RcwZuv10',
+    rangeLabel: '8分10秒'
+  },
+  {
+    category: 'どうぶつ奇想天外！ ビーバーシリーズ',
+    program: 'どうぶつ奇想天外／WAKUWAKU',
+    title: 'ビーバー渾身の新築ダムに天敵コヨーテ出現！その時ビーバーが繰り出した必殺技とは…？',
+    thumbnail: 'https://i.ytimg.com/vi/AucpCpepwXc/hqdefault.jpg',
+    url: 'https://youtu.be/AucpCpepwXc',
+    rangeLabel: '4分20秒'
+  },
+  {
+    category: 'どうぶつ奇想天外！ ビーバーシリーズ',
+    program: 'どうぶつ奇想天外／WAKUWAKU',
+    title: '野生ビーバーのダムが川の氾濫で決壊！大慌ての巣作り',
+    thumbnail: 'https://i.ytimg.com/vi/jnhsLtuy87Y/hqdefault.jpg',
+    url: 'https://youtu.be/jnhsLtuy87Y',
+    rangeLabel: '4分59秒'
+  },
+  {
+    category: 'どうぶつ奇想天外！ ビーバーシリーズ',
+    program: 'どうぶつ奇想天外／WAKUWAKU',
+    title: '巨木を切り倒し、二本足で歩く！冬支度中のビーバーに密着したらスゴかった',
+    thumbnail: 'https://i.ytimg.com/vi/0lnvyGkXnI8/hqdefault.jpg',
+    url: 'https://youtu.be/0lnvyGkXnI8',
+    rangeLabel: '8分7秒'
+  },
+  {
+    category: '海外ドキュメンタリー',
+    program: 'SLICE',
+    title: 'How Do Beavers Build a Dam | SLICE',
+    thumbnail: 'https://i.ytimg.com/vi/EgW9_2q1IoA/hqdefault.jpg',
+    url: 'https://youtu.be/EgW9_2q1IoA',
+    rangeLabel: '8分21秒',
+    note: 'ビーバーがダムを作る様子がよくわかる高画質動画。英語音声なので、字幕を日本語にして視聴してください。'
+  },
+  {
+    category: '海外ドキュメンタリー',
+    program: 'BBC Earth',
+    title: 'Busy Beavers Build Dam Ahead of Winter | Yellowstone | BBC Earth',
+    thumbnail: 'https://i.ytimg.com/vi/eAPqQFWEoKg/hqdefault.jpg',
+    url: 'https://youtu.be/eAPqQFWEoKg',
+    rangeLabel: '4分41秒',
+    note: '冬に備えてダムを作るビーバーたち（イエローストーン）。音声は英語ですが、AIによる日本語音声トラックが選択できます。'
+  }
+];
+
+function renderVideoCard(v) {
+  const seriesLine = v.series ? `${v.program} ／ ${v.series}` : v.program;
+  const rangeHtml = v.rangeLabel ? `<div class="video-card-range">⏱ ${v.rangeLabel}</div>` : '';
+  const noteHtml = v.note ? `<div class="video-card-note">${v.note}</div>` : '';
+  return `
+    <div class="video-card">
+      <img src="${v.thumbnail}" alt="${v.title}" onerror="this.style.display='none'">
+      <div class="video-card-body">
+        <div class="video-card-series">${seriesLine}</div>
+        <div class="video-card-title">${v.title}</div>
+        ${rangeHtml}
+        ${noteHtml}
+        <a class="video-card-link" href="${v.url}" target="_blank" rel="noopener noreferrer">🔗 動画を見る（別タブで開く）</a>
+      </div>
+    </div>
+  `;
+}
+
+function renderVideoList() {
+  const list = document.getElementById('video-list');
+  // category ごとにグループ化して、見出し付きで表示する
+  const groups = [];
+  referenceVideos.forEach(v => {
+    let g = groups.find(g => g.category === v.category);
+    if (!g) { g = { category: v.category, items: [] }; groups.push(g); }
+    g.items.push(v);
+  });
+  list.innerHTML = groups.map(g => `
+    <div class="video-category-group">
+      <div class="video-category-title">${g.category}</div>
+      ${g.items.map(renderVideoCard).join('')}
+    </div>
+  `).join('');
+}
+
+function openVideoModal() {
+  renderVideoList();
+  document.getElementById('video-modal-overlay').classList.add('show');
+}
+function closeVideoModal() {
+  document.getElementById('video-modal-overlay').classList.remove('show');
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeVideoModal();
+});
 
 // Start Render Loop
 render();
