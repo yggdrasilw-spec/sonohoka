@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>整数のせいしつ たんけん</title>
+<style>
+  :root{
+    --bg:#FFF8EC;
+    --panel:#FFFFFF;
+    --ink:#3A3630;
+    --ink-soft:#6B655C;
+    --line:#DED5C2;
+    --even:#3AA6A0;
+    --odd:#F2994A;
+    --divisor:#6FBF7A;
+    --multiple:#5B8DEF;
+    --commonA:#5B8DEF;
+    --commonB:#EB5C6D;
+    --commonC:#9B7FE0;
+    --gold:#FFC94D;
+    --danger:#E0605B;
+    --radius-lg:22px;
+    --radius-md:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Hiragino Maru Gothic ProN","Yu Gothic","Rounded Mplus 1c","Meiryo",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:1080px;margin:0 auto;padding:16px 16px 60px;}
+  .app-main{display:none;}
+
+  .cover{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px 20px;
+  }
+  .cover-inner{max-width:480px;}
+  .cover-icon{font-size:60px; margin-bottom:6px;}
+  .cover-inner h1{font-size:clamp(24px,4vw,34px); margin:0 0 16px;}
+  .cover-desc{color:var(--ink-soft); font-size:16px; line-height:1.7; margin:0 0 30px;}
+  .cover-start{
+    font-size:20px;
+    padding:16px 44px;
+    box-shadow:0 4px 0 rgba(0,0,0,.18);
+    background:linear-gradient(135deg, var(--multiple), var(--commonC));
+  }
+  .cover-start:active{transform:translateY(3px); box-shadow:none;}
+  header.top{
+    text-align:center;
+    padding:14px 0 10px;
+  }
+  header.top h1{
+    font-size:clamp(20px,3vw,30px);
+    margin:0 0 12px;
+    letter-spacing:.02em;
+  }
+  nav.tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+  }
+  nav.tabs button{
+    border:none;
+    background:#fff;
+    color:var(--ink-soft);
+    padding:12px 16px;
+    border-radius:999px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 2px 0 rgba(0,0,0,.08);
+    transition:transform .15s ease, background .2s ease, color .2s ease;
+  }
+  nav.tabs button:active{transform:translateY(2px);}
+  nav.tabs button.active{
+    background:var(--ink);
+    color:#fff;
+  }
+  .stage{display:none;}
+  .stage.active{display:block; animation:fadein .25s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .panel{
+    background:var(--panel);
+    border-radius:var(--radius-lg);
+    padding:20px;
+    margin-top:16px;
+    box-shadow:0 3px 14px rgba(60,50,30,.08);
+  }
+  .panel h2{margin:0 0 4px; font-size:22px;}
+  .panel .lead{margin:0 0 16px; color:var(--ink-soft); font-size:15px; line-height:1.5;}
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    align-items:flex-end;
+    margin-bottom:16px;
+    padding:14px;
+    background:#FBF6EB;
+    border-radius:var(--radius-md);
+  }
+  .control-group{display:flex; flex-direction:column; gap:4px; min-width:150px;}
+  .control-group label{font-size:13px; font-weight:700; color:var(--ink-soft);}
+  .control-group .row-inline{display:flex; align-items:center; gap:8px;}
+  input[type=range]{width:140px;}
+  input[type=number]{
+    width:64px;
+    padding:6px 8px;
+    border-radius:10px;
+    border:2px solid var(--line);
+    font-size:15px;
+    text-align:center;
+  }
+  .btn{
+    border:none;
+    padding:12px 18px;
+    border-radius:999px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    color:#fff;
+    transition:transform .12s ease, filter .15s ease;
+    box-shadow:0 2px 0 rgba(0,0,0,.12);
+  }
+  .btn:active{transform:translateY(2px); box-shadow:none;}
+  .btn.primary{background:var(--multiple);}
+  .btn.ghost{background:#fff; color:var(--ink); border:2px solid var(--line); box-shadow:none;}
+  .btn.warn{background:var(--danger);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+
+  .canvas{
+    position:relative;
+    background:#FDFBF5;
+    border:2px dashed var(--line);
+    border-radius:var(--radius-md);
+    min-height:150px;
+    padding:16px;
+    overflow-x:auto;
+  }
+  .boxes-wrap{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;}
+  .group-box{
+    display:flex;
+    gap:6px;
+    padding:8px;
+    border:3px dashed #B9C7C6;
+    border-radius:14px;
+    position:relative;
+  }
+  .group-box .slot{border-radius:50%; background:rgba(0,0,0,.04);}
+  .remainder-box{border-color:var(--danger); background:rgba(224,96,91,.06);}
+  .remainder-label{
+    position:absolute; top:-11px; left:8px;
+    font-size:11px; font-weight:700; color:var(--danger);
+    background:#FDFBF5; padding:0 4px;
+  }
+  .dot{
+    position:absolute;
+    border-radius:50%;
+    transition:left .55s cubic-bezier(.34,1.4,.64,1), top .55s cubic-bezier(.34,1.4,.64,1), background .3s ease;
+    box-shadow:0 2px 3px rgba(0,0,0,.15) inset;
+  }
+
+  .number-line{
+    display:flex;
+    align-items:flex-start;
+    border-top:3px solid var(--line);
+    position:relative;
+    padding-top:8px;
+    min-width:max-content;
+  }
+  .tick{flex:0 0 auto; width:34px; display:flex; flex-direction:column; align-items:center; position:relative;}
+  .tick-mark{width:2px; height:7px; background:var(--line); margin-bottom:5px;}
+  .tick-num{
+    width:27px; height:27px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:var(--ink);
+    border:2.5px solid transparent;
+    cursor:pointer;
+    transition:border-color .2s ease, transform .15s ease, background .2s ease;
+    user-select:none;
+  }
+  .tick-num:hover{background:rgba(0,0,0,.05);}
+  .tick-num.marked{border-color:var(--mark-color, var(--multiple)); transform:scale(1.08); background:rgba(0,0,0,.03);}
+  .tick-num.common{border-color:var(--gold); box-shadow:0 0 0 4px rgba(255,201,77,.35); background:rgba(255,201,77,.18);}
+  .line-row{margin-bottom:22px;}
+  .line-row .line-label{font-weight:700; font-size:14px; margin-bottom:6px;}
+  .line-area{overflow-x:auto;}
+
+  .result-panel{margin-top:16px; min-height:34px;}
+  .badge{
+    display:inline-block;
+    padding:8px 16px;
+    border-radius:999px;
+    font-weight:800;
+    font-size:16px;
+    color:#fff;
+  }
+  .badge-even{background:var(--even);}
+  .badge-odd{background:var(--odd);}
+  .result-panel p{margin:8px 0 0; color:var(--ink-soft); font-size:14px;}
+
+  .chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .chip{
+    padding:6px 14px;
+    border-radius:999px;
+    font-weight:800;
+    font-size:14px;
+    background:#EFEAE0;
+    color:var(--ink);
+  }
+  .chip-green{background:var(--divisor); color:#fff;}
+  .chip-gold{background:var(--gold); color:#5b4300;}
+  .note{margin-top:8px; font-weight:700; color:#8a6d00;}
+
+  nav.subtabs{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  .subtab-btn{
+    border:2px solid var(--line);
+    background:#fff;
+    color:var(--ink-soft);
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .subtab-btn.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .subpanel{display:none;}
+  .subpanel.active{display:block;}
+
+  .answer-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(64px,1fr));
+    gap:10px;
+    background:#FDFBF5;
+    border:2px dashed var(--line);
+    border-radius:var(--radius-md);
+    padding:14px;
+  }
+  .answer-cell{
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    padding:8px 4px; border-radius:14px; border:2.5px solid transparent;
+  }
+  .answer-cell.correct{border-color:#4CAF50; background:rgba(76,175,80,.10);}
+  .answer-cell.incorrect{border-color:var(--danger); background:rgba(224,96,91,.10);}
+  .answer-num{font-weight:800; font-size:16px;}
+  .pill{
+    border:none; border-radius:999px; padding:4px 10px;
+    font-size:11px; font-weight:800; cursor:pointer; opacity:.5;
+  }
+  .pill-even{background:var(--even); color:#fff;}
+  .pill-odd{background:var(--odd); color:#fff;}
+  .pill.selected{opacity:1; box-shadow:0 0 0 2px rgba(0,0,0,.18) inset; transform:scale(1.05);}
+
+  .eo-num{
+    min-width:32px; height:30px; padding:0 4px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:13px;
+    border:2px solid transparent;
+    transition:background .3s ease, border-color .3s ease, border-radius .3s ease;
+  }
+  .eo-num.even{background:#BFE3E0; border-color:var(--even); border-radius:15px;}
+  .eo-num.odd{background:#F7D2C4; border-color:var(--odd); border-radius:4px;}
+
+  .drag-pool{
+    display:flex; flex-wrap:wrap; gap:8px;
+    padding:12px; border:2px dashed var(--line); border-radius:var(--radius-md);
+    min-height:70px; margin-bottom:14px;
+  }
+  .drag-area{display:flex; gap:16px; flex-wrap:wrap;}
+  .drag-area > div{flex:1 1 240px;}
+  .drop-zone{
+    min-height:150px; border-radius:var(--radius-md); padding:10px;
+    display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start;
+  }
+  .zone-even{background:rgba(58,166,160,.08); border:3px dashed var(--even);}
+  .zone-odd{background:rgba(242,153,74,.08); border:3px dashed var(--odd);}
+  .drag-chip{
+    width:42px; height:42px; border-radius:12px;
+    background:#fff; border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; cursor:grab; user-select:none;
+    touch-action:none;
+  }
+  .drag-chip.dragging{
+    box-shadow:0 8px 16px rgba(0,0,0,.3);
+    transform:scale(1.08);
+    opacity:.92;
+    cursor:grabbing;
+  }
+  .chip-selected{box-shadow:0 0 0 3px var(--multiple);}
+  .chip-correct{border-color:#4CAF50; background:rgba(76,175,80,.14);}
+  .chip-wrong{border-color:var(--danger); background:rgba(224,96,91,.14);}
+
+  .two-col{display:flex; gap:16px; flex-wrap:wrap;}
+  .two-col > div{flex:1 1 260px;}
+  .col-title{font-weight:700; margin-bottom:6px;}
+  ruby rt{font-size:10px; color:var(--ink-soft);}
+
+  @media (max-width:640px){
+    .controls{flex-direction:column; align-items:stretch;}
+    .control-group{min-width:0;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="cover-screen" class="cover">
+    <div class="cover-inner">
+      <div class="cover-icon">🔢</div>
+      <h1>せいすうの せいしつ たんけん</h1>
+      <p class="cover-desc">ぐう数・き数、倍数、約数、公倍数、公約数を、<br>うごく絵と じぶんの手で たしかめる アプリだよ。</p>
+      <button class="btn primary cover-start" id="cover-start-btn">▶ スタート</button>
+    </div>
+  </div>
+
+  <div id="app-main" class="app-main">
+  <header class="top">
+    <h1>せいすうの せいしつ たんけん</h1>
+    <nav class="tabs">
+      <button class="tab-btn active" data-target="stage-even">① ぐう数・き数</button>
+      <button class="tab-btn" data-target="stage-multiple">② 倍数</button>
+      <button class="tab-btn" data-target="stage-divisor">③ 約数</button>
+      <button class="tab-btn" data-target="stage-commult">④ 公倍数</button>
+      <button class="tab-btn" data-target="stage-comdiv">⑤ 公約数</button>
+    </nav>
+  </header>
+
+  <!-- STAGE 1: 偶数と奇数 -->
+  <section id="stage-even" class="stage active">
+    <div class="panel">
+      <h2><ruby>偶数<rt>ぐうすう</rt></ruby>と <ruby>奇数<rt>きすう</rt></ruby></h2>
+      <p class="lead">2でわりきれる数が偶数、わりきれない数が奇数だよ。いろいろな やり方で たしかめてみよう。</p>
+
+      <nav class="subtabs">
+        <button class="subtab-btn active" data-sub="even-sub-group">① グループ分け</button>
+        <button class="subtab-btn" data-sub="even-sub-check">② こたえあわせ</button>
+        <button class="subtab-btn" data-sub="even-sub-line">③ 数直線</button>
+        <button class="subtab-btn" data-sub="even-sub-drag">④ ドラッグ</button>
+      </nav>
+
+      <!-- sub 1: grouping animation -->
+      <div class="subpanel active" id="even-sub-group">
+        <div class="controls">
+          <div class="control-group">
+            <label>数（N）</label>
+            <div class="row-inline">
+              <input type="range" id="even-N-range" min="1" max="40" value="12">
+              <input type="number" id="even-N-num" min="1" max="40" value="12">
+            </div>
+          </div>
+          <button class="btn primary" id="even-go">2こずつ ペアに する</button>
+          <button class="btn ghost" id="even-random">ランダムな数で ためす</button>
+        </div>
+        <div class="canvas" id="canvas-even"></div>
+        <div class="result-panel" id="even-result"></div>
+      </div>
+
+      <!-- sub 2: answer-check grid -->
+      <div class="subpanel" id="even-sub-check">
+        <p class="lead" style="margin-top:-6px;">それぞれの数が偶数か奇数か、ボタンをえらぼう。えらび終わったら「こたえあわせ」だよ。</p>
+        <div class="controls">
+          <div class="control-group">
+            <label>0から いくつまで</label>
+            <input type="number" id="check-max" min="5" max="60" value="40">
+          </div>
+          <button class="btn primary" id="check-build">もんだいを つくる</button>
+          <button class="btn ghost" id="check-answer">こたえあわせ</button>
+          <button class="btn ghost" id="check-reset">リセット</button>
+        </div>
+        <div class="answer-grid" id="answer-grid"></div>
+        <div class="result-panel" id="check-score"></div>
+      </div>
+
+      <!-- sub 3: shaped number line -->
+      <div class="subpanel" id="even-sub-line">
+        <p class="lead" style="margin-top:-6px;">数直線の数を、ひとつずつ たしかめていくよ。偶数は水色の角丸、奇数はピンクの四角で かこまれるよ。</p>
+        <div class="controls">
+          <div class="control-group">
+            <label>0から いくつまで</label>
+            <input type="number" id="eo-max" min="5" max="60" value="20">
+          </div>
+          <button class="btn primary" id="eo-next">つぎへ</button>
+          <button class="btn ghost" id="eo-all">ぜんぶ見る</button>
+          <button class="btn ghost" id="eo-reset">リセット</button>
+        </div>
+        <div class="canvas" id="canvas-eo-line"></div>
+      </div>
+
+      <!-- sub 4: drag and drop -->
+      <div class="subpanel" id="even-sub-drag">
+        <p class="lead" style="margin-top:-6px;">数のカードを、ぐう数の はこ か き数の はこに ドラッグしよう。</p>
+        <div class="controls">
+          <div class="control-group">
+            <label>0から いくつまで</label>
+            <input type="number" id="drag-max" min="5" max="30" value="12">
+          </div>
+          <button class="btn primary" id="drag-build">はじめから</button>
+        </div>
+        <div class="drag-pool" id="drag-pool"></div>
+        <div class="drag-area">
+          <div>
+            <div class="col-title">ぐう数の はこ</div>
+            <div class="drop-zone zone-even" id="zone-even"></div>
+          </div>
+          <div>
+            <div class="col-title">き数の はこ</div>
+            <div class="drop-zone zone-odd" id="zone-odd"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE 2: 倍数 -->
+  <section id="stage-multiple" class="stage">
+    <div class="panel">
+      <h2><ruby>倍数<rt>ばいすう</rt></ruby></h2>
+      <p class="lead">数直線の上を、決めた数ずつ ジャンプして すすむよ。とまった場所が「〇の倍数」だよ。</p>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>何ずつ とぶ（step）</label>
+          <div class="row-inline">
+            <input type="range" id="mul-step-range" min="1" max="12" value="3">
+            <input type="number" id="mul-step-num" min="1" max="12" value="3">
+          </div>
+        </div>
+        <div class="control-group">
+          <label>どこまで しらべる</label>
+          <div class="row-inline">
+            <input type="range" id="mul-max-range" min="10" max="100" value="40">
+            <input type="number" id="mul-max-num" min="10" max="100" value="40">
+          </div>
+        </div>
+        <button class="btn primary" id="mul-next">つぎへ とぶ</button>
+        <button class="btn ghost" id="mul-auto">自動で すすむ</button>
+        <button class="btn ghost" id="mul-reset">リセット</button>
+      </div>
+
+      <div class="canvas" id="canvas-multiple"></div>
+      <div class="result-panel">
+        <div class="chip-row" id="multiple-seq"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE 3: 約数 -->
+  <section id="stage-divisor" class="stage">
+    <div class="panel">
+      <h2><ruby>約数<rt>やくすう</rt></ruby></h2>
+      <p class="lead">N こある ○ を、d こずつの グループに 分けてみるよ。ぴったり分けられたら d は N の「約数」だよ。</p>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>全部の数（N）</label>
+          <div class="row-inline">
+            <input type="range" id="div-N-range" min="1" max="48" value="12">
+            <input type="number" id="div-N-num" min="1" max="48" value="12">
+          </div>
+        </div>
+        <div class="control-group">
+          <label>いくつずつ分ける（d）</label>
+          <div class="row-inline">
+            <input type="range" id="div-d-range" min="1" max="12" value="1">
+            <input type="number" id="div-d-num" min="1" max="12" value="1">
+          </div>
+        </div>
+        <button class="btn primary" id="div-try">その数で ためす</button>
+        <button class="btn ghost" id="div-auto">自動で 全部さがす</button>
+        <button class="btn ghost" id="div-clear">見つけたリストを消す</button>
+      </div>
+
+      <div class="canvas" id="canvas-divisor"></div>
+      <div class="result-panel" id="div-result"></div>
+      <div class="chip-row" id="divisor-chips"></div>
+    </div>
+  </section>
+
+  <!-- STAGE 4: 公倍数 -->
+  <section id="stage-commult" class="stage">
+    <div class="panel">
+      <h2><ruby>公倍数<rt>こうばいすう</rt></ruby></h2>
+      <p class="lead">2つの数直線を、同時に 1目もりずつ すすめていくよ。両方 同時に とまったら「公倍数」だよ。金色に光るよ。</p>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>Aの数</label>
+          <input type="number" id="cm-A" min="1" max="12" value="4">
+        </div>
+        <div class="control-group">
+          <label>Bの数</label>
+          <input type="number" id="cm-B" min="1" max="12" value="6">
+        </div>
+        <div class="control-group">
+          <label><input type="checkbox" id="cm-use-c"> Cの数もつかう</label>
+          <input type="number" id="cm-C" min="1" max="12" value="8" disabled>
+        </div>
+        <div class="control-group">
+          <label>どこまで しらべる</label>
+          <div class="row-inline">
+            <input type="range" id="cm-max-range" min="10" max="100" value="40">
+            <input type="number" id="cm-max-num" min="10" max="100" value="40">
+          </div>
+        </div>
+        <button class="btn primary" id="cm-next">つぎへ すすむ</button>
+        <button class="btn ghost" id="cm-auto">自動で すすむ</button>
+        <button class="btn ghost" id="cm-reset">リセット</button>
+      </div>
+
+      <div class="canvas" id="canvas-commult"></div>
+      <div class="result-panel" id="cm-result">
+        <div class="chip-row" id="cm-chips"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE 5: 公約数 -->
+  <section id="stage-comdiv" class="stage">
+    <div class="panel">
+      <h2><ruby>公約数<rt>こうやくすう</rt></ruby></h2>
+      <p class="lead">AとBの数を、同じ数(s)ずつ 同時に 分けてみるよ。両方とも ぴったり分けられたら s は「公約数」だよ。</p>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>Aの数</label>
+          <input type="number" id="cd-A" min="1" max="60" value="12">
+        </div>
+        <div class="control-group">
+          <label>Bの数</label>
+          <input type="number" id="cd-B" min="1" max="60" value="18">
+        </div>
+        <div class="control-group">
+          <label><input type="checkbox" id="cd-use-c"> Cの数もつかう</label>
+          <input type="number" id="cd-C" min="1" max="60" value="9" disabled>
+        </div>
+        <div class="control-group">
+          <label>いくつずつ分ける（s）</label>
+          <div class="row-inline">
+            <input type="range" id="cd-s-range" min="1" max="12" value="1">
+            <input type="number" id="cd-s-num" min="1" max="12" value="1">
+          </div>
+        </div>
+        <button class="btn primary" id="cd-try">その数で ためす</button>
+        <button class="btn ghost" id="cd-auto">自動で 全部さがす</button>
+        <button class="btn ghost" id="cd-clear">見つけたリストを消す</button>
+      </div>
+
+      <div class="two-col" id="cd-columns"></div>
+      <div class="result-panel" id="cd-result"></div>
+      <div class="chip-row" id="cd-chips"></div>
+    </div>
+  </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- cover screen ---------- */
+document.getElementById('cover-start-btn').addEventListener('click', ()=>{
+  document.getElementById('cover-screen').style.display = 'none';
+  document.getElementById('app-main').style.display = 'block';
+});
+
+/* ---------- generic helpers ---------- */
+function el(tag, cls, parent){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function syncPair(rangeInput, numInput){
+  rangeInput.addEventListener('input', ()=>{ numInput.value = rangeInput.value; });
+  numInput.addEventListener('input', ()=>{
+    let v = parseInt(numInput.value,10);
+    if(isNaN(v)) return;
+    if(numInput.min!=='' && v < parseInt(numInput.min,10)) v = parseInt(numInput.min,10);
+    if(numInput.max!=='' && v > parseInt(numInput.max,10)) v = parseInt(numInput.max,10);
+    numInput.value = v;
+    rangeInput.value = v;
+  });
+}
+
+/* ---------- tab navigation ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.target).classList.add('active');
+  });
+});
+
+/* ---------- sub-tab navigation (used inside stage panels) ---------- */
+document.querySelectorAll('nav.subtabs').forEach(nav=>{
+  nav.querySelectorAll('.subtab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      nav.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const panel = nav.parentElement;
+      panel.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
+      document.getElementById(btn.dataset.sub).classList.add('active');
+    });
+  });
+});
+
+/* ---------- core: grouping (used by even/odd, divisors, common divisors) ---------- */
+function renderGrouping(canvas, N, groupSize, opts){
+  opts = opts || {};
+  const dotColor = opts.dotColor || 'var(--ink-soft)';
+  const boxColor = opts.boxColor || '#8FA6A5';
+  const remColor = opts.remColor || 'var(--danger)';
+  const dotSize  = opts.dotSize  || 26;
+
+  canvas.innerHTML = '';
+  const wrap = el('div','boxes-wrap', canvas);
+
+  const numGroups = Math.floor(N / groupSize);
+  const remainder = N % groupSize;
+
+  const allSlots = [];
+  for(let g=0; g<numGroups; g++){
+    const box = el('div','group-box', wrap);
+    box.style.borderColor = boxColor;
+    for(let s=0; s<groupSize; s++){
+      const slot = el('div','slot', box);
+      slot.style.width = dotSize+'px';
+      slot.style.height = dotSize+'px';
+      allSlots.push(slot);
+    }
+  }
+  if(remainder > 0){
+    const rbox = el('div','group-box remainder-box', wrap);
+    el('div','remainder-label', rbox).textContent = 'あまり';
+    for(let s=0; s<remainder; s++){
+      const slot = el('div','slot', rbox);
+      slot.style.width = dotSize+'px';
+      slot.style.height = dotSize+'px';
+      allSlots.push(slot);
+    }
+  }
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const dots = [];
+  for(let i=0; i<N; i++){
+    const dot = el('div','dot', canvas);
+    dot.style.width = dotSize+'px';
+    dot.style.height = dotSize+'px';
+    dot.style.background = dotColor;
+    dot.style.left = (12 + (i % 8) * 7) + 'px';
+    dot.style.top  = (12 + Math.floor(i / 8) * 7) + 'px';
+    dots.push(dot);
+  }
+
+  requestAnimationFrame(()=>{
+    dots.forEach((dot, i)=>{
+      const slot = allSlots[i];
+      const sRect = slot.getBoundingClientRect();
+      const targetX = sRect.left - canvasRect.left;
+      const targetY = sRect.top  - canvasRect.top;
+      const isRemainderDot = remainder > 0 && i >= N - remainder;
+      setTimeout(()=>{
+        dot.style.left = targetX + 'px';
+        dot.style.top  = targetY + 'px';
+        if(isRemainderDot) dot.style.background = remColor;
+      }, i * 65);
+    });
+  });
+
+  return { numGroups, remainder, totalDelay: N*65 + 650 };
+}
+
+/* ---------- core: number line (used by multiples, common multiples) ---------- */
+function renderNumberLine(container, maxValue, opts){
+  opts = opts || {};
+  container.innerHTML = '';
+  const line = el('div','number-line', container);
+  if(opts.markColor) line.style.setProperty('--mark-color', opts.markColor);
+  const ticks = {};
+  for(let v=0; v<=maxValue; v++){
+    const tick = el('div','tick', line);
+    el('div','tick-mark', tick);
+    const num = el('div','tick-num', tick);
+    num.textContent = v;
+    num.addEventListener('click', ()=>{
+      num.classList.toggle('marked');
+      if(opts.onToggle) opts.onToggle(v, num.classList.contains('marked'));
+    });
+    ticks[v] = num;
+  }
+  return { line, ticks };
+}
+
+/* ============ STAGE 1: 偶数と奇数 ============ */
+(function initStage1(){
+  const canvas = document.getElementById('canvas-even');
+  const rangeN = document.getElementById('even-N-range');
+  const numN   = document.getElementById('even-N-num');
+  const btnGo     = document.getElementById('even-go');
+  const btnRandom = document.getElementById('even-random');
+  const resultPanel = document.getElementById('even-result');
+
+  syncPair(rangeN, numN);
+
+  function run(N){
+    resultPanel.innerHTML = '';
+    const { remainder, totalDelay } = renderGrouping(canvas, N, 2, {
+      boxColor: 'var(--even)'
+    });
+    setTimeout(()=>{
+      const isEven = remainder === 0;
+      resultPanel.innerHTML =
+        '<span class="badge ' + (isEven?'badge-even':'badge-odd') + '">' + N + ' は ' + (isEven?'ぐう数':'き数') + '</span>' +
+        '<p>' + (isEven ? '2こずつ ぜんぶ ペアに なったね！' : '2こずつ ペアに すると、1こ あまったね。') + '</p>';
+    }, totalDelay);
+  }
+
+  btnGo.addEventListener('click', ()=> run(parseInt(numN.value,10)) );
+  btnRandom.addEventListener('click', ()=>{
+    const N = Math.floor(Math.random()*40) + 1;
+    numN.value = N; rangeN.value = N;
+    run(N);
+  });
+})();
+
+/* ---- Stage1 sub-mode: こたえあわせ (answer grid) ---- */
+(function initEvenCheckMode(){
+  const maxInput = document.getElementById('check-max');
+  const btnBuild = document.getElementById('check-build');
+  const btnAnswer = document.getElementById('check-answer');
+  const btnReset = document.getElementById('check-reset');
+  const grid = document.getElementById('answer-grid');
+  const scorePanel = document.getElementById('check-score');
+
+  function choose(cell, choice){
+    cell.dataset.choice = choice;
+    cell.classList.remove('correct','incorrect');
+    cell.querySelectorAll('.pill').forEach(p=>p.classList.remove('selected'));
+    cell.querySelector(choice==='even' ? '.pill-even' : '.pill-odd').classList.add('selected');
+  }
+
+  function build(){
+    const maxValue = parseInt(maxInput.value,10);
+    grid.innerHTML = '';
+    scorePanel.innerHTML = '';
+    for(let v=0; v<=maxValue; v++){
+      const cell = el('div','answer-cell', grid);
+      cell.dataset.value = v;
+      el('div','answer-num', cell).textContent = v;
+      const btnE = el('button','pill pill-even', cell); btnE.type='button'; btnE.textContent='偶数';
+      const btnO = el('button','pill pill-odd', cell); btnO.type='button'; btnO.textContent='奇数';
+      btnE.addEventListener('click', ()=> choose(cell,'even'));
+      btnO.addEventListener('click', ()=> choose(cell,'odd'));
+    }
+  }
+
+  function checkAnswers(){
+    const cells = grid.querySelectorAll('.answer-cell');
+    let correct=0, answered=0;
+    cells.forEach(cell=>{
+      const v = parseInt(cell.dataset.value,10);
+      const correctChoice = (v % 2 === 0) ? 'even' : 'odd';
+      const chosen = cell.dataset.choice;
+      cell.classList.remove('correct','incorrect');
+      if(chosen){
+        answered++;
+        if(chosen === correctChoice){ cell.classList.add('correct'); correct++; }
+        else{ cell.classList.add('incorrect'); }
+      }
+    });
+    scorePanel.innerHTML =
+      '<span class="badge badge-even">' + correct + ' / ' + cells.length + ' もん せいかい</span>' +
+      (answered < cells.length ? '<p>まだ こたえて いない数が あるよ。</p>' : '<p>ぜんぶ こたえたね！</p>');
+  }
+
+  function resetAll(){
+    grid.querySelectorAll('.answer-cell').forEach(cell=>{
+      delete cell.dataset.choice;
+      cell.classList.remove('correct','incorrect');
+      cell.querySelectorAll('.pill').forEach(p=>p.classList.remove('selected'));
+    });
+    scorePanel.innerHTML = '';
+  }
+
+  btnBuild.addEventListener('click', build);
+  btnAnswer.addEventListener('click', checkAnswers);
+  btnReset.addEventListener('click', resetAll);
+  build();
+})();
+
+/* ---- Stage1 sub-mode: 数直線（かこみ図形） ---- */
+(function initEvenOddLineMode(){
+  const maxInput = document.getElementById('eo-max');
+  const btnNext = document.getElementById('eo-next');
+  const btnAll  = document.getElementById('eo-all');
+  const btnReset= document.getElementById('eo-reset');
+  const canvas  = document.getElementById('canvas-eo-line');
+
+  let cells = [], idx = 0, maxValue = 20;
+
+  function build(){
+    maxValue = parseInt(maxInput.value,10);
+    idx = 0;
+    canvas.innerHTML = '';
+    const line = el('div','number-line eo-line', canvas);
+    cells = [];
+    for(let v=0; v<=maxValue; v++){
+      const tick = el('div','tick', line);
+      const num = el('div','eo-num', tick);
+      num.textContent = v;
+      cells.push(num);
+    }
+  }
+  function revealNext(){
+    if(idx > maxValue) return;
+    cells[idx].classList.add(idx % 2 === 0 ? 'even' : 'odd');
+    idx++;
+  }
+  function revealAll(){
+    while(idx <= maxValue) revealNext();
+  }
+
+  btnNext.addEventListener('click', revealNext);
+  btnAll.addEventListener('click', revealAll);
+  btnReset.addEventListener('click', build);
+  maxInput.addEventListener('change', build);
+
+  build();
+})();
+
+/* ---- Stage1 sub-mode: ドラッグ＆ドロップ ---- */
+(function initEvenOddDragMode(){
+  const maxInput = document.getElementById('drag-max');
+  const btnBuild = document.getElementById('drag-build');
+  const pool = document.getElementById('drag-pool');
+  const zoneEven = document.getElementById('zone-even');
+  const zoneOdd  = document.getElementById('zone-odd');
+
+  let dragState = null;
+
+  function shuffle(arr){
+    for(let i=arr.length-1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      const t = arr[i]; arr[i]=arr[j]; arr[j]=t;
+    }
+    return arr;
+  }
+
+  function dropInto(chip, zone){
+    if(!chip) return;
+    zone.appendChild(chip);
+    if(zone === pool){
+      chip.classList.remove('chip-correct','chip-wrong');
+      return;
+    }
+    const v = parseInt(chip.dataset.value,10);
+    const isEven = v % 2 === 0;
+    const correct = (zone === zoneEven && isEven) || (zone === zoneOdd && !isEven);
+    chip.classList.toggle('chip-correct', correct);
+    chip.classList.toggle('chip-wrong', !correct);
+  }
+
+  function onDragMove(e){
+    if(!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if(Math.abs(dx) > 6 || Math.abs(dy) > 6) dragState.moved = true;
+    const chip = dragState.chip;
+    chip.style.left = (e.clientX - dragState.offsetX) + 'px';
+    chip.style.top  = (e.clientY - dragState.offsetY) + 'px';
+  }
+
+  function cleanupChipStyle(chip){
+    chip.classList.remove('dragging');
+    chip.style.position = '';
+    chip.style.left = '';
+    chip.style.top = '';
+    chip.style.margin = '';
+    chip.style.zIndex = '';
+    chip.style.pointerEvents = '';
+    chip.removeEventListener('pointermove', onDragMove);
+    chip.removeEventListener('pointerup', onDragEnd);
+    chip.removeEventListener('pointercancel', onDragEnd);
+  }
+
+  function onDragEnd(e){
+    if(!dragState) return;
+    const chip = dragState.chip;
+    const moved = dragState.moved;
+    try{ chip.releasePointerCapture(e.pointerId); }catch(err){}
+    cleanupChipStyle(chip);
+    if(moved){
+      const dropEl = document.elementFromPoint(e.clientX, e.clientY);
+      const zone = dropEl ? dropEl.closest('.drop-zone, .drag-pool') : null;
+      if(zone) dropInto(chip, zone);
+    }
+    dragState = null;
+  }
+
+  function startDrag(e, chip){
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    const rect = chip.getBoundingClientRect();
+    dragState = {
+      chip,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false
+    };
+    try{ chip.setPointerCapture(e.pointerId); }catch(err){}
+    chip.classList.add('dragging');
+    chip.style.position = 'fixed';
+    chip.style.left = rect.left + 'px';
+    chip.style.top = rect.top + 'px';
+    chip.style.margin = '0';
+    chip.style.zIndex = 1000;
+    chip.style.pointerEvents = 'none';
+    chip.addEventListener('pointermove', onDragMove);
+    chip.addEventListener('pointerup', onDragEnd);
+    chip.addEventListener('pointercancel', onDragEnd);
+  }
+
+  function makeChip(v){
+    const chip = el('div','drag-chip');
+    chip.textContent = v;
+    chip.dataset.value = v;
+    chip.addEventListener('pointerdown', (e)=> startDrag(e, chip));
+    return chip;
+  }
+
+  function build(){
+    pool.innerHTML = '';
+    zoneEven.innerHTML = '';
+    zoneOdd.innerHTML = '';
+    dragState = null;
+    const maxValue = parseInt(maxInput.value,10);
+    const numbers = [];
+    for(let v=0; v<=maxValue; v++) numbers.push(v);
+    shuffle(numbers).forEach(v=> pool.appendChild(makeChip(v)) );
+  }
+
+  btnBuild.addEventListener('click', build);
+  build();
+})();
+
+/* ============ STAGE 2: 倍数 ============ */
+(function initStage2(){
+  const canvas = document.getElementById('canvas-multiple');
+  const stepRange = document.getElementById('mul-step-range');
+  const stepNum   = document.getElementById('mul-step-num');
+  const maxRange  = document.getElementById('mul-max-range');
+  const maxNum    = document.getElementById('mul-max-num');
+  const btnNext = document.getElementById('mul-next');
+  const btnAuto = document.getElementById('mul-auto');
+  const btnReset= document.getElementById('mul-reset');
+  const seqList = document.getElementById('multiple-seq');
+
+  syncPair(stepRange, stepNum);
+  syncPair(maxRange, maxNum);
+
+  let step=3, maxValue=40, k=0, ticks=null, autoTimer=null;
+
+  function stopAuto(){
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; btnAuto.textContent='自動で すすむ'; }
+  }
+  function setup(){
+    stopAuto();
+    step = parseInt(stepNum.value,10);
+    maxValue = parseInt(maxNum.value,10);
+    k = 0;
+    seqList.innerHTML = '';
+    const r = renderNumberLine(canvas, maxValue, { markColor:'var(--multiple)' });
+    ticks = r.ticks;
+  }
+  function nextHop(){
+    const val = step * (k+1);
+    if(val > maxValue){ stopAuto(); return; }
+    k++;
+    ticks[val].classList.add('marked');
+    el('div','chip', seqList).textContent = step + ' × ' + k + ' = ' + val;
+    if(val >= maxValue) stopAuto();
+  }
+
+  btnNext.addEventListener('click', nextHop);
+  btnAuto.addEventListener('click', ()=>{
+    if(autoTimer){ stopAuto(); return; }
+    btnAuto.textContent = 'とめる';
+    autoTimer = setInterval(nextHop, 850);
+  });
+  btnReset.addEventListener('click', setup);
+  [stepRange, stepNum, maxRange, maxNum].forEach(inp=> inp.addEventListener('change', setup) );
+
+  setup();
+})();
+
+/* ============ STAGE 3: 約数 ============ */
+(function initStage3(){
+  const canvas = document.getElementById('canvas-divisor');
+  const rangeN = document.getElementById('div-N-range');
+  const numN   = document.getElementById('div-N-num');
+  const dRange = document.getElementById('div-d-range');
+  const dNum   = document.getElementById('div-d-num');
+  const btnTry   = document.getElementById('div-try');
+  const btnAuto  = document.getElementById('div-auto');
+  const btnClear = document.getElementById('div-clear');
+  const resultPanel = document.getElementById('div-result');
+  const chipList = document.getElementById('divisor-chips');
+
+  let foundDivisors = new Set();
+  let autoTimer = null;
+
+  syncPair(rangeN, numN);
+  syncPair(dRange, dNum);
+
+  function updateDMax(){
+    const N = parseInt(numN.value,10);
+    dRange.max = N; dNum.max = N;
+    if(parseInt(dNum.value,10) > N){ dNum.value = N; dRange.value = N; }
+  }
+
+  function addChip(d){
+    if(foundDivisors.has(d)) return;
+    foundDivisors.add(d);
+    el('div','chip chip-green', chipList).textContent = d;
+  }
+
+  function tryD(d, cb){
+    const N = parseInt(numN.value,10);
+    const { remainder, numGroups, totalDelay } = renderGrouping(canvas, N, d, { boxColor:'var(--divisor)' });
+    setTimeout(()=>{
+      if(remainder === 0){
+        addChip(d);
+        addChip(numGroups);
+        resultPanel.innerHTML =
+          '<span class="badge badge-even">' + d + ' は ' + N + ' の 約数！</span>' +
+          '<p>' + d + ' × ' + numGroups + ' = ' + N + '</p>';
+      } else {
+        resultPanel.innerHTML =
+          '<span class="badge badge-odd">' + d + ' は ' + N + ' の 約数じゃない</span>' +
+          '<p>あまりが ' + remainder + ' 出たよ。</p>';
+      }
+      if(cb) cb();
+    }, totalDelay);
+  }
+
+  btnTry.addEventListener('click', ()=> tryD(parseInt(dNum.value,10)) );
+
+  btnAuto.addEventListener('click', ()=>{
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; btnAuto.textContent='自動で 全部さがす'; return; }
+    const N = parseInt(numN.value,10);
+    let d = 1;
+    btnAuto.textContent = 'とめる';
+    function step(){
+      if(d > N){ clearInterval(autoTimer); autoTimer=null; btnAuto.textContent='自動で 全部さがす'; return; }
+      dNum.value = d; dRange.value = d;
+      tryD(d);
+      d++;
+    }
+    step();
+    autoTimer = setInterval(step, N*65 + 900);
+  });
+
+  btnClear.addEventListener('click', ()=>{
+    foundDivisors.clear();
+    chipList.innerHTML = '';
+  });
+
+  [rangeN, numN].forEach(inp=> inp.addEventListener('change', updateDMax) );
+  updateDMax();
+})();
+
+/* ============ STAGE 4: 公倍数 ============ */
+(function initStage4(){
+  const canvas = document.getElementById('canvas-commult');
+  const inA = document.getElementById('cm-A');
+  const inB = document.getElementById('cm-B');
+  const inC = document.getElementById('cm-C');
+  const useC = document.getElementById('cm-use-c');
+  const maxRange = document.getElementById('cm-max-range');
+  const maxNum   = document.getElementById('cm-max-num');
+  const btnNext = document.getElementById('cm-next');
+  const btnAuto = document.getElementById('cm-auto');
+  const btnReset= document.getElementById('cm-reset');
+  const chipList = document.getElementById('cm-chips');
+  const resultPanel = document.getElementById('cm-result');
+
+  syncPair(maxRange, maxNum);
+
+  let maxValue=40, value=0, autoTimer=null;
+  let numbersMeta = [];
+  let ticksList = [];
+  let foundChips = new Map();
+  let noteEl = null;
+
+  function stopAuto(){
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; btnAuto.textContent='自動で すすむ'; }
+  }
+
+  function getNumbers(){
+    const arr = [
+      { label:'A', val: parseInt(inA.value,10), color:'var(--commonA)' },
+      { label:'B', val: parseInt(inB.value,10), color:'var(--commonB)' }
+    ];
+    if(useC.checked){
+      arr.push({ label:'C', val: parseInt(inC.value,10), color:'var(--commonC)' });
+    }
+    return arr;
+  }
+
+  function checkCommonAt(v){
+    if(v < 0 || v > maxValue) return;
+    const isCommon = ticksList.every(ticks => ticks[v] && ticks[v].classList.contains('marked'));
+    ticksList.forEach(ticks=>{ if(ticks[v]) ticks[v].classList.toggle('common', isCommon); });
+    if(isCommon && !foundChips.has(v)){
+      const chip = el('div','chip chip-gold', chipList);
+      chip.textContent = v;
+      foundChips.set(v, chip);
+      if(foundChips.size === 1){
+        if(!noteEl){ noteEl = el('div','note', chipList.parentElement); }
+        noteEl.textContent = 'さいしょうこうばいすう（最小公倍数）は ' + v + ' だよ！';
+      }
+    } else if(!isCommon && foundChips.has(v)){
+      foundChips.get(v).remove();
+      foundChips.delete(v);
+      if(foundChips.size === 0 && noteEl){ noteEl.remove(); noteEl = null; }
+    }
+  }
+
+  function setup(){
+    stopAuto();
+    numbersMeta = getNumbers();
+    maxValue = parseInt(maxNum.value,10);
+    value = 0;
+    foundChips = new Map();
+    noteEl = null;
+    chipList.innerHTML = '';
+    resultPanel.querySelectorAll('.note').forEach(n=> n.remove());
+    canvas.innerHTML = '';
+    ticksList = [];
+
+    numbersMeta.forEach(n=>{
+      const row = el('div','line-row', canvas);
+      el('div','line-label', row).textContent = n.val + ' の倍数';
+      const area = el('div','line-area', row);
+      const r = renderNumberLine(area, maxValue, {
+        markColor: n.color,
+        onToggle: (v)=> checkCommonAt(v)
+      });
+      ticksList.push(r.ticks);
+    });
+  }
+
+  function nextStep(){
+    if(value >= maxValue){ stopAuto(); return; }
+    value++;
+    const v = value;
+    numbersMeta.forEach((n,i)=>{
+      if(v % n.val === 0) ticksList[i][v].classList.add('marked');
+    });
+    checkCommonAt(v);
+    if(v >= maxValue) stopAuto();
+  }
+
+  btnNext.addEventListener('click', nextStep);
+  btnAuto.addEventListener('click', ()=>{
+    if(autoTimer){ stopAuto(); return; }
+    btnAuto.textContent = 'とめる';
+    autoTimer = setInterval(nextStep, 350);
+  });
+  btnReset.addEventListener('click', setup);
+  [inA, inB, inC, maxRange, maxNum].forEach(inp=> inp.addEventListener('change', setup) );
+  useC.addEventListener('change', ()=>{ inC.disabled = !useC.checked; setup(); });
+
+  setup();
+})();
+
+/* ============ STAGE 5: 公約数 ============ */
+(function initStage5(){
+  const inA = document.getElementById('cd-A');
+  const inB = document.getElementById('cd-B');
+  const inC = document.getElementById('cd-C');
+  const useC = document.getElementById('cd-use-c');
+  const sRange = document.getElementById('cd-s-range');
+  const sNum   = document.getElementById('cd-s-num');
+  const btnTry   = document.getElementById('cd-try');
+  const btnAuto  = document.getElementById('cd-auto');
+  const btnClear = document.getElementById('cd-clear');
+  const resultPanel = document.getElementById('cd-result');
+  const chipList = document.getElementById('cd-chips');
+  const columnsContainer = document.getElementById('cd-columns');
+
+  let foundCommon = new Set();
+  let autoTimer = null;
+  let canvases = [];
+  let numbersMeta = [];
+
+  syncPair(sRange, sNum);
+
+  function getNumbers(){
+    const arr = [
+      { label:'A', val: parseInt(inA.value,10), color:'var(--commonA)' },
+      { label:'B', val: parseInt(inB.value,10), color:'var(--commonB)' }
+    ];
+    if(useC.checked){
+      arr.push({ label:'C', val: parseInt(inC.value,10), color:'var(--commonC)' });
+    }
+    return arr;
+  }
+
+  function buildColumns(){
+    columnsContainer.innerHTML = '';
+    numbersMeta = getNumbers();
+    canvases = numbersMeta.map(n=>{
+      const col = el('div', '', columnsContainer);
+      el('div','col-title', col).textContent = n.label + 'の分け方（' + n.val + '）';
+      return el('div','canvas', col);
+    });
+  }
+
+  function updateSMax(){
+    const vals = numbersMeta.map(n=>n.val);
+    const m = Math.max(1, Math.min(...vals));
+    sRange.max = m; sNum.max = m;
+    if(parseInt(sNum.value,10) > m){ sNum.value = m; sRange.value = m; }
+  }
+
+  function addChip(s){
+    if(foundCommon.has(s)) return;
+    foundCommon.add(s);
+    el('div','chip chip-gold', chipList).textContent = s;
+  }
+
+  function tryS(s, cb){
+    const results = numbersMeta.map((n,i)=> renderGrouping(canvases[i], n.val, s, { boxColor:n.color }) );
+    const delay = Math.max.apply(null, results.map(r=>r.totalDelay));
+    setTimeout(()=>{
+      const allOk = results.every(r=> r.remainder === 0);
+      if(allOk){
+        addChip(s);
+        const label = numbersMeta.map(n=>n.val).join(' と ');
+        resultPanel.innerHTML = '<span class="badge badge-even">' + s + ' は ' + label + ' の 公約数！</span>';
+        const gcd = Math.max.apply(null, Array.from(foundCommon));
+        let note = document.getElementById('cd-gcd-note');
+        if(!note){ note = el('div','note', resultPanel); note.id='cd-gcd-note'; }
+        note.textContent = 'さいだいこうやくすう（最大公約数）は 今のところ ' + gcd + ' だよ！';
+      } else {
+        const detail = numbersMeta.map((n,i)=> n.label+'('+n.val+')は' + (results[i].remainder===0?'わりきれる':'あまり'+results[i].remainder) ).join('、');
+        resultPanel.innerHTML =
+          '<span class="badge badge-odd">' + s + ' は 公約数じゃない</span>' +
+          '<p>' + detail + '</p>';
+      }
+      if(cb) cb();
+    }, delay);
+  }
+
+  btnTry.addEventListener('click', ()=> tryS(parseInt(sNum.value,10)) );
+
+  btnAuto.addEventListener('click', ()=>{
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; btnAuto.textContent='自動で 全部さがす'; return; }
+    const vals = numbersMeta.map(n=>n.val);
+    const m = Math.min.apply(null, vals);
+    const maxVal = Math.max.apply(null, vals);
+    let s = 1;
+    btnAuto.textContent = 'とめる';
+    function step(){
+      if(s > m){ clearInterval(autoTimer); autoTimer=null; btnAuto.textContent='自動で 全部さがす'; return; }
+      sNum.value = s; sRange.value = s;
+      tryS(s);
+      s++;
+    }
+    step();
+    autoTimer = setInterval(step, maxVal*65 + 900);
+  });
+
+  btnClear.addEventListener('click', ()=>{
+    foundCommon.clear();
+    chipList.innerHTML = '';
+    resultPanel.innerHTML = '';
+    const note = document.getElementById('cd-gcd-note');
+    if(note) note.remove();
+  });
+
+  function fullRebuild(){
+    foundCommon.clear();
+    chipList.innerHTML = '';
+    resultPanel.innerHTML = '';
+    buildColumns();
+    updateSMax();
+  }
+
+  [inA, inB, inC].forEach(inp=> inp.addEventListener('change', fullRebuild) );
+  useC.addEventListener('change', ()=>{ inC.disabled = !useC.checked; fullRebuild(); });
+
+  fullRebuild();
+})();
+</script>
+</body>
+</html>
