@@ -1,9 +1,9 @@
 import * as THREE from './vendor/three.module.js';
 import {createTeachingModel} from './teaching-models.mjs?v=20260915-1';
 import {catalog,buildQuestions} from './catalog.mjs';
-import { items, tub, calibrationFrustum, waterDepth, clamp, smooth } from './units.mjs';
-import {createCharacter} from './character-rig.mjs';
-import {graspProfile,graspPose} from './grasp.mjs?v=20260915-1';
+import { items, tub, calibrationFrustum, waterDepth, bathDisplacement, clamp, smooth } from './units.mjs';
+import {createCharacter} from './character-rig.mjs?v=20260915-3';
+import {graspProfile,graspPose} from './grasp.mjs?v=20260915-2';
 const $=id=>document.getElementById(id), V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 const canvas=$('world'),stage=$('stage');
 const qa=new URLSearchParams(location.search);
@@ -50,8 +50,8 @@ const rug=box(deskScene,[1.25,.008,.9],[-.36,.005,.54],'#a8b49a');
 for(let i=0;i<11;i++)box(deskScene,[1.21,.001,.006],[-.36,.01,.15+i*.078],'#b8c2a8');
 const heightMark=group(deskScene,[-.95,0,.0]);rod(heightMark,[0,0,0],[0,1.3,0],.003,'#7b9776');for(let i=0;i<=13;i++)rod(heightMark,[-.025,i*.1,0],[.025,i*.1,0],.002,'#7b9776');label(heightMark,'130 cm',.26,.065,[0,1.37,0]);
 
-let kid;
-try{kid=await createCharacter(scene);}catch(error){$('loading').textContent='人物モデルを読み込めませんでした。ページを再読み込みしてください。';throw error;}
+let kid,deskKid,bathKid;
+try{[deskKid,bathKid]=await Promise.all([createCharacter(scene),createCharacter(scene,null,'child-swim.glb?v=20260916-1')]);kid=deskKid;bathKid.root.visible=false;}catch(error){$('loading').textContent='人物モデルを読み込めませんでした。ページを再読み込みしてください。';throw error;}
 function makeItem(id){const d=items[id];if(d.kind){const model=createTeachingModel(d);model.userData.id=id;scene.add(model);
  if(d.kind==='measure'){for(let ml=d.stepMl;ml<=d.capacityMl;ml+=d.stepMl){const y=.0025+ml/1e6/(Math.PI*(d.innerDiameter/2)**2);label(model,String(ml),d.width*.23,d.height*.048,[0,y,d.depth/2+.0003],'#e5f2eb','#31515d');}}
  else if(d.kind!=='syringe'&&d.kind!=='card'){label(model,d.kind==='book'?d.name:d.value+' '+d.unit,d.width*.75,Math.min(d.height*.14,.025),[0,d.height*.46,d.depth/2+.0003],'#f5f0de','#3d624f');}
@@ -122,6 +122,7 @@ function startPut(){if(!held||action)return;view='wide';manualOrbit=false;action
 function switchMode(next){mode=next;action=null;held=false;sit=0;inBath=false;view='wide';manualOrbit=false;realPan.set(0,0,0);bodyPosition.copy(next==='desk'?homeDesk:bathHome);bodyRotation=0;updateUI();status(next==='desk'?'ものを選んで、手に持ってみよう。':`おふろの水はいま${waterL}L。中に入って身体とくらべよう。`);}
 function bathAction(){if(action)return;stage.scrollIntoView({behavior:'smooth',block:'center'});view='wide';manualOrbit=false;action={type:inBath?'exit':'enter',start:clock,duration:4.2};status(inBath?'おふろから出ています…':'ふちをまたいで、おふろに入っています…');updateUI();}
 function animateActions(){
+ kid=mode==='bath'?bathKid:deskKid;deskKid.root.visible=mode==='desk';bathKid.root.visible=mode==='bath';
  let walk=0;const t=action?clamp((clock-action.start)/action.duration,0,1):0;
  const d=items[item],{large}=graspProfile(d,item);
  atDesk.x=large?.27:.10;
@@ -177,7 +178,7 @@ function updateCamera(dt){
  if(manualOrbit){camPosGoal.copy(camGoal).add(V(Math.sin(orbitYaw)*Math.cos(orbitPitch)*orbitRadius,Math.sin(orbitPitch)*orbitRadius,Math.cos(orbitYaw)*Math.cos(orbitPitch)*orbitRadius));}
  const k=1-Math.exp(-dt*5);camTarget.lerp(camGoal,k);camera.position.lerp(camPosGoal,k);camera.lookAt(camTarget);
 }
-function frame(now){const dt=qa.has('qa')?1:Math.min((now-lastTime)/1000,.05);lastTime=now;if(!qa.has('qa'))clock+=dt;animateActions();displayL+=(waterL-displayL)*(1-Math.exp(-dt*3));const depth=waterDepth(displayL,sit*15*Math.min(displayL/200,1));water.visible=waterSurface.visible=displayL>.1;water.scale.y=Math.max(.0001,depth);water.position.y=.137+depth/2;waterSurface.position.y=.138+depth;
+function frame(now){const dt=qa.has('qa')?1:Math.min((now-lastTime)/1000,.05);lastTime=now;if(!qa.has('qa'))clock+=dt;animateActions();displayL+=(waterL-displayL)*(1-Math.exp(-dt*3));const depth=waterDepth(displayL,bathDisplacement(displayL,bodyPosition.y,mode==='bath'&&Math.abs(bodyPosition.x-.2)<.625&&Math.abs(bodyPosition.z+.15)<.32));water.visible=waterSurface.visible=displayL>.1;water.scale.y=Math.max(.0001,depth)/.001;water.position.y=.137+depth/2;waterSurface.position.y=.138+depth;
  const positions=waterSurface.geometry.attributes.position;for(let i=0;i<positions.count;i++){positions.setZ(i,Math.sin(positions.getX(i)*18+clock*1.8)*Math.cos(positions.getY(i)*15+clock)*.0012);}positions.needsUpdate=true;
  stream.visible=clock<pourUntil;stream.scale.y=Math.max(.02,.82-(.138+depth));stream.position.y=(.82+.138+depth)/2;
  updateCamera(dt);renderer.render(scene,view==='real'&&cal?realCamera:camera);if(!qa.has('qa'))requestAnimationFrame(frame);

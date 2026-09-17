@@ -10,4 +10,9 @@ export const tub={innerLength:1.25,innerWidth:.64,innerHeight:.45,referenceLiter
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 export function waterDepth(liters,displacementLiters=0){return (clamp(liters,0,200)+Math.max(0,displacementLiters))/1000/(tub.innerLength*tub.innerWidth);}
+// Teaching approximation: 15 L submerged at the final seated position.
+// Use immersion, not knee bending while the character is above the tub.
+export function bathDisplacement(liters,bodyY,inTub){
+ return inTub&&liters>0?15*clamp((.137+waterDepth(liters)-bodyY)/.257,0,1):0;
+}
 export function calibrationFrustum(widthPx,heightPx,pxPerMm){if(!(pxPerMm>0&&widthPx>0&&heightPx>0))throw new RangeError('Positive viewport and calibration required');return {left:-widthPx/(pxPerMm*2000),right:widthPx/(pxPerMm*2000),top:heightPx/(pxPerMm*2000),bottom:-heightPx/(pxPerMm*2000)};}

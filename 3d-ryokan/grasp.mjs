@@ -16,5 +16,6 @@ export function graspPose(d,id,objectPosition,reach,gripAmount){
  const right=v(-.19,.70,.06).lerp(rightGoal,reach),left=v(.19,.70,.06).lerp(leftGoal,large?reach:0);
  const r={long:v(0,-1,.12).lerp(v(0,0,1),reach).normalize(),normal:v(1,0,0).lerp(support?v(1,0,0).lerp(v(0,1,0),supportBlend).normalize():v(1,0,0),reach).normalize()};
  const l={long:v(0,-1,.12).lerp(v(0,0,1),large?reach:0).normalize(),normal:v(-1,0,0).lerp(support?v(-1,0,0).lerp(v(0,1,0),supportBlend).normalize():v(-1,0,0),reach).normalize()};
- return {right,left,rightGrip:gripAmount*(support?.55:.85),leftGrip:large?gripAmount*(support?.55:.7):0,palms:{r,l}};
+ const collider=reach>.95?{min:objectPosition.clone().add(v(-width/2,0,-depth/2)),max:objectPosition.clone().add(v(width/2,d.height,depth/2))}:null;
+ return {right,left,rightGrip:gripAmount*(support?.55:.85),leftGrip:large?gripAmount*(support?.55:.7):0,palms:{r,l},collider};
 }

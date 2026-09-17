@@ -23,8 +23,8 @@ function frame(long,normal){
  const y=long.clone().normalize(),z=normal.clone().addScaledVector(y,-normal.dot(y)).normalize(),x=y.clone().cross(z).normalize();
  return new T.Quaternion().setFromRotationMatrix(new T.Matrix4().makeBasis(x,y,z));
 }
-export async function createCharacter(parent,asset=null){
- const gltf=asset||await new GLTFLoader().loadAsync(new URL('./models/child-makehuman.glb',import.meta.url).href);
+export async function createCharacter(parent,asset=null,model='child-makehuman.glb'){
+ const gltf=asset||await new GLTFLoader().loadAsync(new URL('./models/'+model,import.meta.url).href);
  const root=new T.Group();parent.add(root);root.add(gltf.scene);
  const bones={},rest={},arms={};
  root.traverse(o=>{if(o.isBone)bones[o.name]=o;if(o.isMesh){
@@ -70,7 +70,8 @@ export async function createCharacter(parent,asset=null){
   legs[side]={upper,lower,foot,length1:pos(upper).distanceTo(pos(lower)),length2:pos(lower).distanceTo(pos(foot)),ankle:pos(foot),q:worldQ(foot),upperFrame:frame(upperDir,upperDir.clone().cross(lowerDir).normalize()),upperQ:worldQ(upper)};
  }
  const diagnostics={};
- function pose({right,left,rightGrip=0,leftGrip=0,sit=0,walk=0,palms={}}){
+ // fingers: {r: {index: [MCP, PIP, DIP], ...}, l: {...}}, angles in radians.
+ function pose({right,left,rightGrip=0,leftGrip=0,sit=0,walk=0,palms={},fingers={},collider=null}){
   for(const [name,b] of Object.entries(bones)){b.quaternion.copy(rest[name].q);b.position.copy(rest[name].p);}
   // Lower the pelvis, keeping feet independently planted via knee IK.
   root.updateMatrixWorld(true);
@@ -89,9 +90,32 @@ export async function createCharacter(parent,asset=null){
    const long=palms[side]?.long||v(0,-1,.12),normal=palms[side]?.normal||v(-a.sign,0,0);
    const desired=frame(long,normal).multiply(a.handFrame.clone().invert()).multiply(a.handQ);
    orient(a.hand,worldQ(root).multiply(desired));
+   // Test the whole downstream finger, including an estimated fingertip and
+   // skin radius. Catalog bounds are conservative (handles are not modeled).
+   const penetrates=f=>{
+    if(!collider)return false;
+    root.updateMatrixWorld(true);
+    const joints=a.fingers.filter(j=>j.finger===f.finger&&j.index>=f.index);
+    for(const j of joints){
+     const start=pos(j.bone),next=bones[`${j.finger}_0${j.index+1}_${side}`];
+     const end=next?pos(next):start.clone().add(v(0,.018,0).applyQuaternion(worldQ(j.bone)).applyQuaternion(worldQ(root).invert()));
+     for(let i=0;i<=8;i++){
+      const p=start.clone().lerp(end,i/8),r=.005;
+      if(p.x>collider.min.x-r&&p.x<collider.max.x+r&&p.y>collider.min.y-r&&p.y<collider.max.y+r&&p.z>collider.min.z-r&&p.z<collider.max.z+r)return true;
+     }
+    }
+    return false;
+   };
    for(const f of a.fingers){
-    const angle=grip*(f.finger==='thumb'?[.55,.45,.35][f.index-1]:[.50,.85,.60][f.index-1]);
-    f.bone.quaternion.copy(rest[f.bone.name].q).multiply(new T.Quaternion().setFromAxisAngle(f.axis,angle));
+    const angle=clamp(fingers[side]?.[f.finger]?.[f.index-1]??grip*(f.finger==='thumb'?[.55,.45,.35][f.index-1]:[.50,.85,.60][f.index-1]),0,1.5);
+    let safe=0;
+    for(let step=1;step<=12;step++){
+     const candidate=angle*step/12;
+     f.bone.quaternion.copy(rest[f.bone.name].q).multiply(new T.Quaternion().setFromAxisAngle(f.axis,candidate));
+     if(penetrates(f))break;
+     safe=candidate;
+    }
+    f.bone.quaternion.copy(rest[f.bone.name].q).multiply(new T.Quaternion().setFromAxisAngle(f.axis,safe));
    }
    diagnostics[side]={shoulder:shoulder.toArray(),elbow:result.elbow.toArray(),wrist:result.wrist.toArray(),requested:target.toArray(),limited:result.limited};
   }
