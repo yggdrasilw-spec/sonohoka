@@ -2,887 +2,1165 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>位取り学習アプリ - 計算バグ修正版</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>位取り学習アプリ - タイル・カード・赤ドット対応版 v8</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;}
-body{background:#fafafa;color:#333;font-family:'Noto Sans JP',sans-serif;overflow-x:hidden;}
-.app{padding:15px;max-width:850px;margin:0 auto;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f7f8fa;color:#2d3436;font-family:"Noto Sans JP","Yu Gothic","Meiryo",sans-serif;overflow-x:hidden}
+button,input,select{font:inherit}
+button{touch-action:manipulation}
+.app{padding:14px;max-width:1180px;margin:0 auto}
 
-/* コントロールエリア（トグル式） */
-.control-panel {
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  background: #fff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.btn-toggle {
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  border: 2px solid #ccc;
-  border-radius: 6px;
-  background: #fff;
-  transition: all 0.2s;
-  min-width: 240px;
-  text-align: center;
-}
-.btn-toggle.rule-normal { background: #2ecc71; color: white; border-color: #27ae60; }
-.btn-toggle.rule-free { background: #e67e22; color: white; border-color: #d35400; }
-.btn-toggle.mode-a { background: #3498db; color: white; border-color: #2980b9; }
-.btn-toggle.mode-b { background: #9b59b6; color: white; border-color: #8e44ad; }
+.control-panel,.total-panel,.bundle-tool,.column-help{background:#fff;border:1px solid #e2e5e9;border-radius:12px;box-shadow:0 2px 9px rgba(0,0,0,.05)}
+.control-panel{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:9px;padding:10px;margin-bottom:10px}
+.btn-toggle,.btn-tool,.btn-read,.btn-action{border:2px solid #c8cdd2;background:#fff;border-radius:9px;font-weight:700;cursor:pointer;min-height:42px;padding:7px 13px;color:#2d3436}
+.btn-toggle.rule-normal{background:#2eaf65;border-color:#278f55;color:#fff}
+.btn-toggle.rule-free{background:#e67e22;border-color:#c86410;color:#fff}
+.btn-toggle.mode-a{background:#277fc1;border-color:#216ba2;color:#fff}
+.btn-toggle.mode-b{background:#8e5db7;border-color:#75479c;color:#fff}
+.btn-toggle.mode-c{background:#c0392b;border-color:#a93226;color:#fff}
+.btn-tool:hover,.btn-read:hover,.btn-action:hover{background:#f2f4f6}
+.btn-tool:disabled{opacity:.4;cursor:not-allowed}
+.btn-tool.danger{border-color:#e3a0a0;color:#b13a3a}
 
-/* 音声ON/OFFボタン */
-.btn-sound {
-  font-size: 24px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 4px 8px;
-  transition: transform 0.1s;
-}
-.btn-sound:active { transform: scale(0.9); }
-.btn-sound.muted { filter: grayscale(1) opacity(0.4); }
 
-/* 警告アラート */
-.alert-banner {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-100px);
-  background: #e74c3c;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 30px;
-  font-weight: bold;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  z-index: 10000;
-  font-size: 16px;
-  pointer-events: none;
-}
-.alert-banner.show { transform: translateX(-50%) translateY(0); }
+.total-panel{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:12px 14px;margin-bottom:10px;position:sticky;top:4px;z-index:700}
+.total-label{font-size:13px;color:#666;font-weight:700}
+.total-number{font-size:clamp(24px,4vw,38px);font-weight:800;letter-spacing:.02em;word-break:break-all}
+.total-kanji{font-size:15px;color:#555;max-width:100%;text-align:center}
+.total-kanji.hidden{display:none}
+.btn-read{background:#fff7d6;border-color:#dfbf3d}
+.btn-reading-toggle{background:#f6f7f8;border-color:#adb5bd}
 
-/* 「くりあがり/くりさがり」ポップアップ */
-.carry-popup {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(0.5);
-  background: rgba(255, 243, 205, 0.95);
-  border: 2px solid #f39c12;
-  color: #e67e22;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-weight: bold;
-  font-size: 18px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  z-index: 500;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  animation: popupAnim 1.2s ease-out forwards;
-}
-@keyframes popupAnim {
-  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
-  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-  40% { transform: translate(-50%, -50%) scale(1.0); }
-  80% { opacity: 1; transform: translate(-50%, -70%) scale(1.0); }
-  100% { opacity: 0; transform: translate(-50%, -90%) scale(0.9); }
-}
+.alert-banner{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-120px);background:#c0392b;color:#fff;padding:11px 22px;border-radius:28px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.22);transition:transform .25s ease;z-index:12000;max-width:min(90vw,700px);text-align:center;pointer-events:none}
+.alert-banner.show{transform:translateX(-50%) translateY(0)}
 
-/* 位取り表レイアウト */
-.chart{
-  display: flex;
-  border:2px solid #aaa;
-  border-radius:10px;
-  overflow:hidden;
-  background:#fff;
-  box-shadow:0 4px 12px rgba(0,0,0,0.05);
-  width: 780px;
-  margin: 0 auto;
-}
-.col{display:flex;flex-direction:column;border-right:2px solid #aaa;position:relative;}
-.col:last-child{border-right:none;}
+.chart-scroll{overflow:hidden;padding-bottom:8px;border-radius:12px;position:relative;width:100%;left:50%;transform:translateX(-50%)}
+.chart-canvas{position:absolute;left:50%;top:0;width:max-content;transform-origin:top center;will-change:transform}
+.edge-place-controls{position:absolute;z-index:850;display:flex;flex-direction:column;gap:5px;pointer-events:auto}
+.edge-place-btn{width:36px;height:36px;border:2px solid #7f878e;border-radius:50%;background:#fff;color:#333;font-size:25px;font-weight:800;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16);touch-action:manipulation}
+.edge-place-btn:active{background:#e9ecef;transform:scale(.96)}
+.edge-place-btn:disabled{opacity:.32;cursor:not-allowed;box-shadow:none}
 
-.col-sen{background:#f0f0f0; width: 240px;}
-.col-hyaku{background:#cce8f4; width: 200px;}
-.col-juu{background:#fff9cc; width: 180px;}
-.col-ichi{background:#fce4ec; width: 160px;}
+.group-strip{display:flex;height:34px;margin-bottom:3px;border-radius:9px 9px 0 0;overflow:hidden}
+.group-segment{display:flex;align-items:center;justify-content:center;border-right:3px solid #8b9197;font-size:13px;font-weight:800;color:#495057;background:#eef1f4}
+.group-segment:last-child{border-right:none}
+.group-segment[data-group="0"]{background:#fdeef3}
+.group-segment[data-group="1"]{background:#eef7fb}
+.group-segment[data-group="2"]{background:#fff8dc}
+.group-segment[data-group="3"]{background:#f1f1f1}
 
-.col-header{padding:10px 4px;text-align:center;font-size:14px;font-weight:bold;border-bottom:1px solid #aaa;color:#444;line-height:1.3;}
-.col-header span{font-size:11px;display:block;color:#777;font-weight:normal;}
-.btn-container { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
-.btn-calc {
-  width: 38px;
-  height: 28px;
-  font-size: 14px;
-  cursor: pointer;
-  border: 1px solid #999;
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-.btn-calc:active { background: #eee; }
+.chart{display:flex;border:2px solid #8f969d;border-radius:0 0 11px 11px;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.06);overflow:hidden}
+.col{display:flex;flex-direction:column;position:relative;border-right:2px solid #9da3a9;flex:0 0 auto;transition:box-shadow .15s,transform .15s}
+.col:last-child{border-right:none}
+.col.group-boundary{border-right-width:5px;border-right-color:#697078}
+.col.drag-valid{box-shadow:inset 0 0 0 5px #21a55a;z-index:2}
+.col.drag-invalid{box-shadow:inset 0 0 0 4px #d9dde1}
+.col-header{min-height:94px;padding:7px 4px;text-align:center;border-bottom:1px solid #aeb4ba;color:#333;line-height:1.25;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;gap:2px}
+.col-header .small-label{font-size:12px;color:#666;font-weight:700}
+.col-header .place-name{font-size:15px;font-weight:800;white-space:nowrap}
+.btn-container{display:flex;justify-content:center;gap:5px;margin-top:5px}
+.btn-calc{min-width:47px;height:31px;padding:0 6px;font-size:13px;font-weight:800;cursor:pointer;border:1px solid #8c939a;border-radius:6px;background:rgba(255,255,255,.92);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.btn-calc:active{background:#e9ecef}
+/* 赤ドットモードは、多くの位を縮小せず一覧できるよう列を細くする */
+.col.dot-col .col-header{min-height:76px;padding:4px 2px;gap:1px}
+.col.dot-col .col-header .small-label{font-size:10px}
+.col.dot-col .col-header .place-name{font-size:11px;white-space:normal;line-height:1.15;max-width:60px}
+.col.dot-col .btn-container{gap:2px;margin-top:2px}
+.col.dot-col .btn-calc{min-width:26px;width:26px;height:25px;padding:0;font-size:12px;border-radius:5px}
+.col.dot-col .col-svg-area{height:270px}
+.col.dot-col .col-footer{font-size:24px;min-height:44px;padding:4px 1px}
+.col-svg-area{height:340px;display:flex;align-items:center;justify-content:center;padding:3px;position:relative;overflow:hidden}
+.col-svg-area svg{overflow:visible;display:block}
+.col-footer{padding:8px 4px;text-align:center;font-size:30px;font-weight:800;border-top:2px solid #9da3a9;background:rgba(255,255,255,.75);color:#222;min-height:54px}
 
-.col-svg-area{flex:1;min-height:340px;display:flex;align-items:center;justify-content:center;padding:4px;position:relative;}
-.col-svg-area svg { overflow: visible; }
-.col-footer{padding:10px 4px;text-align:center;font-size:32px;font-weight:bold;border-top:2px solid #aaa;background:rgba(255,255,255,0.7);color:#222;}
+.carry-popup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.5);background:rgba(255,245,202,.97);border:2px solid #ef9b19;color:#bd6200;padding:6px 12px;border-radius:20px;font-weight:800;font-size:17px;white-space:nowrap;pointer-events:none;opacity:0;z-index:500;box-shadow:0 4px 10px rgba(0,0,0,.12);animation:popupAnim 1.15s ease-out forwards}
+@keyframes popupAnim{0%{opacity:0;transform:translate(-50%,-30%) scale(.65)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}75%{opacity:1;transform:translate(-50%,-68%) scale(1)}100%{opacity:0;transform:translate(-50%,-90%) scale(.92)}}
 
-/* 欄外パレット */
-.palette{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-end;}
-.palette-item{padding:10px 12px;border:1px solid #ccc;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,0.02);cursor:grab;width:120px;height:125px;}
-.palette-item span{font-size:11px;color:#666;font-weight:bold;text-align:center;display:block;margin-bottom:2px;}
-.palette-svg-container { flex:1; display:flex; align-items:center; justify-content:center; width:100%; height:85px; }
+.palette-title{margin:12px 0 5px;text-align:center;font-size:13px;font-weight:800;color:#666}
+.palette-scroll{overflow:visible;padding:3px 2px 8px}
+.palette{display:flex;flex-wrap:wrap;gap:8px;width:100%;justify-content:center;align-items:flex-end}
+.palette-item{border:1px solid #c8cdd2;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 2px 6px rgba(0,0,0,.03);cursor:grab;width:108px;height:105px;flex:0 0 108px;touch-action:none;-webkit-touch-callout:none}
+.palette-item span{font-size:11px;color:#555;font-weight:800;text-align:center;white-space:nowrap}
+.palette-svg-container{height:70px;width:100%;display:flex;align-items:center;justify-content:center}
 
-/* ドラッグオーバーレイ＆アニメーション */
-.drag-overlay { position: fixed; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
-.clickable-pack { cursor: grab; }
-.clickable-pack:hover { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); }
-.clickable-tile { cursor: grab; }
-.clickable-tile:hover { filter: brightness(1.05); }
+.clickable-pack{cursor:grab}
+.clickable-pack:hover{filter:drop-shadow(0 0 6px rgba(219,56,56,.65))}
+.clickable-tile{cursor:grab}
+.clickable-tile:hover{filter:brightness(1.04) drop-shadow(0 1px 2px rgba(0,0,0,.12))}
+.drag-overlay{position:fixed;pointer-events:none;z-index:11000;transform:translate(-50%,-50%);filter:drop-shadow(0 6px 9px rgba(0,0,0,.2))}
+.col-svg-area,.drag-overlay{touch-action:none;-webkit-touch-callout:none}
 
-/* スマートフォンでの誤スクロール・誤ズーム・長押しポップアップ防止用の追加設定 */
-.col-svg-area, .palette-item, .drag-overlay {
-  touch-action: none;
-  -webkit-touch-callout: none;
+.trash-zone{position:fixed;right:18px;bottom:18px;z-index:10500;width:165px;height:70px;border:3px dashed #d44;border-radius:13px;background:rgba(255,245,245,.98);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;color:#a22;opacity:0;transform:translateY(20px);pointer-events:none;transition:.18s}
+.trash-zone.active{opacity:1;transform:translateY(0);pointer-events:auto}
+.trash-zone.drag-valid{background:#ffe0e0;border-style:solid;transform:scale(1.04)}
+
+.bundle-tool{margin-top:16px;padding:13px}
+.bundle-tool h2{font-size:18px;margin-bottom:6px}
+.bundle-tool .desc{font-size:13px;line-height:1.6;color:#555;margin-bottom:10px}
+.bundle-mode-switch{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.bundle-mode-btn{min-height:38px;padding:6px 12px;border:2px solid #c5cbd1;border-radius:9px;background:#fff;font-weight:800;cursor:pointer;color:#3b434a}
+.bundle-mode-btn.active{background:#44515d;border-color:#44515d;color:#fff}
+.bundle-panel{display:none}
+.bundle-panel.active{display:block}
+.bundle-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.bundle-row select,.bundle-row input{height:42px;border:2px solid #b9c0c7;border-radius:8px;background:#fff;padding:4px 8px;font-weight:700}
+.bundle-row input{width:150px;text-align:center;font-size:19px;user-select:text;-webkit-user-select:text}
+.bundle-row .source-number-input{width:210px}
+.bundle-equation{margin-top:10px;padding:10px;border-radius:9px;background:#f5f7f9;font-weight:800;min-height:43px;display:flex;align-items:center;justify-content:center;text-align:center}
+.btn-action.primary{background:#246fbb;border-color:#1e5f9f;color:#fff}
+.btn-action.move{background:#e85d26;border-color:#c94b1b;color:#fff;font-size:18px;display:none}
+.btn-action.move.show{display:inline-block}
+.aggregate-card{pointer-events:none}
+.flying-digit{position:fixed;z-index:11500;width:48px;height:48px;border-radius:10px;border:3px solid #333;background:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;pointer-events:none;transition:transform .72s cubic-bezier(.2,.8,.2,1),opacity .72s ease;box-shadow:0 5px 14px rgba(0,0,0,.2)}
+
+.column-help{margin-top:14px;padding:0;overflow:hidden}
+.column-help summary{cursor:pointer;font-weight:800;padding:12px 14px;background:#fff}
+.column-help .help-body{padding:4px 14px 14px;line-height:1.8;font-size:14px}
+.four-example{font-size:22px;font-weight:900;letter-spacing:.06em;margin:5px 0;overflow-wrap:anywhere}
+.group-chip{display:inline-block;padding:2px 7px;border-radius:5px;background:#eef1f4;margin:2px;font-weight:800}
+.note{font-size:12px;color:#666;margin-top:6px}
+
+@media(max-width:650px){
+  .app{padding:8px}
+  .control-panel{gap:6px;padding:7px}
+  .btn-toggle,.btn-tool{min-height:39px;padding:6px 9px;font-size:12px}
+  .total-panel{top:2px;padding:8px}
+  .total-number{font-size:26px}
+  .trash-zone{right:8px;bottom:8px;width:140px;height:62px;font-size:13px}
 }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-
-<div id="alert-box" class="alert-banner">１つの位に２つの数字は入らないよ！どうする？</div>
+<div id="alert-box" class="alert-banner" role="status" aria-live="polite"></div>
+<div id="trash-zone" class="trash-zone">🗑️<br>ここに入れると消える</div>
 
 <div class="app">
   <div class="control-panel">
-    <button id="rule-toggle-btn" class="btn-toggle rule-normal" onclick="toggleRuleMode()">0〜9制限モード（自動くりあがり）</button>
-    <button id="mode-toggle-btn" class="btn-toggle mode-a" onclick="toggleDisplayMode()">モードA（実物タイル）</button>
-    <button id="sound-btn" class="btn-sound" onclick="toggleSound()">🔊</button>
+    <button id="rule-toggle-btn" class="btn-toggle rule-normal" onclick="toggleRuleMode()">自動でまとめる（10こ→1こ）</button>
+    <button id="mode-toggle-btn" class="btn-toggle mode-a" onclick="toggleDisplayMode()" title="押すたびに 実物タイル → 数字カード → 赤ドット と切り替わります">実物タイル</button>
+    <button id="sound-btn" class="btn-tool" onclick="toggleSound()" aria-pressed="true">効果音 🔊</button>
+    <button id="undo-btn" class="btn-tool" onclick="undo()" disabled>↶ 1手もどす</button>
+    <button class="btn-tool danger" onclick="resetAll()">0にもどす</button>
   </div>
 
-  <div class="chart" id="main-chart">
-    <div class="col col-sen" data-place="sen">
-      <div class="col-header"><span>せん</span>千のくらい
-        <div class="btn-container">
-          <button class="btn-calc" onclick="stepValue('sen', 1)">▲</button>
-          <button class="btn-calc" onclick="stepValue('sen', -1)">▼</button>
-        </div>
-      </div>
-      <div class="col-svg-area" id="area-sen"><svg id="inner-sen" width="240" height="340" viewBox="0 0 240 340"></svg></div>
-      <div class="col-footer">0</div>
+
+  <div class="total-panel">
+    <span class="total-label">いまの数</span>
+    <span id="total-number" class="total-number">5</span>
+    <span id="total-kanji" class="total-kanji">五</span>
+    <button id="reading-toggle-btn" class="btn-read btn-reading-toggle" onclick="toggleReadingDisplay()">読み方をかくす</button>
+    <button class="btn-read" onclick="readTotal()">🔊 数をよむ</button>
+  </div>
+
+  <div class="chart-scroll" id="chart-scroll">
+    <div class="edge-place-controls" id="edge-place-controls" aria-label="表示する位を増減">
+      <button id="add-place-btn" class="edge-place-btn" onclick="changeVisiblePlaces(1)" title="左に位を1つふやす" aria-label="左に位を1つふやす">＋</button>
+      <button id="remove-place-btn" class="edge-place-btn" onclick="changeVisiblePlaces(-1)" title="左端の位を1つへらす" aria-label="左端の位を1つへらす">−</button>
     </div>
-    <div class="col col-hyaku" data-place="hyaku">
-      <div class="col-header"><span>ひゃく</span>百のくらい
-        <div class="btn-container">
-          <button class="btn-calc" onclick="stepValue('hyaku', 1)">▲</button>
-          <button class="btn-calc" onclick="stepValue('hyaku', -1)">▼</button>
-        </div>
-      </div>
-      <div class="col-svg-area" id="area-hyaku"><svg id="inner-hyaku" width="200" height="340" viewBox="0 0 200 340"></svg></div>
-      <div class="col-footer">0</div>
-    </div>
-    <div class="col col-juu" data-place="juu">
-      <div class="col-header"><span>じゅう</span>十のくらい
-        <div class="btn-container">
-          <button class="btn-calc" onclick="stepValue('juu', 1)">▲</button>
-          <button class="btn-calc" onclick="stepValue('juu', -1)">▼</button>
-        </div>
-      </div>
-      <div class="col-svg-area" id="area-juu"><svg id="inner-juu" width="180" height="340" viewBox="0 0 180 340"></svg></div>
-      <div class="col-footer">0</div>
-    </div>
-    <div class="col col-ichi" data-place="ichi">
-      <div class="col-header"><span>いち</span>一のくらい
-        <div class="btn-container">
-          <button class="btn-calc" onclick="stepValue('ichi', 1)">▲</button>
-          <button class="btn-calc" onclick="stepValue('ichi', -1)">▼</button>
-        </div>
-      </div>
-      <div class="col-svg-area" id="area-ichi"><svg id="inner-ichi" width="160" height="340" viewBox="0 0 160 340"></svg></div>
-      <div class="col-footer">0</div>
+    <div class="chart-canvas" id="chart-canvas">
+      <div class="group-strip" id="group-strip"></div>
+      <div class="chart" id="main-chart"></div>
     </div>
   </div>
 
-  <div class="palette">
-    <div class="palette-item" style="background:#f0f0f0;" onpointerdown="startDrag(event, 'palette', 'sen')">
-      <span>千のくらい</span><div class="palette-svg-container"><svg id="pal-sen" width="100" height="85" viewBox="0 0 100 85"></svg></div>
-    </div>
-    <div class="palette-item" style="background:#cce8f4;" onpointerdown="startDrag(event, 'palette', 'hyaku')">
-      <span>百のくらい</span><div class="palette-svg-container"><svg id="pal-hyaku" width="90" height="85" viewBox="0 0 90 85"></svg></div>
-    </div>
-    <div class="palette-item" style="background:#fff9cc;" onpointerdown="startDrag(event, 'palette', 'juu')">
-      <span>十のくらい</span><div class="palette-svg-container"><svg id="pal-juu" width="40" height="85" viewBox="0 0 40 85"></svg></div>
-    </div>
-    <div class="palette-item" style="background:#fce4ec;" onpointerdown="startDrag(event, 'palette', 'ichi')">
-      <span>一のくらい</span><div class="palette-svg-container"><svg id="pal-ichi" width="30" height="85" viewBox="0 0 30 85"></svg></div>
-    </div>
+  <div class="palette-title" id="palette-title">下のカード・タイルを、同じ位の部屋へドラッグして1こ追加できます</div>
+  <div class="palette-scroll" id="palette-scroll">
+    <div class="palette" id="palette"></div>
   </div>
+
+  <section class="bundle-tool" id="bundle-tool">
+    <h2>まとめて考える</h2>
+    <div class="desc">位のまとまりを、ばらして考えることも、逆に1つの位へ集めて考えることもできます。</div>
+    <div class="bundle-mode-switch" role="tablist" aria-label="まとめて考える方法">
+      <button id="bundle-mode-build" class="bundle-mode-btn active" onclick="setBundleMode('build')">○こ集めた数をつくる</button>
+      <button id="bundle-mode-gather" class="bundle-mode-btn" onclick="setBundleMode('gather')">何こ集めた数？</button>
+    </div>
+
+    <div id="bundle-build-panel" class="bundle-panel active">
+      <div class="bundle-row">
+        <select id="bundle-place" aria-label="もとにする位"></select>
+        <span>を</span>
+        <input id="bundle-count" type="text" inputmode="numeric" maxlength="16" value="345" aria-label="集める個数">
+        <span>こ集める</span>
+        <button class="btn-action primary" onclick="loadAggregate()">セット</button>
+        <button id="bundle-move-btn" class="btn-action move" onclick="moveAggregateDigits()">移動！</button>
+      </div>
+    </div>
+
+    <div id="bundle-gather-panel" class="bundle-panel">
+      <div class="bundle-row">
+        <input id="gather-number" class="source-number-input" type="text" inputmode="numeric" maxlength="16" value="38900" aria-label="もとの数">
+        <span>は</span>
+        <select id="gather-place" aria-label="何を何こ集めたか考える位"></select>
+        <span>をいくつ集めた数？</span>
+        <button class="btn-action primary" onclick="loadGatherQuestion()">セット</button>
+        <button id="gather-move-btn" class="btn-action move" onclick="gatherDigits()">集める！</button>
+      </div>
+    </div>
+
+    <div id="bundle-equation" class="bundle-equation">例：1000 × 345 → 345000</div>
+  </section>
+
+  <details class="column-help">
+    <summary>大きい数を読むコツ：日本語は4けたずつ</summary>
+    <div class="help-body">
+      日本語の大きい数は、<strong>4けたごと</strong>に「万・億・兆」とまとまりが変わります。
+      <div class="four-example"><span class="group-chip">12兆</span>｜<span class="group-chip">3456億</span>｜<span class="group-chip">7890万</span>｜<span class="group-chip">1234</span></div>
+      右から4けたずつ区切って、「何兆・何億・何万・残り」と考えると読みやすくなります。
+      <div class="note">※ 3けたごとのカンマ（12,345,678）と、日本語の「万・億・兆」の4けた区切りは別の仕組みです。</div>
+    </div>
+  </details>
 </div>
 
 <script>
-// タイル共通デザイン定義
-const U_IN = 5.5;  
-const U_PAL = 5.0; 
-const FC = '#f5c542';
-const SC = '#c8960a';
-const SC5 = '#7a5500';
+'use strict';
 
-let values = { sen: 0, hyaku: 0, juu: 0, ichi: 5 }; 
-let displayMode = 'A';  
-let ruleMode = 'normal'; 
-let isSoundOn = true; 
+// =========================
+// 1. 位の定義（0乗〜15乗）
+// =========================
+const PLACE_DEFS = [
+  {exp:0,  name:'一のくらい',   short:'1',      kana:'いち'},
+  {exp:1,  name:'十のくらい',   short:'10',     kana:'じゅう'},
+  {exp:2,  name:'百のくらい',   short:'100',    kana:'ひゃく'},
+  {exp:3,  name:'千のくらい',   short:'1000',   kana:'せん'},
+  {exp:4,  name:'一万のくらい', short:'1万',    kana:'いちまん'},
+  {exp:5,  name:'十万のくらい', short:'10万',   kana:'じゅうまん'},
+  {exp:6,  name:'百万のくらい', short:'100万',  kana:'ひゃくまん'},
+  {exp:7,  name:'千万のくらい', short:'1000万', kana:'せんまん'},
+  {exp:8,  name:'一億のくらい', short:'1億',    kana:'いちおく'},
+  {exp:9,  name:'十億のくらい', short:'10億',   kana:'じゅうおく'},
+  {exp:10, name:'百億のくらい', short:'100億',  kana:'ひゃくおく'},
+  {exp:11, name:'千億のくらい', short:'1000億', kana:'せんおく'},
+  {exp:12, name:'一兆のくらい', short:'1兆',    kana:'いっちょう'},
+  {exp:13, name:'十兆のくらい', short:'10兆',   kana:'じゅっちょう'},
+  {exp:14, name:'百兆のくらい', short:'100兆',  kana:'ひゃくちょう'},
+  {exp:15, name:'千兆のくらい', short:'1000兆', kana:'せんちょう'}
+];
 
-const cardConfigs = {
-  sen:   { text: '1000', bg: '#f0f0f0', stroke: '#7f8c8d', textColor: '#555555', w:38, h:24, fontSize: 10, offset: 6 },
-  hyaku: { text: '100',  bg: '#cce8f4', stroke: '#2980b9', textColor: '#2980b9', w:34, h:22, fontSize: 10, offset: 5 },
-  juu:   { text: '10',   bg: '#fff9cc', stroke: '#d4ac0d', textColor: '#b7950b', w:30, h:20, fontSize: 10, offset: 5 },
-  ichi:  { text: '1',    bg: '#fce4ec', stroke: '#e91e63', textColor: '#c2185b', w:26, h:18, fontSize: 10, offset: 5 }
-};
+const COLOR_CYCLE = [
+  {bg:'#fce4ec', stroke:'#d81b60', text:'#b3154e'}, // 一系
+  {bg:'#fff6bf', stroke:'#c99b00', text:'#8e7200'}, // 十系
+  {bg:'#cfeaf6', stroke:'#287ba3', text:'#236a8a'}, // 百系
+  {bg:'#ededed', stroke:'#6f767d', text:'#4f555b'}  // 千系
+];
 
-const order = ['ichi', 'juu', 'hyaku', 'sen'];
+const GROUP_NAMES = ['一のまとまり','万のまとまり','億のまとまり','兆のまとまり'];
+const TILE_WIDTHS = [160,180,200,240];
+const CARD_COLUMN_WIDTH = 184;
+const DOT_COLUMN_WIDTH = 66; // 赤ドットは5個×2列を基本にして横幅を抑える
+const AREA_H = 340;
+const DOT_AREA_H = 270;
+const MAX_EXP_CARD = 15;
+const MAX_EXP_TILE = 3;
+const MAX_TOTAL = (10n ** 16n) - 1n; // 千兆の位まで（16けた）
 
-// --- 音声合成＆効果音エンジン ---
-let audioCtx = null;
-function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-
-function playSound(type) {
-  if (!isSoundOn) return;
-  try {
-    initAudio();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    
-    if (type === 'click') {
-      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.08);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.08);
-    } else if (type === 'drag') {
-      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-    } else if (type === 'trash') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-      osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.15);
-    }
-  } catch(e){}
-}
-
-function speakText(text) {
-  if (!isSoundOn) return;
-  if ('speechSynthesis' in window) {
-    try {
-      window.speechSynthesis.cancel(); 
-      // スマホ（iOS等）での音声キューの衝突・フリーズを防ぐため、わずかなディレイを挟む
-      setTimeout(() => {
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'ja-JP'; u.rate = 1.3; u.pitch = 1.1;
-        window.speechSynthesis.speak(u);
-      }, 50);
-    } catch(e) {}
-  }
-}
-
-function toggleSound() {
-  isSoundOn = !isSoundOn;
-  const btn = document.getElementById('sound-btn');
-  if (isSoundOn) {
-    btn.classList.remove('muted'); btn.innerText = '🔊'; playSound('click');
-  } else {
-    btn.classList.add('muted'); btn.innerText = '🔇';
-  }
-}
-
-// --- 視覚演出（ポップアップ・警告） ---
-function showOverlayText(place, text) {
-  const container = document.getElementById('area-' + place);
-  if (!container) return;
-  const div = document.createElement('div');
-  div.className = 'carry-popup';
-  div.innerText = text;
-  container.appendChild(div);
-  setTimeout(() => div.remove(), 1200);
-}
-
-function triggerWarning() {
-  const alertBox = document.getElementById('alert-box');
-  alertBox.classList.add('show');
-  speakText("１つの位に２つの数字は入らないよ！どうする？");
-  setTimeout(() => { alertBox.classList.remove('show'); }, 3500);
-}
-
-function checkAutoCarry() {
-  if (ruleMode !== 'normal') return;
-  let changed = false;
-  for (let i = 0; i < order.length - 1; i++) {
-    const current = order[i];
-    const next = order[i+1];
-    if (values[current] >= 10) {
-      if (next === 'sen' && values.sen >= 9) continue;
-      values[current] -= 10;
-      values[next]++;
-      changed = true;
-      showOverlayText(next, "くりあがり！");
-      speakText("くりあがり！");
-    }
-  }
-  if (changed) {
-    updateChart();
-    checkAutoCarry(); 
-  }
-}
-
-// --- 基本図形描画用ヘルパー ---
-function sq(svg, x, y, u, strokeW) {
-  strokeW = strokeW || 0.8;
-  const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
-  r.setAttribute('x',x); r.setAttribute('y',y); r.setAttribute('width',u); r.setAttribute('height',u);
-  r.setAttribute('fill',FC); r.setAttribute('stroke',SC); r.setAttribute('stroke-width',strokeW); r.setAttribute('rx','0.6');
-  svg.appendChild(r);
-  return r;
-}
-
-function drawIchiSingle(svg, cx, cy, u) {
-  sq(svg, cx - u/2, cy - u/2, u, 1.0);
-}
-
-function drawJuuSingle(svg, cx, cy, u) {
-  const G = u * 0.15; const S = u + G; const totalH = 10*u + 9*G;
-  const ox = cx - u/2; const oy = cy - totalH/2;
-  for(let i=0;i<10;i++) sq(svg, ox, oy+i*S, u, 0.6);
-  const line5 = document.createElementNS('http://www.w3.org/2000/svg','line');
-  line5.setAttribute('x1', ox-1); line5.setAttribute('x2', ox+u+1);
-  line5.setAttribute('y1', oy+5*S-G/2); line5.setAttribute('y2', oy+5*S-G/2);
-  line5.setAttribute('stroke', SC5); line5.setAttribute('stroke-width','1.2');
-  svg.appendChild(line5);
-  const out = document.createElementNS('http://www.w3.org/2000/svg','rect');
-  out.setAttribute('x',ox-1); out.setAttribute('y',oy-1); out.setAttribute('width',u+2); out.setAttribute('height',totalH+2);
-  out.setAttribute('fill','none'); out.setAttribute('stroke',SC); out.setAttribute('stroke-width','0.8'); out.setAttribute('rx','1');
-  svg.appendChild(out);
-}
-
-function drawHyakuSingle(svg, cx, cy, u) {
-  const G = u * 0.15; const S = u + G; const totalW = 10*u + 9*G; const totalH = 10*u + 9*G;
-  const ox = cx - totalW/2; const oy = cy - totalH/2;
-  for(let row=0;row<10;row++) for(let col=0;col<10;col++) sq(svg, ox+col*S, oy+row*S, u, 0.4);
-  const lv = document.createElementNS('http://www.w3.org/2000/svg','line');
-  lv.setAttribute('x1', ox+5*S-G/2); lv.setAttribute('x2', ox+5*S-G/2); lv.setAttribute('y1', oy-1); lv.setAttribute('y2', oy+totalH+1);
-  lv.setAttribute('stroke', SC5); lv.setAttribute('stroke-width','1'); svg.appendChild(lv);
-  const lh = document.createElementNS('http://www.w3.org/2000/svg','line');
-  lh.setAttribute('x1', ox-1); lh.setAttribute('x2', ox+totalW+1); lh.setAttribute('y1', oy+5*S-G/2); lh.setAttribute('y2', oy+5*S-G/2);
-  lh.setAttribute('stroke', SC5); strokeW = 1; svg.appendChild(lh);
-  const out = document.createElementNS('http://www.w3.org/2000/svg','rect');
-  out.setAttribute('x',ox-1); out.setAttribute('y',oy-1); out.setAttribute('width',totalW+2); out.setAttribute('height',totalH+2);
-  out.setAttribute('fill','none'); out.setAttribute('stroke',SC); out.setAttribute('stroke-width','1'); out.setAttribute('rx','1.5');
-  svg.appendChild(out);
-}
-
-function drawSenSingle(svg, cx, cy, u, sheets) {
-  sheets = sheets || 10;
-  const G = u * 0.15; const S = u + G; const W = 10*u + 9*G; const H = 10*u + 9*G;
-  const OX = u * 0.4; const OY = u * 0.4;
-  for(let k=sheets-1;k>=0;k--) {
-    const ox = cx - W/2 + k*OX; const oy = cy - H/2 - k*OY;
-    if(k > 0) {
-      const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
-      bg.setAttribute('x',ox); bg.setAttribute('y',oy); bg.setAttribute('width',W); bg.setAttribute('height',H);
-      bg.setAttribute('fill', k%2===0?'#f7d060':'#eabc30'); bg.setAttribute('stroke',SC); bg.setAttribute('stroke-width','0.5'); bg.setAttribute('rx','0.8');
-      svg.appendChild(bg);
-    } else {
-      for(let row=0;row<10;row++) for(let col=0;col<10;col++) sq(svg, ox+col*S, oy+row*S, u, 0.4);
-      const lv = document.createElementNS('http://www.w3.org/2000/svg','line');
-      lv.setAttribute('x1',ox+5*S-G/2); lv.setAttribute('x2',ox+5*S-G/2); lv.setAttribute('y1',oy-1); lv.setAttribute('y2',oy+H+1);
-      lv.setAttribute('stroke',SC5); lv.setAttribute('stroke-width','1'); svg.appendChild(lv);
-      const lh = document.createElementNS('http://www.w3.org/2000/svg','line');
-      lh.setAttribute('x1',ox-1); lh.setAttribute('x2',ox+W+1); lh.setAttribute('y1',oy+5*S-G/2); lh.setAttribute('y2',oy+5*S-G/2);
-      lh.setAttribute('stroke',SC5); lh.setAttribute('stroke-width','1'); svg.appendChild(lh);
-    }
-  }
-  const TW = 4; const tapeColor = '#c05010'; const tapeOpacity = '0.6';
-  const frontOx = cx - W/2; const frontOy = cy - H/2;
-  const backOx = frontOx + (sheets-1)*OX; const backOy = frontOy - (sheets-1)*OY;
-  const midY = frontOy + H/2; const midX = frontOx + W/2;
-  function drawTapePolygon(pnts) {
-    const p = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    p.setAttribute('points', pnts.map(([x,y]) => x+','+y).join(' '));
-    p.setAttribute('fill', tapeColor); p.setAttribute('opacity', tapeOpacity); svg.appendChild(p);
-  }
-  drawTapePolygon([[frontOx, midY-TW/2], [frontOx+W, midY-TW/2], [frontOx+W, midY+TW/2], [frontOx, midY+TW/2]]);
-  drawTapePolygon([[frontOx+W, midY-TW/2], [backOx+W, backOy+H/2-TW/2], [backOx+W, backOy+H/2+TW/2], [frontOx+W, midY+TW/2]]);
-  drawTapePolygon([[midX-TW/2, frontOy], [backOx+W/2-TW/2, backOy], [backOx+W/2+TW/2, backOy], [midX+TW/2, frontOy]]);
-  drawTapePolygon([[midX-TW/2, frontOy], [midX+TW/2, frontOy], [midX+TW/2, frontOy+H], [midX-TW/2, frontOy+H]]);
-}
-
-function drawCardSingle(svg, x, y, place, customScale) {
-  const config = cardConfigs[place];
-  const scale = customScale || 1.0;
-  const w = config.w * scale; const h = config.h * scale;
-  
-  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  rect.setAttribute('x', x); rect.setAttribute('y', y); rect.setAttribute('width', w); rect.setAttribute('height', h);
-  rect.setAttribute('fill', config.bg); rect.setAttribute('stroke', config.stroke); rect.setAttribute('stroke-width', 1.5 * scale); rect.setAttribute('rx', 2 * scale);
-  svg.appendChild(rect);
-  
-  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  text.setAttribute('x', x + w / 2); text.setAttribute('y', y + h / 2 + config.offset * scale);
-  text.setAttribute('text-anchor', 'middle'); text.setAttribute('font-size', config.fontSize * scale); text.setAttribute('font-weight', 'bold'); text.setAttribute('fill', config.textColor);
-  text.textContent = config.text;
-  svg.appendChild(text);
-}
-
-function createDynamicRedPack(svg, place, coordinates, padding) {
-  if (!coordinates || coordinates.length === 0) return svg;
-  padding = padding || 4;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  coordinates.forEach(pt => {
-    if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y;
-    if (pt.x > maxX) maxX = pt.x; if (pt.y > maxY) maxY = pt.y;
-  });
-  const x = minX - padding; const y = minY - padding;
-  const w = (maxX - minX) + padding * 2; const h = (maxY - minY) + padding * 2;
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  g.setAttribute('class', 'clickable-pack');
-  g.addEventListener('pointerdown', (e) => startDrag(e, 'pack', place));
-  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  rect.setAttribute('x', x); rect.setAttribute('y', y); rect.setAttribute('width', w); rect.setAttribute('height', h);
-  rect.setAttribute('fill', 'rgba(255, 0, 0, 0.03)'); rect.setAttribute('stroke', '#ff3333'); rect.setAttribute('stroke-width', '2'); rect.setAttribute('stroke-dasharray', '4,3'); rect.setAttribute('rx', '4');
-  g.appendChild(rect);
-  svg.appendChild(g);
-  return g;
-}
-
-// --- 配置ロジック ---
-function renderIchiA(svg, count) {
-  svg.innerHTML = ''; if (count === 0) return;
-  const u = U_IN; const S = u * 1.35;
-  const hasPack = (count >= 10);
-  
-  let packCoords = [];
-  if (hasPack) {
-    for (let i = 0; i < 10; i++) {
-      const cx = 35; const cy = 300 - i * S;
-      packCoords.push({x: cx - u/2, y: cy - u/2}, {x: cx + u/2, y: cy + u/2});
-    }
-  }
-  let packG = hasPack ? createDynamicRedPack(svg, 'ichi', packCoords, 5) : svg;
-
-  for (let i = 0; i < count; i++) {
-    const isPack = (i < 10 && hasPack);
-    const targetSvg = isPack ? packG : svg;
-    const cx = isPack ? 35 : 105;
-    const idx = isPack ? i : i - (hasPack ? 10 : 0);
-    const cy = 300 - idx * S;
-    const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    gTile.setAttribute('class', isPack ? '' : 'clickable-tile');
-    if(!isPack) gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'ichi'));
-    drawIchiSingle(gTile, cx, cy, u);
-    targetSvg.appendChild(gTile);
-  }
-}
-
-function renderJuuA(svg, count) {
-  svg.innerHTML = ''; if (count === 0) return;
-  const u = U_IN; const stickW = u + 2; const spacing = 4;
-  const totalW10 = 10 * stickW + 9 * spacing;
-  const hasPack = (count >= 10);
-  
-  let packCoords = [];
-  if (hasPack) {
-    const ox = 90 - totalW10/2; const oy = 110 - 34;
-    packCoords.push({x: ox - 1, y: oy - 1}, {x: ox + totalW10 + 1, y: oy + 68 + 1});
-  }
-  let packG = hasPack ? createDynamicRedPack(svg, 'juu', packCoords, 4) : svg;
-
-  for (let i = 0; i < count; i++) {
-    const isPack = (i < 10 && hasPack);
-    const targetSvg = isPack ? packG : svg;
-    const idx = isPack ? i : i - (hasPack ? 10 : 0);
-    const cy = isPack ? 110 : 255;
-    const currentW = isPack ? totalW10 : (count - (hasPack?10:0)) * stickW + (count - (hasPack?10:0) - 1) * spacing;
-    const startX = 90 - currentW / 2;
-    const cx = startX + idx * (stickW + spacing) + stickW/2;
-    const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    gTile.setAttribute('class', 'clickable-tile');
-    if(!isPack) gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'juu'));
-    drawJuuSingle(gTile, cx, cy, u);
-    targetSvg.appendChild(gTile);
-  }
-}
-
-function renderHyakuA(svg, count) {
-  svg.innerHTML = ''; if (count === 0) return;
-  const u = U_IN;
-  const step = 3.5;
-  const hasPack = (count >= 10);
-  
-  const G = u * 0.15; const S = u + G; const totalW = 10*u + 9*G; const totalH = 10*u + 9*G;
-  
-  const packBaseCx = 100;
-  const packBaseCy = 120;
-  
-  let packCoords = [];
-  if (hasPack) {
-    const minX = packBaseCx - totalW / 2;
-    const maxY = packBaseCy + totalH / 2;
-    const maxX = packBaseCx + 9 * step + totalW / 2;
-    const minY = packBaseCy - 9 * step - totalH / 2;
-    packCoords.push({x: minX, y: minY}, {x: maxX, y: maxY});
-  }
-  let packG = hasPack ? createDynamicRedPack(svg, 'hyaku', packCoords, 4) : svg;
-
-  for (let i = 0; i < count; i++) {
-    const isPack = (i < 10 && hasPack);
-    const targetSvg = isPack ? packG : svg;
-    const idx = isPack ? i : i - (hasPack ? 10 : 0);
-    
-    if (isPack) {
-      const cx = packBaseCx + idx * step;
-      const cy = packBaseCy - idx * step;
-      const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      drawHyakuSingle(gTile, cx, cy, u); 
-      targetSvg.appendChild(gTile);
-    } else {
-      const baseCx = 100;
-      const baseCy = 270;
-      const cx = baseCx + idx * step; 
-      const cy = baseCy - idx * step;
-      const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      gTile.setAttribute('class', 'clickable-tile');
-      gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'hyaku'));
-      drawHyakuSingle(gTile, cx, cy, u);
-      targetSvg.appendChild(gTile);
-    }
-  }
-}
-
-function renderSenA(svg, count) {
-  svg.innerHTML = ''; if (count === 0) return;
-  const u = U_IN; const stepX = 40; const stepY = 44; 
-  for (let i = 0; i < count; i++) {
-    const row = Math.floor(i / 3); const col = i % 3;
-    const cx = 65 + col * stepX + row * 12; 
-    const cy = 90 + row * stepY - col * 6;
-    const gTile = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    gTile.setAttribute('class', 'clickable-tile');
-    gTile.addEventListener('pointerdown', (e) => startDrag(e, 'single', 'sen'));
-    drawSenSingle(gTile, cx, cy, u);
-    svg.appendChild(gTile);
-  }
-}
-
-function renderModeB(svg, count, place) {
-  svg.innerHTML = ''; if (count === 0) return;
-  const config = cardConfigs[place];
-  const gapX = 5; const gapY = 5;
-  const areaW = (place==='sen')?240:((place==='hyaku')?200:((place==='juu')?180:160));
-  const hasPack = (count >= 10 && place !== 'sen');
-  
-  let packCoords = [];
-  if (hasPack) {
-    for (let i = 0; i < 10; i++) {
-      const col = Math.floor(i / 5); const row = i % 5;
-      const startX = 15;
-      const x = startX + col * (config.w + gapX); const y = 290 - row * (config.h + gapY);
-      packCoords.push({x: x, y: y}, {x: x + config.w, y: y + config.h});
-    }
-  }
-  let packG = hasPack ? createDynamicRedPack(svg, place, packCoords, 5) : svg;
-
-  for (let i = 0; i < count; i++) {
-    const isPack = (i < 10 && hasPack);
-    const targetSvg = isPack ? packG : svg;
-    const idx = isPack ? i : i - (hasPack ? 10 : 0);
-    const col = Math.floor(idx / 5); const row = idx % 5;
-    let startX = isPack ? 15 : (areaW / 2 + 10);
-    if (place === 'sen') {
-      const totalCols = Math.ceil(count / 5);
-      const totalW = totalCols * config.w + (totalCols - 1) * gapX;
-      startX = (areaW - totalW) / 2;
-    }
-    const x = startX + col * (config.w + gapX);
-    const y = 290 - row * (config.h + gapY);
-    const gCard = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    gCard.setAttribute('class', isPack ? '' : 'clickable-tile');
-    if(!isPack) gCard.addEventListener('pointerdown', (e) => startDrag(e, 'single', place));
-    drawCardSingle(gCard, x, y, place);
-    targetSvg.appendChild(gCard);
-  }
-}
-
-function updatePalette() {
-  const pSen = document.getElementById('pal-sen');
-  const pHyaku = document.getElementById('pal-hyaku');
-  const pJuu = document.getElementById('pal-juu');
-  const pIchi = document.getElementById('pal-ichi');
-  pSen.innerHTML = ''; pHyaku.innerHTML = ''; pJuu.innerHTML = ''; pIchi.innerHTML = '';
-  
-  if (displayMode === 'A') {
-    drawSenSingle(pSen, 40, 50, U_PAL);
-    drawHyakuSingle(pHyaku, 45, 42, U_PAL);
-    drawJuuSingle(pJuu, 20, 42, U_PAL);
-    drawIchiSingle(pIchi, 15, 42, 14);
-  } else {
-    const s = 1.2;
-    drawCardSingle(pSen, (100 - cardConfigs.sen.w*s)/2, (85 - cardConfigs.sen.h*s)/2, 'sen', s);
-    drawCardSingle(pHyaku, (90 - cardConfigs.hyaku.w*s)/2, (85 - cardConfigs.hyaku.h*s)/2, 'hyaku', s);
-    drawCardSingle(pJuu, (40 - cardConfigs.juu.w*s)/2, (85 - cardConfigs.juu.h*s)/2, 'juu', s);
-    drawCardSingle(pIchi, (30 - cardConfigs.ichi.w*s)/2, (85 - cardConfigs.ichi.h*s)/2, 'ichi', s);
-  }
-}
-
-function updateChart() {
-  if (displayMode === 'A') {
-    renderSenA(document.getElementById('inner-sen'), values.sen);
-    renderHyakuA(document.getElementById('inner-hyaku'), values.hyaku);
-    renderJuuA(document.getElementById('inner-juu'), values.juu);
-    renderIchiA(document.getElementById('inner-ichi'), values.ichi);
-  } else {
-    renderModeB(document.getElementById('inner-sen'), values.sen, 'sen');
-    renderModeB(document.getElementById('inner-hyaku'), values.hyaku, 'hyaku');
-    renderModeB(document.getElementById('inner-juu'), values.juu, 'juu');
-    renderModeB(document.getElementById('inner-ichi'), values.ichi, 'ichi');
-  }
-  document.querySelector('.col-sen .col-footer').innerText = values.sen;
-  document.querySelector('.col-hyaku .col-footer').innerText = values.hyaku;
-  document.querySelector('.col-juu .col-footer').innerText = values.juu;
-  document.querySelector('.col-ichi .col-footer').innerText = values.ichi;
-  
-  updatePalette();
-}
-
-function stepValue(place, dir) {
-  playSound('click');
-  if (dir === 1) {
-    if (place === 'sen' && values.sen >= 9) return;
-    if (values[place] < 19) { 
-      values[place]++; 
-      if (ruleMode === 'normal' && values[place] >= 10 && place !== 'sen') {
-        checkAutoCarry();
-      } else if (ruleMode === 'free' && values[place] == 10 && place !== 'sen') {
-        triggerWarning();
-      }
-      updateChart(); 
-    }
-  } else {
-    if (values[place] > 0) {
-      values[place]--; updateChart();
-    } else {
-      if (ruleMode === 'normal') return; 
-      
-      // アニメーションなしで即座にくりさがりを反映
-      if (place === 'ichi' && values.juu > 0) { 
-        values.juu--; values.ichi += 10; updateChart(); 
-        showOverlayText('ichi', "くりさがり！"); speakText("くりさがり！"); 
-      } else if (place === 'juu' && values.hyaku > 0) { 
-        values.hyaku--; values.juu += 10; updateChart(); 
-        showOverlayText('juu', "くりさがり！"); speakText("くりさがり！"); 
-      } else if (place === 'hyaku' && values.sen > 0) { 
-        values.sen--; values.hyaku += 10; updateChart(); 
-        showOverlayText('hyaku', "くりさがり！"); speakText("くりさがり！"); 
-      }
-    }
-  }
-}
-
-// --- ドラッグ＆ドロップ ---
+let values = Array(16).fill(0);
+values[0] = 5;
+let visibleCount = 4;
+let displayMode = 'A'; // A=実物タイル B=数字カード C=赤ドット
+let ruleMode = 'normal'; // normal=自動まとめ free=自分でまとめる
+let isSoundOn = true;
+let isReadingVisible = true;
 let dragData = null;
 let overlayEl = null;
+let aggregateState = null;
+let bundleMode = 'build';
+let historyStack = [];
+let alertTimer = null;
+let audioCtx = null;
 
-function startDrag(e, type, place) {
-  e.preventDefault();
-  if (type === 'single' && values[place] <= 0) return;
-  if (type === 'palette' && place === 'sen' && values.sen >= 9) return;
+// =========================
+// 2. 基本ユーティリティ
+// =========================
+function maxAllowedExp(){ return displayMode === 'A' ? MAX_EXP_TILE : MAX_EXP_CARD; }
+function colWidth(exp){
+  if(displayMode === 'A') return TILE_WIDTHS[exp];
+  if(displayMode === 'C') return DOT_COLUMN_WIDTH;
+  return CARD_COLUMN_WIDTH;
+}
+function placeColor(exp){ return COLOR_CYCLE[exp % 4]; }
+function placeDef(exp){ return PLACE_DEFS[exp]; }
 
-  playSound('drag');
-  if (type === 'single') { values[place]--; } 
-  else if (type === 'pack') { values[place] -= 10; }
-  updateChart();
-  
-  dragData = { type, place, startX: e.clientX, startY: e.clientY };
-  
-  overlayEl = document.createElement('div');
-  overlayEl.className = 'drag-overlay';
-  overlayEl.style.left = e.clientX + 'px'; overlayEl.style.top = e.clientY + 'px';
-  
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  if (type === 'pack') {
-    svg.setAttribute('width', '110'); svg.setAttribute('height', '140');
-    const dummyCoords = [{x:10, y:10}, {x:90, y:120}];
-    createDynamicRedPack(svg, place, dummyCoords, 2);
-    if(displayMode==='A') {
-      if(place==='ichi') for(let i=0;i<10;i++) drawIchiSingle(svg, 50, 115-i*8, U_IN);
-      if(place==='juu') for(let i=0;i<10;i++) drawJuuSingle(svg, 20+i*6, 65, U_IN);
-      if(place==='hyaku') {
-        for(let i=0;i<10;i++) drawHyakuSingle(svg, 20+i*4, 100-i*4, U_IN);
-      }
-    } else {
-      const cfg = cardConfigs[place];
-      for(let i=0;i<10;i++) drawCardSingle(svg, 15+Math.floor(i/5)*(cfg.w+4), 110-(i%5)*(cfg.h+3), place);
+function pow10BigInt(exp){ return 10n ** BigInt(exp); }
+function totalValue(){
+  // 「まとめて考える」の途中でも、表している数量そのものは変えない。
+  if(aggregateState){
+    if(aggregateState.kind==='build' && (aggregateState.stage==='loaded' || aggregateState.stage==='moving')){
+      return BigInt(aggregateState.quantity) * pow10BigInt(aggregateState.baseExp);
     }
-  } else {
-    svg.setAttribute('width', '80'); svg.setAttribute('height', '80');
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    if (displayMode === 'A') {
-      if(place==='ichi') drawIchiSingle(g, 40, 40, U_IN*1.2);
-      if(place==='juu') drawJuuSingle(g, 40, 40, U_IN);
-      if(place==='hyaku') drawHyakuSingle(g, 40, 40, U_IN);
-      if(place==='sen') drawSenSingle(g, 35, 45, U_IN);
-    } else {
-      const cfg = cardConfigs[place];
-      drawCardSingle(g, 40 - cfg.w/2, 40 - cfg.h/2, place);
+    if(aggregateState.kind==='gather' && (aggregateState.stage==='ready' || aggregateState.stage==='moving' || aggregateState.stage==='gathered')){
+      return BigInt(aggregateState.source);
     }
-    svg.appendChild(g);
   }
-  overlayEl.appendChild(svg);
+  let total = 0n;
+  for(let i=0;i<values.length;i++) total += BigInt(values[i]) * pow10BigInt(i);
+  return total;
+}
+function formatBigInt(n){ return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+const KANJI_DIGITS = ['零','一','二','三','四','五','六','七','八','九'];
+const BIG_UNITS = ['','万','億','兆'];
+function groupToKanji(num){
+  if(num === 0) return '';
+  const th = Math.floor(num/1000);
+  const hu = Math.floor((num%1000)/100);
+  const te = Math.floor((num%100)/10);
+  const on = num%10;
+  let s = '';
+  if(th) s += (th===1?'':KANJI_DIGITS[th]) + '千';
+  if(hu) s += (hu===1?'':KANJI_DIGITS[hu]) + '百';
+  if(te) s += (te===1?'':KANJI_DIGITS[te]) + '十';
+  if(on) s += KANJI_DIGITS[on];
+  return s;
+}
+function numberToJapaneseKanji(n){
+  if(n === 0n) return '零';
+  const groups = [];
+  let x = n;
+  while(x > 0n){ groups.push(Number(x % 10000n)); x /= 10000n; }
+  let s = '';
+  for(let i=groups.length-1;i>=0;i--){
+    if(groups[i] !== 0) s += groupToKanji(groups[i]) + (BIG_UNITS[i] || '');
+  }
+  return s;
+}
+
+function speakText(text){
+  if(!('speechSynthesis' in window)) { showAlert('このブラウザでは読み上げを使えません。'); return; }
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP';
+    u.rate = 1.05;
+    u.pitch = 1.05;
+    setTimeout(()=>window.speechSynthesis.speak(u),35);
+  }catch(e){}
+}
+function initAudio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playSound(type){
+  if(!isSoundOn) return;
+  try{
+    initAudio();
+    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    const now=audioCtx.currentTime;
+    if(type==='click'){
+      osc.frequency.setValueAtTime(560,now); osc.frequency.exponentialRampToValueAtTime(790,now+.07);
+      gain.gain.setValueAtTime(.08,now); gain.gain.linearRampToValueAtTime(0,now+.08); osc.start(); osc.stop(now+.08);
+    }else if(type==='drag'){
+      osc.frequency.setValueAtTime(390,now); osc.frequency.exponentialRampToValueAtTime(510,now+.1);
+      gain.gain.setValueAtTime(.11,now); gain.gain.linearRampToValueAtTime(0,now+.1); osc.start(); osc.stop(now+.1);
+    }else if(type==='trash'){
+      osc.type='triangle'; osc.frequency.setValueAtTime(290,now); osc.frequency.linearRampToValueAtTime(90,now+.15);
+      gain.gain.setValueAtTime(.14,now); gain.gain.linearRampToValueAtTime(0,now+.15); osc.start(); osc.stop(now+.15);
+    }
+  }catch(e){}
+}
+
+function showAlert(message, ms=2600){
+  const el=document.getElementById('alert-box');
+  el.textContent=message; el.classList.add('show');
+  if(alertTimer) clearTimeout(alertTimer);
+  alertTimer=setTimeout(()=>el.classList.remove('show'),ms);
+}
+function triggerWarning(){
+  const message='１つの位に２つの数字は入らないよ！どうする？';
+  showAlert(message,3500);
+  speakText(message);
+}
+function showOverlayText(exp,text){
+  const container=document.getElementById('area-p'+exp);
+  if(!container) return;
+  const div=document.createElement('div'); div.className='carry-popup'; div.textContent=text;
+  container.appendChild(div); setTimeout(()=>div.remove(),1150);
+  if(text==='くりあがり！' || text==='くりさがり！') speakText(text);
+}
+
+function captureState(){
+  return {
+    values:[...values], visibleCount, displayMode, ruleMode,
+    aggregateState: aggregateState ? {...aggregateState} : null,
+    bundleMode
+  };
+}
+function restoreState(s){
+  values=[...s.values]; visibleCount=s.visibleCount; displayMode=s.displayMode; ruleMode=s.ruleMode;
+  aggregateState=s.aggregateState ? {...s.aggregateState} : null;
+  bundleMode=s.bundleMode || bundleMode;
+  syncBundleModeUI(); syncModeButtons(); renderAll();
+}
+function pushHistoryState(state){
+  historyStack.push(state);
+  if(historyStack.length>60) historyStack.shift();
+  updateUndoButton();
+}
+function pushHistory(){ pushHistoryState(captureState()); }
+function updateUndoButton(){ document.getElementById('undo-btn').disabled = historyStack.length===0; }
+function undo(){
+  if(!historyStack.length) return;
+  const prev=historyStack.pop();
+  restoreState(prev); updateUndoButton(); playSound('click');
+}
+function cancelAggregateSilently(){
+  if(aggregateState) aggregateState=null;
+  document.getElementById('bundle-move-btn')?.classList.remove('show');
+  document.getElementById('gather-move-btn')?.classList.remove('show');
+}
+
+// =========================
+// 3. SVG描画
+// =========================
+const U_IN=5.5, U_PAL=5.0, FC='#f5c542', SC='#c8960a', SC5='#7a5500';
+function svgEl(tag,attrs={}){
+  const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v)); return el;
+}
+function sq(svg,x,y,u,strokeW=.8){ svg.appendChild(svgEl('rect',{x,y,width:u,height:u,fill:FC,stroke:SC,'stroke-width':strokeW,rx:.6})); }
+function drawIchiSingle(svg,cx,cy,u){ sq(svg,cx-u/2,cy-u/2,u,1); }
+function drawJuuSingle(svg,cx,cy,u){
+  const G=u*.15,S=u+G,totalH=10*u+9*G,ox=cx-u/2,oy=cy-totalH/2;
+  for(let i=0;i<10;i++) sq(svg,ox,oy+i*S,u,.6);
+  svg.appendChild(svgEl('line',{x1:ox-1,x2:ox+u+1,y1:oy+5*S-G/2,y2:oy+5*S-G/2,stroke:SC5,'stroke-width':1.2}));
+  svg.appendChild(svgEl('rect',{x:ox-1,y:oy-1,width:u+2,height:totalH+2,fill:'none',stroke:SC,'stroke-width':.8,rx:1}));
+}
+function drawHyakuSingle(svg,cx,cy,u){
+  const G=u*.15,S=u+G,W=10*u+9*G,H=W,ox=cx-W/2,oy=cy-H/2;
+  for(let r=0;r<10;r++) for(let c=0;c<10;c++) sq(svg,ox+c*S,oy+r*S,u,.4);
+  svg.appendChild(svgEl('line',{x1:ox+5*S-G/2,x2:ox+5*S-G/2,y1:oy-1,y2:oy+H+1,stroke:SC5,'stroke-width':1}));
+  svg.appendChild(svgEl('line',{x1:ox-1,x2:ox+W+1,y1:oy+5*S-G/2,y2:oy+5*S-G/2,stroke:SC5,'stroke-width':1}));
+  svg.appendChild(svgEl('rect',{x:ox-1,y:oy-1,width:W+2,height:H+2,fill:'none',stroke:SC,'stroke-width':1,rx:1.5}));
+}
+function drawSenSingle(svg,cx,cy,u,sheets=10){
+  const G=u*.15,S=u+G,W=10*u+9*G,H=W,OX=u*.4,OY=u*.4;
+  for(let k=sheets-1;k>=0;k--){
+    const ox=cx-W/2+k*OX, oy=cy-H/2-k*OY;
+    if(k>0) svg.appendChild(svgEl('rect',{x:ox,y:oy,width:W,height:H,fill:k%2===0?'#f7d060':'#eabc30',stroke:SC,'stroke-width':.5,rx:.8}));
+    else{
+      for(let r=0;r<10;r++) for(let c=0;c<10;c++) sq(svg,ox+c*S,oy+r*S,u,.4);
+      svg.appendChild(svgEl('line',{x1:ox+5*S-G/2,x2:ox+5*S-G/2,y1:oy-1,y2:oy+H+1,stroke:SC5,'stroke-width':1}));
+      svg.appendChild(svgEl('line',{x1:ox-1,x2:ox+W+1,y1:oy+5*S-G/2,y2:oy+5*S-G/2,stroke:SC5,'stroke-width':1}));
+    }
+  }
+  const TW=4,tape='#c05010',op=.6,frontOx=cx-W/2,frontOy=cy-H/2,backOx=frontOx+(sheets-1)*OX,backOy=frontOy-(sheets-1)*OY,midY=frontOy+H/2,midX=frontOx+W/2;
+  const poly=p=>svg.appendChild(svgEl('polygon',{points:p.map(a=>a.join(',')).join(' '),fill:tape,opacity:op}));
+  poly([[frontOx,midY-TW/2],[frontOx+W,midY-TW/2],[frontOx+W,midY+TW/2],[frontOx,midY+TW/2]]);
+  poly([[frontOx+W,midY-TW/2],[backOx+W,backOy+H/2-TW/2],[backOx+W,backOy+H/2+TW/2],[frontOx+W,midY+TW/2]]);
+  poly([[midX-TW/2,frontOy],[backOx+W/2-TW/2,backOy],[backOx+W/2+TW/2,backOy],[midX+TW/2,frontOy]]);
+  poly([[midX-TW/2,frontOy],[midX+TW/2,frontOy],[midX+TW/2,frontOy+H],[midX-TW/2,frontOy+H]]);
+}
+
+function cardDims(exp,scale=1){
+  const label=placeDef(exp).short;
+  const baseW=Math.min(84,Math.max(34,22+label.length*13));
+  return {w:baseW*scale,h:27*scale,font:Math.max(10,14*scale)};
+}
+function drawCardSingle(svg,x,y,exp,scale=1){
+  const color=placeColor(exp), d=cardDims(exp,scale);
+  svg.appendChild(svgEl('rect',{x,y,width:d.w,height:d.h,fill:color.bg,stroke:color.stroke,'stroke-width':1.7*scale,rx:4*scale}));
+  const t=svgEl('text',{x:x+d.w/2,y:y+d.h/2+4.5*scale,'text-anchor':'middle','font-size':d.font,'font-weight':'800',fill:color.text});
+  t.textContent=placeDef(exp).short; svg.appendChild(t); return d;
+}
+
+// 赤ドットは、どの位でも色・大きさを完全に同じにする。
+// 「同じ数字でも、置かれた位によって表す量が変わる」ことを見るための表示。
+const DOT_RADIUS = 10.5;
+const DOT_FILL = '#e53935';
+const DOT_STROKE = '#b71c1c';
+function drawDotSingle(svg,cx,cy,scale=1){
+  svg.appendChild(svgEl('circle',{
+    cx,cy,r:DOT_RADIUS*scale,fill:DOT_FILL,stroke:DOT_STROKE,'stroke-width':2*scale
+  }));
+}
+function renderDots(exp,svg,count){
+  svg.innerHTML='';
+  if(count===0) return;
+
+  // 1〜10個は「縦5個 × 横2列」。
+  // 自分でまとめるモードで11〜19個になった場合も、横には広げず
+  // そのまま下へもう1段（最大10行×2列）続ける。
+  const diam=DOT_RADIUS*2;
+  const gapX=6;
+  const gapY=5;
+  const colStep=diam+gapX;
+  const rowStep=diam+gapY;
+  const blockGap=6;
+  const totalW=diam*2+gapX;
+  const firstRows=Math.min(5,count);
+  const secondRows=count>10 ? Math.min(5,count-10) : 0;
+  const totalH=firstRows*diam + Math.max(0,firstRows-1)*gapY
+    + (secondRows ? blockGap + secondRows*diam + Math.max(0,secondRows-1)*gapY : 0);
+  const startX=(DOT_COLUMN_WIDTH-totalW)/2+DOT_RADIUS;
+  const startY=(DOT_AREA_H-totalH)/2+DOT_RADIUS;
+
+  for(let i=0;i<count;i++){
+    const block=Math.floor(i/10);
+    const within=i%10;
+    const col=Math.floor(within/5);
+    const row=within%5 + block*5;
+    const y=startY + row*rowStep + (block?blockGap:0);
+    drawDotSingle(svg,startX+col*colStep,y);
+  }
+}
+
+function addFrame(group,bounds,padding=5){
+  const r=svgEl('rect',{x:bounds.x-padding,y:bounds.y-padding,width:bounds.w+padding*2,height:bounds.h+padding*2,fill:'rgba(255,0,0,.025)',stroke:'#e53935','stroke-width':2,'stroke-dasharray':'5,3',rx:5});
+  group.insertBefore(r,group.firstChild); return r;
+}
+function makeClickablePack(svg,exp,drawItems,bounds){
+  const g=svgEl('g',{'class':'clickable-pack'}); svg.appendChild(g); drawItems(g); addFrame(g,bounds,5);
+  g.addEventListener('pointerdown',e=>startDrag(e,'pack',exp)); return g;
+}
+
+function renderTile(exp,svg,count){
+  svg.innerHTML=''; if(count===0) return;
+  if(exp===0){
+    const u=U_IN,S=u*1.35,hasPack=count>=10;
+    if(hasPack){
+      const bounds={x:31,y:300-9*S-u/2,w:8,h:9*S+u};
+      makeClickablePack(svg,exp,g=>{for(let i=0;i<10;i++) drawIchiSingle(g,35,300-i*S,u)},bounds);
+    }
+    const start=hasPack?10:0;
+    for(let i=start;i<count;i++){
+      const idx=i-start,cx=108,cy=300-idx*S,g=svgEl('g',{'class':'clickable-tile'});
+      g.addEventListener('pointerdown',e=>startDrag(e,'single',exp)); drawIchiSingle(g,cx,cy,u); svg.appendChild(g);
+    }
+  }else if(exp===1){
+    const u=U_IN,stickW=u+2,spacing=4,totalW10=10*stickW+9*spacing,hasPack=count>=10;
+    if(hasPack){
+      const startX=90-totalW10/2,bounds={x:startX-2,y:75,w:totalW10+4,h:70};
+      makeClickablePack(svg,exp,g=>{for(let i=0;i<10;i++) drawJuuSingle(g,startX+i*(stickW+spacing)+stickW/2,110,u)},bounds);
+    }
+    const start=hasPack?10:0,rem=count-start;
+    const currentW=Math.max(1,rem)*stickW+Math.max(0,rem-1)*spacing,base=90-currentW/2;
+    for(let i=start;i<count;i++){
+      const idx=i-start,g=svgEl('g',{'class':'clickable-tile'}); g.addEventListener('pointerdown',e=>startDrag(e,'single',exp));
+      drawJuuSingle(g,base+idx*(stickW+spacing)+stickW/2,255,u); svg.appendChild(g);
+    }
+  }else if(exp===2){
+    const u=U_IN,step=3.5,G=u*.15,W=10*u+9*G,H=W,hasPack=count>=10,baseCx=94,baseCy=122;
+    if(hasPack){
+      const bounds={x:baseCx-W/2-2,y:baseCy-9*step-H/2-2,w:W+9*step+4,h:H+9*step+4};
+      makeClickablePack(svg,exp,g=>{for(let i=0;i<10;i++) drawHyakuSingle(g,baseCx+i*step,baseCy-i*step,u)},bounds);
+    }
+    const start=hasPack?10:0;
+    for(let i=start;i<count;i++){
+      const idx=i-start,g=svgEl('g',{'class':'clickable-tile'}); g.addEventListener('pointerdown',e=>startDrag(e,'single',exp));
+      drawHyakuSingle(g,88+idx*step,276-idx*step,u); svg.appendChild(g);
+    }
+  }else if(exp===3){
+    const u=U_IN,stepX=40,stepY=44;
+    for(let i=0;i<count;i++){
+      const row=Math.floor(i/3),col=i%3,cx=65+col*stepX+row*12,cy=90+row*stepY-col*6,g=svgEl('g',{'class':'clickable-tile'});
+      g.addEventListener('pointerdown',e=>startDrag(e,'single',exp)); drawSenSingle(g,cx,cy,u); svg.appendChild(g);
+    }
+  }
+}
+
+function cardPositions(exp,count){
+  const d=cardDims(exp),gapX=6,gapY=6,totalW=2*d.w+gapX,startX=(CARD_COLUMN_WIDTH-totalW)/2;
+  const first=[],rest=[];
+  for(let i=0;i<Math.min(10,count);i++) first.push({x:startX+Math.floor(i/5)*(d.w+gapX),y:18+(i%5)*(d.h+gapY)});
+  for(let i=10;i<count;i++){const j=i-10;rest.push({x:startX+Math.floor(j/5)*(d.w+gapX),y:184+(j%5)*(d.h+gapY)});}
+  return {d,first,rest};
+}
+function renderCards(exp,svg,count){
+  svg.innerHTML=''; if(count===0) return;
+  const {d,first,rest}=cardPositions(exp,count),hasPack=count>=10 && exp<MAX_EXP_CARD;
+  if(hasPack){
+    const xs=first.map(p=>p.x),ys=first.map(p=>p.y),bounds={x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)+d.w-Math.min(...xs),h:Math.max(...ys)+d.h-Math.min(...ys)};
+    makeClickablePack(svg,exp,g=>first.forEach(p=>drawCardSingle(g,p.x,p.y,exp)),bounds);
+  }else{
+    first.forEach(p=>{const g=svgEl('g',{'class':'clickable-tile'});g.addEventListener('pointerdown',e=>startDrag(e,'single',exp));drawCardSingle(g,p.x,p.y,exp);svg.appendChild(g)});
+  }
+  rest.forEach(p=>{const g=svgEl('g',{'class':'clickable-tile'});g.addEventListener('pointerdown',e=>startDrag(e,'single',exp));drawCardSingle(g,p.x,p.y,exp);svg.appendChild(g)});
+}
+
+function renderAggregateCard(svg,exp,text,label='いったん同じ部屋へ'){
+  svg.innerHTML='';
+  const color=placeColor(exp),w=CARD_COLUMN_WIDTH-24,h=72,x=(CARD_COLUMN_WIDTH-w)/2,y=124;
+  const font=Math.max(17,Math.min(32,Math.floor((w-18)/Math.max(1,text.length)*1.72)));
+  const g=svgEl('g',{'class':'aggregate-card'});
+  g.appendChild(svgEl('rect',{x,y,width:w,height:h,fill:color.bg,stroke:color.stroke,'stroke-width':3,rx:10}));
+  const t=svgEl('text',{x:x+w/2,y:y+45,'text-anchor':'middle','font-size':font,'font-weight':'900',fill:color.text});t.textContent=text;g.appendChild(t);
+  const lab=svgEl('text',{x:CARD_COLUMN_WIDTH/2,y:y+h+25,'text-anchor':'middle','font-size':13,'font-weight':'800',fill:'#555'});lab.textContent=label;g.appendChild(lab);
+  svg.appendChild(g);
+}
+function aggregateCardTextFor(exp){
+  if(!aggregateState || aggregateState.baseExp!==exp) return null;
+  if(aggregateState.kind==='build' && aggregateState.stage==='loaded') return {text:aggregateState.quantity,label:'いったん同じ部屋へ'};
+  if(aggregateState.kind==='gather' && aggregateState.stage==='gathered') return {text:aggregateState.quantity,label:placeDef(exp).short+'を'+aggregateState.quantity+'こ'};
+  return null;
+}
+
+// =========================
+// 4. 画面生成
+// =========================
+function renderAll(){
+  renderChart(); renderPalette(); renderPlaceControls(); updateTotalPanel(); updateBundlePlaceOptions(); updateUndoButton();
+  requestAnimationFrame(fitChartToViewport);
+}
+function renderChart(){
+  const chart=document.getElementById('main-chart'),strip=document.getElementById('group-strip'),canvas=document.getElementById('chart-canvas');
+  chart.innerHTML=''; strip.innerHTML='';
+  let totalW=0;
+  for(let exp=visibleCount-1;exp>=0;exp--){
+    const w=colWidth(exp); totalW+=w;
+    const color=placeColor(exp),col=document.createElement('div');
+    col.className='col'+(exp>0 && exp%4===0?' group-boundary':'')+(displayMode==='C'?' dot-col':''); col.dataset.exp=String(exp); col.id='col-p'+exp; col.style.width=w+'px'; col.style.background=color.bg;
+    const header=document.createElement('div'); header.className='col-header';
+    const small=document.createElement('div'); small.className='small-label'; small.textContent=placeDef(exp).short;
+    const name=document.createElement('div'); name.className='place-name'; name.textContent=placeDef(exp).name;
+    const buttons=document.createElement('div'); buttons.className='btn-container';
+    const plus=document.createElement('button'); plus.className='btn-calc'; plus.textContent='＋1'; plus.setAttribute('aria-label',placeDef(exp).name+'を1ふやす'); plus.onclick=()=>stepValue(exp,1);
+    const minus=document.createElement('button'); minus.className='btn-calc'; minus.textContent='−1'; minus.setAttribute('aria-label',placeDef(exp).name+'を1へらす'); minus.onclick=()=>stepValue(exp,-1);
+    buttons.append(plus,minus); header.append(small,name,buttons);
+    const area=document.createElement('div'); area.className='col-svg-area'; area.id='area-p'+exp;
+    const h=displayMode==='C'?DOT_AREA_H:AREA_H;
+    const svg=svgEl('svg',{id:'inner-p'+exp,width:w-8,height:h,viewBox:'0 0 '+w+' '+h}); area.appendChild(svg);
+    const aggCard=aggregateCardTextFor(exp);
+    if(aggCard) renderAggregateCard(svg,exp,aggCard.text,aggCard.label);
+    else if(displayMode==='A') renderTile(exp,svg,values[exp]);
+    else if(displayMode==='B') renderCards(exp,svg,values[exp]);
+    else renderDots(exp,svg,values[exp]);
+    const footer=document.createElement('div'); footer.className='col-footer';
+    footer.textContent=aggCard ? aggCard.text : values[exp];
+    col.append(header,area,footer); chart.appendChild(col);
+  }
+  canvas.style.width=totalW+'px';
+  renderGroupStrip(strip);
+}
+function renderGroupStrip(strip){
+  let exp=visibleCount-1;
+  while(exp>=0){
+    const group=Math.floor(exp/4),low=Math.max(group*4,0),high=exp;
+    let w=0;
+    for(let e=high;e>=low;e--) w+=colWidth(e);
+    const seg=document.createElement('div'); seg.className='group-segment'; seg.dataset.group=String(group); seg.style.width=w+'px'; seg.textContent=GROUP_NAMES[group]||''; strip.appendChild(seg);
+    exp=low-1;
+  }
+}
+function fitChartToViewport(){
+  const viewport=document.getElementById('chart-scroll');
+  const canvas=document.getElementById('chart-canvas');
+  const edge=document.getElementById('edge-place-controls');
+  const app=document.querySelector('.app');
+  if(!viewport || !canvas || !app) return;
+
+  // 少ない位のときは従来どおり中央の読みやすい幅を使う。
+  // 位が増えて縮小が必要になったときだけ、位取り表の領域を左右の余白へ広げる。
+  // 画面幅をほぼ使い切ってから、それでも入らない分だけ縮小する。
+  const gutter=44; // 左端の＋／−用。ボタン自体は縮小しない。
+  const appStyle=getComputedStyle(app);
+  const appContentW=Math.max(1,app.clientWidth
+    - parseFloat(appStyle.paddingLeft||0)
+    - parseFloat(appStyle.paddingRight||0));
+  const pageMargin=window.innerWidth<=650 ? 6 : 12;
+  const maxViewportW=Math.max(appContentW,document.documentElement.clientWidth-pageMargin*2);
+  const naturalW=parseFloat(canvas.style.width)||canvas.scrollWidth||1;
+  const requiredW=naturalW+gutter;
+
+  // 通常はアプリ幅。必要になった分だけ段階的に広げ、最大でほぼ画面いっぱい。
+  const viewportW=Math.min(maxViewportW,Math.max(appContentW,requiredW));
+  viewport.style.width=viewportW+'px';
+
+  const availableW=Math.max(1,viewportW-gutter);
+  const scale=Math.min(1,availableW/naturalW);
+  canvas.style.left=`calc(50% + ${gutter/2}px)`;
+  canvas.style.transform=`translateX(-50%) scale(${scale})`;
+
+  const naturalH=canvas.scrollHeight||0;
+  viewport.style.height=Math.ceil(naturalH*scale+8)+'px';
+  if(edge){
+    const scaledW=naturalW*scale;
+    const tableLeft=gutter+(availableW-scaledW)/2;
+    edge.style.left=Math.max(2,Math.round(tableLeft-40))+'px';
+    const strip=document.getElementById('group-strip');
+    const stripH=(strip?.offsetHeight||34)*scale;
+    edge.style.top=Math.max(2,Math.round(stripH+3))+'px';
+  }
+}
+window.addEventListener('resize',()=>requestAnimationFrame(fitChartToViewport));
+function renderPalette(){
+  const pal=document.getElementById('palette');
+  const title=document.getElementById('palette-title');
+  const scroll=document.getElementById('palette-scroll');
+  pal.innerHTML='';
+
+  // 赤ドットは念頭操作を中心にするため、ドラッグ用パレットを出さない。
+  if(displayMode==='C'){
+    title.textContent='赤ドットは「＋1」「−1」で操作します。どの位でも、ドットの色と大きさは同じです。';
+    scroll.style.display='none';
+    return;
+  }
+
+  scroll.style.display='block';
+  title.textContent=displayMode==='A'
+    ? '下のタイルを、同じ位の部屋へドラッグして1こ追加できます'
+    : '下のカードを、同じ位の部屋へドラッグして1こ追加できます';
+
+  for(let exp=visibleCount-1;exp>=0;exp--){
+    const item=document.createElement('div'); item.className='palette-item'; item.style.background=placeColor(exp).bg; item.dataset.exp=exp;
+    item.addEventListener('pointerdown',e=>startDrag(e,'palette',exp));
+    const label=document.createElement('span'); label.textContent=placeDef(exp).short+' のカード';
+    if(displayMode==='A') label.textContent=placeDef(exp).name;
+    const box=document.createElement('div'); box.className='palette-svg-container';
+    const svg=svgEl('svg',{width:96,height:68,viewBox:'0 0 96 68'});
+    if(displayMode==='A'){
+      if(exp===0) drawIchiSingle(svg,48,34,15);
+      if(exp===1) drawJuuSingle(svg,48,34,U_PAL);
+      if(exp===2) drawHyakuSingle(svg,48,34,U_PAL);
+      if(exp===3) drawSenSingle(svg,43,39,U_PAL);
+    }else{
+      const d=cardDims(exp,1.12); drawCardSingle(svg,(96-d.w)/2,(68-d.h)/2,exp,1.12);
+    }
+    box.appendChild(svg); item.append(label,box); pal.appendChild(item);
+  }
+}
+function renderPlaceControls(){
+  const max=maxAllowedExp()+1;
+  const remove=document.getElementById('remove-place-btn');
+  const add=document.getElementById('add-place-btn');
+  remove.disabled=visibleCount<=1;
+  add.disabled=visibleCount>=max;
+  add.title=visibleCount>=max?'これ以上は位を増やせません':'左に'+placeDef(visibleCount).name.replace('のくらい','の位')+'を追加';
+  remove.title=visibleCount<=1?'一の位は残します':'左端の'+placeDef(visibleCount-1).name.replace('のくらい','の位')+'を減らす';
+}
+function updateTotalPanel(){
+  const t=totalValue();
+  document.getElementById('total-number').textContent=t.toString();
+  const kanjiEl=document.getElementById('total-kanji');
+  kanjiEl.textContent=numberToJapaneseKanji(t);
+  kanjiEl.classList.toggle('hidden',!isReadingVisible);
+  const toggleBtn=document.getElementById('reading-toggle-btn');
+  if(toggleBtn) toggleBtn.textContent=isReadingVisible?'読み方をかくす':'読み方を表示';
+}
+function fillPlaceSelect(sel,oldValue,defaultExp){
+  if(!sel) return;
+  sel.innerHTML='';
+  for(let exp=0;exp<=MAX_EXP_CARD;exp++){
+    const o=document.createElement('option');o.value=exp;o.textContent=placeDef(exp).short;sel.appendChild(o);
+  }
+  const keep=Number.isFinite(oldValue)?oldValue:defaultExp;
+  sel.value=String(Math.min(MAX_EXP_CARD,Math.max(0,keep)));
+}
+function updateBundlePlaceOptions(){
+  const build=document.getElementById('bundle-place');
+  const gather=document.getElementById('gather-place');
+  fillPlaceSelect(build,Number(build?.value||3),3);
+  fillPlaceSelect(gather,Number(gather?.value||2),2);
+}
+function syncBundleModeUI(){
+  const build=bundleMode==='build';
+  document.getElementById('bundle-mode-build')?.classList.toggle('active',build);
+  document.getElementById('bundle-mode-gather')?.classList.toggle('active',!build);
+  document.getElementById('bundle-build-panel')?.classList.toggle('active',build);
+  document.getElementById('bundle-gather-panel')?.classList.toggle('active',!build);
+}
+function setBundleMode(mode){
+  if(mode!== 'build' && mode!=='gather') return;
+  cancelAggregateSilently();
+  bundleMode=mode;
+  syncBundleModeUI();
+  document.getElementById('bundle-equation').textContent=mode==='build'
+    ? '例：1000 × 345 → 345000'
+    : '例：38900は100をいくつ集めた数？';
+  playSound('click');
+  renderAll();
+}
+function syncModeButtons(){
+  const rule=document.getElementById('rule-toggle-btn'),mode=document.getElementById('mode-toggle-btn');
+  if(ruleMode==='normal'){
+    rule.className='btn-toggle rule-normal';
+    rule.textContent='自動でまとめる（10こ→1こ）';
+  }else{
+    rule.className='btn-toggle rule-free';
+    rule.textContent=displayMode==='C'?'自分で考える（10こでお知らせ）':'自分でまとめる（10こをドラッグ）';
+  }
+  if(displayMode==='A'){mode.className='btn-toggle mode-a';mode.textContent='実物タイル'}
+  else if(displayMode==='B'){mode.className='btn-toggle mode-b';mode.textContent='数字カード'}
+  else{mode.className='btn-toggle mode-c';mode.textContent='赤ドット'}
+}
+
+// =========================
+// 5. 位・値の操作
+// =========================
+function ensureVisible(exp){ if(exp+1>visibleCount) visibleCount=exp+1; }
+function changeVisiblePlaces(dir){
+  cancelAggregateSilently();
+  const max=maxAllowedExp()+1;
+  if(dir>0){
+    if(visibleCount>=max){
+      showAlert(displayMode==='A'?'実物タイルは千の位までです。数字カードにすると千兆まで増やせます。':'千兆の位が最大です。'); return;
+    }
+    pushHistory(); visibleCount++; playSound('click'); renderAll();
+  }else{
+    if(visibleCount<=1) return;
+    const highest=visibleCount-1;
+    if(values[highest]!==0){ showAlert(placeDef(highest).name+'に数字があるので、まだ消せません。'); return; }
+    pushHistory(); visibleCount--; playSound('click'); renderAll();
+  }
+}
+function checkAutoCarry(){
+  if(ruleMode!=='normal') return;
+  const limit=maxAllowedExp();
+  for(let exp=0;exp<=limit;exp++){
+    while(values[exp]>=10){
+      if(exp===limit){ values[exp]=9; showAlert('このモードで表せる一番大きい位です。'); break; }
+      values[exp]-=10; values[exp+1]++;
+      if(exp+1>=visibleCount) ensureVisible(exp+1);
+      const target=exp+1;
+      requestAnimationFrame(()=>showOverlayText(target,'くりあがり！'));
+    }
+  }
+}
+function canIncrement(exp){
+  if(exp>maxAllowedExp()) return false;
+  if(totalValue() + pow10BigInt(exp) > MAX_TOTAL) return false;
+  if(exp===maxAllowedExp() && values[exp]>=9) return false;
+  if(ruleMode==='free' && values[exp]>=19) return false;
+  return true;
+}
+function stepValue(exp,dir){
+  let historySaved=false;
+  if(aggregateState){ pushHistory(); historySaved=true; cancelAggregateSilently(); }
+  if(dir===1){
+    if(!canIncrement(exp)){ showAlert(exp===maxAllowedExp()?'このモードで表せる一番大きい数をこえます。':'この部屋にはこれ以上置けません。'); return; }
+    if(!historySaved) pushHistory(); values[exp]++; playSound('click');
+    if(ruleMode==='normal') checkAutoCarry();
+    else if(values[exp]===10) triggerWarning();
+    renderAll();
+  }else{
+    if(values[exp]>0){ if(!historySaved) pushHistory(); values[exp]--; playSound('click'); renderAll(); return; }
+    if(ruleMode==='free' && exp<maxAllowedExp() && values[exp+1]>0){
+      if(exp+1>=visibleCount){ showAlert('左の位を表示してから、くり下がりをしてね。'); return; }
+      if(!historySaved) pushHistory(); values[exp+1]--; values[exp]+=10; playSound('click'); renderAll();
+      requestAnimationFrame(()=>showOverlayText(exp,'くりさがり！')); return;
+    }
+  }
+}
+function toggleRuleMode(){
+  pushHistory(); ruleMode=ruleMode==='normal'?'free':'normal'; playSound('click');
+  if(ruleMode==='normal') checkAutoCarry(); syncModeButtons(); renderAll();
+}
+function toggleDisplayMode(){
+  cancelAggregateSilently();
+  if(displayMode==='A'){
+    pushHistory(); displayMode='B';
+  }else if(displayMode==='B'){
+    pushHistory(); displayMode='C';
+  }else{
+    const highHasValue=values.slice(4).some(v=>v!==0);
+    if(highHasValue){
+      // タイルへは戻せないので、カードへ戻して数を失わないようにする。
+      pushHistory(); displayMode='B';
+      showAlert('万以上の位に数字があるので、実物タイルには切り替えられません。数字カードに戻しました。',3500);
+    }else{
+      pushHistory(); displayMode='A'; visibleCount=Math.min(visibleCount,4);
+    }
+  }
+  playSound('click'); syncModeButtons(); renderAll();
+}
+function toggleSound(){
+  isSoundOn=!isSoundOn;
+  const b=document.getElementById('sound-btn'); b.textContent=isSoundOn?'効果音 🔊':'効果音 🔇'; b.setAttribute('aria-pressed',String(isSoundOn));
+  if(isSoundOn) playSound('click');
+}
+function toggleReadingDisplay(){
+  isReadingVisible=!isReadingVisible;
+  updateTotalPanel();
+  playSound('click');
+}
+function readTotal(){
+  const t=totalValue(),kanji=numberToJapaneseKanji(t); speakText(kanji); playSound('click');
+}
+function resetAll(){
+  if(!values.some(v=>v!==0) && !aggregateState) return;
+  if(!window.confirm('位取り表を全部0にもどしますか？')) return;
+  pushHistory(); values.fill(0); aggregateState=null; document.getElementById('bundle-move-btn')?.classList.remove('show'); document.getElementById('gather-move-btn')?.classList.remove('show'); renderAll(); playSound('trash');
+}
+
+// =========================
+// 6. ドラッグ＆ドロップ
+//    pointerdownした瞬間に元の場所から取り出す。
+//    無効な場所へ落とした場合は元へ戻す。
+// =========================
+function startDrag(e,type,exp){
+  if(displayMode==='C') return; // 赤ドットモードではドラッグ操作を使わない
+  if(e.button!==undefined && e.button!==0) return;
+  if(aggregateState){ showAlert('「移動！」を終えるか、別の操作でまとめて考える状態を解除してね。'); return; }
+  if(type==='single' && values[exp]<=0) return;
+  if(type==='pack' && values[exp]<10) return;
+  if(type==='palette' && !canIncrement(exp)) return;
+  e.preventDefault(); playSound('drag');
+
+  const beforeState=captureState();
+  dragData={type,exp,pointerId:e.pointerId,beforeState,removed:false};
+  overlayEl=buildDragOverlay(type,exp);
+  overlayEl.style.left=e.clientX+'px'; overlayEl.style.top=e.clientY+'px';
   document.body.appendChild(overlayEl);
-  
-  document.addEventListener('pointermove', onDragMove);
-  document.addEventListener('pointerup', onDragUp);
-}
 
-function onDragMove(e) {
-  if (!overlayEl) return;
-  overlayEl.style.left = e.clientX + 'px'; overlayEl.style.top = e.clientY + 'px';
-}
-
-function onDragUp(e) {
-  document.removeEventListener('pointermove', onDragMove);
-  document.removeEventListener('pointerup', onDragUp);
-  
-  // スマホブラウザでの「指の真下の要素」誤認バグを完全に回避するため、
-  // 判定を行う一瞬だけドラッグ中表示（overlayEl）を非表示にして下の要素を透過検知させます。
-  if (overlayEl) {
-    overlayEl.style.display = 'none';
+  // 元版どおり、つかんだ瞬間に元の場所から消す／減らす。
+  if(type==='single'){
+    values[exp]--; dragData.removed=true; renderAll();
+  }else if(type==='pack'){
+    values[exp]-=10; dragData.removed=true; renderAll();
   }
-  
-  const hitEl = document.elementFromPoint(e.clientX, e.clientY);
-  const col = hitEl ? hitEl.closest('.col') : null;
-  const targetPlace = col ? col.getAttribute('data-place') : null;
-  
-  // 判定完了後にドラッグ表示要素を完全に消去
-  if (overlayEl) { overlayEl.remove(); overlayEl = null; }
-  
-  let success = false;
-  
-  if (dragData.type === 'pack') {
-    const currentIdx = order.indexOf(dragData.place);
-    const leftPlace = order[currentIdx + 1];
-    
-    if (targetPlace === leftPlace) {
-      if (leftPlace === 'sen' && values.sen >= 9) {
-        // ロック
-      } else if (values[leftPlace] < 19) {
-        success = true;
-        showOverlayText(leftPlace, "くりあがり！"); speakText("くりあがり！");
-        
-        // 即座にくりあがりを反映
-        values[leftPlace]++;
-        if (values[leftPlace] === 10 && leftPlace !== 'sen' && ruleMode === 'free') triggerWarning();
-      }
-    } else if (targetPlace === dragData.place) {
-      values[dragData.place] += 10; success = true;
+
+  if(type!=='palette') document.getElementById('trash-zone').classList.add('active');
+  markDragTargets(type,exp);
+  document.addEventListener('pointermove',onDragMove,{passive:false});
+  document.addEventListener('pointerup',onDragUp,{passive:false});
+  document.addEventListener('pointercancel',onDragCancel,{passive:false});
+}
+function buildDragOverlay(type,exp){
+  const wrap=document.createElement('div'); wrap.className='drag-overlay';
+  const svg=svgEl('svg',{width:190,height:180,viewBox:'0 0 190 180'});
+  if(type==='pack') drawPackGhost(svg,exp);
+  else if(displayMode==='A' && exp<=3){
+    const g=svgEl('g');
+    if(exp===0) drawIchiSingle(g,95,90,U_IN*1.5);
+    if(exp===1) drawJuuSingle(g,95,90,U_IN);
+    if(exp===2) drawHyakuSingle(g,95,90,U_IN);
+    if(exp===3) drawSenSingle(g,90,95,U_IN);
+    svg.appendChild(g);
+  }else{
+    const d=cardDims(exp,1.35); drawCardSingle(svg,95-d.w/2,90-d.h/2,exp,1.35);
+  }
+  wrap.appendChild(svg); return wrap;
+}
+function drawPackGhost(svg,exp){
+  const g=svgEl('g'); svg.appendChild(g);
+  if(displayMode==='B'){
+    const d=cardDims(exp,.95),gap=5,startX=95-(2*d.w+gap)/2,startY=12,boxes=[];
+    for(let i=0;i<10;i++){
+      const x=startX+Math.floor(i/5)*(d.w+gap),y=startY+(i%5)*(d.h+5); drawCardSingle(g,x,y,exp,.95); boxes.push({x,y,w:d.w,h:d.h});
     }
-    if (!success) { values[dragData.place] += 10; playSound('trash'); }
-    else { playSound('click'); }
-
-  } else if (dragData.type === 'single') {
-    const currentIdx = order.indexOf(dragData.place);
-    const rightPlace = order[currentIdx - 1];
-    
-    if (targetPlace === rightPlace) {
-      if (ruleMode === 'normal') {
-        // 通常モードは下ろせない
-      } else if (values[rightPlace] <= 9) {
-        success = true;
-        showOverlayText(rightPlace, "くりさがり！"); speakText("くりさがり！");
-        
-        // 即座にくりさがりを反映
-        values[rightPlace] += 10;
-      }
-    } else if (targetPlace === dragData.place) {
-      if (dragData.place === 'sen' && values.sen >= 9) {
-        // ロック
-      } else {
-        values[dragData.place]++; success = true;
-      }
-    } else if (!col) {
-      success = true; 
+    const minX=Math.min(...boxes.map(b=>b.x)),minY=Math.min(...boxes.map(b=>b.y)),maxX=Math.max(...boxes.map(b=>b.x+b.w)),maxY=Math.max(...boxes.map(b=>b.y+b.h)); addFrame(g,{x:minX,y:minY,w:maxX-minX,h:maxY-minY},5);
+  }else if(exp===0){
+    const u=U_IN*1.2,boxes=[];for(let i=0;i<10;i++){const cx=95,cy=145-i*11;drawIchiSingle(g,cx,cy,u);boxes.push({x:cx-u/2,y:cy-u/2,w:u,h:u})}
+    const minX=Math.min(...boxes.map(b=>b.x)),minY=Math.min(...boxes.map(b=>b.y)),maxX=Math.max(...boxes.map(b=>b.x+b.w)),maxY=Math.max(...boxes.map(b=>b.y+b.h));
+    addFrame(g,{x:minX,y:minY,w:maxX-minX,h:maxY-minY},5);
+  }else if(exp===1){
+    const boxes=[];
+    for(let i=0;i<10;i++){
+      const cx=36+i*13,cy=90,u=U_IN*.75; drawJuuSingle(g,cx,cy,u);
+      const G=u*.15,totalH=10*u+9*G; boxes.push({x:cx-u/2-1,y:cy-totalH/2-1,w:u+2,h:totalH+2});
     }
-    
-    if (!success) { values[dragData.place]++; playSound('trash'); }
-    else if (targetPlace === dragData.place) { playSound('click'); }
-
-  } else if (dragData.type === 'palette') {
-    if (targetPlace === dragData.place) {
-      if (targetPlace === 'sen' && values.sen >= 9) {
-        playSound('trash');
-      } else if (values[targetPlace] < 19) {
-        values[targetPlace]++; success = true; playSound('click');
-      }
-    } else {
-      playSound('trash');
+    const minX=Math.min(...boxes.map(b=>b.x)),minY=Math.min(...boxes.map(b=>b.y)),maxX=Math.max(...boxes.map(b=>b.x+b.w)),maxY=Math.max(...boxes.map(b=>b.y+b.h));
+    addFrame(g,{x:minX,y:minY,w:maxX-minX,h:maxY-minY},5);
+  }else if(exp===2){
+    const boxes=[];
+    for(let i=0;i<10;i++){
+      const cx=63+i*5,cy=108-i*5,u=U_IN*.72,G=u*.15,W=10*u+9*G,H=W; drawHyakuSingle(g,cx,cy,u); boxes.push({x:cx-W/2-1,y:cy-H/2-1,w:W+2,h:H+2});
     }
+    const minX=Math.min(...boxes.map(b=>b.x)),minY=Math.min(...boxes.map(b=>b.y)),maxX=Math.max(...boxes.map(b=>b.x+b.w)),maxY=Math.max(...boxes.map(b=>b.y+b.h));
+    addFrame(g,{x:minX,y:minY,w:maxX-minX,h:maxY-minY},5);
   }
-  
-  if (ruleMode === 'normal') {
-    checkAutoCarry();
-  } else {
-    for(let k in values) {
-      if(k !== 'sen' && values[k] == 10) triggerWarning();
+}
+function markDragTargets(type,exp){
+  document.querySelectorAll('.col').forEach(c=>{
+    const t=Number(c.dataset.exp),valid=(type==='palette'&&t===exp)||(type==='pack'&&(t===exp||t===exp+1))||(type==='single'&&(t===exp||(ruleMode==='free'&&t===exp-1)));
+    c.classList.add(valid?'drag-valid':'drag-invalid');
+  });
+}
+function clearDragTargets(){ document.querySelectorAll('.col').forEach(c=>c.classList.remove('drag-valid','drag-invalid')); document.getElementById('trash-zone').classList.remove('active','drag-valid'); }
+function onDragMove(e){
+  if(!overlayEl) return; e.preventDefault(); overlayEl.style.left=e.clientX+'px'; overlayEl.style.top=e.clientY+'px';
+  const trash=document.getElementById('trash-zone'),r=trash.getBoundingClientRect();
+  trash.classList.toggle('drag-valid',trash.classList.contains('active')&&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom);
+}
+function finishDragListeners(){
+  document.removeEventListener('pointermove',onDragMove);document.removeEventListener('pointerup',onDragUp);document.removeEventListener('pointercancel',onDragCancel);
+  if(overlayEl){overlayEl.remove();overlayEl=null;} clearDragTargets();
+}
+function restoreDraggedItem(){
+  if(!dragData || !dragData.removed) return;
+  if(dragData.type==='single') values[dragData.exp]++;
+  else if(dragData.type==='pack') values[dragData.exp]+=10;
+}
+function onDragCancel(){
+  restoreDraggedItem();
+  finishDragListeners(); dragData=null; renderAll();
+}
+function onDragUp(e){
+  if(!dragData){finishDragListeners();return;}
+  e.preventDefault();
+  if(overlayEl) overlayEl.style.display='none';
+  const hit=document.elementFromPoint(e.clientX,e.clientY),trash=hit?hit.closest('#trash-zone'):null,col=hit?hit.closest('.col'):null,targetExp=col?Number(col.dataset.exp):null;
+  if(overlayEl) overlayEl.style.display='';
+  const {type,exp,beforeState}=dragData; let changed=false,restore=false;
+
+  if(trash && type!=='palette'){
+    // すでにpointerdownで取り出しているので、そのまま確定。
+    changed=true; playSound('trash');
+  }else if(type==='palette' && targetExp===exp){
+    if(canIncrement(exp)){
+      values[exp]++; changed=true; playSound('click');
+      if(ruleMode==='normal') checkAutoCarry();
+      else if(values[exp]===10) triggerWarning();
     }
+  }else if(type==='pack'){
+    if(targetExp===exp+1 && exp+1<=maxAllowedExp()){
+      values[exp+1]++; ensureVisible(exp+1); changed=true; playSound('click');
+      if(ruleMode==='free' && values[exp+1]===10) triggerWarning();
+      requestAnimationFrame(()=>showOverlayText(exp+1,'くりあがり！'));
+    }else if(targetExp===exp){
+      restore=true; changed=false; playSound('click');
+    }else restore=true;
+  }else if(type==='single'){
+    if(ruleMode==='free' && targetExp===exp-1 && exp>0){
+      values[exp-1]+=10; changed=true; playSound('click');
+      requestAnimationFrame(()=>showOverlayText(exp-1,'くりさがり！'));
+    }else if(targetExp===exp){
+      restore=true; changed=false; playSound('click');
+    }else restore=true;
   }
-  
-  updateChart();
-  dragData = null;
+
+  if(restore) restoreDraggedItem();
+  if(changed) pushHistoryState(beforeState);
+  finishDragListeners(); dragData=null;
+  renderAll();
 }
 
-function toggleRuleMode() {
-  playSound('click');
-  const btn = document.getElementById('rule-toggle-btn');
-  if (ruleMode === 'normal') {
-    ruleMode = 'free';
-    btn.className = 'btn-toggle rule-free';
-    btn.innerText = 'くり上がり・下がりモード（警告あり）';
-  } else {
-    ruleMode = 'normal';
-    btn.className = 'btn-toggle rule-normal';
-    btn.innerText = '0〜9制限モード（自動くりあがり）';
-    checkAutoCarry();
-  }
-  updateChart();
+// =========================
+// 7. 「まとめて考える」
+//    build : 1000を345こ → 345000
+//    gather: 38900は100を何こ？ → 389こ
+// =========================
+function loadAggregate(){
+  let q=document.getElementById('bundle-count').value.trim().replace(/[,，\s]/g,'');
+  const baseExp=Number(document.getElementById('bundle-place').value);
+  if(!/^\d+$/.test(q)){showAlert('集める個数は、0以上の整数で入れてください。');return;}
+  q=q.replace(/^0+(?=\d)/,'');
+  if(q==='0'){showAlert('1こ以上で試してみてください。');return;}
+  const highestExp=baseExp+q.length-1;
+  if(highestExp>MAX_EXP_CARD){showAlert('千兆の位をこえるので、この表では入りきりません。');return;}
+  pushHistory();
+  displayMode='B'; values.fill(0); visibleCount=Math.max(visibleCount,highestExp+1,baseExp+1);
+  aggregateState={kind:'build',baseExp,quantity:q,stage:'loaded'};
+  syncModeButtons();
+  document.getElementById('bundle-move-btn').classList.add('show');
+  document.getElementById('gather-move-btn')?.classList.remove('show');
+  const base=pow10BigInt(baseExp),result=base*BigInt(q);
+  document.getElementById('bundle-equation').textContent=placeDef(baseExp).short+' × '+q+' → '+result.toString();
+  renderAll();
+}
+function moveAggregateDigits(){
+  if(!aggregateState || aggregateState.kind!=='build' || aggregateState.stage!=='loaded') return;
+  const {baseExp,quantity}=aggregateState;
+  const highestExp=baseExp+quantity.length-1; visibleCount=Math.max(visibleCount,highestExp+1);
+  renderAll();
+  aggregateState.stage='moving';
+  document.getElementById('bundle-move-btn').classList.remove('show');
+  const source=document.getElementById('col-p'+baseExp); if(!source) return;
+  const sr=source.getBoundingClientRect(); const startX=sr.left+sr.width/2,startY=sr.top+180;
+  const chars=[...quantity];
+  chars.forEach((ch,index)=>{
+    const offset=chars.length-1-index,exp=baseExp+offset,target=document.getElementById('col-p'+exp);
+    if(!target) return;
+    const tr=target.getBoundingClientRect(),endX=tr.left+tr.width/2,endY=tr.top+180;
+    const fly=document.createElement('div');fly.className='flying-digit';fly.textContent=ch;fly.style.left=(startX-24+index*7)+'px';fly.style.top=(startY-24+index*3)+'px';document.body.appendChild(fly);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{fly.style.transform=`translate(${endX-(startX+index*7)}px,${endY-(startY+index*3)}px) scale(.86)`;fly.style.opacity='.82';}));
+    setTimeout(()=>fly.remove(),820);
+  });
+  setTimeout(()=>{
+    values.fill(0);
+    chars.forEach((ch,index)=>{const offset=chars.length-1-index;values[baseExp+offset]=Number(ch);});
+    aggregateState=null; renderAll();
+    const t=totalValue(); document.getElementById('bundle-equation').textContent=placeDef(baseExp).short+'を'+quantity+'こ → '+t.toString()+'（'+numberToJapaneseKanji(t)+'）';
+    showAlert('それぞれの数字が、正しい位へ移動しました。');
+    speakText(numberToJapaneseKanji(t));
+  },800);
 }
 
-function toggleDisplayMode() {
-  playSound('click');
-  const btn = document.getElementById('mode-toggle-btn');
-  if (displayMode === 'A') {
-    displayMode = 'B';
-    btn.className = 'btn-toggle mode-b';
-    btn.innerText = 'モードB（数字カード）';
-  } else {
-    displayMode = 'A';
-    btn.className = 'btn-toggle mode-a';
-    btn.innerText = 'モードA（実物タイル）';
+function setValuesFromNumberString(q){
+  values.fill(0);
+  const chars=[...q].reverse();
+  chars.forEach((ch,exp)=>{ if(exp<values.length) values[exp]=Number(ch); });
+}
+function loadGatherQuestion(){
+  let q=document.getElementById('gather-number').value.trim().replace(/[,，\s]/g,'');
+  const baseExp=Number(document.getElementById('gather-place').value);
+  if(!/^\d+$/.test(q)){showAlert('もとの数は、0以上の整数で入れてください。');return;}
+  q=q.replace(/^0+(?=\d)/,'');
+  if(q.length>16 || BigInt(q)>MAX_TOTAL){showAlert('千兆の位までの数を入れてください。');return;}
+  const base=pow10BigInt(baseExp),source=BigInt(q),quantity=source/base,remainder=source%base;
+  if(quantity===0n){showAlert(placeDef(baseExp).short+'は、この数の中に1こもありません。');}
+  pushHistory();
+  displayMode='B';
+  setValuesFromNumberString(q);
+  visibleCount=Math.max(visibleCount,q.length,baseExp+1);
+  aggregateState={kind:'gather',baseExp,source:q,quantity:quantity.toString(),remainder:remainder.toString(),stage:'ready'};
+  syncModeButtons();
+  document.getElementById('bundle-move-btn')?.classList.remove('show');
+  document.getElementById('gather-move-btn').classList.add('show');
+  const expr=q+'は'+placeDef(baseExp).short+'をいくつ集めた数？';
+  document.getElementById('bundle-equation').textContent=expr;
+  renderAll();
+}
+function gatherDigits(){
+  if(!aggregateState || aggregateState.kind!=='gather' || aggregateState.stage!=='ready') return;
+  const {baseExp,source,quantity,remainder}=aggregateState;
+  const srcChars=[...source];
+  const highestExp=srcChars.length-1;
+  aggregateState.stage='moving';
+  document.getElementById('gather-move-btn').classList.remove('show');
+
+  const target=document.getElementById('col-p'+baseExp);
+  if(!target) return;
+  const tr=target.getBoundingClientRect();
+  const quantityChars=[...quantity];
+  let movingIndex=0;
+  for(let exp=highestExp;exp>=baseExp;exp--){
+    const digit=values[exp];
+    const col=document.getElementById('col-p'+exp);
+    if(!col) continue;
+    const footer=col.querySelector('.col-footer');
+    const fr=(footer||col).getBoundingClientRect();
+    const startX=fr.left+fr.width/2, startY=fr.top+fr.height/2;
+    const targetOffset=(movingIndex-(quantityChars.length-1)/2)*16;
+    const endX=tr.left+tr.width/2+targetOffset, endY=tr.top+190;
+    const fly=document.createElement('div');
+    fly.className='flying-digit'; fly.textContent=String(digit);
+    fly.style.left=(startX-24)+'px'; fly.style.top=(startY-24)+'px';
+    document.body.appendChild(fly);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      fly.style.transform=`translate(${endX-startX}px,${endY-startY}px) scale(.72)`;
+      fly.style.opacity='.88';
+    }));
+    setTimeout(()=>fly.remove(),820);
+    movingIndex++;
   }
-  updateChart();
+
+  setTimeout(()=>{
+    const rem=BigInt(remainder);
+    values.fill(0);
+    if(rem>0n){
+      const remStr=rem.toString();
+      [...remStr].reverse().forEach((ch,exp)=>{ if(exp<baseExp) values[exp]=Number(ch); });
+    }
+    aggregateState.stage='gathered';
+    renderAll();
+    const unit=placeDef(baseExp).short;
+    if(rem===0n){
+      document.getElementById('bundle-equation').textContent=source+'は'+unit+'を'+quantity+'こ集めた数';
+      const msg=unit+'を'+quantity+'こ集めた数です。';
+      showAlert(msg,3600); speakText(msg);
+    }else{
+      document.getElementById('bundle-equation').textContent=source+' = '+unit+' × '+quantity+' ＋ '+remainder;
+      const msg=unit+'を'+quantity+'こ集めた数に、'+remainder+'を足した数です。';
+      showAlert(msg,4200); speakText(msg);
+    }
+  },820);
 }
 
-// 初回起動
-updateChart();
+// 初期表示
+syncBundleModeUI();
+syncModeButtons();
+renderAll();
 </script>
 </body>
 </html>

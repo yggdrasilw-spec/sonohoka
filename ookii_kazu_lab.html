@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大きい数ラボ｜教科書92〜105ページ v13 敵対レビュー強化版</title>
+<style>
+  :root{
+    --green:#2f855a; --green2:#3fa574; --greenSoft:#eaf7ef;
+    --blue:#2b6cb0; --blueSoft:#eaf2fb; --orange:#c56a13; --orangeSoft:#fff4e7;
+    --red:#c53030; --redSoft:#fff0f0; --ink:#25313b; --muted:#687681;
+    --line:#d9e0e5; --bg:#f7f7f3; --card:#fff; --shadow:0 4px 18px rgba(25,40,52,.08);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;line-height:1.6}
+  button,input,select{font:inherit}
+  button{touch-action:manipulation}
+  .app{min-height:100vh}
+  header{background:linear-gradient(135deg,#2f855a,#3fa574);color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:20;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+  .headInner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .titleWrap{min-width:240px;flex:1}
+  h1{font-size:1.25rem;margin:0;letter-spacing:.02em}
+  .subtitle{font-size:.78rem;opacity:.92}
+  .headTools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .topBtn{border:1px solid rgba(255,255,255,.65);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:7px 10px;cursor:pointer}
+  .topBtn[aria-pressed="true"]{background:#fff;color:var(--green)}
+  .shell{max-width:1100px;margin:0 auto;padding:14px}
+  .navCard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:var(--shadow);margin-bottom:12px}
+  .stageNav{display:grid;grid-template-columns:repeat(10,minmax(70px,1fr));gap:6px}
+  .stageBtn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 5px;cursor:pointer;color:var(--ink);min-height:54px}
+  .stageBtn .p{font-size:.69rem;color:var(--muted);display:block}
+  .stageBtn .n{font-size:.76rem;font-weight:700;display:block;line-height:1.25}
+  .stageBtn.active{border-color:var(--green);box-shadow:inset 0 0 0 2px var(--greenSoft);background:#fbfffc}
+  .stageBtn.done::after{content:"✓";display:inline-block;margin-left:4px;color:var(--green);font-weight:800}
+  .progressRow{display:flex;gap:10px;align-items:center;margin-top:9px;font-size:.82rem;color:var(--muted)}
+  .bar{height:8px;background:#edf1f3;border-radius:999px;overflow:hidden;flex:1}
+  .bar>span{display:block;height:100%;background:var(--green2);width:0;transition:width .25s}
+  main{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px;min-height:560px}
+  .stageHead{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px}
+  .stageHead h2{margin:0;font-size:1.2rem}
+  .stageHead .goal{font-size:.88rem;color:var(--muted);margin-top:3px;max-width:760px}
+  .pageBadge{background:var(--greenSoft);color:var(--green);border-radius:999px;padding:5px 10px;font-weight:700;font-size:.8rem;white-space:nowrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .grid2>* ,.grid3>*{min-width:0}
+  .panel{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+  .panel.soft{background:#fbfcfd}
+  .panel h3{margin:0 0 9px;font-size:1rem}
+  .prompt{font-size:1.1rem;font-weight:700;margin:8px 0 14px}
+  .bigNumber{font-size:2rem;font-weight:800;letter-spacing:.04em;text-align:center;margin:12px 0}
+  .numRead{text-align:center;color:var(--muted);font-size:.95rem;margin-top:-8px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .btn{border:none;border-radius:10px;padding:10px 15px;font-weight:700;cursor:pointer;min-height:44px}
+  .btn.primary{background:var(--blue);color:#fff}
+  .btn.green{background:var(--green);color:#fff}
+  .btn.orange{background:var(--orange);color:#fff}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .btn.danger{background:var(--redSoft);color:var(--red);border:1px solid #f2c9c9}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .answerInput{width:min(220px,100%);padding:9px 10px;border:2px solid #b8c3cb;border-radius:9px;font-size:1rem;background:#fff}
+  .answerInput:focus{outline:3px solid #d9ebff;border-color:var(--blue)}
+  .answerInput.ok{border-color:var(--green);background:var(--greenSoft)}
+  .answerInput.ng{border-color:var(--red);background:var(--redSoft)}
+  .feedback{min-height:30px;margin-top:10px;font-weight:700}
+  .feedback.ok{color:var(--green)} .feedback.ng{color:var(--red)} .feedback.info{color:var(--blue)}
+  .hint{display:none;margin-top:12px;padding:11px 12px;background:var(--orangeSoft);border-left:4px solid var(--orange);border-radius:8px;font-size:.92rem}
+  .hint.show{display:block}
+  .choices{display:flex;gap:8px;flex-wrap:wrap}
+  .choice{border:2px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;cursor:pointer;min-height:44px}
+  .choice.selected{border-color:var(--blue);background:var(--blueSoft)}
+  .choice.correct{border-color:var(--green);background:var(--greenSoft)}
+  .choice.wrong{border-color:var(--red);background:var(--redSoft)}
+  .miniNote{font-size:.82rem;color:var(--muted)}
+  .keyIdea{background:var(--greenSoft);border-left:4px solid var(--green);padding:10px 12px;border-radius:8px;margin:12px 0;font-weight:700}
+  .footerNav{display:flex;justify-content:space-between;gap:10px;margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+
+  /* place value */
+  .pvScroll{overflow-x:auto;padding-bottom:4px}
+  .pvTable{display:grid;grid-template-columns:repeat(9,minmax(74px,1fr));min-width:720px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .pvCell{border-right:1px solid var(--line);min-height:112px;padding:8px;text-align:center;background:#fff}
+  .pvCell:last-child{border-right:0}
+  .pvName{font-size:.72rem;color:var(--muted);min-height:35px}
+  .pvDigit{font-size:1.4rem;font-weight:800;margin:5px 0}
+  .pvCount{font-size:.78rem;color:var(--muted)}
+  .pvCell.hot{background:var(--orangeSoft)}
+  .bundleBtn{margin-top:5px;border:1px solid #e7c291;background:#fff8ef;color:#8b4c0c;border-radius:8px;padding:5px 6px;font-size:.74rem;cursor:pointer}
+  .tokenBox{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .token{border:1px solid #aab6be;background:#fff;border-radius:8px;padding:6px 8px;font-weight:700}
+  .tokenControls{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+  .smallBtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 6px;cursor:pointer;font-size:.82rem}
+
+  /* number line */
+  .numberlineWrap{overflow-x:auto}
+  .nlLearningGrid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(270px,.72fr);gap:12px;align-items:start}
+  .nlVisualPanel{min-width:0}
+  .nl{position:relative;min-width:640px;height:165px;margin:4px 0 6px}
+  .nl svg{width:100%;height:100%;display:block}
+  .nlLabel{position:absolute;transform:translateX(-50%);top:30px;font-size:.78rem;white-space:nowrap;color:#49545c}
+  .nlMark{position:absolute;transform:translateX(-50%);top:96px;text-align:center;font-size:.8rem;font-weight:700;color:var(--green)}
+  .nlMark .tri{font-size:1.15rem;line-height:1}
+  .nlClickArea{position:absolute;left:4%;right:4%;top:58px;height:72px;cursor:crosshair}
+  .nlClickArea.locked{pointer-events:none;cursor:not-allowed;background:rgba(120,130,140,.04);border-radius:10px}
+  .zoomPair{display:grid;grid-template-columns:1fr;gap:5px}
+  .zoomLink{text-align:center;color:var(--muted);font-size:.78rem;margin:-5px 0}
+  .nlStepGuide{margin-top:5px;padding:8px 10px;border:1px solid #e7b2b2;border-radius:11px;background:#fffafa}
+  .nlStepGuide.confirmed{border-color:#9dd4b4;background:#f6fff9}
+  .nlStepCaption{text-align:center;color:#b42318;font-size:.74rem;font-weight:900;line-height:1.25;margin-bottom:5px}
+  .nlStepGuide.confirmed .nlStepCaption{color:#166534}
+  .nlStepRow{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}
+  .nlStepRow strong{font-size:.95rem}
+  .nlStepInput{width:118px;padding:6px 8px;border:2px solid #df7676;border-radius:9px;text-align:center;font-size:1.05rem;font-weight:800}
+  .nlStepInput.ok{border-color:var(--green);background:var(--greenSoft)}
+  .nlStepInput.ng{border-color:var(--red);background:var(--redSoft)}
+  .nlStepFeedback{min-height:20px;margin-top:4px;text-align:center;font-size:.78rem;font-weight:800}
+  .nlStepGuide.confirmed .nlStepRow{display:none}
+  .nlConceptPanel{border:1px solid #d5dfec;border-radius:12px;background:#f8fbff;padding:11px;min-height:160px}
+  .nlConceptPanel h4{margin:0 0 7px;font-size:.92rem;color:#24407f}
+  .nlConceptLead{font-size:.84rem;font-weight:800;line-height:1.55;margin-bottom:8px}
+  .nlConceptEquation{padding:7px 9px;border-radius:9px;background:#eef4ff;color:#1f3f8f;font-weight:900;text-align:center;margin:7px 0}
+  .nlConceptPanel .pveHead{min-height:34px;font-size:.7rem}
+  .nlConceptPanel .pveDigit{height:44px;font-size:1.35rem}
+  .nlConceptPanel .pveSub{display:none}
+  .nlMainTask{margin-top:10px;padding-top:10px;border-top:1px solid #e3e8ec}
+  .nlMainTask.locked{opacity:.42;pointer-events:none;filter:grayscale(.2)}
+  .nlSupport{margin-top:10px;padding:10px 11px;border:1px solid #e5c585;border-radius:11px;background:#fffaf0;font-size:.86rem;line-height:1.65}
+  .nlSupport strong{color:#8b4c0c}
+  .nlWalkControls{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .nlWalkValue{min-width:130px;text-align:center;padding:7px 9px;border-radius:9px;background:#fff;border:1px solid #d9e0e5;font-size:1rem;font-weight:900}
+  .nlWalkControls .btn{min-height:38px;padding:7px 11px}
+  .nlInlineNote{text-align:center;font-size:.75rem;color:var(--muted);margin-top:5px}
+
+  /* p102-103: stepwise place-shift lab */
+  .shiftLesson{position:relative;padding-bottom:76px;min-width:0;max-width:100%}
+  .shiftModeBar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+  .shiftModeBtn{border:2px solid #cbd3d9;background:#fff;color:#34414a;border-radius:10px;padding:8px 12px;min-height:42px;font-weight:900;cursor:pointer}
+  .shiftModeBtn.active{border-color:var(--blue);background:var(--blueSoft);color:#1f5f99}
+  .shiftModeBtn.done::after{content:' ✓';color:var(--green)}
+  .shiftTarget{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid #d9e0e5;border-radius:11px;background:#fbfcfd;margin-bottom:10px}
+  .shiftTarget strong{font-size:1.1rem}
+  .shiftRepeat{font-size:.8rem;color:#56636d;font-weight:800;background:#eef4ff;border-radius:999px;padding:5px 9px}
+  .shiftDemoEquation{text-align:center;font-size:clamp(1.15rem,2.5vw,1.55rem);font-weight:900;margin:8px 0;color:#25313b;min-height:38px}
+  .shiftBoard{overflow-x:auto;padding-bottom:4px;min-width:0;max-width:100%}
+  .shiftAnimTable{min-width:700px;border:2px solid #7f878e;border-radius:12px;overflow:hidden;background:#fff}
+  .shiftHeaderRow,.shiftDataRow{display:grid;grid-template-columns:66px minmax(630px,1fr)}
+  .shiftRowTag{display:flex;align-items:center;justify-content:center;padding:6px;font-size:.78rem;font-weight:900;color:#52606a;background:#f3f5f7;border-right:1px solid #aeb6bd}
+  .shiftHeads{display:grid;grid-template-columns:repeat(8,1fr)}
+  .shiftHead{padding:7px 2px;text-align:center;border-right:1px solid #aeb6bd;font-size:.7rem;color:#4e5962;min-height:44px;font-weight:800;background:#fafbfc}
+  .shiftHead:nth-child(4){border-right:5px solid #697078}
+  .shiftHead:last-child{border-right:0}
+  .shiftRail{position:relative;height:72px;border-top:1px solid #cbd2d8;background:linear-gradient(to right,transparent 12.35%,#d7dde1 12.5%,transparent 12.65%) 0 0/12.5% 100%}
+  .shiftDataRow + .shiftDataRow .shiftRail,.shiftDataRow + .shiftDataRow .shiftRowTag{border-top:1px solid #cbd2d8}
+  .shiftDigitCard{position:absolute;top:13px;transform:translateX(-50%);width:44px;height:44px;border-radius:9px;border:2px solid var(--pveStroke,#87949d);background:var(--pveBg,#fff);color:var(--pveText,#25313b);display:flex;align-items:center;justify-content:center;font-size:1.55rem;font-weight:900;transition:left .62s cubic-bezier(.25,.1,.2,1),opacity .32s,transform .62s cubic-bezier(.25,.1,.2,1);box-shadow:0 2px 5px rgba(31,41,55,.08)}
+  .shiftDigitCard.ghost{opacity:.28;box-shadow:none}
+  .shiftDigitCard.newZero{animation:shiftZeroIn .42s ease}
+  @keyframes shiftZeroIn{from{opacity:0;transform:translateX(-50%) scale(.45)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+  .shiftStepExplain{margin-top:9px;padding:9px 11px;border-left:4px solid var(--blue);border-radius:8px;background:#f7fbff;font-size:.88rem;font-weight:800;line-height:1.6;min-height:48px}
+  .shiftProgressDots{display:flex;justify-content:center;gap:7px;margin:8px 0 1px}
+  .shiftProgressDot{width:12px;height:12px;border-radius:50%;border:2px solid #9aa6ae;background:#fff}
+  .shiftProgressDot.done{background:var(--green);border-color:var(--green)}
+  .shiftProgressDot.current{box-shadow:0 0 0 3px rgba(43,108,176,.16);border-color:var(--blue)}
+  .shiftFloatingControls{position:fixed;right:16px;bottom:14px;z-index:9500;display:flex;align-items:center;gap:7px;padding:7px;border:1px solid #cdd6dc;border-radius:14px;background:rgba(255,255,255,.96);box-shadow:0 6px 22px rgba(0,0,0,.16);backdrop-filter:blur(5px)}
+  .shiftFloatingControls .btn{min-width:102px;min-height:44px;padding:8px 12px}
+  .shiftKeyHint{font-size:.7rem;color:#6f7c85;font-weight:800;white-space:nowrap}
+  .shiftPracticeLink{margin-top:8px;font-size:.78rem;color:var(--muted)}
+  @media(max-width:650px){
+    .shiftFloatingControls{right:7px;bottom:7px;padding:5px;gap:5px}
+    .shiftFloatingControls .btn{min-width:82px;min-height:42px;padding:7px 9px;font-size:.8rem}
+    .shiftKeyHint{display:none}
+    .shiftLesson{padding-bottom:70px}
+  }
+
+  .reviewSkills{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+  .skill{border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center;font-size:.78rem;background:#fff}
+  .skill.good{border-color:#9dd4b4;background:var(--greenSoft);color:var(--green)}
+  .skill.need{border-color:#f1b2b2;background:var(--redSoft);color:var(--red)}
+  .conceptCards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .concept{border:2px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+  .concept h3{margin:0 0 8px}
+  .concept .icon{font-size:1.7rem}
+
+
+  .stageBtn:disabled{opacity:.42;cursor:not-allowed;background:#f3f4f5}
+  .masteryLine{font-size:.8rem;color:var(--muted);margin-top:5px}
+  .masteryDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ccd4d9;margin-right:4px}
+  .masteryDot.on{background:var(--green)}
+  .connectionBox{display:none;margin-top:12px;padding:11px;border:1px solid #b8dcc7;border-radius:10px;background:#f5fff8}
+  .connectionBox.show{display:block}
+  .ticketRow{display:grid;grid-template-columns:repeat(10,minmax(28px,1fr));gap:5px;margin:10px 0}
+  .ticket{border:2px solid #c38a58;background:#fff3e6;border-radius:5px;padding:9px 2px;text-align:center;font-size:.72rem;font-weight:800;transition:transform .3s,opacity .3s}
+  .ticket.bundle{transform:translateY(-8px) scale(.92);opacity:.35}
+  .newBundle{display:inline-block;border:3px solid #b46a2a;background:#fff0dc;border-radius:8px;padding:14px 18px;font-weight:900;font-size:1.15rem}
+  .lockedPV{background:#f3f4f5;color:#9aa3aa;display:flex;align-items:center;justify-content:center;min-height:112px;font-size:.75rem}
+  .expr{font-size:1.25rem;font-weight:800;line-height:1.8}
+  .shiftTrack{position:relative;min-width:650px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .shiftHeads{display:grid;grid-template-columns:repeat(8,1fr)}
+  .shiftHead{padding:7px 2px;text-align:center;border-right:1px solid var(--line);font-size:.7rem;color:var(--muted);min-height:42px}
+  .shiftHead:last-child{border-right:0}
+  .shiftRail{position:relative;height:72px;border-top:1px solid var(--line);background:linear-gradient(to right,transparent 12.4%,var(--line) 12.5%,transparent 12.6%) 0 0/12.5% 100%}
+  .digitCard{position:absolute;top:13px;transform:translateX(-50%);width:44px;height:44px;border-radius:9px;border:2px solid #87949d;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.55rem;font-weight:900;transition:left .42s ease,opacity .32s ease,transform .42s ease}
+  .digitCard.newZero{animation:zeroIn .45s ease}
+  @keyframes zeroIn{from{opacity:0;transform:translateX(-50%) scale(.4)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+  .reflection{width:100%;min-height:78px;border:2px solid #b8c3cb;border-radius:9px;padding:9px;font:inherit;resize:vertical}
+  .evidenceLine{font-size:.69rem;color:#687681;margin-top:2px;line-height:1.25}
+  .evidenceLine .ind{color:#237a4b;font-weight:800}
+  .evidenceLine .sup{color:#a35b12;font-weight:800}
+  .evidenceLine .exp{color:#52606a;font-weight:800}
+  .lessonDone{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border:1px solid #a9d6bb;border-radius:11px;background:#f5fff8;margin-bottom:10px;font-size:.86rem}
+  .lessonDone strong{color:#237a4b}
+  .lessonLocked{padding:18px;border:1px dashed #c8d0d6;border-radius:12px;background:#fafbfc;color:#66717a;text-align:center;font-weight:800}
+  .coreBadge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#eaf7ef;color:#237a4b;font-size:.7rem;font-weight:900;vertical-align:middle}
+  .extraBadge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#f1f3f5;color:#687681;font-size:.7rem;font-weight:800;vertical-align:middle}
+  .reviewStatusNote{font-size:.74rem;color:#687681;margin-top:4px}
+  .teacherTag{font-size:.72rem;background:rgba(255,255,255,.18);padding:3px 6px;border-radius:999px}
+  .hiddenAnswer{font-weight:800;color:var(--muted);letter-spacing:.08em}
+  .evidenceHelp{margin-top:6px;font-size:.72rem;color:var(--muted)}
+  .evidenceHelp summary{cursor:pointer;font-weight:800;display:inline-block}
+  .evidenceHelp div{margin-top:5px;padding:7px 9px;border:1px solid #e1e6e9;border-radius:8px;background:#fafbfc;line-height:1.55}
+  .attemptBadge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#fff4e7;color:#8b4c0c;font-size:.7rem;font-weight:900}
+
+  /* shared place-value engine: p93-97 */
+  .pveWrap{width:100%;overflow:hidden;border:2px solid #7f878e;border-radius:12px;background:#fff;box-shadow:0 3px 10px rgba(31,41,55,.06)}
+  .pveGrid{display:grid;width:100%;min-width:0}
+  .pveCol{min-width:0;border-right:1px solid var(--pveStroke);background:#fff;position:relative}
+  .pveCol:last-child{border-right:0}
+  .pveCol.groupBoundary{border-right-width:5px;border-right-color:#697078}
+  .pveHead{min-height:42px;padding:6px 2px;display:flex;align-items:center;justify-content:center;text-align:center;background:var(--pveBg);color:var(--pveText);font-size:clamp(.68rem,1.55vw,.84rem);font-weight:900;border-bottom:1px solid var(--pveStroke);white-space:nowrap}
+  .pveDigit{height:58px;display:flex;align-items:center;justify-content:center;font-size:clamp(1.35rem,3vw,1.9rem);font-weight:900;color:var(--pveText);background:#fff;position:relative}
+  .pveSub{min-height:32px;padding:4px 2px 6px;text-align:center;font-size:clamp(.57rem,1.35vw,.72rem);font-weight:700;color:#66717a;background:#fafbfc;border-top:1px solid #edf0f2;overflow:hidden;text-overflow:ellipsis}
+  .pve-c0{--pveBg:#fce4ec;--pveStroke:#d81b60;--pveText:#b3154e}
+  .pve-c1{--pveBg:#fff6bf;--pveStroke:#c99b00;--pveText:#8e7200}
+  .pve-c2{--pveBg:#cfeaf6;--pveStroke:#287ba3;--pveText:#236a8a}
+  .pve-c3{--pveBg:#ededed;--pveStroke:#6f767d;--pveText:#4f555b}
+  .pveCol.focus{box-shadow:inset 0 0 0 3px #f59e0b;z-index:2}
+  .pveCol.focus .pveHead{box-shadow:inset 0 3px 0 #f59e0b}
+  .pveCol.hot .pveDigit{background:#fff4e7}
+  .pveBundleBtn{display:block;margin:0 auto 6px;border:1px solid #e7c291;background:#fff8ef;color:#8b4c0c;border-radius:7px;padding:4px 5px;font-size:.7rem;font-weight:800;cursor:pointer}
+  .pveLegend{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;font-size:.7rem;font-weight:800;color:#66717a}
+  .pveLegend span{padding:2px 6px;border-radius:5px;border:1px solid var(--pveStroke);background:var(--pveBg);color:var(--pveText)}
+  .aggregateViz{margin-top:12px;padding:12px;border:1px solid #d8e0e6;border-radius:12px;background:#fbfcfd}
+  .aggregateTop{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px}
+  .aggregateEquation{font-size:1rem;font-weight:900;color:#34414c}
+  .aggregateResult{min-height:28px;margin-top:8px;font-weight:900;color:var(--green);text-align:center}
+  .aggregateBadge{display:inline-flex;align-items:center;justify-content:center;min-width:54px;min-height:36px;padding:4px 8px;border:2px solid #f59e0b;background:#fff8eb;color:#92400e;border-radius:9px;font-size:.9rem;font-weight:900}
+  .flying-digit{position:fixed;z-index:12000;width:46px;height:46px;border-radius:9px;border:3px solid #333;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;pointer-events:none;transition:transform .72s cubic-bezier(.2,.8,.2,1),opacity .72s ease;box-shadow:0 5px 14px rgba(0,0,0,.2)}
+  .rwPlacePanel{margin:12px 0 2px}
+  .readGroupLine{display:flex;justify-content:center;gap:4px;flex-wrap:wrap;margin-top:8px;font-weight:900;font-size:.85rem}
+  .readGroupLine span{background:#eef1f4;border-radius:6px;padding:3px 7px}
+
+  /* p100-101 concept connection hub */
+  .conceptHub{margin-top:14px;border:1px solid #d7e0e7;border-radius:14px;background:#fbfcfd;overflow:hidden}
+  .conceptHubHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid #e1e7eb;background:#f5f8fa}
+  .conceptHubTitle{font-size:.9rem;font-weight:900;color:#34414c}
+  .lensTabs{display:flex;gap:5px;flex-wrap:wrap}
+  .lensTab{border:1px solid #cbd5dc;background:#fff;color:#4b5963;border-radius:999px;padding:6px 10px;font-size:.78rem;font-weight:900;cursor:pointer}
+  .lensTab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+  .conceptHubBody{padding:12px}
+  .conceptLocked{padding:18px 12px;text-align:center;color:var(--muted);font-weight:800;background:#f8fafb}
+  .unitCompare{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+  .unitSide{border:1px solid #d9e0e5;border-radius:12px;padding:10px;background:#fff;min-width:0}
+  .unitSideTitle{font-weight:900;text-align:center;margin-bottom:7px;overflow-wrap:anywhere}
+  .unitMiddle{display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:1000;color:#52606a;padding:0 2px}
+  .unitCount{font-size:1.25rem;font-weight:1000;text-align:center;color:#243746;margin-bottom:7px}
+  .unitChips{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;min-height:30px;align-items:center}
+  .unitChip{width:25px;height:25px;border:2px solid #87949d;border-radius:7px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:900;color:#51606a}
+  .unitRule{margin-top:9px;padding:8px 10px;border-radius:9px;background:var(--greenSoft);color:#286744;font-weight:900;text-align:center}
+  .dualPV{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dualPVLabel{text-align:center;font-weight:900;margin-bottom:5px;color:#47545d;overflow-wrap:anywhere}
+  .miniConceptLine{position:relative;height:86px;margin:8px 8px 2px;padding:0 20px}
+  .miniConceptLine .axis{position:absolute;left:5%;right:5%;top:42px;height:3px;background:#3d474e;border-radius:4px}
+  .miniConceptLine .tick{position:absolute;top:33px;width:2px;height:21px;background:#69757d;transform:translateX(-50%)}
+  .miniConceptLine .tickLabel{position:absolute;top:57px;transform:translateX(-50%);font-size:.72rem;font-weight:800;color:#687681;white-space:nowrap}
+  .miniConceptLine .mark{position:absolute;top:13px;transform:translateX(-50%);font-size:.76rem;font-weight:1000;text-align:center;color:var(--green)}
+  .miniConceptLine .mark::after{content:'▼';display:block;font-size:1rem;line-height:1;color:var(--green)}
+  .formulaStack{display:grid;gap:8px}
+  .formulaRow{padding:10px 12px;border:1px solid #d9e0e5;border-radius:10px;background:#fff;font-size:1rem;font-weight:900;text-align:center}
+  .formulaRow strong{color:var(--blue)}
+  .bridgeCaption{margin-bottom:8px;font-size:.84rem;color:var(--muted);font-weight:800;text-align:center}
+  .viewsLayout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:14px;align-items:start}
+  .viewEquationGrid{display:grid;gap:9px}
+  .viewEquationCard{border:1px solid var(--line);border-radius:11px;padding:11px;background:#fbfcfd}
+  .viewEquationCard b{display:inline-block;margin-bottom:5px;color:#45525c}
+  .integrationBanner{margin:0 0 12px;padding:10px 12px;border-left:4px solid var(--blue);background:var(--blueSoft);border-radius:9px;font-weight:900;color:#315d86}
+  @media (max-width:900px){.viewsLayout,.dualPV{grid-template-columns:1fr}.unitCompare{grid-template-columns:1fr}.unitMiddle{min-height:20px}}
+  @media (max-width:900px){
+    .nlLearningGrid{grid-template-columns:1fr}
+    .nlConceptPanel{min-height:0}
+    .stageNav{grid-template-columns:repeat(5,1fr)}
+    .grid2,.grid3,.conceptCards{grid-template-columns:1fr}
+    .reviewSkills{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:560px){
+    body{overflow-x:hidden}
+    .shell{padding:8px}
+    main{padding:13px;border-radius:12px}
+    .stageNav{grid-template-columns:repeat(2,1fr)}
+    .stageBtn{min-height:48px}
+    .tokenControls{grid-template-columns:repeat(2,1fr)}
+    .footerNav{flex-direction:column}
+    .footerNav .btn{width:100%}
+    .bigNumber{font-size:1.65rem}
+  }
+
+  /* p104 diagnostic review / p105 synthesis */
+  .reviewHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .reviewHeader h3{margin:0}
+  .reviewCount{font-size:.82rem;font-weight:900;color:#52606a;background:#f3f6f8;border-radius:999px;padding:5px 9px}
+  .reviewSkills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px}
+  .skill{border:1px solid var(--line);border-radius:11px;padding:9px 8px;text-align:center;font-size:.78rem;background:#fff;cursor:pointer;min-height:54px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+  .skill strong{font-size:.88rem}
+  .skill small{font-size:.68rem;color:var(--muted)}
+  .skill.good{border-color:#9dd4b4;background:var(--greenSoft);color:var(--green)}
+  .skill.need{border-color:#f1c27a;background:#fff8eb;color:#9a5b11}
+  .skill.untouched{color:#6d7780}
+  .reviewRecovery{margin-top:13px;border:2px solid #f0be68;border-radius:14px;background:#fffbf2;overflow:hidden}
+  .reviewRecoveryHead{padding:9px 12px;background:#fff3d7;border-bottom:1px solid #f2d59a;font-weight:1000;color:#81520f;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+  .reviewRecoveryBody{padding:12px}
+  .reviewRecoveryLead{font-weight:900;margin-bottom:9px;color:#554b3a}
+  .reviewMiniFormula{font-size:1.15rem;font-weight:1000;text-align:center;padding:10px;border-radius:10px;background:#fff;border:1px solid #e1d5bf;margin:7px 0}
+  .reviewStepLine{padding:9px 11px;border-left:4px solid var(--blue);background:var(--blueSoft);border-radius:8px;font-weight:900;margin-top:8px}
+  .reviewSummary{margin-top:14px;border:1px solid #cfd9df;border-radius:14px;padding:13px;background:#f8fafb}
+  .reviewSummaryTitle{font-weight:1000;font-size:1rem;margin-bottom:8px}
+  .reviewSummaryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .summarySkill{border:1px solid #d7dee3;border-radius:10px;background:#fff;padding:9px;text-align:center;font-weight:900}
+  .summarySkill.good{background:var(--greenSoft);border-color:#9dd4b4;color:#286744}
+  .summarySkill.need{background:#fff4e7;border-color:#efc28f;color:#8b4c0c}
+  .finalMap{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch;margin-bottom:14px}
+  .finalLens{border:2px solid #d4dde3;border-radius:14px;padding:14px;background:#fff}
+  .finalLens h3{margin:0 0 7px;font-size:1rem}
+  .finalLens.place{border-color:#efc35d;background:#fffaf0}
+  .finalLens.unit{border-color:#91c5e8;background:#f5fbff}
+  .finalLensBridge{display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:1000;color:#77838c}
+  .finalProof{margin-top:12px;border:1px solid #b8dcc7;border-radius:12px;padding:12px;background:#f5fff8}
+  .finalProofTitle{font-weight:1000;color:#286744;margin-bottom:8px}
+  .finalSynthesis{margin-top:14px;padding:14px;border:2px solid #8fc9a8;border-radius:14px;background:#f2fff7}
+  .finalSynthesis h3{margin:0 0 8px}
+  .finalSynthesisFlow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font-weight:1000}
+  .finalSynthesisFlow span{padding:7px 10px;border-radius:9px;background:#fff;border:1px solid #badcc8}
+  @media(max-width:900px){.reviewSkills,.reviewSummaryGrid{grid-template-columns:repeat(2,1fr)}.finalMap{grid-template-columns:1fr}.finalLensBridge{transform:rotate(90deg);min-height:20px}}
+  @media(max-width:560px){.reviewSkills,.reviewSummaryGrid{grid-template-columns:1fr}}
+
+
+  .teacherHoldHint{font-size:.68rem;opacity:.9;margin-left:4px}
+  .compareTrail{display:grid;gap:6px;margin:9px 0 12px}
+  .compareTrailStep{padding:7px 9px;border:1px solid #b8dcc7;border-radius:9px;background:#f5fff8;font-size:.86rem;font-weight:800}
+  .skill.supported{border-color:#a9c8e8;background:#f0f7ff;color:#285f91}
+  .summarySkill.supported{background:#eef6ff;border-color:#a9c8e8;color:#285f91}
+  .pvLadderVisual{min-height:46px;margin-top:9px;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap}
+  .pvMiniToken{border:1px solid #d19a5c;background:#fff7ed;border-radius:6px;padding:4px 6px;font-size:.72rem;font-weight:800;animation:pvGather .55s ease}
+  @keyframes pvGather{0%{transform:translateY(0);opacity:1}70%{transform:translateY(-4px);opacity:.8}100%{transform:translateY(0);opacity:1}}
+
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header>
+  <div class="headInner">
+    <div class="titleWrap">
+      <h1>大きい数ラボ</h1>
+      <div class="subtitle">教科書92〜105ページ「大きい数のしくみ」｜位取り・何こ分・数直線・式をつなぐ <span class="teacherTag">v12 hardened</span></div>
+    </div>
+    <div class="headTools">
+      <button class="topBtn" id="soundBtn" aria-pressed="true">🔊 よみ上げ ON</button>
+      <button class="topBtn" id="freeModeBtn" aria-pressed="false">👩‍🏫 先生用プレビュー</button>
+      <button class="topBtn" id="resetBtn">↺ はじめから</button>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <section class="navCard" aria-label="学習の流れ">
+    <div class="stageNav" id="stageNav"></div>
+    <div class="progressRow"><span id="progressText">0 / 10</span><div class="bar"><span id="progressBar"></span></div></div>
+  </section>
+  <main id="main"></main>
+</div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  const fmt=n=>String(Math.trunc(Number(n))); // 3年生の学習画面ではカンマを使わない
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+  const pick=a=>a[rand(0,a.length-1)];
+  const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const STAGES=[
+    {p:'92',n:'導入',goal:'これまでの数と、これから学ぶ大きい数をつなげる。'},
+    {p:'93–95',n:'位取り',goal:'10こ集まると1つ上の位になる仕組みを、実際にまとめながら理解する。'},
+    {p:'96',n:'読む・書く',goal:'数字・読み方・各位の数字を行き来する。'},
+    {p:'97',n:'1000の何こ分',goal:'大きい数を「1000が何こ分」としてとらえる。'},
+    {p:'98–99',n:'数直線',goal:'代表問題で1目盛りの考え方をつかみ、必要なら教科書の残りも練習する。'},
+    {p:'100',n:'比較・計算',goal:'もとにする数の何こ分かに直して、大小比較や計算を考える。'},
+    {p:'101',n:'いろいろな見方',goal:'1つの数を、たし算・ひき算・何こ分など複数の見方で表す。'},
+    {p:'102–103',n:'10倍・100倍・1000倍',goal:'10倍・100倍・1000倍、10でわるときの位の移動を理解する。'},
+    {p:'104',n:'たしかめ',goal:'単元全体の6つの力を確かめ、必要な見方へ戻って確かめる。'},
+    {p:'105',n:'算数の目',goal:'「位に注目」「もとにする数の何こ分」という2つの見方にまとめる。'}
+  ];
+
+  const STORAGE_KEY='ookiiKazuLab_progress';
+  const SCHEMA_VERSION=6;
+  const LEGACY_STORAGE_KEYS=['ookiiKazuLab_v5_smallstep_hardened','ookiiKazuLab_v4_smallstep','ookiiKazuLab_v3'];
+  const defaultState=()=>({
+    schemaVersion:SCHEMA_VERSION,
+    stage:0, sound:true, freeMode:false,
+    mastery:Array.from({length:STAGES.length},()=>[]),
+    learningEvidence:{}, attemptEvidence:{}, currentAttempted:false,
+    introIndex:0,
+    pvCounts:[0,0,0,0,2,4,1,5,3], pvHighest:4, bundleDemoDone:false,
+    pvChallenge:null, pvPracticeKind:'forward', pvChallengeCycle:0, pvBuildSolved:false,
+    rwProblem:null, rwCycle:0,
+    baseProblem:null, baseCycle:0,
+    nlProblem:null,
+    compareIndex:0, compareProblem:null, compareLens:'unit', comparePhase:0,
+    viewsIndex:0, viewsProblem:null, viewsClassSelected:null, viewsLens:'place', viewsStep:0,
+    shiftValue:25, shiftMessage:'', shiftChain:0, shiftUnlock:1,
+    shiftDemo:{mode:'x10',step:0,customStart:null,animating:false}, shiftDemoDone:{},
+    shiftChallenge:{n:25,op:10,answer:250,hintLevel:0,mode:'x10',mixed:false}, shiftMixedOrder:null, shiftMixedPos:0, shiftMixedSelected:null,
+    reviewIndex:0, reviewResults:[], reviewRemediation:false, reviewRetryingIndex:null,
+    finalStep:0, finalSelected:null, finalOrders:null, finalResponses:{}, reflection1:'', reflection2:'',
+    focusNumber:24153
+  });
+  function normalizeEvidenceRecord(raw={}){
+    const level=raw.level||raw.bestLevel||null;
+    return {...raw,level,bestLevel:level,experienced:raw.experienced??!!level,
+      supportedEver:raw.supportedEver??(level==='supported'),independentEver:raw.independentEver??(level==='independent'),
+      attempts:Number(raw.attempts)||0,wrongCount:Number(raw.wrongCount??raw.wrong)||0,
+      hintUsed:Number(raw.hintUsed)||(raw.supportUsed?1:0),remediationUsed:Number(raw.remediationUsed)||0};
+  }
+  function loadState(){
+    try{
+      let raw=localStorage.getItem(STORAGE_KEY),sourceKey=STORAGE_KEY;
+      if(!raw){for(const k of LEGACY_STORAGE_KEYS){raw=localStorage.getItem(k);if(raw){sourceKey=k;break}}}
+      if(!raw)return defaultState();
+      const saved=JSON.parse(raw),d=defaultState();
+      const merged={...d,...saved,schemaVersion:SCHEMA_VERSION,freeMode:false,
+        learningEvidence:(saved.learningEvidence&&typeof saved.learningEvidence==='object')?saved.learningEvidence:{},
+        attemptEvidence:(saved.attemptEvidence&&typeof saved.attemptEvidence==='object')?saved.attemptEvidence:{},
+        finalResponses:(saved.finalResponses&&typeof saved.finalResponses==='object')?saved.finalResponses:{},
+        mastery:Array.from({length:STAGES.length},(_,i)=>Array.isArray(saved.mastery?.[i])?saved.mastery[i]:[])};
+      Object.keys(merged.learningEvidence).forEach(id=>{merged.learningEvidence[id]=normalizeEvidenceRecord(merged.learningEvidence[id])});
+      merged.mastery.forEach((keys,stage)=>keys.forEach(key=>{const id=stage+'::'+key;if(!merged.learningEvidence[id])merged.learningEvidence[id]=normalizeEvidenceRecord({level:'supported',legacy:true,supportUsed:true})}));
+      if(sourceKey!==STORAGE_KEY)localStorage.setItem(STORAGE_KEY,JSON.stringify(merged));
+      return merged;
+    }catch(e){return defaultState()}
+  }
+  const state=loadState();
+  const NL_CORE_INDEXES=[0,1,4,6,7,10,12,8,9];
+  const REQUIRED=[
+    ['intro:0','intro:1','intro:2','intro:3'],
+    ['bundle1000','pv:10man','pv:100man','pv:1000man','pv:build'],
+    ['rw:read1','rw:read2','rw:write1','rw:write2','rw:decomp1','rw:decomp2'],
+    ['base:f23','base:f75','base:r34','base:r75','base:f389','base:r389','base:bridge100'],
+    NL_CORE_INDEXES.map(i=>'nl:'+i),
+    Array.from({length:6},(_,i)=>'cmp:'+i),
+    ['views:16000','views:73000','views:classify'],
+    ['shift:x10','shift:x100','shift:x1000','shift:div10','shift:mixed:x10','shift:mixed:x100','shift:mixed:x1000','shift:mixed:div10'],
+    Array.from({length:17},(_,i)=>'review:'+i),
+    ['final:0','final:1','final:2','reflection']
+  ];
+
+  function saveState(force=false){
+    if(state.freeMode&&!force)return;
+    try{state.schemaVersion=SCHEMA_VERSION;localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){}
+  }
+  function hasMastery(stage,key){return state.mastery[stage]?.includes(key)}
+  const EVIDENCE_RANK={experience:1,supported:2,independent:3};
+  function evidenceId(stage,key){return stage+'::'+key}
+  function evidenceFor(stage,key){
+    const id=evidenceId(stage,key),e=state.learningEvidence[id];
+    if(e)return e;
+    return hasMastery(stage,key)?normalizeEvidenceRecord({level:'supported',legacy:true,supportUsed:true}):null;
+  }
+  function ensureEvidence(stage,key){
+    const id=evidenceId(stage,key);
+    if(!state.learningEvidence[id])state.learningEvidence[id]=normalizeEvidenceRecord(evidenceFor(stage,key)||{});
+    else state.learningEvidence[id]=normalizeEvidenceRecord(state.learningEvidence[id]);
+    return state.learningEvidence[id];
+  }
+  function attemptFor(stage,key){
+    const id=evidenceId(stage,key);
+    if(!state.attemptEvidence[id])state.attemptEvidence[id]={wrong:0,supportUsed:false};
+    return state.attemptEvidence[id];
+  }
+  function resetAttempt(key=null,stage=state.stage){
+    state.currentAttempted=false;
+    if(key!=null)delete state.attemptEvidence[evidenceId(stage,key)];
+  }
+  function setEvidence(key,level='independent',stage=state.stage){
+    const e=ensureEvidence(stage,key),prevRank=EVIDENCE_RANK[e.level]||0,newRank=EVIDENCE_RANK[level]||0;
+    if(newRank>prevRank)e.level=level;
+    e.bestLevel=e.level;
+    e.experienced=true;
+    if(level==='supported')e.supportedEver=true;
+    if(level==='independent')e.independentEver=true;
+    return e;
+  }
+  function noteWrong(key,stage=state.stage){
+    const a=attemptFor(stage,key),e=ensureEvidence(stage,key);
+    a.wrong=(a.wrong||0)+1;e.wrongCount=(e.wrongCount||0)+1;e.attempts=(e.attempts||0)+1;
+    state.learningEvidence[evidenceId(stage,key)]=e;saveState();
+  }
+  function noteSupport(key,stage=state.stage){
+    const a=attemptFor(stage,key),e=ensureEvidence(stage,key);
+    a.supportUsed=true;e.hintUsed=(e.hintUsed||0)+1;
+    state.learningEvidence[evidenceId(stage,key)]=e;saveState();
+  }
+  function noteRemediation(key,stage=state.stage){
+    const a=attemptFor(stage,key),e=ensureEvidence(stage,key);
+    a.supportUsed=true;e.remediationUsed=(e.remediationUsed||0)+1;
+    state.learningEvidence[evidenceId(stage,key)]=e;saveState();
+  }
+  function completionLevel(key,stage=state.stage){
+    const a=state.attemptEvidence[evidenceId(stage,key)];
+    return a?.supportUsed||a?.wrong>0?'supported':'independent';
+  }
+  function markMastery(key,stage=state.stage,level='independent'){
+    // 先に evidence を確定する。mastery を先に追加すると、新規記録まで旧版由来と誤認するため。
+    const e=setEvidence(key,level,stage);
+    if(!hasMastery(stage,key))state.mastery[stage].push(key);
+    if(level==='supported'||level==='independent')e.attempts=(e.attempts||0)+1;
+    state.learningEvidence[evidenceId(stage,key)]=e;
+    saveState();updateNav();
+  }
+  function markExperience(key,stage=state.stage){markMastery(key,stage,'experience')}
+  function stageComplete(i){return REQUIRED[i].every(k=>hasMastery(i,k))}
+  function unlockedMax(){let i=0;while(i<STAGES.length-1&&stageComplete(i))i++;return i}
+  function recordAttempt(ok,key=null){if(!key)return;if(ok)markMastery(key,state.stage,completionLevel(key));else noteWrong(key);saveState()}
+  function stageEvidenceSummary(i){
+    let independent=0,supported=0,experience=0;
+    REQUIRED[i].forEach(k=>{const e=evidenceFor(i,k);if(!e)return;if(e.level==='independent')independent++;else if(e.level==='supported')supported++;else if(e.level==='experience')experience++;});
+    return {independent,supported,experience,total:REQUIRED[i].length};
+  }
+
+  const placeValues=[
+    {name:'一億',v:100000000},{name:'千万',v:10000000},{name:'百万',v:1000000},{name:'十万',v:100000},{name:'一万',v:10000},
+    {name:'千',v:1000},{name:'百',v:100},{name:'十',v:10},{name:'一',v:1}
+  ];
+
+  function speak(text){
+    if(!state.sound || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(String(text).replace(/[×÷=<>]/g,' '));
+    u.lang='ja-JP'; u.rate=.92; u.pitch=1;
+    speechSynthesis.speak(u);
+  }
+
+  function jpUnder10000(n){
+    n=Math.floor(n); if(n===0)return '';
+    const d=['','一','二','三','四','五','六','七','八','九'];
+    let s='';
+    const th=Math.floor(n/1000); n%=1000;
+    const h=Math.floor(n/100); n%=100;
+    const t=Math.floor(n/10); const o=n%10;
+    if(th)s+=(th===1?'':d[th])+'千';
+    if(h)s+=(h===1?'':d[h])+'百';
+    if(t)s+=(t===1?'':d[t])+'十';
+    if(o)s+=d[o];
+    return s;
+  }
+  function jpNumber(n){
+    n=Math.floor(Number(n));
+    if(!Number.isFinite(n)||n<0||n>999999999)return fmt(n);
+    if(n===0)return '零';
+    const oku=Math.floor(n/100000000); n%=100000000;
+    const man=Math.floor(n/10000); const rest=n%10000;
+    let s='';
+    if(oku)s+=jpUnder10000(oku)+'億';
+    if(man)s+=jpUnder10000(man)+'万';
+    if(rest)s+=jpUnder10000(rest);
+    return s;
+  }
+
+  function updateNav(){
+    const nav=$('#stageNav'); const max=unlockedMax();
+    nav.innerHTML=STAGES.map((s,i)=>{
+      const done=stageComplete(i), locked=!state.freeMode&&i>max;
+      const got=REQUIRED[i].filter(k=>hasMastery(i,k)).length,e=stageEvidenceSummary(i);
+      return `<button class="stageBtn ${i===state.stage?'active':''} ${done?'done':''}" data-stage="${i}" ${locked?'disabled':''}><span class="p">p.${s.p}</span><span class="n">${s.n}</span><span class="masteryLine">学習 ${got}/${REQUIRED[i].length}</span><span class="evidenceLine"><span class="ind">自力 ${e.independent}</span>${e.supported?`・<span class="sup">補助 ${e.supported}</span>`:''}${e.experience?`・<span class="exp">体験 ${e.experience}</span>`:''}</span></button>`;
+    }).join('');
+    $$('.stageBtn',nav).forEach(b=>b.addEventListener('click',()=>goStage(+b.dataset.stage)));
+    const d=STAGES.filter((_,i)=>stageComplete(i)).length;
+    $('#progressText').textContent=`${d} / ${STAGES.length}`;
+    $('#progressBar').style.width=(d/STAGES.length*100)+'%';
+    const next=$('#nextStage');
+    if(next) next.disabled=state.stage===STAGES.length-1||(!state.freeMode&&!stageComplete(state.stage));
+  }
+  function goStage(i){
+    const max=unlockedMax(); if(!state.freeMode&&i>max)return;
+    state.stage=clamp(i,0,STAGES.length-1);saveState();render(); window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function stageShell(content){
+    const s=STAGES[state.stage],got=REQUIRED[state.stage].filter(k=>hasMastery(state.stage,k)).length,e=stageEvidenceSummary(state.stage);
+    return `<div class="stageHead"><div><h2>${esc(s.n)}</h2><div class="goal">${esc(s.goal)}</div><div class="masteryLine">学習 ${got}/${REQUIRED[state.stage].length}　<span class="evidenceLine"><span class="ind">自力 ${e.independent}</span>${e.supported?`・<span class="sup">補助 ${e.supported}</span>`:''}${e.experience?`・<span class="exp">体験 ${e.experience}</span>`:''}</span></div><details class="evidenceHelp"><summary>記録の見方</summary><div>自力＝その挑戦でノーミス・ノーヒント。補助＝まちがい・ヒント・確かめる表示のあとに正解。体験＝操作して仕組みを確認。<br>「次へ進める条件」と「自力でできたか」は別に記録します。</div></details></div><span class="pageBadge">教科書 p.${esc(s.p)}</span></div>${content}<div class="footerNav"><button class="btn ghost" id="prevStage" ${state.stage===0?'disabled':''}>◀ 前へ</button><button class="btn green" id="nextStage" ${state.stage===STAGES.length-1||(!state.freeMode&&!stageComplete(state.stage))?'disabled':''}>次へ ▶</button></div>`;
+  }
+  function wireFooter(){
+    $('#prevStage')?.addEventListener('click',()=>goStage(state.stage-1));
+    $('#nextStage')?.addEventListener('click',()=>goStage(state.stage+1));
+  }
+  function feedback(el,msg,type='info'){el.textContent=msg;el.className='feedback '+type;}
+  function setHint(id,text){const h=$(id);h.textContent=text;h.classList.add('show');speak(text)}
+  function numberParts(n){return placeValues.map(p=>({name:p.name,v:p.v,d:Math.floor(n/p.v)%10})).filter(x=>x.d)}
+  function connectionsHTML(n){
+    const parts=numberParts(n).map(x=>`${x.name}が${x.d}こ`).join('、');
+    const thousand=n%1000===0?`／1000が${n/1000}こ分`:'';
+    return `<b>${fmt(n)}</b> ＝ ${parts || '0'}<br>読み：${jpNumber(n)}${thousand}`;
+  }
+  function placeReadConnectionsHTML(n){
+    const parts=numberParts(n).map(x=>`${x.name}の位が${x.d}`).join('、');
+    return `<b>${fmt(n)}</b> ＝ ${parts || '0'}<br>読み：${jpNumber(n)}`;
+  }
+
+  // ---- 共通の位取りエンジン（p93〜97で共用） ----
+  const placeByExp=[...placeValues].reverse();
+  function pvExpFromValue(v){return Math.round(Math.log10(v))}
+  function pvDigitAt(n,exp){return Math.floor(Math.abs(Number(n))/Math.pow(10,exp))%10}
+  function pvHighestExp(n,minExp=3){
+    const x=Math.abs(Number(n)||0);
+    return clamp(Math.max(minExp,x>0?Math.floor(Math.log10(x)):0),0,8);
+  }
+  function pvLegendHTML(){return `<div class="pveLegend"><span class="pve-c0">一・万・億</span><span class="pve-c1">十</span><span class="pve-c2">百</span><span class="pve-c3">千</span></div>`}
+  function sharedPlaceValueHTML({number=0,maxExp=null,minExp=0,focusExp=null,counts=null,id='pve',badgeExp=null,badgeText='',showSub=true,empty=false}={}){
+    const hi=maxExp==null?pvHighestExp(number,3):clamp(maxExp,minExp,8);
+    const exps=Array.from({length:hi-minExp+1},(_,k)=>hi-k);
+    const cols=exps.map(exp=>{
+      const info=placeByExp[exp];
+      const idx=8-exp;
+      const val=empty?'':(counts?counts[idx]:pvDigitAt(number,exp));
+      const boundary=exp>0&&exp%4===0?' groupBoundary':'';
+      const focus=focusExp===exp?' focus':'';
+      const hot=counts&&Number(val)>=10?' hot':'';
+      const badge=badgeExp===exp?`<span class="aggregateBadge">${esc(badgeText)}</span>`:esc(val);
+      const sub=showSub&&!empty?(counts?`${fmt(info.v)} が ${val}こ`:fmt(info.v)):'';
+      const bundle=counts&&Number(val)>=10&&exp<8?`<button class="pveBundleBtn" data-bundle-exp="${exp}">10こまとめる ↑</button>`:'';
+      return `<div class="pveCol pve-c${exp%4}${boundary}${focus}${hot}" data-pve-exp="${exp}" id="${id}-exp-${exp}"><div class="pveHead">${esc(info.name)}の位</div><div class="pveDigit">${badge}</div>${showSub?`<div class="pveSub">${esc(sub)}</div>`:''}${bundle}</div>`;
+    }).join('');
+    return `<div class="pveWrap"><div class="pveGrid" style="grid-template-columns:repeat(${exps.length},minmax(0,1fr))">${cols}</div></div>`;
+  }
+  function pvFourDigitGroups(n){
+    const s=String(Math.trunc(Math.abs(Number(n)||0)));
+    const groups=[]; for(let i=s.length;i>0;i-=4)groups.unshift(s.slice(Math.max(0,i-4),i));
+    const units=['','万','億']; const offset=Math.max(0,groups.length-1);
+    return `<div class="readGroupLine">${groups.map((g,i)=>`<span>${esc(String(Number(g)))}${units[offset-i]||''}</span>`).join('<b>｜</b>')}</div>`;
+  }
+  function aggregatePreviewHTML({kind,base,count,answer,id='agg',solved=false}={}){
+    const baseExp=pvExpFromValue(base);
+    const maxExp=Math.max(pvHighestExp(answer,baseExp),baseExp+String(count).length-1);
+    const table=kind==='forward'&&!solved
+      ? sharedPlaceValueHTML({number:0,maxExp,minExp:0,focusExp:baseExp,id,badgeExp:baseExp,badgeText:`${count}こ`})
+      : sharedPlaceValueHTML({number:answer,maxExp,minExp:0,focusExp:baseExp,id});
+    const eq=kind==='forward'?`${fmt(base)}を${count}こ集める`:`${fmt(answer)}は${fmt(base)}をいくつ集めた数？`;
+    return `<div class="aggregateViz" data-agg-kind="${kind}"><div class="aggregateTop"><div class="aggregateEquation">${esc(eq)}</div><button class="btn ghost" id="${id}Run" ${solved?'':'disabled'}>${kind==='forward'?'位へ広げて見る':'1つの位へ集めて見る'}</button></div><div id="${id}Table">${table}</div><div class="aggregateResult" id="${id}Result"></div></div>`;
+  }
+  function runAggregateAnimation({kind,base,count,answer,id='agg'}){
+    const baseExp=pvExpFromValue(base),host=$(`#${id}Table`),result=$(`#${id}Result`); if(!host)return;
+    const maxExp=Math.max(pvHighestExp(answer,baseExp),baseExp+String(count).length-1);
+    if(kind==='forward'){
+      host.innerHTML=sharedPlaceValueHTML({number:0,maxExp,minExp:0,focusExp:baseExp,id,badgeExp:baseExp,badgeText:`${count}こ`});
+      const source=$(`#${id}-exp-${baseExp}`); if(!source)return;
+      const sr=source.getBoundingClientRect(),chars=[...String(count)];
+      chars.forEach((ch,index)=>{
+        const exp=baseExp+chars.length-1-index,target=$(`#${id}-exp-${exp}`); if(!target)return;
+        const tr=target.getBoundingClientRect(),fly=document.createElement('div'); fly.className='flying-digit';fly.textContent=ch;
+        const sx=sr.left+sr.width/2+(index-(chars.length-1)/2)*8,sy=sr.top+sr.height*.55,tx=tr.left+tr.width/2,ty=tr.top+tr.height*.55;
+        fly.style.left=(sx-23)+'px';fly.style.top=(sy-23)+'px';document.body.appendChild(fly);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{fly.style.transform=`translate(${tx-sx}px,${ty-sy}px) scale(.82)`;fly.style.opacity='.86'}));
+        setTimeout(()=>fly.remove(),780);
+      });
+      setTimeout(()=>{host.innerHTML=sharedPlaceValueHTML({number:answer,maxExp,minExp:0,focusExp:baseExp,id});result.textContent=`${fmt(base)} × ${count} = ${fmt(answer)}`;speak(`${fmt(base)}を${count}こ集めると${jpNumber(answer)}`)},800);
+    }else{
+      host.innerHTML=sharedPlaceValueHTML({number:answer,maxExp,minExp:0,focusExp:baseExp,id});
+      const target=$(`#${id}-exp-${baseExp}`); if(!target)return; const tr=target.getBoundingClientRect();
+      const chars=[...String(count)]; let moving=0;
+      for(let exp=maxExp;exp>=baseExp;exp--){
+        const digit=pvDigitAt(answer,exp),source=$(`#${id}-exp-${exp}`); if(!source)continue;
+        const sr=source.getBoundingClientRect(),fly=document.createElement('div');fly.className='flying-digit';fly.textContent=String(digit);
+        const sx=sr.left+sr.width/2,sy=sr.top+sr.height*.55,tx=tr.left+tr.width/2+(moving-(chars.length-1)/2)*15,ty=tr.top+tr.height*.56;
+        fly.style.left=(sx-23)+'px';fly.style.top=(sy-23)+'px';document.body.appendChild(fly);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{fly.style.transform=`translate(${tx-sx}px,${ty-sy}px) scale(.72)`;fly.style.opacity='.86'}));
+        setTimeout(()=>fly.remove(),780); moving++;
+      }
+      setTimeout(()=>{host.innerHTML=sharedPlaceValueHTML({number:0,maxExp,minExp:0,focusExp:baseExp,id,badgeExp:baseExp,badgeText:`${count}こ`});result.textContent=`${fmt(answer)} は ${fmt(base)} が ${count}こ分`;speak(`${fmt(answer)}は${fmt(base)}を${count}こ集めた数`)},800);
+    }
+  }
+
+  function render(){
+    updateNav();
+    const renders=[renderIntro,renderPlaceValue,renderReadWrite,renderBaseUnit,renderNumberLine,renderCompare,renderViews,renderShift,renderReview,renderFinal];
+    $('#main').innerHTML=stageShell(renders[state.stage]());
+    wireFooter();
+    const wires=[wireIntro,wirePlaceValue,wireReadWrite,wireBaseUnit,wireNumberLine,wireCompare,wireViews,wireShift,wireReview,wireFinal];
+    wires[state.stage]();
+  }
+
+  // p92
+  const introItems=[
+    {n:4532,known:true,why:'4けたの数までに学習した位で表せる。'},
+    {n:10000,known:true,why:'10000はすでに学習している。'},
+    {n:24153,known:false,why:'10000より大きい数。ここから、これまでの位の仕組みをさらに大きい数へ広げる。'},
+    {n:812193,known:false,why:'10000を大きくこえる数。でも、位が10こで1つ上へ進む仕組みは同じ。'}
+  ];
+  function renderIntro(){
+    const x=introItems[state.introIndex%introItems.length];
+    return `<div class="grid2">
+      <section class="panel"><h3>まず予想</h3><div class="prompt">${fmt(x.n)} は、これまでに学習した数？ これから広げる数？</div>
+        <div class="choices"><button class="choice" data-intro="known">これまでに学習</button><button class="choice" data-intro="new">これから広げる</button></div>
+        <div id="introFb" class="feedback"></div><div id="introHint" class="hint">「4けたまで」「10000まで」を手がかりに考えよう。</div>
+        <div class="actions"><button class="btn orange" id="introHintBtn">ヒント</button><button class="btn ghost" id="introNext" ${hasMastery(0,'intro:'+state.introIndex)?'':'disabled'}>つぎの数</button></div>
+      </section>
+      <section class="panel soft"><h3>この単元で見つけること</h3>
+        <div class="keyIdea">数が大きくなっても、「10こ集まると1つ上の位」という仕組みは変わらない。</div>
+        <p>この先は、同じ数を <b>位取り・何こ分・数直線・式</b> の4つの見方で行き来していきます。</p>
+      </section></div>`;
+  }
+  function wireIntro(){
+    const x=introItems[state.introIndex%introItems.length];
+    $$('[data-intro]').forEach(b=>b.addEventListener('click',()=>{
+      const ans=b.dataset.intro==='known'; const ok=ans===x.known;
+      $$('[data-intro]').forEach(c=>c.classList.remove('selected','correct','wrong'));
+      b.classList.add(ok?'correct':'wrong'); recordAttempt(ok,'intro:'+state.introIndex);
+      feedback($('#introFb'),ok?`正解。${x.why}`:`ちがいます。${x.why}`,ok?'ok':'ng'); if(ok)$('#introNext').disabled=false; speak((ok?'正解。':'')+x.why);
+    }));
+    $('#introHintBtn').addEventListener('click',()=>{noteSupport('intro:'+state.introIndex,0);setHint('#introHint','4けたまでの数と10000は学習済み。そこから上を、この単元で位を広げて考えるよ。')});
+    $('#introNext').addEventListener('click',()=>{if(!hasMastery(0,'intro:'+state.introIndex))return;state.introIndex=(state.introIndex+1)%introItems.length;resetAttempt('intro:'+state.introIndex,0);saveState();render()});
+  }
+
+  // p93-95 — 10こ集まると1つ上の位。最後に指定された数を位取り表で構成する。
+  function countsValue(){return state.pvCounts.reduce((sum,c,i)=>sum+c*placeValues[i].v,0)}
+  function renderPVTable(){
+    const maxExp=8-state.pvHighest;
+    return sharedPlaceValueHTML({number:countsValue(),maxExp,minExp:0,counts:state.pvCounts,id:'pvMain'});
+  }
+  const PV_BUILD_TARGET=35241;
+  function pvBuildFieldsHTML(){
+    const exps=[4,3,2,1,0];
+    return `<div class="pveWrap"><div class="pveGrid" style="grid-template-columns:repeat(5,minmax(0,1fr))">${exps.map(exp=>{const info=placeByExp[exp],d=pvDigitAt(PV_BUILD_TARGET,exp);return `<label class="pveCol pve-c${exp%4}"><div class="pveHead">${info.name}の位</div><div class="pveDigit"><input class="answerInput pvBuildDigit" data-exp="${exp}" inputmode="numeric" maxlength="1" style="width:58px;text-align:center;padding:5px" aria-label="${info.name}の位"></div><div class="pveSub">0〜9を入れる</div></label>`}).join('')}</div></div>`;
+  }
+  function renderPlaceValue(){
+    const v=countsValue(),bundleDone=hasMastery(1,'bundle1000');
+    const ladderDone=['pv:10man','pv:100man','pv:1000man'].every(k=>hasMastery(1,k)),buildDone=hasMastery(1,'pv:build');
+    const nextUnlock=state.pvHighest>1?placeValues[state.pvHighest-1].name:null;
+    const step1=bundleDone?`<div class="lessonDone"><strong>✓ 1000が10こ → 10000</strong><span>まず1つ上の位ができることを確認しました。</span></div>`:`<section class="panel"><h3>① 1000を10こまとめる</h3><div class="miniNote">今はここだけ。10こを1つにまとめて、次へ進みます。</div><div class="ticketRow" id="ticketRow">${Array.from({length:10},()=>'<div class="ticket">1000</div>').join('')}</div><div id="bundleResult" style="text-align:center;min-height:62px"><span class="hiddenAnswer">10こを1つにまとめると…？</span></div><div class="actions"><button class="btn orange" id="bundleDemoBtn">10こまとめる</button></div></section>`;
+    const step2=!bundleDone?'':ladderDone?`<div class="lessonDone"><strong>✓ 位の階段</strong><span>一万 → 十万 → 百万 → 千万まで広げました。</span></div>`:`<section class="panel"><h3>② 位の階段</h3><div class="miniNote">同じ「10こ→1つ上」を、大きい位でも3回だけ確かめます。</div><div class="bigNumber" id="pvNumber">${fmt(v)}</div><div class="numRead" id="pvRead">${jpNumber(v)}</div><div id="pvTableHost">${renderPVTable()}</div>${pvLegendHTML()}<div class="actions"><button class="smallBtn" data-ladder="4" ${state.pvHighest!==4?'disabled':''}>1万を10こ → 十万</button><button class="smallBtn" data-ladder="3" ${state.pvHighest!==3?'disabled':''}>10万を10こ → 百万</button><button class="smallBtn" data-ladder="2" ${state.pvHighest!==2?'disabled':''}>100万を10こ → 千万</button></div><div class="miniNote" id="pvLadderNote">${nextUnlock?`次に出せる位：${nextUnlock}`:'千万まで出せました。1億はp99で発見します。'}</div><div class="pvLadderVisual" id="pvLadderVisual" aria-live="polite"></div></section>`;
+    const step3=!ladderDone?'':buildDone?`<div class="lessonDone"><strong>✓ 位取り表で ${fmt(PV_BUILD_TARGET)} をつくれた</strong><span>各位に入る数字を自分で決めました。</span></div><section class="panel soft"><h3>自由に確かめる</h3><div class="miniNote">必須課題は完了です。必要なら位を増減して、10こ集まる動きも試せます。</div><div class="bigNumber" id="pvNumber">${fmt(v)}</div><div class="numRead" id="pvRead">${jpNumber(v)}</div><div id="pvTableHost">${renderPVTable()}</div><div class="tokenControls">${[1,2,3,4,5,6,7,8].map(i=>`<button class="smallBtn" data-add="${i}">＋ ${placeValues[i].name}</button>`).join('')}</div><div class="actions"><button class="btn primary" id="pvSpeak">🔊 数を読む</button><button class="btn ghost" id="pvSet24153">35241 に戻す</button></div></section>`:`<section class="panel soft"><h3>③ 位取り表で数をつくる</h3><div class="miniNote">次は「まとめる」ではなく、各位にどの数字が入るかを自分で決めます。</div><div class="prompt"><b>${fmt(PV_BUILD_TARGET)}</b> をつくろう。</div>${pvBuildFieldsHTML()}<div id="pvBuildFb" class="feedback"></div><div id="pvBuildHint" class="hint"></div><div class="actions"><button class="btn primary" id="pvBuildCheck">こたえ合わせ</button><button class="btn orange" id="pvBuildHintBtn">ヒント</button></div></section>`;
+    return `${step1}${step2}${step3}`;
+  }
+  function wirePlaceValue(){
+    function refreshLadder(){
+      $$('[data-ladder]').forEach(b=>b.disabled=(+b.dataset.ladder)!==state.pvHighest);
+      const note=$('#pvLadderNote');if(note)note.textContent=state.pvHighest>1?`次に出せる位：${placeValues[state.pvHighest-1].name}`:'千万まで出せました。1億はp99で発見します。';
+    }
+    function refreshBoard(){state.focusNumber=countsValue();const n=$('#pvNumber'),r=$('#pvRead'),h=$('#pvTableHost');if(n)n.textContent=fmt(countsValue());if(r)r.textContent=jpNumber(countsValue());if(h)h.innerHTML=renderPVTable();wireBundles();refreshLadder();saveState()}
+    function wireBundles(){$$('[data-bundle-exp]').forEach(b=>b.addEventListener('click',()=>{const exp=+b.dataset.bundleExp,i=8-exp;if(state.pvCounts[i]>=10&&i>0){state.pvCounts[i]-=10;state.pvCounts[i-1]++;if(i-1<state.pvHighest)state.pvHighest=i-1;const key=i===4?'pv:10man':i===3?'pv:100man':i===2?'pv:1000man':null;if(key)markExperience(key);refreshBoard();speak(`${placeValues[i].name}が10こ集まって、${placeValues[i-1].name}が1こになりました`)}}))}
+    wireBundles();refreshLadder();
+    $('#bundleDemoBtn')?.addEventListener('click',()=>{state.bundleDemoDone=true;$$('.ticket').forEach(x=>x.classList.add('bundle'));setTimeout(()=>{$('#bundleResult').innerHTML='<span class="newBundle">10000</span>'},250);markExperience('bundle1000');saveState();setTimeout(()=>render(),420)});
+    $$('[data-add]').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.add;state.pvCounts[i]++;state.pvHighest=Math.min(state.pvHighest,i);refreshBoard()}));
+    $('#pvSpeak')?.addEventListener('click',()=>speak(jpNumber(countsValue())));
+    $('#pvSet24153')?.addEventListener('click',()=>{state.pvCounts=[0,0,0,0,3,5,2,4,1];state.pvHighest=4;refreshBoard()});
+    $$('[data-ladder]').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.ladder;if(i!==state.pvHighest)return;$$('[data-ladder]').forEach(x=>x.disabled=true);const vis=$('#pvLadderVisual');if(vis)vis.innerHTML=Array.from({length:10},()=>`<span class="pvMiniToken">${placeValues[i].name}</span>`).join('')+`<strong> → ${placeValues[i-1].name} 1こ</strong>`;setTimeout(()=>{state.pvCounts=[0,0,0,0,0,0,0,0,0];state.pvCounts[i-1]=1;state.pvHighest=i-1;const key=i===4?'pv:10man':i===3?'pv:100man':'pv:1000man';markExperience(key);refreshBoard();speak(`${placeValues[i].name}を10こ集めると、${placeValues[i-1].name}が1こ`);if(['pv:10man','pv:100man','pv:1000man'].every(k=>hasMastery(1,k)))setTimeout(()=>render(),650)},520)}));
+    $('#pvBuildCheck')?.addEventListener('click',()=>{const ok=[4,3,2,1,0].every(exp=>Number($(`[data-exp="${exp}"]`).value)===pvDigitAt(PV_BUILD_TARGET,exp));if(ok){markMastery('pv:build',1,completionLevel('pv:build',1));state.pvCounts=[0,0,0,0,3,5,2,4,1];state.pvHighest=4;state.focusNumber=PV_BUILD_TARGET;feedback($('#pvBuildFb'),`正解。各位の数字を使って${fmt(PV_BUILD_TARGET)}をつくれました。`,'ok');saveState();setTimeout(()=>render(),650)}else{noteWrong('pv:build',1);feedback($('#pvBuildFb'),'ちがう位があります。右から一、十、百、千、一万の順に確かめよう。','ng')}});
+    $('#pvBuildHintBtn')?.addEventListener('click',()=>{noteSupport('pv:build',1);setHint('#pvBuildHint',`${fmt(PV_BUILD_TARGET)}は、一万の位3、千の位5、百の位2、十の位4、一の位1です。`)});
+  }
+
+  // p96 — 「表現の変換」と「数の複雑さ」を同時に上げすぎない6ステップ。
+  const RW_BANK=[
+    {key:'rw:read1',type:'read',n:24153,label:'① 基本の数を読む'},
+    {key:'rw:read2',type:'read',n:30760,label:'② 0をふくむ数を読む'},
+    {key:'rw:write1',type:'write',n:35241,label:'③ 基本の数を書く'},
+    {key:'rw:write2',type:'write',n:50620,label:'④ 0をふくむ数を書く'},
+    {key:'rw:decomp1',type:'decomp',n:35241,label:'⑤ 各位の数字を確かめる'},
+    {key:'rw:decomp2',type:'decomp',n:5204000,label:'⑥ 桁が増えても各位を見る'}
+  ];
+  function makeRW(){
+    const x=RW_BANK[state.rwCycle%RW_BANK.length];state.rwCycle=(state.rwCycle+1)%RW_BANK.length;
+    const q={...x,hintLevel:0,wrongCount:0,selectedValue:null,solved:false};
+    if(q.type==='read'){const correct=jpNumber(q.n),alts=[jpNumber(q.n+1000),jpNumber(Math.max(10001,q.n-10000))];q.options=shuffledCopy([correct,...alts].filter((v,i,a)=>a.indexOf(v)===i).slice(0,3))}
+    return q;
+  }
+  function renderReadWrite(){
+    if(!state.rwProblem)state.rwProblem=makeRW();const q=state.rwProblem;let body='';
+    if(q.type==='read')body=`<div class="prompt">${fmt(q.n)} の読み方を選ぼう。</div><div class="choices">${q.options.map((o,i)=>`<button class="choice" data-rw-choice="${i}">${esc(o)}</button>`).join('')}</div><div class="rwPlacePanel">${sharedPlaceValueHTML({number:q.n,maxExp:pvHighestExp(q.n,4),id:'rwPV'})}${pvFourDigitGroups(q.n)}</div>`;
+    else if(q.type==='write')body=`<div class="prompt">「${jpNumber(q.n)}」を数字で書こう。</div><input class="answerInput" id="rwAns" inputmode="numeric"><div class="rwPlacePanel"><div class="miniNote">位取り表は、答えを出したあとに確認できます。</div><div id="rwPVHost">${sharedPlaceValueHTML({number:0,maxExp:pvHighestExp(q.n,4),id:'rwPV',empty:true})}</div></div>`;
+    else{q.digits=placeValues.map(p=>Math.floor(q.n/p.v)%10);q.targets=q.digits.map((d,i)=>d?i:-1).filter(i=>i>=0);body=`<div class="prompt">${fmt(q.n)} の、0でない位の数字をそれぞれ書こう。</div><div class="rwPlacePanel">${sharedPlaceValueHTML({number:q.n,maxExp:pvHighestExp(q.n,4),id:'rwPV'})}</div><div class="grid2" style="margin-top:12px">${q.targets.map(i=>`<label>${placeValues[i].name}の位：<input class="answerInput rwDigit" data-pv="${i}" inputmode="numeric" style="width:90px"></label>`).join('')}</div>`}
+    const pos=RW_BANK.findIndex(x=>x.key===q.key),speakBtn=q.solved?'<button class="btn ghost" id="rwSpeak">🔊 読みを確認</button>':'';
+    return `<section class="panel"><h3>数字 ⇄ 読み方 ⇄ 位取り <span class="coreBadge">${esc(q.label)}</span></h3><div class="miniNote">${pos+1} / ${RW_BANK.length}。同じ種類をもう1問確かめてから、次の表し方へ進みます。</div>${body}<div id="rwFb" class="feedback"></div><div id="rwHint" class="hint"></div><div id="rwConnect" class="connectionBox ${q.solved?'show':''}">${q.solved?placeReadConnectionsHTML(q.n):''}</div><div class="actions"><button class="btn primary" id="rwCheck">こたえ合わせ</button><button class="btn orange" id="rwHintBtn">ヒント</button><button class="btn ghost" id="rwNew" ${q.solved?'':'disabled'}>${pos===RW_BANK.length-1?'最初から確認':'次の問題'}</button>${speakBtn}</div></section>`;
+  }
+  function wireReadWrite(){
+    const q=state.rwProblem;if(q.type==='read')$$('[data-rw-choice]').forEach(b=>{const value=q.options[+b.dataset.rwChoice];b.classList.toggle('selected',q.selectedValue===value);b.addEventListener('click',()=>{q.selectedValue=value;$$('[data-rw-choice]').forEach(x=>x.classList.toggle('selected',q.options[+x.dataset.rwChoice]===q.selectedValue));saveState()})});
+    $('#rwSpeak')?.addEventListener('click',()=>speak(jpNumber(q.n)));
+    $('#rwNew').addEventListener('click',()=>{if(!q.solved)return;state.rwProblem=makeRW();resetAttempt(state.rwProblem.key,2);saveState();render()});
+    $('#rwCheck').addEventListener('click',()=>{let ok=false;if(q.type==='read')ok=q.selectedValue===jpNumber(q.n);if(q.type==='write'){const el=$('#rwAns');ok=Number(el.value)===q.n;el.classList.toggle('ok',ok);el.classList.toggle('ng',!ok)}if(q.type==='decomp')ok=q.targets.every(i=>Number($(`[data-pv="${i}"]`).value)===q.digits[i]);if(ok){q.solved=true;markMastery(q.key,state.stage,completionLevel(q.key));state.focusNumber=q.n;feedback($('#rwFb'),'正解。数字・読み方・位が同じ数を表しています。','ok');saveState();setTimeout(()=>render(),650)}else{q.wrongCount=(q.wrongCount||0)+1;noteWrong(q.key);feedback($('#rwFb'),'ちがいます。答えはまだ見せません。位を1つずつ確かめよう。','ng')}});
+    $('#rwHintBtn').addEventListener('click',()=>{q.hintLevel=(q.hintLevel||0)+1;noteSupport(q.key);const texts=['右から 一、十、百、千。そこから一万、十万、百万、千万と続く。','右から4けたずつ区切って、「万」より左と、万より下の4けたに分けると読みやすい。',q.type==='read'?`万より左は「${jpUnder10000(Math.floor(q.n/10000))}万」。残りを続けて読む。`:q.type==='write'?'0がある位も場所を空けず、0を書いて位を保とう。':'0の位は答えを書く必要はないが、その位の場所はなくならない。'];setHint('#rwHint',texts[Math.min(q.hintLevel-1,2)])});
+  }
+
+  // p97 — 1000を1こと見る。方向変更と桁数増加を分け、最後に100へ一般化する。
+  const BASE_BANK=[
+    {count:23,n:23000,base:1000,reverse:false,key:'base:f23',label:'① まず順向き'},
+    {count:75,n:75000,base:1000,reverse:false,key:'base:f75',label:'② 順向きでもう1問'},
+    {count:34,n:34000,base:1000,reverse:true,key:'base:r34',label:'③ 逆向きにする'},
+    {count:75,n:75000,base:1000,reverse:true,key:'base:r75',label:'④ 逆向きをもう1問'},
+    {count:389,n:389000,base:1000,reverse:false,key:'base:f389',label:'⑤ 3けたの個数へ広げる'},
+    {count:389,n:389000,base:1000,reverse:true,key:'base:r389',label:'⑥ 大きい数を逆向きにする'},
+    {count:389,n:38900,base:100,reverse:true,key:'base:bridge100',label:'⑦ 次への橋：100を1こと見る'}
+  ];
+  function makeBaseProblem(){const x=BASE_BANK[state.baseCycle%BASE_BANK.length];state.baseCycle=(state.baseCycle+1)%BASE_BANK.length;return {...x,hintLevel:0,solved:false,animDone:false}}
+  function renderBaseUnit(){
+    if(!state.baseProblem)state.baseProblem=makeBaseProblem();const q=state.baseProblem,kind=q.reverse?'reverse':'forward',pos=BASE_BANK.findIndex(x=>x.key===q.key),bridge=q.base!==1000;
+    return `<div class="grid2"><section class="panel"><h3>${bridge?'何を1こと見る？':'1000の何こ分？'} <span class="coreBadge">${esc(q.label)}</span></h3><div class="miniNote">${pos+1} / ${BASE_BANK.length}。一度に変える条件は1つずつです。</div><div class="bigNumber">${fmt(q.n)}</div><div class="prompt">${q.reverse?`${fmt(q.n)} は、${fmt(q.base)}を何こ集めた数？`:`${fmt(q.base)}を${q.count}こ集めると、いくつ？`}</div><input class="answerInput" id="baseAns" inputmode="numeric"><div id="baseFb" class="feedback"></div><div id="baseHint" class="hint"></div><div id="baseConnect" class="connectionBox ${q.solved?'show':''}">${q.solved?connectionsHTML(q.n):''}</div><div class="actions"><button class="btn primary" id="baseCheck">こたえ合わせ</button><button class="btn orange" id="baseHintBtn">ヒント</button><button class="btn ghost" id="baseNew" ${q.solved?'':'disabled'}>${pos===BASE_BANK.length-1?'もう一度':'次の段階'}</button></div></section><section class="panel soft"><h3>位取り表で意味を確かめる</h3><p><b>${fmt(q.n)}</b> を、${fmt(q.base)}を1ことして見るとどうなるか。</p><div class="keyIdea">${q.reverse?`${fmt(q.base)} × □ = ${fmt(q.n)}`:`${fmt(q.base)} × ${q.count} = □`}</div>${aggregatePreviewHTML({kind,base:q.base,count:q.count,answer:q.n,id:'baseAgg',solved:q.solved})}${bridge?'<div class="keyIdea">1000だけでなく、100や10000でも「それを1こ」と見れば同じ考え方が使えます。</div>':''}</section></div>`;
+  }
+  function wireBaseUnit(){
+    const q=state.baseProblem,kind=q.reverse?'reverse':'forward';function wireAgg(){$('#baseAggRun')?.addEventListener('click',()=>{runAggregateAnimation({kind,base:q.base,count:q.count,answer:q.n,id:'baseAgg'});q.animDone=true;saveState()})}wireAgg();
+    $('#baseCheck').addEventListener('click',()=>{const expected=q.reverse?q.count:q.n,el=$('#baseAns'),ok=Number(el.value)===expected;el.classList.toggle('ok',ok);el.classList.toggle('ng',!ok);if(ok){q.solved=true;markMastery(q.key,state.stage,completionLevel(q.key));state.focusNumber=q.n;$('#baseNew').disabled=false;feedback($('#baseFb'),`正解。${fmt(q.base)}を1こと見た個数で考えられました。`,'ok');$('#baseConnect').innerHTML=connectionsHTML(q.n);$('#baseConnect').classList.add('show');saveState()}else{noteWrong(q.key);feedback($('#baseFb'),`まだ答えは見せません。${fmt(q.base*10)}は${fmt(q.base)}の10こ分であることを使おう。`,'ng')}});
+    $('#baseHintBtn').addEventListener('click',()=>{noteSupport(q.key);q.hintLevel=(q.hintLevel||0)+1;let t;if(q.hintLevel===1)t=`${fmt(q.base*10)}は${fmt(q.base)}を10こ集めた数。まず10こずつのまとまりを考えよう。`;else if(q.hintLevel===2)t=`${fmt(Math.floor(q.n/(q.base*10))*(q.base*10))}は、${fmt(q.base)}が${Math.floor(q.n/(q.base*10))*10}こ分。残りも考えよう。`;else t=`位取り表の数字を、${fmt(q.base)}の位へ集めるイメージで考えよう。`;setHint('#baseHint',t)});
+    $('#baseNew').addEventListener('click',()=>{if(!q.solved)return;state.baseProblem=makeBaseProblem();resetAttempt(state.baseProblem.key,3);saveState();render()});
+  }
+
+  // number line p98-99
+  const NL_TEXTBOOK=[
+    {kind:'tick',page:'98',min:0,max:10000,step:1000,labels:[0,10000],question:'この拡大した数直線で、いちばん小さい1目盛りはいくつ？',answer:1000,zoom:true,parent:{min:0,max:50000,step:1000,labels:[0,10000,20000,30000,40000,50000]}},
+    {kind:'value',page:'98',min:0,max:50000,step:1000,labels:[0,10000,20000,30000,40000,50000],question:'イの目盛りが表す数を書こう。',target:5000,answer:5000,label:'イ'},
+    {kind:'value',page:'98',min:0,max:50000,step:1000,labels:[0,10000,20000,30000,40000,50000],question:'ウの目盛りが表す数を書こう。',target:21000,answer:21000,label:'ウ'},
+    {kind:'value',page:'98',min:50000,max:100000,step:1000,labels:[50000,60000,70000,80000,90000,100000],question:'エの目盛りが表す数を書こう。',target:69000,answer:69000,label:'エ'},
+    {kind:'click',page:'98',min:0,max:50000,step:1000,labels:[0,10000,20000,30000,40000,50000],question:'29000を表す目盛りをクリックしよう。',target:29000,answer:29000},
+    {kind:'click',page:'98',min:50000,max:100000,step:1000,labels:[50000,60000,70000,80000,90000,100000],question:'87000を表す目盛りをクリックしよう。',target:87000,answer:87000},
+    {kind:'move',page:'98',min:35000,max:44000,step:1000,labels:[38000,41000],question:'38000より3000大きい数は？',from:38000,delta:3000,answer:41000},
+    {kind:'move',page:'98',min:88000,max:96000,step:1000,labels:[89000,93000],question:'93000より4000小さい数は？',from:93000,delta:-4000,answer:89000},
+    {kind:'tick',page:'99',min:0,max:100000000,step:10000000,labels:[0,50000000],question:'0から5000万までが5目盛り。1目盛りはいくつ？',answer:10000000,hideEnd:true},
+    {kind:'discover',page:'99',min:0,max:100000000,step:10000000,labels:[0,50000000],question:'キは、1000万を何こ集めた数？',target:100000000,answer:10,label:'キ',hideEnd:true},
+    {kind:'value',page:'99',min:0,max:1000000,step:100000,labels:[0,500000,1000000],question:'サの目盛りが表す数を書こう。',target:100000,answer:100000,label:'サ'},
+    {kind:'value',page:'99',min:0,max:1000000,step:100000,labels:[0,500000,1000000],question:'シの目盛りが表す数を書こう。',target:600000,answer:600000,label:'シ'},
+    {kind:'value',page:'99',min:90000000,max:100000000,step:1000000,labels:[90000000,100000000],question:'スの目盛りが表す数を書こう。',target:92000000,answer:92000000,label:'ス'},
+    {kind:'value',page:'99',min:90000000,max:100000000,step:1000000,labels:[90000000,100000000],question:'セの目盛りが表す数を書こう。',target:95000000,answer:95000000,label:'セ'},
+    {kind:'value',page:'99',min:90000000,max:100000000,step:1000000,labels:[90000000,100000000],question:'ソの目盛りが表す数を書こう。',target:99000000,answer:99000000,label:'ソ'},
+    {kind:'value',page:'99',min:60000000,max:100000000,step:1000000,labels:[60000000,70000000,80000000,90000000,100000000],question:'タの目盛りが表す数を書こう。',target:74000000,answer:74000000,label:'タ'},
+    {kind:'value',page:'99',min:60000000,max:100000000,step:1000000,labels:[60000000,70000000,80000000,90000000,100000000],question:'チの目盛りが表す数を書こう。',target:100000000,answer:100000000,label:'チ'}
+  ];
+  function nlReachedP99(){return [8,9,10,12].some(i=>hasMastery(4,'nl:'+i))}
+  function nlPracticeSteps(){
+    const steps=[1000];
+    if(hasMastery(4,'nl:10'))steps.push(100000);
+    if(hasMastery(4,'nl:12'))steps.push(1000000);
+    if(hasMastery(4,'nl:8'))steps.push(10000000);
+    return steps;
+  }
+  function makeNLPractice(){
+    const step=pick(nlPracticeSteps());
+    const cap=step===1000?100000:step===100000?1000000:100000000;
+    const blocks=Math.max(1,Math.floor(cap/(step*10)));
+    const start=rand(0,Math.max(0,blocks-1))*step*10, max=Math.min(cap,start+step*10), t=start+rand(1,9)*step;
+    return {kind:pick(['value','click','move']),page:'練習',min:start,max,step,labels:[start,max],question:'',target:Math.min(t,max-step),answer:Math.min(t,max-step),solved:false};
+  }
+  function nlProblemSolved(q){return q.idx==null?!!q.solved:hasMastery(4,'nl:'+q.idx)}
+  function getNL(){
+    if(!state.nlProblem) state.nlProblem={...NL_TEXTBOOK[0],idx:0};
+    const q=state.nlProblem;
+    if(q.page==='練習'){
+      if(q.kind==='value')q.question='矢印の目盛りが表す数を書こう。';
+      if(q.kind==='click')q.question=`${fmt(q.target)}を表す目盛りをクリックしよう。`;
+      if(q.kind==='move'){q.from=q.min+2*q.step;q.delta=3*q.step;q.answer=q.from+q.delta;q.question=`${fmt(q.from)}より${fmt(q.delta)}大きい数は？`;}
+    }
+    return q;
+  }
+  function nlStepAnchor(q){
+    const labels=(q.labels||[]).slice().sort((a,b)=>a-b);
+    const a=labels.length?labels[0]:q.min;
+    return a+q.step<=q.max?a:q.min;
+  }
+  function nlHTML(q,opts={}){
+    const min=q.min,max=q.max,step=q.step,labels=q.labels||[];
+    const x=v=>4+(v-min)/(max-min)*92;
+    let ticks='';
+    for(let v=min;v<=max+1e-9;v+=step){const major=labels.includes(v);const xx=x(v)*10;ticks+=`<line x1="${xx}" y1="88" x2="${xx}" y2="${major?55:67}" stroke="#66727a" stroke-width="${major?3:1.6}"/>`;}
+    let oneStep='';
+    if(opts.highlightStep){
+      const a=nlStepAnchor(q),b=Math.min(max,a+step),xa=x(a)*10,xb=x(b)*10;
+      oneStep=`<line x1="${xa}" y1="116" x2="${xb}" y2="116" stroke="#d13d3d" stroke-width="6" stroke-linecap="round"/><line x1="${xa}" y1="108" x2="${xa}" y2="124" stroke="#d13d3d" stroke-width="3"/><line x1="${xb}" y1="108" x2="${xb}" y2="124" stroke="#d13d3d" stroke-width="3"/>`;
+    }
+    const labs=labels.map(v=>`<div class="nlLabel" style="left:${x(v)}%">${fmt(v)}</div>`).join('');
+    let target=''; if(q.kind==='value'&&q.target!=null)target=`<div class="nlMark" style="left:${x(q.target)}%"><div class="tri">▲</div><div>${q.label||'？'}</div></div>`;
+    if(q.kind==='discover'&&q.target!=null)target=`<div class="nlMark" style="left:${x(q.target)}%"><div class="tri">▲</div><div>${q.label||'キ'}</div></div>`;
+    const locked=q.kind==='click'&&!q.stepConfirmed?' locked':'';
+    return `<div class="nl"><svg viewBox="0 0 1000 150" preserveAspectRatio="none"><line x1="40" y1="88" x2="960" y2="88" stroke="#303840" stroke-width="3"/>${ticks}${oneStep}</svg>${labs}${target}${q.kind==='click'?`<div class="nlClickArea${locked}" id="nlClickArea" aria-label="数直線をクリック"></div>`:''}<div id="nlDynamicMarks"></div></div>`;
+  }
+  function nlKnownPair(q){
+    const labels=(q.labels||[]).slice().sort((a,b)=>a-b);
+    if(labels.length>=2) return [labels[0],labels[1]];
+    return [q.min,q.max];
+  }
+  function nlStepWrongMessage(v,q){
+    const expected=q.step,[a,b]=nlKnownPair(q),diff=Math.abs(b-a),count=Math.round(diff/expected);
+    if(v===diff&&diff!==expected)return `今の答えは、見えている2つの数の「ぜんぶの差」になっています。${fmt(diff)}を${count}この同じ間に分けます。`;
+    if(v===count&&count!==expected)return `今の答えは「何目盛りあるか」の個数です。目盛りの個数と、1目盛りで増える数は別です。`;
+    if(v===expected*10||v===expected/10)return `10倍ずれています。0の数だけで決めず、位取り表で「1がどの位にあるか」を見よう。`;
+    return '見えている2つの数の差を、そのあいだの目盛りの数で分けて考えよう。';
+  }
+  function nlStepGuideHTML(q){
+    if(q.stepConfirmed)return `<div class="nlStepGuide confirmed"><div class="nlStepCaption">✓ 1めもり ＝ ${fmt(q.step)}</div><div class="nlStepFeedback">この大きさを使って次を考えます。</div></div>`;
+    return `<div class="nlStepGuide"><div class="nlStepCaption">↑ 赤いところが「1めもり」</div><div class="nlStepRow"><strong>1めもり ＝</strong><input class="nlStepInput" id="nlStepAns" inputmode="numeric" placeholder="？"><button class="btn primary" id="nlStepCheck">確かめる</button><button class="btn orange" id="nlStepHint">ヒント</button></div><div class="nlStepFeedback" id="nlStepFb"></div></div>`;
+  }
+  function nlStepPlaceMeaning(step){
+    const exp=pvExpFromValue(step),isPow=Math.pow(10,exp)===step;
+    if(isPow)return `${fmt(step)}は、<b>${placeByExp[exp].name}の位の1</b>。1目盛り進むたび、この位を1こ分ずつ動かします。`;
+    return `${fmt(step)}ずつ増えることを、位取り表の変化と結びつけて見ます。`;
+  }
+  function nlConceptHTML(q){
+    if(!q.stepConfirmed)return `<aside class="nlConceptPanel"><h4>位取り表とのつながり</h4><div class="nlConceptLead">まず数直線から「1目盛り」を自分で決めます。正しく決まったら、どの位が動く大きさなのかをここで確かめます。</div></aside>`;
+    const exp=pvExpFromValue(q.step),num=Math.max(q.step,Math.pow(10,exp));
+    return `<aside class="nlConceptPanel"><h4>1目盛りと位をつなぐ</h4><div class="nlConceptLead">${nlStepPlaceMeaning(q.step)}</div><div class="nlConceptEquation">1めもり ＝ ${fmt(q.step)}</div>${sharedPlaceValueHTML({number:num,maxExp:Math.max(3,exp),minExp:0,focusExp:exp,id:'nlStepPV'})}<div class="nlInlineNote">数直線と位取り表を同時に見て考えます。</div></aside>`;
+  }
+  function nlNearestAnchor(q,target){
+    const labels=(q.labels||[]).filter(v=>Number.isFinite(v));
+    if(!labels.length)return q.min;
+    return labels.reduce((best,v)=>Math.abs(v-target)<Math.abs(best-target)?v:best,labels[0]);
+  }
+  function nlSupportHTML(q){
+    const lv=q.hintLevel||0;if(!lv)return '';
+    let html='';
+    if(!q.stepConfirmed){
+      const [a,b]=nlKnownPair(q),diff=Math.abs(b-a),count=Math.round(diff/q.step);
+      if(lv===1)html=`<strong>① 差と目盛り数を分ける</strong><br>${fmt(a)}から${fmt(b)}まで、数はいくつ増えている？ その間はいくつに分かれている？`;
+      else if(lv===2)html=`<strong>② 2つを数字にする</strong><br>差は ${fmt(diff)}。同じ間は ${count}こ。だから「差 ÷ 間の数」で1目盛りを考えます。`;
+      else html=`<strong>③ 位で確かめる</strong><br>候補の1がどの位にあるかを確認しよう。10倍ずれると、1の場所も1列ずれます。`;
+      return `<div class="nlSupport">${html}</div>`;
+    }
+    const target=q.kind==='move'?q.answer:(q.target??q.answer),anchor=nlNearestAnchor(q,target),ticks=Math.round(Math.abs(target-anchor)/q.step),dir=target>=anchor?'右':'左';
+    if(lv===1)html=`<strong>近い数字から始める</strong><br>${fmt(anchor)}から${dir}へ${ticks}目盛り。1目盛りは${fmt(q.step)}です。`;
+    else if(lv===2)html=`<strong>大きな数の暗算を小さくする</strong><br>${ticks}目盛り × ${fmt(q.step)}。位取り表では「${placeByExp[pvExpFromValue(q.step)].name}が${ticks}こ分動く」と考えます。`;
+    else{
+      if(q.walkValue==null)q.walkValue=anchor;
+      html=`<strong>1目盛りずつ動かして確かめる</strong><br>数直線の動きを位取り表の数でも追います。<div class="nlWalkControls"><button class="btn ghost" id="nlWalkLeft">◀ 1めもり</button><span class="nlWalkValue" id="nlWalkValue">${fmt(q.walkValue)}</span><button class="btn ghost" id="nlWalkRight">1めもり ▶</button></div><div id="nlWalkPV" style="margin-top:8px">${sharedPlaceValueHTML({number:q.walkValue,maxExp:pvHighestExp(Math.max(q.max,q.walkValue),3),minExp:0,focusExp:pvExpFromValue(q.step),id:'nlWalkTable'})}</div>`;
+    }
+    return `<div class="nlSupport">${html}</div>`;
+  }
+  function renderNumberLine(){
+    const q=getNL();
+    let line='';
+    if(q.zoom){line=`<div class="zoomPair"><div>${nlHTML(q.parent)}</div><div class="zoomLink">↑ 0〜10000の部分を拡大 ↓</div><div>${nlHTML(q,{highlightStep:true})}</div></div>`} else line=nlHTML(q,{highlightStep:true});
+    const tickOnly=q.kind==='tick';
+    const mainBody=tickOnly?'':`${q.kind!=='click'?`<input class="answerInput" id="nlAns" inputmode="numeric" placeholder="数字で答える">`:'<div class="miniNote">1目盛りを確定すると、数直線をクリックできるようになります。</div>'}<div id="nlFb" class="feedback"></div>`;
+    const core=q.idx!=null&&NL_CORE_INDEXES.includes(q.idx),currentSolved=nlProblemSolved(q),allCore=NL_CORE_INDEXES.every(i=>hasMastery(4,'nl:'+i));
+    return `<section class="panel"><h3>数直線 ${core?'<span class="coreBadge">代表問題</span>':'<span class="extraBadge">追加練習</span>'}</h3><div class="miniNote">代表問題では「1目盛り」を自分で決めます。同じ型が続く問題は、必要なときだけ追加練習できます。</div><div class="prompt">${esc(q.question)}</div><div class="nlLearningGrid"><div class="nlVisualPanel"><div class="numberlineWrap">${line}</div>${nlStepGuideHTML(q)}</div>${nlConceptHTML(q)}</div>
+      <div class="nlMainTask ${(!q.stepConfirmed&&!tickOnly)?'locked':''}" id="nlMainTask">${mainBody}</div>
+      <div id="nlSupportHost">${nlSupportHTML(q)}</div>
+      <div class="actions">${tickOnly?'':`<button class="btn primary" id="nlCheck" ${q.kind==='click'?'disabled':''}>こたえ合わせ</button>`}<button class="btn orange" id="nlHintBtn">ヒント</button><button class="btn green" id="nlNextCore" ${allCore||!currentSolved?'disabled':''}>${allCore?'代表問題 完了':'次の代表問題 ▶'}</button><button class="btn ghost" id="nlNextBook" ${currentSolved?'':'disabled'}>教科書の次</button><button class="btn ghost" id="nlPractice" ${currentSolved?'':'disabled'}>${nlReachedP99()?'到達範囲でランダム練習':'p98の範囲でランダム練習'}</button></div></section>`;
+  }
+  function wireNumberLine(){
+    const q=getNL(),tickOnly=q.kind==='tick';
+    function refreshCoreButton(){const b=$('#nlNextCore'),nb=$('#nlNextBook'),pr=$('#nlPractice');const done=NL_CORE_INDEXES.every(i=>hasMastery(4,'nl:'+i)),solved=nlProblemSolved(q);if(b){b.disabled=done||!solved;b.textContent=done?'代表問題 完了':'次の代表問題 ▶'}if(nb)nb.disabled=!solved;if(pr)pr.disabled=!solved}
+    function refreshSupport(){const host=$('#nlSupportHost');if(host)host.innerHTML=nlSupportHTML(q);wireWalk()}
+    function wireWalk(){
+      const left=$('#nlWalkLeft'),right=$('#nlWalkRight');
+      const move=dir=>{q.walkValue=clamp((q.walkValue==null?q.min:q.walkValue)+dir*q.step,q.min,q.max);const v=$('#nlWalkValue');if(v)v.textContent=fmt(q.walkValue);const h=$('#nlWalkPV');if(h)h.innerHTML=sharedPlaceValueHTML({number:q.walkValue,maxExp:pvHighestExp(Math.max(q.max,q.walkValue),3),minExp:0,focusExp:pvExpFromValue(q.step),id:'nlWalkTable'});saveState()};
+      left?.addEventListener('click',()=>move(-1));right?.addEventListener('click',()=>move(1));
+    }
+    wireWalk();
+    $('#nlStepCheck')?.addEventListener('click',()=>{
+      const el=$('#nlStepAns'),v=Number(el.value),ok=v===q.step;
+      el.classList.toggle('ok',ok);el.classList.toggle('ng',!ok);
+      if(ok){q.stepConfirmed=true;q.hintLevel=0;if(tickOnly){q.solved=true;if(q.idx!=null){const key='nl:'+q.idx;markMastery(key,state.stage,completionLevel(key))}refreshCoreButton()};saveState();speak(`正解。1目盛りは${fmt(q.step)}`);render();}
+      else{q.stepWrong=(q.stepWrong||0)+1;if(q.idx!=null)noteWrong('nl:'+q.idx);const msg=nlStepWrongMessage(v,q);const fb=$('#nlStepFb');if(fb)fb.textContent=msg;speak(msg);saveState()}
+    });
+    $('#nlStepHint')?.addEventListener('click',()=>{q.hintLevel=Math.min(3,(q.hintLevel||0)+1);if(q.idx!=null)noteSupport('nl:'+q.idx);refreshSupport();const host=$('#nlSupportHost');if(host)host.scrollIntoView({block:'nearest',behavior:'smooth'});saveState()});
+    if(q.kind==='click'&&q.stepConfirmed){
+      const area=$('#nlClickArea');
+      area?.classList.remove('locked');
+      area?.addEventListener('click',e=>{
+        const r=area.getBoundingClientRect();const pct=(e.clientX-r.left)/r.width;const raw=q.min+pct*(q.max-q.min);const snapped=Math.round(raw/q.step)*q.step;
+        const ok=snapped===q.target;if(ok){q.solved=true;if(q.idx!=null){const key='nl:'+q.idx;markMastery(key,state.stage,completionLevel(key))}refreshCoreButton()}else if(q.idx!=null)noteWrong('nl:'+q.idx);feedback($('#nlFb'),ok?`正解。${fmt(q.target)}です。`:`ここは ${fmt(snapped)}。1目盛り${fmt(q.step)}を使って、近い数字から数えよう。`,ok?'ok':'ng');
+        const holder=$('#nlDynamicMarks');holder.innerHTML=`<div class="nlMark" style="left:${4+(snapped-q.min)/(q.max-q.min)*92}%"><div class="tri">▲</div><div>${ok?fmt(snapped):'？'}</div></div>`;
+        if(ok){state.focusNumber=q.target;speak('正解');saveState()}
+      });
+    }
+    $('#nlCheck')?.addEventListener('click',()=>{
+      if(!q.stepConfirmed||q.kind==='click')return;const v=Number($('#nlAns').value);const ok=v===q.answer;$('#nlAns').classList.toggle('ok',ok);$('#nlAns').classList.toggle('ng',!ok);if(ok){q.solved=true;if(q.idx!=null){const key='nl:'+q.idx;markMastery(key,state.stage,completionLevel(key))}refreshCoreButton()}else if(q.idx!=null)noteWrong('nl:'+q.idx);
+      let msg=ok?'正解。':'ちがいます。1目盛りの大きさは合っています。近い数字から何目盛り動くかを確かめよう。';
+      if(ok&&q.kind==='discover')msg+='1000万を10こ集めた数が1億。';
+      if(ok)state.focusNumber=q.target??q.answer;
+      feedback($('#nlFb'),msg,ok?'ok':'ng'); if(ok)speak(msg);saveState();
+    });
+    $('#nlHintBtn').addEventListener('click',()=>{
+      if(q.idx!=null)noteSupport('nl:'+q.idx);q.hintLevel=Math.min(3,(q.hintLevel||0)+1);refreshSupport();
+      if(!q.stepConfirmed){const txt=q.hintLevel===1?'まず「数の差」と「何目盛りあるか」を別々に見よう。':q.hintLevel===2?'差を、同じ間の数で分けると1目盛りが出ます。':'0の数ではなく、1がどの位にある大きさかを位取り表で確かめよう。';speak(txt)}
+      else{const txt=q.hintLevel===1?'近くに書いてある数を出発点にしよう。':q.hintLevel===2?'1目盛りの大きさを、必要な目盛り数だけ使おう。':'左右のボタンで1目盛りずつ動かして、位取り表の変化も一緒に見よう。';speak(txt)}
+      saveState();
+    });
+    $('#nlNextCore')?.addEventListener('click',()=>{
+      if(!nlProblemSolved(q)||NL_CORE_INDEXES.every(i=>hasMastery(4,'nl:'+i)))return;
+      const currentPos=q.idx==null?-1:NL_CORE_INDEXES.indexOf(q.idx);
+      let idx=null;
+      for(let k=Math.max(0,currentPos+1);k<NL_CORE_INDEXES.length;k++){const cand=NL_CORE_INDEXES[k];if(!hasMastery(4,'nl:'+cand)){idx=cand;break}}
+      if(idx==null)idx=NL_CORE_INDEXES.find(x=>!hasMastery(4,'nl:'+x));
+      if(idx==null)return;
+      state.nlProblem={...NL_TEXTBOOK[idx],idx,stepConfirmed:false,hintLevel:0,walkValue:null};resetAttempt('nl:'+idx,4);saveState();render();
+    });
+    $('#nlNextBook').addEventListener('click',()=>{if(!nlProblemSolved(q))return;let idx=(q.idx??0)+1;if(idx>=NL_TEXTBOOK.length)idx=0;state.nlProblem={...NL_TEXTBOOK[idx],idx,stepConfirmed:false,hintLevel:0,walkValue:null};resetAttempt('nl:'+idx,4);saveState();render()});
+    $('#nlPractice').addEventListener('click',()=>{if(!nlProblemSolved(q))return;state.nlProblem={...makeNLPractice(),idx:null,stepConfirmed:false,hintLevel:0,walkValue:null};saveState();render()});
+  }
+
+  // p100 compare/calc — 「何を1こと見るか」→小さい計算→元の問題、の順で考える。
+  const COMPARE_BANK=[
+    {kind:'calc',left:'3000＋2000',answer:5000,unit:1000,small:'3＋2',smallAnswer:5,hint:'1000を1ことみると、3＋2という小さな計算になる。'},
+    {kind:'calc',left:'90000−60000',answer:30000,unit:10000,small:'9−6',smallAnswer:3,hint:'10000を1ことみると、9−6という小さな計算になる。'},
+    {kind:'sign',left:'700万',right:'400万',lv:7000000,rv:4000000,answer:'>',unit:1000000,leftSmall:'7',rightSmall:'4',hint:'百万を1ことみると7と4。'},
+    {kind:'sign',left:'5000',right:'3000＋2000',lv:5000,rv:5000,answer:'=',unit:1000,leftSmall:'5',rightSmall:'3＋2',hint:'1000を1ことみると、5 と 3＋2。'},
+    {kind:'sign',left:'90000−60000',right:'40000',lv:30000,rv:40000,answer:'<',unit:10000,leftSmall:'9−6',rightSmall:'4',hint:'10000を1ことみると、9−6 と 4。'},
+    {kind:'sign',left:'12000−4000',right:'9000',lv:8000,rv:9000,answer:'<',unit:1000,leftSmall:'12−4',rightSmall:'9',hint:'1000を1ことみると、12−4 と 9。'}
+  ];
+  function unitLabel(v){const exp=pvExpFromValue(v),info=placeByExp[exp];return info?info.name:fmt(v)}
+  function unitChipRow(count,unit){const n=Math.max(0,Math.round(count));if(n>14)return `<div class="unitCount">${fmt(unit)} が ${n}こ</div>`;return `<div class="unitChips">${Array.from({length:n},()=>`<span class="unitChip">1こ</span>`).join('')}</div>`}
+  function miniConceptLineHTML(n,lower,upper,label=null,second=null){if(upper<=lower)upper=lower+1;const pos=v=>5+(v-lower)/(upper-lower)*90,ticks=[lower,upper];let html=`<div class="miniConceptLine"><div class="axis"></div>`;ticks.forEach(v=>{html+=`<span class="tick" style="left:${pos(v)}%"></span><span class="tickLabel" style="left:${pos(v)}%">${fmt(v)}</span>`});html+=`<span class="mark" style="left:${pos(n)}%">${esc(label||fmt(n))}</span>`;if(second)html+=`<span class="mark" style="left:${pos(second.value)}%;color:#c56a13">${esc(second.label||fmt(second.value))}</span>`;return html+'</div>'}
+  function compareLensHTML(q,mode=state.compareLens){
+    if(q.kind==='sign'){const lc=q.lv/q.unit,rc=q.rv/q.unit,hi=Math.max(pvHighestExp(q.lv,3),pvHighestExp(q.rv,3));if(mode==='place')return `<div class="bridgeCaption">式を計算したあとの数を、同じ位取り表で比べます。</div><div class="dualPV"><div><div class="dualPVLabel">左：${esc(q.left)} ＝ ${fmt(q.lv)}</div>${sharedPlaceValueHTML({number:q.lv,maxExp:hi,id:'cmpLPV'})}</div><div><div class="dualPVLabel">右：${esc(q.right)} ＝ ${fmt(q.rv)}</div>${sharedPlaceValueHTML({number:q.rv,maxExp:hi,id:'cmpRPV'})}</div></div>`;if(mode==='line'){const hiVal=Math.max(q.lv,q.rv,q.unit),top=Math.ceil(hiVal/q.unit)*q.unit;return `<div class="bridgeCaption">数直線では、右にあるほど大きい。</div>${miniConceptLineHTML(q.lv,0,top,'左 '+fmt(q.lv),{value:q.rv,label:'右 '+fmt(q.rv)})}`};if(mode==='formula')return `<div class="formulaStack"><div class="formulaRow">左：${esc(q.left)} ＝ <strong>${fmt(q.lv)}</strong></div><div class="formulaRow">右：${esc(q.right)} ＝ <strong>${fmt(q.rv)}</strong></div><div class="formulaRow">${fmt(q.unit)}を1こと見る → ${esc(q.leftSmall)} ${esc(q.answer)} ${esc(q.rightSmall)}</div></div>`;return `<div class="bridgeCaption">両方を同じ「${fmt(q.unit)}が何こ分」に直すと、比べる数が小さくなります。</div><div class="unitCompare"><div class="unitSide"><div class="unitSideTitle">左：${esc(q.leftSmall)}</div><div class="unitCount">${fmt(q.unit)} が ${lc}こ分</div>${unitChipRow(lc,q.unit)}</div><div class="unitMiddle">${esc(q.answer)}</div><div class="unitSide"><div class="unitSideTitle">右：${esc(q.rightSmall)}</div><div class="unitCount">${fmt(q.unit)} が ${rc}こ分</div>${unitChipRow(rc,q.unit)}</div></div><div class="unitRule">${fmt(q.unit)}を1こと見れば、${lc} ${esc(q.answer)} ${rc}</div>`}
+    const count=q.answer/q.unit,hi=pvHighestExp(q.answer,3),lower=Math.floor(q.answer/(q.unit*10))*q.unit*10,upper=Math.max(lower+q.unit*10,q.answer+q.unit);if(mode==='place')return `<div class="bridgeCaption">計算結果を位取り表へ戻して、どの位の数か確認します。</div>${sharedPlaceValueHTML({number:q.answer,maxExp:hi,id:'cmpCalcPV'})}`;if(mode==='line')return `<div class="bridgeCaption">計算結果は数直線でも同じ場所を表します。</div>${miniConceptLineHTML(q.answer,lower,upper,fmt(q.answer))}`;if(mode==='formula')return `<div class="formulaStack"><div class="formulaRow">${esc(q.left)} ＝ <strong>${fmt(q.answer)}</strong></div><div class="formulaRow">${fmt(q.unit)} × ${count} ＝ ${fmt(q.answer)}</div></div>`;return `<div class="bridgeCaption">大きな数の計算を、${fmt(q.unit)}を1ことした個数の計算へ変えます。</div><div class="unitSide"><div class="unitSideTitle">${esc(q.left)}</div><div class="unitCount">${fmt(q.unit)}を1こと見る → ${esc(q.small)} ＝ ${q.smallAnswer}</div>${unitChipRow(count,q.unit)}</div><div class="unitRule">${fmt(q.unit)} × ${count} ＝ ${fmt(q.answer)}</div>`;
+  }
+  function conceptHubHTML(q,mode,body,locked=false,title='つながりを確かめる'){const tabs=[['unit','何こ分'],['place','位取り'],['line','数直線'],['formula','式']];return `<div class="conceptHub"><div class="conceptHubHead"><div class="conceptHubTitle">${esc(title)}</div>${locked?'':`<div class="lensTabs">${tabs.map(([k,l])=>`<button class="lensTab ${mode===k?'active':''}" data-lens="${k}">${l}</button>`).join('')}</div>`}</div><div class="conceptHubBody">${locked?'<div class="conceptLocked">正解すると、これまでの見方を同じ数でつなげて確認できます。</div>':body}</div></div>`}
+  function comparePhaseBody(q,phase){
+    if(phase===0){const opts=shuffledCopy([q.unit,q.unit/10,q.unit*10].filter((v,i,a)=>v>=1&&a.indexOf(v)===i));return `<div class="prompt">① 両方を整数の「何こ分」にできて、個数ができるだけ小さくなるように、何を1こと見る？</div><div class="choices">${opts.map(v=>`<button class="choice" data-cmp-unit="${v}">${fmt(v)}</button>`).join('')}</div>`}
+    if(phase===1){if(q.kind==='calc')return `<div class="prompt">② 小さい計算にすると？　${esc(q.small)} ＝ □</div><input class="answerInput" id="cmpSmallAns" inputmode="numeric">`;return `<div class="prompt">② 小さい数で比べると？　${esc(q.leftSmall)}　□　${esc(q.rightSmall)}</div><div class="choices">${['<','=','>'].map(x=>`<button class="choice" data-cmp-small-sign="${x}">${x}</button>`).join('')}</div>`}
+    return q.kind==='sign'?`<div class="prompt">③ 元の問題に戻って答える</div><div class="expr">${q.left}　□　${q.right}</div><div class="choices">${['<','=','>'].map(x=>`<button class="choice" data-sign="${x}">${x}</button>`).join('')}</div>`:`<div class="prompt">③ 元の問題に戻って答える</div><div class="expr">${q.left} ＝ □</div><input class="answerInput" id="cmpAns" inputmode="numeric">`;
+  }
+  function compareTrailHTML(q,phase,solved){
+    const upto=solved?3:phase,rows=[];
+    if(upto>0)rows.push(`<div class="compareTrailStep">✓ ① ${fmt(q.unit)} を1こと見る</div>`);
+    if(upto>1)rows.push(`<div class="compareTrailStep">✓ ② ${q.kind==='calc'?`${esc(q.small)}＝${q.smallAnswer}`:`${esc(q.leftSmall)} ${esc(q.answer)} ${esc(q.rightSmall)}`}</div>`);
+    if(solved)rows.push(`<div class="compareTrailStep">✓ ③ 元の問題でも同じ答え</div>`);
+    return rows.length?`<div class="compareTrail">${rows.join('')}</div>`:'';
+  }
+  function renderCompare(){const q=COMPARE_BANK[state.compareIndex%COMPARE_BANK.length];state.compareProblem=q;const solved=hasMastery(5,'cmp:'+state.compareIndex),phase=solved?3:clamp(state.comparePhase||0,0,2),unitKnown=solved||phase>0;return `<div class="grid2"><section class="panel"><h3>比較・計算 ${state.compareIndex+1}/6</h3><div class="miniNote">「もとにする数」→「小さい計算」→「元の問題」の3段階で進みます。終えた段階は上に残ります。</div>${compareTrailHTML(q,phase,solved)}${solved?`<div class="lessonDone"><strong>✓ この問題を3段階で説明できました</strong></div>`:comparePhaseBody(q,phase)}<div id="cmpFb" class="feedback"></div><div id="cmpHint" class="hint"></div><div class="actions">${solved?'':`<button class="btn primary" id="cmpCheck">この段階を判定</button><button class="btn orange" id="cmpHintBtn">ヒント</button>`}<button class="btn ghost" id="cmpNext" ${solved?'':'disabled'}>次の問題</button></div></section><section class="panel soft"><h3>大きな数を、小さな計算へ</h3>${unitKnown?`<div class="keyIdea">${fmt(q.unit)} を「1こ」として見る</div><p class="miniNote">決めた単位で、小さい計算へ変えていきます。</p>`:`<div class="lessonLocked">まず左で「何を1こと見るか」を自分で決めます。</div>`}</section></div><div id="cmpConceptHost">${conceptHubHTML(q,state.compareLens,solved?compareLensHTML(q,state.compareLens):'',!solved)}</div>`}
+  function wireCompare(){
+    const q=state.compareProblem,key='cmp:'+state.compareIndex,solved=hasMastery(5,key);function wireLens(){$$('[data-lens]',$('#cmpConceptHost')).forEach(b=>b.addEventListener('click',()=>{state.compareLens=b.dataset.lens;$('#cmpConceptHost').innerHTML=conceptHubHTML(q,state.compareLens,compareLensHTML(q,state.compareLens),false);wireLens();saveState()}))}if(solved)wireLens();
+    let selectedUnit=null,smallSign=null,finalSign=null;$$('[data-cmp-unit]').forEach(b=>b.addEventListener('click',()=>{selectedUnit=+b.dataset.cmpUnit;$$('[data-cmp-unit]').forEach(x=>x.classList.toggle('selected',x===b))}));$$('[data-cmp-small-sign]').forEach(b=>b.addEventListener('click',()=>{smallSign=b.dataset.cmpSmallSign;$$('[data-cmp-small-sign]').forEach(x=>x.classList.toggle('selected',x===b))}));$$('[data-sign]').forEach(b=>b.addEventListener('click',()=>{finalSign=b.dataset.sign;$$('[data-sign]').forEach(x=>x.classList.toggle('selected',x===b))}));
+    $('#cmpCheck')?.addEventListener('click',()=>{const phase=clamp(state.comparePhase||0,0,2);let ok=false;if(phase===0)ok=selectedUnit===q.unit;else if(phase===1)ok=q.kind==='calc'?Number($('#cmpSmallAns').value)===q.smallAnswer:smallSign===q.answer;else ok=q.kind==='calc'?Number($('#cmpAns').value)===q.answer:finalSign===q.answer;if(ok){if(phase<2){state.comparePhase=phase+1;feedback($('#cmpFb'),'正解。今の考えを残したまま、次の段階へ進みます。','ok');saveState();setTimeout(()=>render(),650)}else{markMastery(key,state.stage,completionLevel(key));state.focusNumber=q.kind==='sign'?q.lv:q.answer;state.compareLens='unit';feedback($('#cmpFb'),'正解。答えだけでなく、考え方もつながりました。','ok');saveState();setTimeout(()=>render(),650)}}else{noteWrong(key);feedback($('#cmpFb'),phase===0?'両方を整数の個数にできて、その個数ができるだけ小さくなる単位を探そう。':phase===1?'もとにする数の個数だけで、小さい計算をしよう。':'小さい計算の結果を元の大きさへ戻そう。','ng')}});
+    $('#cmpHintBtn')?.addEventListener('click',()=>{noteSupport(key);const phase=clamp(state.comparePhase||0,0,2);setHint('#cmpHint',phase===0?`${fmt(q.unit)}を1こと見ると、両方が整数の個数になり、個数も小さくできます。`:phase===1?q.hint:'②で出した小さい計算の結果を、元の単位へ戻そう。')});
+    $('#cmpNext').addEventListener('click',()=>{if(!hasMastery(5,key))return;state.compareIndex=(state.compareIndex+1)%COMPARE_BANK.length;state.compareProblem=null;state.compareLens='unit';state.comparePhase=0;resetAttempt('cmp:'+state.compareIndex,5);saveState();render()});
+  }
+
+  // p101 multiple views — 1つずつ作ってから、最後に3つを同時に見る。
+  const VIEWS_BANK=[{n:16000,lower:10000,upper:20000,add:6000,sub:4000,count:16,unit:1000},{n:73000,lower:70000,upper:80000,add:3000,sub:7000,count:73,unit:1000}];
+  function viewsLensHTML(q,mode=state.viewsLens){if(mode==='place')return `<div class="bridgeCaption">数字の場所を見ると、${fmt(q.n)}をつくっている位が分かります。</div>${sharedPlaceValueHTML({number:q.n,maxExp:pvHighestExp(q.n,4),id:'viewsPV'})}${pvFourDigitGroups(q.n)}`;if(mode==='unit')return `<div class="bridgeCaption">1000を1こと見ると、${fmt(q.n)}は1000が${q.count}こ分です。</div><div class="unitSide"><div class="unitCount">1000 が ${q.count}こ分</div>${unitChipRow(q.count,1000)}</div><div class="unitRule">1000 × ${q.count} ＝ ${fmt(q.n)}</div>`;if(mode==='line')return `<div class="bridgeCaption">${fmt(q.lower)}と${fmt(q.upper)}の間の、同じ${fmt(q.n)}を見ています。</div>${miniConceptLineHTML(q.n,q.lower,q.upper,fmt(q.n))}`;return `<div class="formulaStack"><div class="formulaRow">${fmt(q.lower)} ＋ <strong>${fmt(q.add)}</strong> ＝ ${fmt(q.n)}</div><div class="formulaRow">${fmt(q.upper)} − <strong>${fmt(q.sub)}</strong> ＝ ${fmt(q.n)}</div><div class="formulaRow">1000 × <strong>${q.count}</strong> ＝ ${fmt(q.n)}</div></div>`}
+  function viewsStepHTML(q,step){const done=[];if(step>0)done.push(`<div class="lessonDone"><strong>✓ ① ${fmt(q.lower)}＋${fmt(q.add)}＝${fmt(q.n)}</strong></div>`);if(step>1)done.push(`<div class="lessonDone"><strong>✓ ② ${fmt(q.upper)}−${fmt(q.sub)}＝${fmt(q.n)}</strong></div>`);if(step>2)done.push(`<div class="lessonDone"><strong>✓ ③ 1000×${q.count}＝${fmt(q.n)}</strong></div>`);if(step===0)done.push(`<label class="viewEquationCard"><b>① 下のきりのよい数から足す</b><br>${fmt(q.lower)} ＋ <input class="answerInput" id="viewsStepAns" inputmode="numeric" style="width:120px"> ＝ ${fmt(q.n)}</label>`);else if(step===1)done.push(`<label class="viewEquationCard"><b>② 上のきりのよい数からひく</b><br>${fmt(q.upper)} − <input class="answerInput" id="viewsStepAns" inputmode="numeric" style="width:120px"> ＝ ${fmt(q.n)}</label>`);else if(step===2)done.push(`<label class="viewEquationCard"><b>③ 1000の何こ分</b><br>1000 × <input class="answerInput" id="viewsStepAns" inputmode="numeric" style="width:90px"> ＝ ${fmt(q.n)}</label>`);else done.push(`<div class="keyIdea">3つとも同じ ${fmt(q.n)} を表しています。</div><div class="formulaStack"><div class="formulaRow">${fmt(q.lower)}＋${fmt(q.add)}＝${fmt(q.n)}</div><div class="formulaRow">${fmt(q.upper)}−${fmt(q.sub)}＝${fmt(q.n)}</div><div class="formulaRow">1000×${q.count}＝${fmt(q.n)}</div></div>`);return done.join('')}
+  function renderViews(){const q=VIEWS_BANK[state.viewsIndex%2];state.viewsProblem=q;const solved=hasMastery(6,'views:'+q.n),examplesDone=VIEWS_BANK.every(x=>hasMastery(6,'views:'+x.n)),step=solved?3:clamp(state.viewsStep||0,0,2),finishDone=hasMastery(6,'views:classify');const nextLabel=state.viewsIndex===1&&examplesDone?(finishDone?'仕上げ完了':'仕上げへ ↓'):'次の数';return `<div class="integrationBanner">「位取り・何こ分・数直線・式」は、同じ数を別の見方で表しています。</div><div class="viewsLayout"><section class="panel"><h3>1つの数を3つの式で ${state.viewsIndex+1}/2</h3><div class="bigNumber">${fmt(q.n)}</div><div class="miniNote">3つを一度に答えず、1つずつ作って最後に重ねます。</div><div class="viewEquationGrid">${viewsStepHTML(q,step)}</div><div id="viewsFb" class="feedback"></div><div id="viewsHint" class="hint"></div><div class="actions">${solved?'':`<button class="btn primary" id="viewsCheck">この見方を判定</button><button class="btn orange" id="viewsHintBtn">ヒント</button>`}<button class="btn ghost" id="viewsNext" ${solved?'':'disabled'}>${nextLabel}</button></div></section><section id="viewsConceptHost">${conceptHubHTML(q,state.viewsLens,solved?viewsLensHTML(q,state.viewsLens):'',!solved,'同じ数を4つの見方で見る')}</section></div>${examplesDone?`<section class="panel soft" id="viewsClassifyPanel" style="margin-top:14px"><h3>仕上げ：見方を見分ける</h3><div class="prompt">4200 ＝ 5000 − 800 は、上のどの見方と同じ？</div><div class="choices"><button class="choice" data-viewclass="add">① 下から足す</button><button class="choice" data-viewclass="sub">② 上からひく</button><button class="choice" data-viewclass="count">③ 何こ分</button></div><div id="classFb" class="feedback">${finishDone?'✓ 見方を見分けられました。':''}</div><div class="actions"><button class="btn primary" id="classCheck">判定</button></div></section>`:`<div class="lessonLocked" style="margin-top:14px">まず16000と73000を、1つずつ3つの式で表してから仕上げに進みます。</div>`}`}
+  function wireViews(){const q=state.viewsProblem,key='views:'+q.n;function wireLens(){$$('[data-lens]',$('#viewsConceptHost')).forEach(b=>b.addEventListener('click',()=>{state.viewsLens=b.dataset.lens;$('#viewsConceptHost').innerHTML=conceptHubHTML(q,state.viewsLens,viewsLensHTML(q,state.viewsLens),false,'同じ数を4つの見方で見る');wireLens();saveState()}))}if(hasMastery(6,key))wireLens();$('#viewsCheck')?.addEventListener('click',()=>{const step=clamp(state.viewsStep||0,0,2),expected=step===0?q.add:step===1?q.sub:q.count,ok=Number($('#viewsStepAns').value)===expected;if(ok){if(step<2){state.viewsStep=step+1;feedback($('#viewsFb'),'正解。今の式を残して、次の見方へ進みます。','ok');saveState();setTimeout(()=>render(),650)}else{markMastery(key,state.stage,completionLevel(key));state.focusNumber=q.n;state.viewsLens='place';feedback($('#viewsFb'),'正解。3つの式が同じ数を表すことをつなげました。','ok');saveState();setTimeout(()=>render(),650)}}else{noteWrong(key);feedback($('#viewsFb'),step===0?'下のきりのよい数から、いくつ増えるかを考えよう。':step===1?'上のきりのよい数から、いくつ戻るかを考えよう。':'1000を1こと見ると何こ分になるか考えよう。','ng')}});$('#viewsHintBtn')?.addEventListener('click',()=>{noteSupport(key);const step=clamp(state.viewsStep||0,0,2),texts=[`①は${fmt(q.lower)}から${fmt(q.n)}までの差。`,`②は${fmt(q.upper)}から${fmt(q.n)}まで戻る差。`,`③は${fmt(q.n)}を1000の個数に直す。`];setHint('#viewsHint',texts[step]);saveState()});$('#viewsNext').addEventListener('click',()=>{if(!hasMastery(6,key))return;const examplesDone=VIEWS_BANK.every(x=>hasMastery(6,'views:'+x.n));if(state.viewsIndex===1&&examplesDone){$('#viewsClassifyPanel')?.scrollIntoView({behavior:'smooth',block:'center'});return}state.viewsIndex=1;state.viewsLens='place';state.viewsStep=0;resetAttempt('views:'+VIEWS_BANK[1].n,6);saveState();render()});$$('[data-viewclass]').forEach(b=>b.addEventListener('click',()=>{state.viewsClassSelected=b.dataset.viewclass;$$('[data-viewclass]').forEach(x=>x.classList.toggle('selected',x===b));saveState()}));$('#classCheck')?.addEventListener('click',()=>{const ok=state.viewsClassSelected==='sub';if(ok){markMastery('views:classify',state.stage,completionLevel('views:classify'));feedback($('#classFb'),'正解。5000から800をひく「②上からひく」見方です。','ok');saveState()}else{noteWrong('views:classify');feedback($('#classFb'),'5000を出発点にして、そこから減らす見方を探そう。','ng')}})}
+
+  // p102-103 shift — ×10 → ×100 → ×1000 → ÷10。最後は4種類を1回ずつ混ぜて「見分けて解く」。
+  const shiftPV=[{name:'千万',v:10000000},{name:'百万',v:1000000},{name:'十万',v:100000},{name:'一万',v:10000},{name:'千',v:1000},{name:'百',v:100},{name:'十',v:10},{name:'一',v:1}];
+  const SHIFT_DEMOS={x10:{label:'×10',start:25,total:1,key:'shift:x10',factor:10,dir:-1,summary:'10倍は、数字が1つ左の位へ移る'},x100:{label:'×100',start:25,total:2,key:'shift:x100',factor:100,dir:-1,summary:'100倍は、10倍を2回。数字が2つ左の位へ移る'},x1000:{label:'×1000',start:25,total:3,key:'shift:x1000',factor:1000,dir:-1,summary:'1000倍は、10倍を3回。数字が3つ左の位へ移る'},div10:{label:'÷10',start:760,total:1,key:'shift:div10',factor:.1,dir:1,summary:'10でわると、数字が1つ右の位へ移る'}};
+  const SHIFT_ORDER=['x10','x100','x1000','div10'];
+  const SHIFT_CHALLENGES={x10:[{n:25,op:10},{n:32,op:10},{n:140,op:10}],x100:[{n:25,op:100},{n:42,op:100},{n:320,op:100}],x1000:[{n:25,op:1000},{n:63,op:1000},{n:120,op:1000}],div10:[{n:760,op:.1},{n:5400,op:.1},{n:320,op:.1}]};
+  const SHIFT_CUES={x10:{from:7,to:70},x100:{from:6,to:600},x1000:{from:8,to:8000},div10:{from:900,to:90}};
+  function ensureShiftDemo(){if(!state.shiftDemo||!SHIFT_DEMOS[state.shiftDemo.mode])state.shiftDemo={mode:'x10',step:0,customStart:null,animating:false};if(!state.shiftDemoDone||typeof state.shiftDemoDone!=='object')state.shiftDemoDone={};state.shiftDemo.step=clamp(Number(state.shiftDemo.step)||0,0,SHIFT_DEMOS[state.shiftDemo.mode].total);state.shiftDemo.animating=false;return state.shiftDemo}
+  function shiftSpec(){ensureShiftDemo();return SHIFT_DEMOS[state.shiftDemo.mode]}function shiftDemoStart(){const spec=shiftSpec(),v=Number(state.shiftDemo.customStart);return Number.isInteger(v)&&v>0?v:spec.start}function shiftValueAtStep(spec,step,start=shiftDemoStart()){return spec.dir<0?start*Math.pow(10,step):start/Math.pow(10,step)}function shiftDigits(n){return shiftPV.map(p=>Math.floor(n/p.v)%10)}function shiftCards(n){const d=shiftDigits(n);let first=d.findIndex(x=>x!==0);if(first<0)first=7;return d.map((x,i)=>({d:x,i,exp:7-i})).filter(x=>x.i>=first)}function shiftCardHTML(n,{ghost=false}={}){return shiftCards(n).map(x=>`<div class="shiftDigitCard pve-c${x.exp%4}${ghost?' ghost':''}${x.d===0?' newZero':''}" data-idx="${x.i}" style="left:${(x.i+.5)*12.5}%">${x.d}</div>`).join('')}function shiftProgressHTML(total,step){return `<div class="shiftProgressDots">${Array.from({length:total},(_,i)=>`<span class="shiftProgressDot ${i<step?'done':i===step&&step<total?'current':''}"></span>`).join('')}</div>`}
+  function shiftStepMessage(spec,step,start,current){if(step===0){if(spec.total===1)return spec.dir<0?'「つぎへ」で、数字を1つ左の位へ動かしてみよう。':'「つぎへ」で、数字を1つ右の位へ動かしてみよう。';return `${spec.label}は、×10を${spec.total}回くり返して考えます。まず1回目を動かそう。`}if(step<spec.total)return `×10を${step}回：${fmt(current)}。あと${spec.total-step}回、同じように1つ左の位へ動かします。`;return `${spec.summary}。${fmt(start)} ${spec.dir<0?'× '+spec.factor:'÷ 10'} ＝ ${fmt(current)}`}
+  function shiftDemoHTML(){const spec=shiftSpec(),step=state.shiftDemo.step,start=shiftDemoStart(),current=shiftValueAtStep(spec,step,start),finished=step===spec.total,target=spec.dir<0?`${fmt(start)}を${spec.factor}倍すると？`:`${fmt(start)}を10でわると？`,equation=step===0?`${fmt(start)} → ?`:step<spec.total?`${fmt(start)} × ${Math.pow(10,step)} ＝ ${fmt(current)}`:`${fmt(start)} ${spec.dir<0?'× '+spec.factor:'÷ 10'} ＝ ${fmt(current)}`;return `<div class="shiftTarget"><strong>${target}</strong><span class="shiftRepeat">${spec.dir<0&&spec.total>1?`×10 を ${spec.total}回`:`1回の位の移動`}</span></div><div class="shiftDemoEquation">${equation}</div>${shiftProgressHTML(spec.total,step)}<div class="shiftBoard"><div class="shiftAnimTable"><div class="shiftHeaderRow"><div class="shiftRowTag">位</div><div class="shiftHeads">${shiftPV.map(p=>`<div class="shiftHead">${p.name}</div>`).join('')}</div></div><div class="shiftDataRow"><div class="shiftRowTag">もと</div><div class="shiftRail">${shiftCardHTML(start,{ghost:step>0})}</div></div><div class="shiftDataRow"><div class="shiftRowTag">いま</div><div class="shiftRail" id="shiftCurrentRail">${shiftCardHTML(current)}</div></div></div></div><div class="shiftStepExplain" id="shiftStepExplain">${shiftStepMessage(spec,step,start,current)}</div>${finished?`<div class="connectionBox show"><b>ポイント：</b> 「0を付ける」のではなく、<b>それぞれの数字が位取り表の中で移動</b>した結果です。</div>`:''}`}
+  function shiftModeForOp(op){return op===10?'x10':op===100?'x100':op===1000?'x1000':'div10'}function shiftModeUnlocked(mode){const i=SHIFT_ORDER.indexOf(mode);return i<=0||hasMastery(7,SHIFT_DEMOS[SHIFT_ORDER[i-1]].key)}function allShiftModesMastered(){return SHIFT_ORDER.every(m=>hasMastery(7,SHIFT_DEMOS[m].key))}function makeShiftChallenge(mode,mixed=false){const m=mixed?mode:mode,x=pick(SHIFT_CHALLENGES[m]);return {...x,answer:x.n*x.op,hintLevel:0,mode:m,mixed}}function ensureShiftChallenge(){const mode=state.shiftDemo.mode;if(!state.shiftChallenge||state.shiftChallenge.mode!==mode||state.shiftChallenge.mixed)state.shiftChallenge=makeShiftChallenge(mode,false);return state.shiftChallenge}
+  function ensureMixedOrder(){if(!Array.isArray(state.shiftMixedOrder)||state.shiftMixedOrder.length!==4)state.shiftMixedOrder=shuffledCopy(SHIFT_ORDER);state.shiftMixedPos=clamp(Number(state.shiftMixedPos)||0,0,4);return state.shiftMixedOrder}
+  function currentMixedChallenge(){const order=ensureMixedOrder();if(state.shiftMixedPos>=4)return null;const mode=order[state.shiftMixedPos];if(!state.shiftChallenge||!state.shiftChallenge.mixed||state.shiftChallenge.mode!==mode)state.shiftChallenge=makeShiftChallenge(mode,true);return state.shiftChallenge}
+  function shiftChallengePanelHTML(){const mode=state.shiftDemo.mode,spec=SHIFT_DEMOS[mode],done=hasMastery(7,spec.key),demoDone=!!state.shiftDemoDone[mode],allDone=allShiftModesMastered();if(allDone){const doneMixed=SHIFT_ORDER.filter(m=>hasMastery(7,'shift:mixed:'+m)).length;if(doneMixed===4)return `<section class="panel soft"><h3>⑤ まぜて練習</h3><div class="lessonDone"><strong>✓ 4種類をすべて見分けて解けました</strong></div></section>`;if(!state.shiftMixedOrder)return `<section class="panel soft"><h3>⑤ まぜて練習</h3><div class="keyIdea">4種類を1問ずつ、順番を混ぜて出します。変化を見分けてから答えます。</div><div class="actions"><button class="btn green" id="shiftStartMixed">4問を始める</button></div></section>`;const c=currentMixedChallenge(),cue=SHIFT_CUES[c.mode];return `<section class="panel soft"><h3>⑤ まぜて練習 ${state.shiftMixedPos+1}/4</h3><div class="prompt">${fmt(cue.from)} → ${fmt(cue.to)} と同じ変化を、${fmt(c.n)} にすると？</div><div class="miniNote">まず変化を見分け、そのあと結果を答えます。</div><div class="choices">${SHIFT_ORDER.map(m=>`<button class="choice" data-mixed-mode="${m}">${SHIFT_DEMOS[m].label}</button>`).join('')}</div><input class="answerInput" id="shiftAns" inputmode="numeric" placeholder="結果"><div id="shiftFb" class="feedback"></div><div id="shiftHint" class="hint"></div><div class="actions"><button class="btn green" id="shiftCheck">見分け方と答えを判定</button><button class="btn orange" id="shiftHintBtn">ヒント</button></div></section>`}if(done)return `<section class="panel soft"><h3>確認問題</h3><div class="lessonDone"><strong>✓ ${spec.label}を確認できました</strong><span>次に解禁された段階へ進みます。</span></div></section>`;if(!demoDone)return `<section class="panel soft"><h3>確認問題</h3><div class="lessonLocked">まず左の「${spec.label}」の動きを最後まで見ます。終わると確認問題が開きます。</div></section>`;const c=ensureShiftChallenge();return `<section class="panel soft"><h3>${spec.label}の確認問題</h3><div class="prompt">${c.op===.1?`${c.n}を10でわった数は？`:`${c.n}を${c.op}倍した数は？`}</div><input class="answerInput" id="shiftAns" inputmode="numeric"><div id="shiftFb" class="feedback"></div><div id="shiftHint" class="hint"></div><div class="actions"><button class="btn green" id="shiftCheck">こたえ合わせ</button><button class="btn orange" id="shiftHintBtn">ヒント</button></div></section>`}
+  function renderShift(){ensureShiftDemo();const buttons=Object.entries(SHIFT_DEMOS).map(([k,s])=>`<button class="shiftModeBtn ${state.shiftDemo.mode===k?'active':''} ${hasMastery(7,s.key)?'done':''}" data-shift-mode="${k}" ${shiftModeUnlocked(k)?'':'disabled'}>${s.label}${shiftModeUnlocked(k)?'':' 🔒'}</button>`).join('');return `<div class="grid2"><section class="panel shiftLesson"><h3>位のうつり方</h3><div class="miniNote">×10から1段階ずつ進み、最後に4種類を混ぜます。</div><div class="shiftModeBar">${buttons}</div><div id="shiftDemoHost">${shiftDemoHTML()}</div></section>${shiftChallengePanelHTML()}</div><div class="shiftFloatingControls"><button class="btn ghost" id="shiftBack">◀ もどる</button><span class="shiftKeyHint">← / → キー</span><button class="btn primary" id="shiftNext">つぎへ ▶</button></div>`}
+  function wireShift(){ensureShiftDemo();let animating=false;function refreshDemo(){$('#shiftDemoHost').innerHTML=shiftDemoHTML();const spec=shiftSpec(),step=state.shiftDemo.step;$('#shiftBack').disabled=animating||step<=0;$('#shiftNext').disabled=animating||step>=spec.total;$('#shiftNext').textContent=step>=spec.total?'おわり':'つぎへ ▶';$$('[data-shift-mode]').forEach(b=>{const m=b.dataset.shiftMode,sp=SHIFT_DEMOS[m];b.disabled=animating||!shiftModeUnlocked(m);b.classList.toggle('active',m===state.shiftDemo.mode);b.classList.toggle('done',hasMastery(7,sp.key))});saveState()}function setMode(mode){if(!SHIFT_DEMOS[mode]||animating||!shiftModeUnlocked(mode))return;state.shiftDemo={mode,step:0,customStart:null,animating:false};state.shiftChallenge=makeShiftChallenge(mode,false);saveState();render()}function moveOne(delta){if(animating)return;const spec=shiftSpec(),oldStep=state.shiftDemo.step,newStep=clamp(oldStep+delta,0,spec.total);if(newStep===oldStep)return;const rail=$('#shiftCurrentRail');if(!rail)return;animating=true;state.shiftDemo.animating=true;$('#shiftBack').disabled=true;$('#shiftNext').disabled=true;$$('[data-shift-mode]').forEach(b=>b.disabled=true);const moveIdx=delta>0?spec.dir:-spec.dir;$$('.shiftDigitCard',rail).forEach(card=>{const idx=+card.dataset.idx,newIdx=idx+moveIdx;if(newIdx<0||newIdx>7){card.style.opacity='0';card.style.transform='translateX(-50%) scale(.72)'}else{card.style.left=`${(newIdx+.5)*12.5}%`;card.style.transform='translateX(-50%) scale(1.05)'}});setTimeout(()=>{state.shiftDemo.step=newStep;state.shiftDemo.animating=false;animating=false;if(newStep===spec.total){state.shiftDemoDone[state.shiftDemo.mode]=true;speak(spec.summary);saveState();render()}else refreshDemo()},650)}$$('[data-shift-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.shiftMode)));$('#shiftBack').addEventListener('click',()=>moveOne(-1));$('#shiftNext').addEventListener('click',()=>moveOne(1));if(window.__ookiiShiftKeyHandler)document.removeEventListener('keydown',window.__ookiiShiftKeyHandler);window.__ookiiShiftKeyHandler=e=>{if(state.stage!==7||e.altKey||e.ctrlKey||e.metaKey)return;const tag=(e.target?.tagName||'').toLowerCase();if(['input','textarea','select'].includes(tag))return;if(e.key==='ArrowLeft'){e.preventDefault();moveOne(-1)}if(e.key==='ArrowRight'){e.preventDefault();moveOne(1)}};document.addEventListener('keydown',window.__ookiiShiftKeyHandler);
+    $('#shiftStartMixed')?.addEventListener('click',()=>{state.shiftMixedOrder=shuffledCopy(SHIFT_ORDER);state.shiftMixedPos=0;state.shiftMixedSelected=null;state.shiftChallenge=null;saveState();render()});$$('[data-mixed-mode]').forEach(b=>b.addEventListener('click',()=>{state.shiftMixedSelected=b.dataset.mixedMode;$$('[data-mixed-mode]').forEach(x=>x.classList.toggle('selected',x===b));saveState()}));$('#shiftCheck')?.addEventListener('click',()=>{const c=state.shiftChallenge,el=$('#shiftAns'),mixed=!!c?.mixed,key=mixed?'shift:mixed:'+c.mode:SHIFT_DEMOS[c.mode].key,ok=Number(el.value)===c.answer&&(!mixed||state.shiftMixedSelected===c.mode);el.classList.toggle('ok',ok);el.classList.toggle('ng',!ok);if(ok){markMastery(key,state.stage,completionLevel(key));feedback($('#shiftFb'),mixed?'正解。変化も結果も合っています。':'正解。この段階を確認できました。','ok');if(mixed){state.shiftMixedPos++;state.shiftMixedSelected=null;state.shiftChallenge=null}saveState();setTimeout(()=>render(),650)}else{noteWrong(key);feedback($('#shiftFb'),mixed&&state.shiftMixedSelected!==c.mode?'まず、どの変化と同じかを見直そう。':'数字が何つ分の位を移るかを確かめよう。','ng')}});$('#shiftHintBtn')?.addEventListener('click',()=>{const c=state.shiftChallenge,mixed=!!c?.mixed,key=mixed?'shift:mixed:'+c.mode:SHIFT_DEMOS[c.mode].key;noteSupport(key);c.hintLevel=Math.min(2,(c.hintLevel||0)+1);const mode=c.mode,spec=SHIFT_DEMOS[mode];if(c.hintLevel===1)setHint('#shiftHint',mixed?`矢印の前後で、数字が何つ分の位を動いたか見よう。`:(c.op===.1?'10でわると、数字は1つ右の位へ移ります。':`${c.op}倍は、×10を${spec.total}回くり返します。`));else{state.shiftDemo={mode,step:0,customStart:c.n,animating:false};refreshDemo();setHint('#shiftHint','左の位取り表に問題の数をセットしました。「つぎへ」で動かして確かめよう。')}saveState()});refreshDemo()}
+
+  // p104 review — 間違いを技能別に拾い、その場で対応する見方へ戻す
+  const reviewQs=[
+    {skill:'位取り',kind:'num',q:'417526 の 一万の位の数字は？',a:1,h:'右から一、十、百、千、一万。',n:417526,focusExp:4},
+    {skill:'位取り',kind:'num',q:'417526 の 十万の位の数字は？',a:4,h:'一万のさらに1つ左。',n:417526,focusExp:5},
+    {skill:'何こ分',kind:'num',q:'1000を295こ集めた数は？',a:295000,h:'1000を1ことみる。',base:1000,count:295,n:295000},
+    {skill:'何こ分',kind:'num',q:'295000は、1000を何こ集めた数？',a:295,h:'295000を1000の個数に直す。',base:1000,count:295,n:295000,reverse:true},
+    {skill:'数直線',kind:'num',q:'0から10000までを10等分したとき、1目盛りはいくつ？',a:1000,h:'10000の差を、10この同じ間に分ける。',min:0,max:10000,step:1000},
+    {skill:'数直線',kind:'num',q:'0から10000までを5等分したとき、1目盛りはいくつ？',a:2000,h:'基礎の1000刻みから一歩広げて考える。',min:0,max:10000,step:2000},
+    {skill:'数直線',kind:'num',q:'1目盛り1000の数直線で、38000から3目盛り右の数は？',a:41000,h:'右へ1目盛りで1000大きくなる。',min:35000,max:44000,step:1000},
+    {skill:'比較・式',kind:'sign',q:'47000　□　40000＋7000',a:'=',h:'1000を1こと見ると、47 と 40＋7。',unit:1000,leftSmall:'47',rightSmall:'40＋7',lv:47000,rv:47000},
+    {skill:'比較・式',kind:'sign',q:'800万−300万　□　400万',a:'>',h:'100万を1ことして8−3と4。',unit:1000000,leftSmall:'8−3',rightSmall:'4',lv:5000000,rv:4000000},
+    {skill:'比較・式',kind:'num',q:'90000−60000 は？',a:30000,h:'10000を1こと見ると9−6。',unit:10000,small:'9−6',smallAnswer:3,calc:true},
+    {skill:'いろいろな見方',kind:'num',q:'40000 − □ ＝ 38000。□は？',a:2000,h:'40000から38000までの差。',n:38000,lower:30000,upper:40000},
+    {skill:'いろいろな見方',kind:'num',q:'30000 ＋ □ ＝ 38000。□は？',a:8000,h:'38000と30000の差。',n:38000,lower:30000,upper:40000},
+    {skill:'いろいろな見方',kind:'num',q:'38000は1000を何こ集めた数？',a:38,h:'1000を1ことみる。',n:38000,base:1000,count:38,lower:30000,upper:40000},
+    {skill:'位の移動',kind:'num',q:'420を10倍した数は？',a:4200,h:'数字を1つ左の位へ。',n:420,op:10},
+    {skill:'位の移動',kind:'num',q:'420を100倍した数は？',a:42000,h:'×10を2回くり返す。',n:420,op:100},
+    {skill:'位の移動',kind:'num',q:'420を1000倍した数は？',a:420000,h:'×10を3回くり返す。',n:420,op:1000},
+    {skill:'位の移動',kind:'num',q:'420を10でわった数は？',a:42,h:'数字を1つ右の位へ。',n:420,op:.1}
+  ];
+  const REVIEW_SKILLS=['位取り','何こ分','数直線','比較・式','いろいろな見方','位の移動'];
+  function reviewSkillStats(skill){
+    const ids=reviewQs.map((q,i)=>q.skill===skill?i:-1).filter(i=>i>=0);
+    const got=ids.filter(i=>hasMastery(8,'review:'+i)).length;
+    const attempted=ids.filter(i=>state.reviewResults.some(r=>r.index===i&&r.type==='answer')).length;
+    const independent=ids.filter(i=>evidenceFor(8,'review:'+i)?.level==='independent').length;
+    const supported=ids.filter(i=>evidenceFor(8,'review:'+i)?.level==='supported').length;
+    return {ids,got,total:ids.length,attempted,independent,supported};
+  }
+  function reviewSkillsHTML(){
+    return REVIEW_SKILLS.map(sk=>{const x=reviewSkillStats(sk);let cl='untouched',status='これから';if(x.independent===x.total){cl='good';status='◎ 自分でできた'}else if(x.got===x.total){cl='supported';status='○ 補助あり・自力確認へ'}else if(x.attempted){cl='need';status='△ もう一度'}return `<button class="skill ${cl}" data-review-skill="${esc(sk)}"><strong>${esc(sk)}</strong><small>${status}</small></button>`}).join('');
+  }
+  function reviewSummaryHTML(){
+    const attempted=new Set(state.reviewResults.filter(r=>r.type==='answer').map(r=>r.index)).size;if(attempted<reviewQs.length)return '';
+    const revisit=REVIEW_SKILLS.filter(sk=>{const x=reviewSkillStats(sk);return x.independent<x.total});
+    return `<div class="reviewSummary"><div class="reviewSummaryTitle">単元チェックの結果</div><div class="reviewSummaryGrid">${REVIEW_SKILLS.map(sk=>{const x=reviewSkillStats(sk);const allIndependent=x.independent===x.total,allGot=x.got===x.total,label=allIndependent?'◎ 自分でできた':allGot?'○ 補助あり・自力確認へ':'△ もう一度',cl=allIndependent?'good':allGot?'supported':'need';return `<div class="summarySkill ${cl}">${esc(sk)}<br>${label}</div>`}).join('')}</div><div class="reviewStatusNote">○の技能も、補助を使った問題だけをノーミス・ノーヒントで解き直すと◎になります。</div><div class="actions">${revisit.length?'<button class="btn orange" id="reviewWeak">△・○を自力でやり直す</button>':'<span class="keyIdea">6つの力をすべて自力で確認できました。</span>'}</div></div>`;
+  }
+  function reviewNumberLineHTML(q){
+    const fake={min:q.min,max:q.max,step:q.step,labels:[q.min,q.max]},intervals=Math.round((q.max-q.min)/q.step);
+    return `<div class="miniNote">赤い区間1つが「1目盛り」。全体の差を、同じ間の数で分けます。</div><div class="numberlineWrap">${nlHTML(fake,{highlightStep:true})}</div><div class="reviewMiniFormula">${fmt(q.max-q.min)} ÷ ${intervals} ＝ ${fmt(q.step)}</div>`;
+  }
+  function reviewShiftRecoveryHTML(q){
+    const mode=shiftModeForOp(q.op),spec=SHIFT_DEMOS[mode],total=spec.total,dir=spec.dir<0?'左':'右';
+    const result=q.a;
+    return `<div class="reviewRecoveryLead">「0を付ける」ではなく、数字の場所を動かして考えます。</div><div class="dualPV"><div><div class="dualPVLabel">もと ${fmt(q.n)}</div>${sharedPlaceValueHTML({number:q.n,maxExp:pvHighestExp(Math.max(q.n,result),3),id:'reviewShiftA'})}</div><div><div class="dualPVLabel">あと ${fmt(result)}</div>${sharedPlaceValueHTML({number:result,maxExp:pvHighestExp(Math.max(q.n,result),3),id:'reviewShiftB'})}</div></div><div class="reviewStepLine">${q.op===.1?'10でわる → 数字を1つ右へ':`${q.op}倍 → ×10を${total}回 → 1回ごとに数字を1つ${dir}へ`}</div>`;
+  }
+  function reviewRemediationHTML(q){
+    if(q.skill==='位取り')return `<div class="reviewRecoveryLead">答える数字ではなく、「どの位の部屋か」を先に確かめます。</div>${sharedPlaceValueHTML({number:q.n,maxExp:5,minExp:0,focusExp:q.focusExp,id:'reviewPV'})}<div class="reviewStepLine">色でなくても、右から 一 → 十 → 百 → 千 → 一万 → 十万 と1つずつたどれます。</div>`;
+    if(q.skill==='何こ分')return `<div class="reviewRecoveryLead">${fmt(q.base)}を1こと見て、数と個数を行き来します。</div>${aggregatePreviewHTML({kind:q.reverse?'reverse':'forward',base:q.base,count:q.count,answer:q.n,id:'reviewAgg',solved:true})}`;
+    if(q.skill==='数直線')return reviewNumberLineHTML(q);
+    if(q.skill==='比較・式'){if(q.calc)return `<div class="reviewRecoveryLead">${fmt(q.unit)}を1こと見て、小さい計算に直します。</div><div class="reviewMiniFormula">${esc(q.small)} ＝ ${q.smallAnswer}　→　${fmt(q.unit)} × ${q.smallAnswer} ＝ ${fmt(q.a)}</div>`;const lc=q.lv/q.unit,rc=q.rv/q.unit;return `<div class="reviewRecoveryLead">左右を同じ「${fmt(q.unit)}が何こ分」にそろえます。</div><div class="unitCompare"><div class="unitSide"><div class="unitSideTitle">左</div><div class="unitCount">${fmt(q.unit)}が ${lc}こ分</div></div><div class="unitMiddle">${esc(q.a)}</div><div class="unitSide"><div class="unitSideTitle">右</div><div class="unitCount">${fmt(q.unit)}が ${rc}こ分</div></div></div><div class="reviewMiniFormula">${esc(q.leftSmall)}　${esc(q.a)}　${esc(q.rightSmall)}</div>`}
+    if(q.skill==='いろいろな見方')return `<div class="reviewRecoveryLead">38000という同じ数を、式・何こ分・位取りで見直します。</div><div class="formulaStack"><div class="formulaRow">30000 ＋ <strong>8000</strong> ＝ 38000</div><div class="formulaRow">40000 − <strong>2000</strong> ＝ 38000</div><div class="formulaRow">1000 × <strong>38</strong> ＝ 38000</div></div>${sharedPlaceValueHTML({number:38000,maxExp:4,id:'reviewViewsPV'})}${miniConceptLineHTML(38000,30000,40000,'38000')}`;
+    return reviewShiftRecoveryHTML(q);
+  }
+  function renderReview(){
+    const i=state.reviewIndex,q=reviewQs[i],key='review:'+i,mastered=hasMastery(8,key),ev=evidenceFor(8,key);
+    const retrying=state.reviewRetryingIndex===i;
+    const input=q.kind==='sign'?`<div class="choices">${['<','=','>'].map(x=>`<button class="choice" data-review-sign="${x}">${x}</button>`).join('')}</div>`:`<input class="answerInput" id="reviewAns" inputmode="numeric">`;
+    const status=retrying?'自力でもう一度。ヒントなしで解いてみよう。':ev?.level==='independent'?'◎ 自分でできた':ev?.level==='supported'?'○ 確かめながらできた':mastered?'○ できた':'';
+    const retryBtn=ev?.level==='supported'?'<button class="btn ghost" id="reviewRetryIndependent">自力でもう一度</button>':'';
+    return `<section class="panel"><div class="reviewHeader"><div><h3>単元チェック</h3><div class="miniNote">間違えたら、その技能で使った見方へ戻って確かめます。</div></div><div class="reviewCount">${i+1} / ${reviewQs.length}</div></div><div class="reviewSkills" id="reviewSkillsHost">${reviewSkillsHTML()}</div><div class="prompt">${q.q}</div>${input}<div id="reviewFb" class="feedback">${status}</div><div id="reviewHint" class="hint">${q.h}</div><div id="reviewRecoveryHost">${state.reviewRemediation?`<div class="reviewRecovery"><div class="reviewRecoveryHead"><span>${esc(q.skill)}へ戻って確かめる</span><button class="smallBtn" id="reviewCloseRecovery">閉じる</button></div><div class="reviewRecoveryBody">${reviewRemediationHTML(q)}</div></div>`:''}</div><div class="actions"><button class="btn primary" id="reviewCheck">こたえ合わせ</button><button class="btn orange" id="reviewHintBtn">ヒント</button><button class="btn ghost" id="reviewRecoveryBtn">${esc(q.skill)}で確かめる</button>${retryBtn}<button class="btn ghost" id="reviewPrev">◀ 前</button><button class="btn ghost" id="reviewNext">次 ▶</button><button class="btn danger" id="reviewRestart">チェックをやり直す</button></div><div id="reviewSummaryHost">${reviewSummaryHTML()}</div></section>`;
+  }
+  function wireReview(){
+    const i=state.reviewIndex,q=reviewQs[i];
+    function wireSkillButtons(){
+      $$('[data-review-skill]').forEach(b=>b.addEventListener('click',()=>{const sk=b.dataset.reviewSkill,x=reviewSkillStats(sk),target=x.ids.find(j=>!hasMastery(8,'review:'+j))??x.ids.find(j=>evidenceFor(8,'review:'+j)?.level!=='independent')??x.ids[0];state.reviewIndex=target;state.reviewRemediation=false;state.reviewRetryingIndex=evidenceFor(8,'review:'+target)?.level==='supported'?target:null;if(state.reviewRetryingIndex!=null)resetAttempt('review:'+target,8);saveState();render()}));
+      $('#reviewWeak')?.addEventListener('click',()=>{let target=reviewQs.findIndex((_,j)=>!hasMastery(8,'review:'+j));if(target<0)target=reviewQs.findIndex((_,j)=>evidenceFor(8,'review:'+j)?.level!=='independent');if(target>=0){state.reviewIndex=target;state.reviewRemediation=false;state.reviewRetryingIndex=evidenceFor(8,'review:'+target)?.level==='supported'?target:null;if(state.reviewRetryingIndex!=null)resetAttempt('review:'+target,8);saveState();render()}});
+    }
+    function refreshReviewStatus(){const sh=$('#reviewSkillsHost');if(sh)sh.innerHTML=reviewSkillsHTML();const rh=$('#reviewSummaryHost');if(rh)rh.innerHTML=reviewSummaryHTML();wireSkillButtons()}
+    function setRecovery(open){state.reviewRemediation=open;saveState();render()}
+    if(q.kind==='sign')$$('[data-review-sign]').forEach(b=>b.addEventListener('click',()=>{q.selected=b.dataset.reviewSign;$$('[data-review-sign]').forEach(x=>x.classList.toggle('selected',x===b))}));
+    $('#reviewCheck').addEventListener('click',()=>{
+      const v=q.kind==='sign'?q.selected:Number($('#reviewAns').value),ok=v===q.a;
+      state.reviewResults.push({type:'answer',index:i,skill:q.skill,ok});
+      const key='review:'+i;
+      if(ok){markMastery(key,8,completionLevel(key,8));state.reviewRemediation=false;state.reviewRetryingIndex=null;feedback($('#reviewFb'),evidenceFor(8,key)?.level==='independent'?'◎ 正解。自分でできました。':'○ 正解。確かめながらできました。あとで自力でもう一度できます。','ok');}
+      else{noteWrong(key,8);noteRemediation(key,8);state.reviewRemediation=true;feedback($('#reviewFb'),'ちがいます。下に、この問題で使う見方を出しました。見直してからもう一度答えよう。','ng');$('#reviewRecoveryHost').innerHTML=`<div class="reviewRecovery"><div class="reviewRecoveryHead"><span>${esc(q.skill)}へ戻って確かめる</span><button class="smallBtn" id="reviewCloseRecovery">閉じる</button></div><div class="reviewRecoveryBody">${reviewRemediationHTML(q)}</div></div>`;wireRecovery();}
+      saveState();updateNav();refreshReviewStatus();
+    });
+    function wireRecovery(){
+      $('#reviewCloseRecovery')?.addEventListener('click',()=>setRecovery(false));
+      $('#reviewAggRun')?.addEventListener('click',()=>runAggregateAnimation({kind:q.reverse?'reverse':'forward',base:q.base,count:q.count,answer:q.n,id:'reviewAgg'}));
+    }
+    wireRecovery();
+    $('#reviewHintBtn').addEventListener('click',()=>{noteSupport('review:'+i,8);state.reviewResults.push({type:'hint',index:i,skill:q.skill});saveState();setHint('#reviewHint',q.h)});
+    $('#reviewRecoveryBtn').addEventListener('click',()=>{noteRemediation('review:'+i,8);state.reviewResults.push({type:'recovery',index:i,skill:q.skill});saveState();setRecovery(true)});
+    $('#reviewRetryIndependent')?.addEventListener('click',()=>{resetAttempt('review:'+i,8);state.reviewRetryingIndex=i;state.reviewRemediation=false;q.selected=null;saveState();render()});
+    $('#reviewPrev').addEventListener('click',()=>{state.reviewIndex=(i-1+reviewQs.length)%reviewQs.length;state.reviewRemediation=false;state.reviewRetryingIndex=null;saveState();render()});
+    $('#reviewNext').addEventListener('click',()=>{state.reviewIndex=(i+1)%reviewQs.length;state.reviewRemediation=false;state.reviewRetryingIndex=null;saveState();render()});
+    $('#reviewRestart').addEventListener('click',()=>{state.reviewIndex=0;state.reviewResults=[];state.reviewRemediation=false;state.reviewRetryingIndex=null;state.mastery[8]=[];Object.keys(state.learningEvidence).filter(k=>k.startsWith('8::')).forEach(k=>delete state.learningEvidence[k]);Object.keys(state.attemptEvidence).filter(k=>k.startsWith('8::')).forEach(k=>delete state.attemptEvidence[k]);saveState();render()});
+    wireSkillButtons();
+  }
+
+  // p105 — 2つの「算数の目」を、単元全体の見方としてまとめる
+  const finalQs=[
+    {q:'900−700 を9−7で考えるとき、もとにする数は？',a:100,exps:['100が9こから7こをひくから。','10が9こから7こをひくから。','700を先に0にするから。'],ei:0,kind:'unit',left:900,right:700,result:200,unit:100},
+    {q:'900000−700000 を9−7で考えるとき、もとにする数は？',a:100000,exps:['100000が9こから7こをひくから。','0を5こ消すから。','900000の方が大きいから。'],ei:0,kind:'unit',left:900000,right:700000,result:200000,unit:100000},
+    {q:'同じ位の数が何こ集まると、1つ上の位に上がる？',a:10,exps:['どの位でも10こ集まると、1つ上の位が1こになる。','大きい数だけ10こで上がる。','1000より小さい位だけ10こで上がる。'],ei:0,kind:'place',unit:1000}
+  ];
+  function shuffledCopy(a){const x=[...a];for(let i=x.length-1;i>0;i--){const j=rand(0,i);[x[i],x[j]]=[x[j],x[i]]}return x}
+  function ensureFinalOrders(){const valid=Array.isArray(state.finalOrders)&&state.finalOrders.length===finalQs.length&&state.finalOrders.every(x=>Array.isArray(x)&&x.length===3);if(valid)return state.finalOrders;const correctPositions=shuffledCopy([0,1,2]);state.finalOrders=finalQs.map((q,step)=>{const order=Array(3),wrong=shuffledCopy([0,1,2].filter(i=>i!==q.ei));order[correctPositions[step]]=q.ei;let w=0;for(let pos=0;pos<3;pos++)if(order[pos]==null)order[pos]=wrong[w++];return order});saveState();return state.finalOrders}
+  function finalResponse(step){if(!state.finalResponses||typeof state.finalResponses!=='object')state.finalResponses={};if(!state.finalResponses[step])state.finalResponses[step]={value:'',selected:null};return state.finalResponses[step]}
+  function finalMapHTML(reveal=false){
+    if(!reveal)return `<div class="finalMap"><section class="finalLens place"><h3>① 位に注目する</h3><p class="miniNote">この見方の中身は、3問を解いたあとにまとめます。</p></section><div class="finalLensBridge">⇄</div><section class="finalLens unit"><h3>② もとにする数に注目する</h3><p class="miniNote">答えにつながる説明は、最後まで先に見せません。</p></section></div>`;
+    return `<div class="finalMap"><section class="finalLens place"><h3>① 位に注目する</h3><p><b>10こ集まると1つ上の位が1こ。</b></p><p class="miniNote">一→十→百→千→一万…と大きくなっても同じです。</p></section><div class="finalLensBridge">⇄</div><section class="finalLens unit"><h3>② もとにする数の何こ分</h3><p><b>100や1000などを「1こ」と見る。</b></p><p class="miniNote">大きな数の計算を小さな計算へ直せます。</p></section></div>`;
+  }
+  function finalProofHTML(q){if(q.kind==='unit'){const lc=q.left/q.unit,rc=q.right/q.unit,ans=q.result/q.unit;return `<div class="finalProof"><div class="finalProofTitle">同じもとで「何こ分」にそろえる</div><div class="unitCompare"><div class="unitSide"><div class="unitSideTitle">${fmt(q.left)}</div><div class="unitCount">${fmt(q.unit)} が ${lc}こ</div></div><div class="unitMiddle">−</div><div class="unitSide"><div class="unitSideTitle">${fmt(q.right)}</div><div class="unitCount">${fmt(q.unit)} が ${rc}こ</div></div></div><div class="reviewMiniFormula">${lc} − ${rc} ＝ ${ans}　→　${fmt(q.unit)} × ${ans} ＝ ${fmt(q.result)}</div>${sharedPlaceValueHTML({number:q.result,maxExp:pvHighestExp(q.left,3),focusExp:pvExpFromValue(q.unit),id:'finalProofPV'})}</div>`}const counts=[0,0,0,0,0,0,0,0,0],exp=pvExpFromValue(q.unit);counts[8-exp]=10;return `<div class="finalProof"><div class="finalProofTitle">10こ集めると、1つ上へ</div>${sharedPlaceValueHTML({number:0,maxExp:Math.max(4,exp+1),counts,focusExp:exp,id:'finalCarryPV'})}<div class="reviewMiniFormula">${fmt(q.unit)} が 10こ ＝ ${fmt(q.unit*10)} が 1こ</div></div>`}
+  function finalSynthesisHTML(){const all=finalQs.every((_,i)=>hasMastery(9,'final:'+i));if(!all)return '';return `<div class="finalSynthesis"><h3>この単元のつながり</h3><div class="finalSynthesisFlow"><span>10こ集まる</span><b>→</b><span>1つ上の位</span><b>→</b><span>その位を「1こ」と見る</span><b>→</b><span>大きな数を小さな個数で考えられる</span></div><p class="miniNote">位取り・何こ分・数直線・式・10倍は、10進位取りの同じ仕組みを違う角度から見ています。</p></div>`}
+  function renderFinal(){const q=finalQs[state.finalStep],solved=hasMastery(9,'final:'+state.finalStep),orders=ensureFinalOrders(),resp=finalResponse(state.finalStep),all=finalQs.every((_,i)=>hasMastery(9,'final:'+i));state.finalSelected=resp.selected;const prevDisabled=state.finalStep===0?'disabled':'',nextDisabled=state.finalStep===finalQs.length-1||(!state.freeMode&&!solved)?'disabled':'';return `${finalMapHTML(all)}<section class="panel"><h3>最後の説明問題 ${state.finalStep+1}/3</h3><div class="miniNote">小さい数で確かめてから、大きい数へ広げます。</div><div class="prompt">${q.q}</div><input class="answerInput" id="finalAns" inputmode="numeric" value="${esc(resp.value??'')}"><div class="prompt" style="font-size:1rem">その理由としていちばんよい説明は？</div><div class="choices">${orders[state.finalStep].map(i=>`<button class="choice ${resp.selected===i?'selected':''}" data-final-exp="${i}">${q.exps[i]}</button>`).join('')}</div><div id="finalFb" class="feedback">${solved?'✓ 答えと理由を説明できました。':''}</div><div id="finalHint" class="hint"></div><div id="finalProofHost">${solved?finalProofHTML(q):''}</div><div class="actions"><button class="btn primary" id="finalCheck">答えと説明を判定</button><button class="btn orange" id="finalHintBtn">ヒント</button><button class="btn ghost" id="finalPrev" ${prevDisabled}>◀ 前</button><button class="btn ghost" id="finalNext" ${nextDisabled}>次 ▶</button></div></section><div id="finalSynthesisHost">${finalSynthesisHTML()}</div>${all?`<section class="panel soft" style="margin-top:14px"><h3>振り返り</h3><div class="miniNote">3つの説明問題を終えたので、最後に自分の言葉でまとめます。</div><label>自分がいちばん使いやすかった見方<textarea id="reflection1" class="reflection" placeholder="位取り、何こ分、数直線、式など">${esc(state.reflection1||'')}</textarea></label><label>数が大きくなっても変わらないと思った決まり<textarea id="reflection2" class="reflection" placeholder="自分の言葉で書こう">${esc(state.reflection2||'')}</textarea></label><div id="reflectionFb" class="feedback"></div><div class="actions"><button class="btn green" id="saveReflection">振り返りを保存</button></div></section>`:`<div class="lessonLocked" style="margin-top:14px">3つの説明問題を順に終えると、振り返りが開きます。</div>`}`}
+  function wireFinal(){const q=finalQs[state.finalStep],resp=finalResponse(state.finalStep);$('#finalAns')?.addEventListener('input',e=>{resp.value=e.target.value;saveState()});$$('[data-final-exp]').forEach(b=>b.addEventListener('click',()=>{state.finalSelected=+b.dataset.finalExp;resp.selected=state.finalSelected;$$('[data-final-exp]').forEach(x=>x.classList.toggle('selected',x===b));saveState()}));$('#finalCheck').addEventListener('click',()=>{resp.value=$('#finalAns').value;resp.selected=state.finalSelected;const okNum=Number(resp.value)===q.a,okExp=state.finalSelected===q.ei,ok=okNum&&okExp;if(ok){const key='final:'+state.finalStep;markMastery(key,state.stage,completionLevel(key));feedback($('#finalFb'),'正解。答えだけでなく、なぜその見方が使えるかまで説明できました。','ok');saveState();setTimeout(()=>render(),650)}else{noteWrong('final:'+state.finalStep);feedback($('#finalFb'),!okNum?'「何を1こと見るか」または「10こ集まるとどうなるか」を確かめよう。':'答えは合っています。理由を選び直そう。','ng')}});$('#finalHintBtn').addEventListener('click',()=>{noteSupport('final:'+state.finalStep);setHint('#finalHint',state.finalStep<2?'9と7は、それぞれ何が9こ・7こなのかを言葉にしよう。':'一→十、十→百、百→千でも同じことが起きるか考えよう。')});$('#finalPrev').addEventListener('click',()=>{if(state.finalStep<=0)return;state.finalStep--;state.finalSelected=finalResponse(state.finalStep).selected;saveState();render()});$('#finalNext').addEventListener('click',()=>{if(state.finalStep>=finalQs.length-1)return;if(!state.freeMode&&!hasMastery(9,'final:'+state.finalStep))return;state.finalStep++;state.finalSelected=finalResponse(state.finalStep).selected;saveState();render()});$('#saveReflection')?.addEventListener('click',()=>{state.reflection1=$('#reflection1').value.trim();state.reflection2=$('#reflection2').value.trim();if(state.reflection1.length>=5&&state.reflection2.length>=5){markExperience('reflection');feedback($('#reflectionFb'),'保存しました。単元の学習がすべてつながりました。','ok')}else feedback($('#reflectionFb'),'2つとも、5文字以上を目安に自分の言葉で書こう。','ng');saveState();updateNav()})}
+
+  $('#soundBtn').addEventListener('click',()=>{state.sound=!state.sound;$('#soundBtn').setAttribute('aria-pressed',String(state.sound));$('#soundBtn').textContent=state.sound?'🔊 よみ上げ ON':'🔇 よみ上げ OFF';if(!state.sound&&'speechSynthesis'in window)speechSynthesis.cancel();saveState()});
+  let teacherPreviewSnapshot=null,teacherHoldTimer=null,teacherHoldTriggered=false;
+  function teacherButtonText(){return state.freeMode?'🔓 先生用プレビュー中':'👩‍🏫 先生用プレビュー'}
+  function enterTeacherPreview(){teacherPreviewSnapshot=JSON.stringify({...state,freeMode:false});state.freeMode=true;render()}
+  function exitTeacherPreview(){if(teacherPreviewSnapshot){const restored=JSON.parse(teacherPreviewSnapshot);Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,restored)}state.freeMode=false;teacherPreviewSnapshot=null;saveState(true);render()}
+  function toggleTeacherPreview(){state.freeMode?exitTeacherPreview():enterTeacherPreview()}
+  const freeBtn=$('#freeModeBtn');freeBtn.title='先生用。1.5秒長押しで切り替えます。';
+  freeBtn.addEventListener('click',e=>{e.preventDefault()});
+  freeBtn.addEventListener('pointerdown',e=>{e.preventDefault();teacherHoldTriggered=false;freeBtn.textContent='長押し…';teacherHoldTimer=setTimeout(()=>{teacherHoldTriggered=true;toggleTeacherPreview();const b=$('#freeModeBtn');b.setAttribute('aria-pressed',String(state.freeMode));b.textContent=teacherButtonText()},1500)});
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>freeBtn.addEventListener(ev,()=>{if(teacherHoldTimer)clearTimeout(teacherHoldTimer);teacherHoldTimer=null;if(!teacherHoldTriggered)freeBtn.textContent=teacherButtonText()}));
+  $('#resetBtn').addEventListener('click',()=>{if(confirm('学習の記録も含めて、はじめからに戻しますか？')){localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));Object.assign(state,defaultState());$('#soundBtn').setAttribute('aria-pressed','true');$('#soundBtn').textContent='🔊 よみ上げ ON';$('#freeModeBtn').setAttribute('aria-pressed','false');$('#freeModeBtn').textContent=teacherButtonText();render()}});
+
+  $('#soundBtn').setAttribute('aria-pressed',String(state.sound));$('#soundBtn').textContent=state.sound?'🔊 よみ上げ ON':'🔇 よみ上げ OFF';$('#freeModeBtn').setAttribute('aria-pressed',String(state.freeMode));$('#freeModeBtn').textContent=teacherButtonText();
+  updateNav(); render();
+})();
+</script>
+</body>
+</html>
