@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3けたの かず 学習アプリ</title>
+    <title>3けたの かず 学習アプリ v10 wide</title>
     <style>
         :root {
             --color-hundreds: #00b0f0; /* 百：水色 */
@@ -20,7 +20,7 @@
             align-items: center;
             padding: 20px;
             margin: 0;
-            user-select: none;
+            user-select: text;
         }
 
         /* ★ スター表示ヘッダー */
@@ -326,83 +326,908 @@
         .val-h { color: #008cc2; font-weight: bold; }
         .val-t { color: #d35400; font-weight: bold; }
         .val-o { color: #c0392b; font-weight: bold; }
-    </style>
+
+
+        /* 改修: 操作状態・アクセシビリティ・レスポンシブ */
+        .header-actions { display:flex; align-items:center; gap:8px; }
+        .btn-sound-toggle {
+            min-width: 46px;
+            min-height: 46px;
+            border-radius: 10px;
+        }
+        .btn-sound-toggle:hover { background: rgba(255,255,255,0.45); }
+        button:focus-visible, .mode-label:focus-visible, .pv-col:focus-visible {
+            outline: 4px solid #111;
+            outline-offset: 3px;
+        }
+        .mode-label {
+            border: none;
+            background: transparent;
+            padding: 5px 4px;
+            font-family: inherit;
+        }
+        .pv-col {
+            position: relative;
+            transition: box-shadow .15s, transform .15s;
+        }
+        .pv-col.selected-place {
+            box-shadow: inset 0 0 0 5px #2d3436;
+            z-index: 2;
+        }
+        .pv-col.place-error {
+            box-shadow: inset 0 0 0 5px #e74c3c;
+        }
+        .pv-col.place-missing {
+            box-shadow: inset 0 0 0 5px #f39c12;
+        }
+        .pv-col.place-correct {
+            box-shadow: inset 0 0 0 4px #27ae60;
+        }
+        .pv-col.selected-place.place-error {
+            box-shadow: inset 0 0 0 5px #e74c3c, inset 0 0 0 9px #fff;
+        }
+        .pv-col.selected-place.place-missing {
+            box-shadow: inset 0 0 0 5px #f39c12, inset 0 0 0 9px #fff;
+        }
+        .number-pad {
+            display:grid;
+            grid-template-columns: repeat(5, minmax(52px, 66px));
+            justify-content:center;
+            gap:8px;
+            margin:10px auto 0;
+        }
+        .num-key {
+            min-height:44px;
+            border:2px solid #bdc3c7;
+            border-radius:12px;
+            background:#fff;
+            font-size:21px;
+            font-weight:bold;
+            cursor:pointer;
+        }
+        .num-key:hover { background:#f1f2f6; }
+        .num-key:active { transform:scale(.97); }
+        .num-key-clear { font-size:15px; color:#555; }
+        .current-number {
+            margin: 8px auto 0;
+            width: fit-content;
+            min-width: 180px;
+            padding: 7px 18px;
+            border-radius: 999px;
+            background: #f1f2f6;
+            color: #2d3436;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .keyboard-help {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 13px;
+            color: #636e72;
+        }
+        .retry-note {
+            padding: 10px 12px;
+            background: rgba(255,255,255,.62);
+            border-radius: 10px;
+            margin: 8px 0;
+        }
+        .wrong-place-list {
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+            margin:10px 0;
+        }
+        .wrong-place-chip {
+            display:inline-block;
+            padding:6px 10px;
+            border-radius:999px;
+            background:#fff;
+            border:2px solid currentColor;
+            font-weight:bold;
+        }
+        .hint-stage-label {
+            display:block;
+            font-size:14px;
+            letter-spacing:0;
+            color:#555;
+            margin-bottom:2px;
+        }
+        .hint-empty {
+            color:#666;
+            font-size:22px;
+            letter-spacing:0;
+        }
+        .btn-replay {
+            margin-top: 14px;
+            padding: 9px 18px;
+            border: 2px solid #2c3e50;
+            border-radius: 999px;
+            background: white;
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-replay:disabled { opacity:.45; cursor:not-allowed; }
+        .reading-selfcheck {
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+            margin-top:14px;
+            align-items:center;
+        }
+        .btn-selfcheck {
+            padding:8px 14px;
+            border:2px solid #95a5a6;
+            border-radius:999px;
+            background:#fff;
+            font-weight:bold;
+            cursor:pointer;
+        }
+        .selfcheck-status { font-weight:bold; color:#2c3e50; }
+        .btn-main:disabled, .btn-arrow:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #explanation-area[aria-live] { scroll-margin-bottom: 110px; scroll-margin-top: 20px; }
+        .switch input:focus-visible + .slider {
+            outline: 4px solid #111;
+            outline-offset: 4px;
+        }
+        .support-detail {
+            margin-top:8px;
+            padding:10px 12px;
+            border-radius:10px;
+            background:rgba(255,255,255,.72);
+        }
+        .support-answer {
+            font-size:20px;
+            font-weight:bold;
+        }
+        .score-header, .mode-toggle-container, .tab-menu, .place-value-ui, .number-pad, .controls, button {
+            user-select: none;
+        }
+        .learning-status {
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            gap:8px;
+            margin:-10px 0 18px;
+        }
+        .skill-status-chip {
+            display:inline-flex;
+            align-items:center;
+            gap:6px;
+            padding:6px 10px;
+            border-radius:999px;
+            background:#f4f6f8;
+            border:1px solid #dfe4e8;
+            color:#34495e;
+            font-size:13px;
+            font-weight:bold;
+        }
+        .skill-status-chip.active {
+            border-color:#2c3e50;
+            box-shadow:0 0 0 2px rgba(44,62,80,.10);
+        }
+        .review-waiting { color:#8e5b00; }
+        .auto-practice-row {
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:8px;
+            margin:-12px 0 18px;
+        }
+        .btn-auto-practice {
+            border:2px solid #7f8c8d;
+            border-radius:999px;
+            background:#fff;
+            color:#2c3e50;
+            padding:8px 15px;
+            font-weight:bold;
+            cursor:pointer;
+        }
+        .btn-auto-practice.active {
+            background:#2c3e50;
+            border-color:#2c3e50;
+            color:#fff;
+        }
+        .auto-step-label { font-size:13px; color:#57606f; font-weight:bold; }
+        .category-progress {
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            gap:6px;
+            margin:-8px 0 16px;
+        }
+        .category-chip {
+            padding:5px 9px;
+            border-radius:999px;
+            background:#f6f7f8;
+            border:1px solid #dfe4e8;
+            font-size:12px;
+            font-weight:bold;
+            color:#4b5563;
+        }
+        .category-chip.stable { background:#eaf7ed; border-color:#83c995; color:#236b36; }
+        .category-chip.working { background:#fff7dc; border-color:#e8c95b; color:#735b00; }
+        .category-chip.weak { background:#fff0ef; border-color:#e4aaa5; color:#8e2d24; }
+        .category-chip.target { box-shadow:0 0 0 2px #2c3e50; }
+        .learning-details {
+            margin:-8px 0 16px;
+            text-align:center;
+        }
+        .learning-details summary {
+            cursor:pointer;
+            display:inline-block;
+            color:#57606f;
+            font-size:12px;
+            font-weight:bold;
+            padding:5px 10px;
+            border-radius:999px;
+            background:#f5f6f7;
+        }
+        .learning-details[open] summary { margin-bottom:10px; }
+        .auto-course-notice {
+            min-height:1em;
+            font-size:12px;
+            color:#9a6100;
+            font-weight:bold;
+        }
+        .mode-label:disabled, .switch input:disabled + .slider {
+            opacity:.45;
+            cursor:not-allowed;
+        }
+
+        .recognition-status {
+            margin-top:10px;
+            padding:12px 14px;
+            border-radius:12px;
+            background:#eef6ff;
+            border:2px solid #b8d8f5;
+            color:#234;
+        }
+        .recognition-listening {
+            background:#fff7d6;
+            border-color:#f1c40f;
+        }
+        .recognition-success {
+            background:#e7f7ec;
+            border-color:#27ae60;
+        }
+        .heard-text {
+            display:inline-block;
+            margin-top:6px;
+            padding:4px 10px;
+            border-radius:999px;
+            background:#fff;
+            border:1px solid #bfc9d4;
+            font-weight:bold;
+        }
+        .mic-note {
+            margin-top:8px;
+            font-size:14px;
+            color:#566573;
+        }
+        .btn-mic-cancel {
+            margin-top: 10px;
+            padding: 7px 14px;
+            border: 2px solid #7f8c8d;
+            border-radius: 999px;
+            background: white;
+            color: #444;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-mic-cancel:hover { background:#f7f7f7; }
+
+        @media (max-width: 700px) {
+            body { padding: 8px; }
+            .score-header { padding: 8px 10px; gap:8px; }
+            .header-left { gap: 6px; }
+            .star-count { font-size: 16px; }
+            .btn-reset { padding: 5px 8px; font-size: 11px; }
+            .app-container { padding: 14px 10px; border-radius: 14px; }
+            h1 { font-size: 21px; }
+            .mode-toggle-container { width: 100%; box-sizing: border-box; padding: 7px 8px; gap:7px; }
+            .mode-label { font-size: 13px; flex:1; }
+            .switch { flex: 0 0 60px; }
+            .tab-menu { gap: 5px; margin-bottom: 14px; }
+            .tab-menu button { padding: 10px 5px; font-size: 14px; }
+            .problem-box { padding: 12px 8px; min-height: 245px; }
+            .instruction { font-size: 17px; }
+            #visual-area svg { max-height: 240px; }
+            .place-value-ui { margin: 12px auto; }
+            .pv-label { font-size: 14px; padding: 8px 0; }
+            .digit-display { font-size: 44px; height: 54px; line-height:54px; }
+            .btn-arrow { padding: 8px 12px; }
+            .controls {
+                position: sticky;
+                bottom: 6px;
+                z-index: 30;
+                gap:8px;
+                padding:8px;
+                background: rgba(255,255,255,.94);
+                border-radius: 14px;
+                box-shadow: 0 3px 14px rgba(0,0,0,.12);
+            }
+            .btn-main { padding: 12px 17px; font-size: 16px; }
+            .explanation { font-size: 16px; padding: 14px; }
+            .hint-text { font-size: 30px; gap:8px; letter-spacing:2px; }
+            .hint-box { padding:4px 8px; }
+            ruby rt { font-size: 12px; }
+            .keyboard-help { display:none; }
+            .number-pad { grid-template-columns:repeat(5, minmax(44px, 1fr)); gap:6px; width:100%; }
+            .num-key { min-height:42px; font-size:19px; }
+            .learning-status { margin:-4px 0 12px; gap:5px; }
+            .skill-status-chip { font-size:11px; padding:5px 7px; }
+            .auto-practice-row { margin:-4px 0 12px; gap:5px; }
+            .btn-auto-practice { font-size:12px; padding:7px 11px; }
+            .auto-step-label { font-size:11px; }
+            .category-progress { margin:-4px 0 12px; gap:4px; }
+            .category-chip { font-size:10px; padding:4px 6px; }
+        }
+
+        @media (max-height: 800px) {
+            .controls {
+                position: sticky;
+                bottom: 6px;
+                z-index: 30;
+                padding: 8px;
+                background: rgba(255,255,255,.95);
+                border-radius: 14px;
+                box-shadow: 0 3px 14px rgba(0,0,0,.12);
+            }
+            .problem-box { min-height: 235px; }
+        }
+
+    
+        /* v10 wide: 16:9向け3カラム。中央は問題・位取り・解説だけ */
+        body {
+            height:100vh;
+            box-sizing:border-box;
+            padding:8px;
+            overflow:hidden;
+            align-items:stretch;
+        }
+        .workspace-shell {
+            width:min(1540px, 100%);
+            height:calc(100vh - 16px);
+            margin:0 auto;
+            display:grid;
+            grid-template-columns:minmax(230px, 270px) minmax(560px, 1fr) minmax(270px, 310px);
+            gap:10px;
+            align-items:stretch;
+        }
+        .side-panel {
+            min-width:0;
+            height:100%;
+            overflow-y:auto;
+            overflow-x:hidden;
+            padding:8px;
+            box-sizing:border-box;
+            border-radius:18px;
+            background:rgba(255,255,255,.76);
+            box-shadow:0 5px 18px rgba(0,0,0,.08);
+            scrollbar-width:thin;
+        }
+        .side-panel h1 {
+            font-size:21px;
+            margin:3px 0 8px;
+            text-align:center;
+        }
+        .side-card {
+            width:100%;
+            box-sizing:border-box;
+            margin:0 0 9px;
+            padding:10px;
+            border-radius:14px;
+            background:#fff;
+            border:1px solid #dde3e8;
+        }
+        .side-section-title {
+            margin:0 0 7px;
+            font-size:13px;
+            font-weight:800;
+            color:#57606f;
+            text-align:center;
+        }
+        .score-header {
+            max-width:none;
+            display:grid;
+            grid-template-columns:1fr auto;
+            gap:7px;
+            padding:9px 10px;
+            margin-bottom:9px;
+        }
+        .score-header .header-left {
+            min-width:0;
+            display:flex;
+            flex-direction:column;
+            align-items:flex-start;
+            gap:4px;
+        }
+        .star-count { font-size:16px; gap:4px; }
+        .btn-reset { font-size:10px; padding:4px 7px; }
+        .header-actions { gap:3px; }
+        .btn-sound-toggle { min-width:36px; min-height:36px; font-size:20px; padding:2px; }
+
+        .mode-toggle-container {
+            width:100%;
+            margin:0;
+            padding:7px;
+            box-sizing:border-box;
+            flex-direction:column;
+            gap:5px;
+            border-radius:14px;
+        }
+        .mode-label { width:100%; font-size:13px; padding:5px 2px; }
+        .switch { width:52px; height:28px; }
+        .slider:before { width:20px; height:20px; }
+        input:checked + .slider:before { transform:translateX(24px); }
+        .auto-practice-row {
+            margin:8px 0 0;
+            flex-direction:column;
+            gap:4px;
+        }
+        .btn-auto-practice { width:100%; padding:7px 8px; font-size:12px; }
+        .auto-step-label { font-size:11px; text-align:center; }
+        .auto-course-notice { min-height:0; font-size:10px; text-align:center; }
+
+        .tab-menu {
+            display:grid;
+            grid-template-columns:1fr;
+            gap:6px;
+            margin:0;
+        }
+        .tab-menu button {
+            padding:9px 7px;
+            font-size:13px;
+            line-height:1.25;
+        }
+        .learning-details { margin:0; text-align:left; }
+        .learning-details summary { display:block; text-align:center; font-size:11px; }
+        .learning-status, .category-progress {
+            margin:9px 0 0;
+            justify-content:flex-start;
+            gap:5px;
+        }
+        .skill-status-chip { width:100%; box-sizing:border-box; font-size:10px; padding:5px 7px; }
+        .category-chip { font-size:10px; padding:4px 6px; }
+
+        .app-container.center-stage {
+            max-width:none;
+            width:100%;
+            height:100%;
+            min-width:0;
+            padding:8px;
+            border-radius:18px;
+            display:grid;
+            grid-template-rows:minmax(0, 39fr) minmax(0, 27fr) minmax(0, 34fr);
+            gap:7px;
+            overflow:hidden;
+        }
+        .app-container.center-stage.reading-mode {
+            grid-template-rows:minmax(0, 54fr) minmax(0, 46fr);
+        }
+        .center-stage .problem-box {
+            min-height:0;
+            height:100%;
+            margin:0;
+            padding:6px 10px;
+            overflow:hidden;
+            display:flex;
+            flex-direction:column;
+            justify-content:flex-start;
+        }
+        .center-stage .instruction {
+            flex:0 0 auto;
+            font-size:17px;
+            line-height:1.3;
+            margin:0 0 4px;
+        }
+        .center-stage #visual-area {
+            min-height:0;
+            flex:1 1 auto;
+            height:auto;
+            width:100%;
+            overflow:hidden;
+            align-items:center;
+            justify-content:center;
+            display:flex;
+        }
+        .center-stage #visual-area > * {
+            max-width:100%;
+            transform-origin:center center;
+        }
+        .center-stage #visual-area svg {
+            width:100%;
+            height:100%;
+            max-height:none;
+            object-fit:contain;
+        }
+        .place-frame {
+            margin:0;
+            padding:5px 7px;
+            border:2px solid #dfe4e8;
+            border-radius:15px;
+            background:#f9fbfc;
+            box-sizing:border-box;
+            height:100%;
+            overflow:hidden;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        .place-frame .place-value-ui {
+            max-width:570px;
+            margin:0 auto;
+        }
+        .place-frame .pv-label { padding:6px 0; font-size:14px; }
+        .place-frame .btn-arrow { padding:5px 12px; font-size:23px; }
+        .place-frame .digit-display { font-size:46px; height:48px; line-height:48px; margin:2px 0; }
+        .center-stage .explanation {
+            margin:0;
+            height:100%;
+            min-height:0;
+            max-height:none;
+            overflow:hidden;
+            padding:9px 12px;
+            font-size:15px;
+            line-height:1.38;
+            box-sizing:border-box;
+            display:block !important;
+        }
+        .center-stage .explanation:empty::before {
+            content:'ここに せつめいが でます';
+            color:#a0a8b0;
+            font-size:13px;
+            font-weight:bold;
+        }
+        .center-stage .explanation .exp-part { margin-bottom:4px; }
+        .center-stage .explanation strong[style*="font-size:20px"] { font-size:1.22em !important; }
+        .center-stage .explanation span[style*="font-size:22px"] { font-size:1.32em !important; }
+        .center-stage .explanation hr { margin:5px 0 !important; }
+        .center-stage .explanation .btn-replay { margin-top:5px; padding:6px 10px; }
+        #explanation-area[aria-live] { scroll-margin:0; }
+
+        .side-right { display:flex; flex-direction:column; gap:0; }
+        .input-tools { flex:0 0 auto; }
+        .current-number {
+            width:100%;
+            min-width:0;
+            box-sizing:border-box;
+            margin:0 0 8px;
+            padding:6px 8px;
+            font-size:16px;
+            border-radius:10px;
+        }
+        .number-pad {
+            width:100%;
+            grid-template-columns:repeat(5, minmax(0, 1fr));
+            gap:6px;
+            margin:0;
+        }
+        .num-key { min-width:0; min-height:40px; font-size:18px; border-radius:10px; }
+        .num-key-clear { grid-column:1 / -1 !important; min-height:36px; font-size:13px; }
+        .keyboard-help { margin-top:7px; font-size:10px; line-height:1.35; }
+        .action-card {
+            margin-top:auto;
+            margin-bottom:auto;
+            width:100%;
+            box-sizing:border-box;
+            padding:14px 12px;
+        }
+        .controls {
+            position:static !important;
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+            margin:0;
+            padding:0 !important;
+            background:transparent !important;
+            box-shadow:none !important;
+        }
+        .action-btn-home { width:100%; }
+        .btn-main {
+            width:100%;
+            box-sizing:border-box;
+            min-height:64px;
+            padding:14px 12px;
+            font-size:21px;
+            font-weight:800;
+            border-radius:15px;
+            box-shadow:0 3px 8px rgba(0,0,0,.14);
+        }
+        .btn-main:hover { transform:translateY(-1px); }
+        .reading-action-slot {
+            flex:0 0 auto;
+            width:100%;
+            min-height:0;
+            display:none;
+            justify-content:center;
+            align-items:center;
+            padding:2px 0 4px;
+            box-sizing:border-box;
+        }
+        .reading-action-slot .reading-mic-action {
+            width:min(320px, 72%);
+            min-height:66px;
+            padding:14px 20px;
+            font-size:22px;
+            font-weight:800;
+            border-radius:18px;
+            box-shadow:0 4px 12px rgba(0,0,0,.16);
+        }
+
+        @media (max-width: 1080px) {
+            body { height:auto; min-height:100vh; overflow:auto; }
+            .app-container.center-stage,
+            .app-container.center-stage.reading-mode { grid-template-rows:minmax(240px, 1fr) auto minmax(180px, auto); }
+            .center-stage .explanation { min-height:180px; height:auto; overflow:visible; }
+            .place-frame { height:auto; }
+            .workspace-shell {
+                height:auto;
+                grid-template-columns:220px minmax(500px, 1fr);
+                grid-template-areas:
+                    "left center"
+                    "right center";
+                align-items:start;
+            }
+            .side-left { grid-area:left; height:auto; }
+            .side-right { grid-area:right; height:auto; }
+            .center-stage { grid-area:center; min-height:calc(100vh - 16px); }
+        }
+        @media (max-width: 820px) {
+            body { padding:6px; }
+            .workspace-shell { display:flex; flex-direction:column; width:100%; }
+            .side-panel, .app-container.center-stage { height:auto; overflow:visible; }
+            .side-left { order:1; }
+            .center-stage { order:2; display:block; min-height:0; }
+            .side-right { order:3; }
+            .center-stage .problem-box, .place-frame, .center-stage .explanation { margin-bottom:10px; }
+            .tab-menu { grid-template-columns:repeat(3,1fr); }
+            .mode-toggle-container { flex-direction:row; }
+            .mode-label { font-size:12px; }
+            .side-right .controls { flex-direction:row; }
+            .action-card { margin:0; }
+            .btn-main { min-height:54px; padding:11px 8px; font-size:17px; }
+            .reading-action-slot .reading-mic-action { width:min(360px, 90%); min-height:58px; font-size:19px; }
+            .number-pad { max-width:420px; margin:0 auto; }
+        }
+</style>
 </head>
 <body>
 
-<div class="score-header">
-    <div class="header-left">
-        <div class="star-count" id="star-display">🌟 あつめた★: 0こ</div>
-        <button class="btn-reset" onclick="resetStars()">★をリセット</button>
-    </div>
-    <button id="sound-toggle-btn" class="btn-sound-toggle" onclick="toggleSound()">🔊</button>
-</div>
+<div class="workspace-shell">
+    <aside class="side-panel side-left" aria-label="学習メニュー">
+        <h1>🔢 3けたの かず</h1>
 
-<div class="app-container">
-    <h1>🔢 3けたの かず 学習アプリ</h1>
-
-    <div class="mode-toggle-container">
-        <span id="label-zero" class="mode-label active" onclick="setMode(false)">🎯 空位のれんしゅう</span>
-        <label class="switch">
-            <input type="checkbox" id="mode-checkbox" onchange="toggleMode()">
-            <span class="slider"></span>
-        </label>
-        <span id="label-random" class="mode-label" onclick="setMode(true)">🎲 かんぜんランダム</span>
-    </div>
-
-    <div class="tab-menu">
-        <button id="tab1" class="active" onclick="changeTab(1)">📷 えを みて こたえよう</button>
-        <button id="tab2" onclick="changeTab(2)">🔢 すうじを よもう</button>
-        <button id="tab3" onclick="changeTab(3)">✏️ かんじから すうじへ</button>
-    </div>
-
-    <div class="problem-box">
-        <div id="instruction" class="instruction"></div>
-        <div id="visual-area"></div>
-    </div>
-
-    <div id="input-section">
-        <div class="place-value-ui">
-            <div class="pv-col col-h">
-                <div class="pv-label">百のくらい</div>
-                <button class="btn-arrow" onclick="adjustDigit('h', 1)">▲</button>
-                <div id="disp-h" class="digit-display">0</div>
-                <button class="btn-arrow" onclick="adjustDigit('h', -1)">▼</button>
+        <div class="score-header side-card">
+            <div class="header-left">
+                <div class="star-count" id="star-display" aria-live="polite">🌟 あつめた★: 0こ</div>
+                <button class="btn-reset" onclick="resetStars()">★をリセット</button>
             </div>
-            <div class="pv-col col-t">
-                <div class="pv-label">十のくらい</div>
-                <button class="btn-arrow" onclick="adjustDigit('t', 1)">▲</button>
-                <div id="disp-t" class="digit-display">0</div>
-                <button class="btn-arrow" onclick="adjustDigit('t', -1)">▼</button>
-            </div>
-            <div class="pv-col col-o">
-                <div class="pv-label">一のくらい</div>
-                <button class="btn-arrow" onclick="adjustDigit('o', 1)">▲</button>
-                <div id="disp-o" class="digit-display">0</div>
-                <button class="btn-arrow" onclick="adjustDigit('o', -1)">▼</button>
+            <div class="header-actions">
+                <button id="sound-toggle-btn" class="btn-sound-toggle" onclick="toggleSound()" aria-label="こうかおんを オン・オフ" title="こうかおん">🔊</button>
+                <button id="speech-toggle-btn" class="btn-sound-toggle" onclick="toggleSpeech()" aria-label="よみあげを オン・オフ" title="よみあげ">🗣️</button>
             </div>
         </div>
-    </div>
 
-    <div class="controls">
-        <button id="hint-btn" class="btn-main btn-hint" onclick="toggleHint()" style="display:none;">ヒント</button>
-        <button id="action-btn" class="btn-main btn-check" onclick="processAction()">こたえあわせ</button>
-        <button id="next-btn" class="btn-main btn-next" onclick="initProblem()">つぎへ</button>
-    </div>
+        <div class="side-card side-section">
+            <div class="side-section-title">れんしゅうのしかた</div>
+            <div class="mode-toggle-container">
+                <button type="button" id="label-zero" class="mode-label active" onclick="setMode(false)" aria-pressed="true">🎯 空位のれんしゅう</button>
+                <label class="switch">
+                    <input type="checkbox" id="mode-checkbox" onchange="toggleMode()" aria-label="出題モードを切りかえる">
+                    <span class="slider"></span>
+                </label>
+                <button type="button" id="label-random" class="mode-label" onclick="setMode(true)" aria-pressed="false">🎲 かんぜんランダム</button>
+            </div>
+            <div class="auto-practice-row">
+                <button type="button" id="auto-practice-btn" class="btn-auto-practice" onclick="toggleAutoPractice()" aria-pressed="false">🧭 おまかせ練習：OFF</button>
+                <span id="auto-step-label" class="auto-step-label">自由練習</span>
+                <span id="auto-course-notice" class="auto-course-notice" aria-live="polite"></span>
+            </div>
+        </div>
 
-    <div id="explanation-area" class="explanation"></div>
+        <div class="side-card side-section">
+            <div class="side-section-title">もんだい</div>
+            <div class="tab-menu">
+                <button id="tab1" class="active" onclick="changeTab(1)" aria-pressed="true">📷 えを みて<br>こたえる</button>
+                <button id="tab2" onclick="changeTab(2)" aria-pressed="false">🔢 すうじを<br>よむ</button>
+                <button id="tab3" onclick="changeTab(3)" aria-pressed="false">✏️ かんじから<br>すうじへ</button>
+            </div>
+        </div>
+
+        <details class="learning-details side-card">
+            <summary>学習のようすを見る</summary>
+            <div id="learning-status" class="learning-status" aria-live="polite" aria-label="さいきんの学習記録"></div>
+            <div id="category-progress" class="category-progress" aria-live="polite" aria-label="問題タイプごとの学習状況"></div>
+        </details>
+    </aside>
+
+    <main class="app-container center-stage" aria-label="問題と解説">
+        <div class="problem-box">
+            <div id="instruction" class="instruction"></div>
+            <div id="visual-area"></div>
+            <div id="reading-action-slot" class="reading-action-slot" aria-label="よみの操作"></div>
+        </div>
+
+        <div id="input-section" class="place-frame">
+            <div class="place-value-ui" aria-label="位ごとの数字入力">
+                <div class="pv-col col-h selected-place" data-place="h" tabindex="0" onclick="selectPlace('h')" aria-label="百のくらい">
+                    <div class="pv-label">百のくらい</div>
+                    <button class="btn-arrow" onclick="event.stopPropagation(); selectPlace('h'); adjustDigit('h', 1)" aria-label="百のくらいを1ふやす">▲</button>
+                    <div id="disp-h" class="digit-display">―</div>
+                    <button class="btn-arrow" onclick="event.stopPropagation(); selectPlace('h'); adjustDigit('h', -1)" aria-label="百のくらいを1へらす">▼</button>
+                </div>
+                <div class="pv-col col-t" data-place="t" tabindex="0" onclick="selectPlace('t')" aria-label="十のくらい">
+                    <div class="pv-label">十のくらい</div>
+                    <button class="btn-arrow" onclick="event.stopPropagation(); selectPlace('t'); adjustDigit('t', 1)" aria-label="十のくらいを1ふやす">▲</button>
+                    <div id="disp-t" class="digit-display">―</div>
+                    <button class="btn-arrow" onclick="event.stopPropagation(); selectPlace('t'); adjustDigit('t', -1)" aria-label="十のくらいを1へらす">▼</button>
+                </div>
+                <div class="pv-col col-o" data-place="o" tabindex="0" onclick="selectPlace('o')" aria-label="一のくらい">
+                    <div class="pv-label">一のくらい</div>
+                    <button class="btn-arrow" onclick="event.stopPropagation(); selectPlace('o'); adjustDigit('o', 1)" aria-label="一のくらいを1ふやす">▲</button>
+                    <div id="disp-o" class="digit-display">―</div>
+                    <button class="btn-arrow" onclick="event.stopPropagation(); selectPlace('o'); adjustDigit('o', -1)" aria-label="一のくらいを1へらす">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="explanation-area" class="explanation" aria-live="polite"></div>
+    </main>
+
+    <aside class="side-panel side-right" aria-label="入力と操作">
+        <div id="side-input-tools" class="side-card input-tools">
+            <div class="side-section-title">数字を入れる</div>
+            <div id="current-number" class="current-number" aria-live="polite">いまの数：まだ入力していません</div>
+            <div class="number-pad" aria-label="数字をえらぶ">
+                <button type="button" class="num-key" onclick="inputDigit(1)">1</button>
+                <button type="button" class="num-key" onclick="inputDigit(2)">2</button>
+                <button type="button" class="num-key" onclick="inputDigit(3)">3</button>
+                <button type="button" class="num-key" onclick="inputDigit(4)">4</button>
+                <button type="button" class="num-key" onclick="inputDigit(5)">5</button>
+                <button type="button" class="num-key" onclick="inputDigit(6)">6</button>
+                <button type="button" class="num-key" onclick="inputDigit(7)">7</button>
+                <button type="button" class="num-key" onclick="inputDigit(8)">8</button>
+                <button type="button" class="num-key" onclick="inputDigit(9)">9</button>
+                <button type="button" class="num-key" onclick="inputDigit(0)">0</button>
+                <button type="button" class="num-key num-key-clear" onclick="clearSelectedDigit()">えらんだ位を けす</button>
+            </div>
+            <div class="keyboard-help">キーボード：0〜9 ／ ← →で位 ／ ↑ ↓で増減 ／ Backspaceで消す ／ Enterで決定</div>
+        </div>
+
+        <div class="side-card action-card">
+            <div class="side-section-title">そうさ</div>
+            <div class="controls">
+                <button id="hint-btn" class="btn-main btn-hint" onclick="toggleHint()" style="display:none;">ヒント</button>
+                <div id="action-btn-home" class="action-btn-home"><button id="action-btn" class="btn-main btn-check" onclick="processAction()">こたえあわせ</button></div>
+                <button id="next-btn" class="btn-main btn-next" onclick="initProblem()">つぎへ</button>
+            </div>
+        </div>
+    </aside>
 </div>
 
 <script>
+    const STORAGE_KEYS = {
+        stars: '3keta_quiz_stars_v2',
+        sfx: '3keta_quiz_sfx_v2',
+        speech: '3keta_quiz_speech_v2',
+        mode: '3keta_quiz_mode_v2',
+        reviewSession: '3keta_quiz_review_session_v9',
+        legacyReviewSession: '3keta_quiz_review_session_v8',
+        legacyReviewSession2: '3keta_quiz_review_session_v7',
+        autoPractice: '3keta_quiz_auto_practice_v9',
+        legacyAutoPractice: '3keta_quiz_auto_practice_v8',
+        legacyAutoPractice2: '3keta_quiz_auto_practice_v7'
+    };
+
     let currentTab = 1;
     let prob = { h: 0, t: 0, o: 0, val: 0 };
-    let user = { h: 0, t: 0, o: 0 };
-    let isHintVisible = false;
+    let user = { h: null, t: null, o: null };
+    let hintLevel = 0;
+    let hintUsed = false;
+    let attemptCount = 0;
     let stars = 0;
-    let isRandomMode = false; 
-    let isSoundOn = true; 
-
+    let isRandomMode = false;
+    let isSoundOn = true;
+    let isSpeechOn = true;
+    let selectedPlace = 'h';
+    let lastProbVal = null;
+    let currentVisualMode = 'ぼう';
     let audioCtx = null;
+    let feedbackActive = false;
+    let lastEvaluatedWrongPlaces = [];
+    let reviewQueue = [];
+    let completedByTab = {1:0, 2:0, 3:0};
+    let recentOutcomes = {1:[], 2:[], 3:[]};
+    let categoryHistory = createEmptyCategoryHistory();
+    let categoryCoverage = createEmptyCategoryCoverage();
+    let categoryMastery = createEmptyCategoryMastery();
+    let readingHundredCoverage = createEmptyReadingHundredCoverage();
+    let mixedCategoryBags = {1:[], 2:[], 3:[]};
+    let mixedPracticeHistory = {1:[], 2:[], 3:[]};
+    let courseCompletion = {1:null, 2:null, 3:null};
+    let activeCourseProblem = null;
+    let autoPractice = false;
+    let currentProblemCategory = 'full';
+    let currentProblemCompleted = false;
+    let currentOutcomeRecorded = false;
+    let activeReviewItem = null;
+    let readingAttempts = 0;
+    let numericRecognitionCount = 0;
+    let noSpeechCount = 0;
+    let isListening = false;
+    let recognitionFallback = false;
+    let activeRecognition = null;
+    let recognitionTimer = null;
+    let readingHadDifficulty = false;
+    let currentProblemCourseLocked = false;
+    let currentProblemPhase = 'free';
+    let isResumingCourseProblem = false;
+
+    const CATEGORY_ORDER = ['full','onesZero','tensZero','bothZero'];
+    const CATEGORY_LABELS = {
+        full:'0なし',
+        onesZero:'一が0',
+        tensZero:'十が0',
+        bothZero:'100の倍数'
+    };
+    const CATEGORY_STEP_LABELS = {
+        full:'STEP 1：0のない3けた',
+        onesZero:'STEP 2：一のくらいが0',
+        tensZero:'STEP 3：十のくらいが0',
+        bothZero:'STEP 4：100の倍数'
+    };
+
+    function createEmptyCategoryHistory() {
+        const result = {};
+        [1,2,3].forEach(tab => {
+            result[tab] = {};
+            ['full','onesZero','tensZero','bothZero'].forEach(cat => result[tab][cat] = []);
+        });
+        return result;
+    }
+
+    function createEmptyCategoryCoverage() {
+        const result = {};
+        [1,2,3].forEach(tab => {
+            result[tab] = {};
+            ['full','onesZero','tensZero','bothZero'].forEach(cat => {
+                result[tab][cat] = {
+                    visualStick:false,
+                    visualOrigami:false,
+                    read300:false,
+                    read600:false,
+                    read800:false,
+                    readRegular:false,
+                    implicitHundredOne:false,
+                    implicitTenOne:false,
+                    explicitOne:false
+                };
+            });
+        });
+        return result;
+    }
+
+    function createEmptyReadingHundredCoverage() {
+        return { read300:false, read600:false, read800:false, readRegular:false };
+    }
+
+    function createEmptyCategoryMastery() {
+        const result = {};
+        [1,2,3].forEach(tab => {
+            result[tab] = {};
+            ['full','onesZero','tensZero','bothZero'].forEach(cat => result[tab][cat] = false);
+        });
+        return result;
+    }
 
     const readH = {1:"ひゃく", 2:"にひゃく", 3:"さんびゃく", 4:"よんひゃく", 5:"ごひゃく", 6:"ろっぴゃく", 7:"ななひゃく", 8:"はっぴゃく", 9:"きゅうひゃく"};
     const readT = {1:"じゅう", 2:"にじゅう", 3:"さんじゅう", 4:"よんじゅう", 5:"ごじゅう", 6:"ろくじゅう", 7:"ななじゅう", 8:"はちじゅう", 9:"きゅうじゅう"};
@@ -410,11 +1235,210 @@
     const kanjiH = {1:"百", 2:"二百", 3:"三百", 4:"四百", 5:"五百", 6:"六百", 7:"七百", 8:"八百", 9:"九百"};
     const kanjiT = {1:"十", 2:"二十", 3:"三十", 4:"四十", 5:"五十", 6:"六十", 7:"七十", 8:"八十", 9:"九十"};
     const kanjiO = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五", 6:"六", 7:"七", 8:"八", 9:"九"};
+    const placeNames = {h:'百のくらい', t:'十のくらい', o:'一のくらい'};
+    const placeClasses = {h:'val-h', t:'val-t', o:'val-o'};
 
-    if (localStorage.getItem('math_app_stars')) {
-        stars = parseInt(localStorage.getItem('math_app_stars'), 10);
+    function isValidReviewItem(item) {
+        return item && [1,2,3].includes(Number(item.tab))
+            && Number.isInteger(item.h) && item.h >= 1 && item.h <= 9
+            && Number.isInteger(item.t) && item.t >= 0 && item.t <= 9
+            && Number.isInteger(item.o) && item.o >= 0 && item.o <= 9
+            && Number(item.val) === item.h * 100 + item.t * 10 + item.o
+            && Number.isFinite(Number(item.dueAt));
     }
-    updateStarDisplay();
+
+    function isValidCourseProblem(item) {
+        return item && [1,2,3].includes(Number(item.tab))
+            && Number.isInteger(item.h) && item.h >= 1 && item.h <= 9
+            && Number.isInteger(item.t) && item.t >= 0 && item.t <= 9
+            && Number.isInteger(item.o) && item.o >= 0 && item.o <= 9
+            && Number(item.val) === item.h * 100 + item.t * 10 + item.o
+            && CATEGORY_ORDER.includes(item.category)
+            && ['step','mixed'].includes(item.phase);
+    }
+
+    function saveReviewState() {
+        try {
+            sessionStorage.setItem(STORAGE_KEYS.reviewSession, JSON.stringify({
+                queue: reviewQueue,
+                completedByTab,
+                recentOutcomes,
+                categoryHistory,
+                categoryCoverage,
+                categoryMastery,
+                readingHundredCoverage,
+                mixedCategoryBags,
+                mixedPracticeHistory,
+                courseCompletion,
+                active: activeReviewItem,
+                activeCourseProblem,
+                currentTab
+            }));
+        } catch (e) {
+            console.log('Review state save error:', e);
+        }
+    }
+
+    function loadReviewState() {
+        try {
+            const raw = sessionStorage.getItem(STORAGE_KEYS.reviewSession)
+                || sessionStorage.getItem(STORAGE_KEYS.legacyReviewSession)
+                || sessionStorage.getItem(STORAGE_KEYS.legacyReviewSession2);
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            reviewQueue = Array.isArray(data.queue)
+                ? data.queue.filter(isValidReviewItem).map(item => ({
+                    ...item,
+                    kind:item.kind === 'transfer' ? 'transfer' : 'review',
+                    noTransfer:item.noTransfer === true
+                }))
+                : [];
+
+            const c = data.completedByTab || {};
+            completedByTab = {
+                1: Math.max(0, Number(c[1]) || 0),
+                2: Math.max(0, Number(c[2]) || 0),
+                3: Math.max(0, Number(c[3]) || 0)
+            };
+
+            const ro = data.recentOutcomes || {};
+            const allowedOutcomes = new Set(['independent','verified','selfchecked','assisted','practice']);
+            recentOutcomes = {
+                1: Array.isArray(ro[1]) ? ro[1].filter(x => allowedOutcomes.has(x)).slice(-5) : [],
+                2: Array.isArray(ro[2]) ? ro[2].filter(x => allowedOutcomes.has(x)).slice(-5) : [],
+                3: Array.isArray(ro[3]) ? ro[3].filter(x => allowedOutcomes.has(x)).slice(-5) : []
+            };
+
+            const loadedHistory = data.categoryHistory || {};
+            categoryHistory = createEmptyCategoryHistory();
+            [1,2,3].forEach(tab => {
+                CATEGORY_ORDER.forEach(cat => {
+                    const arr = loadedHistory?.[tab]?.[cat];
+                    if (!Array.isArray(arr)) return;
+                    categoryHistory[tab][cat] = arr.filter(entry =>
+                        entry && allowedOutcomes.has(entry.outcome)
+                    ).map(entry => {
+                        const kind = entry.kind === 'transfer' ? 'transfer' : (entry.review ? 'review' : 'new');
+                        return {...entry, kind, review:kind !== 'new'};
+                    }).slice(-12);
+                });
+            });
+
+            categoryCoverage = createEmptyCategoryCoverage();
+            const loadedCoverage = data.categoryCoverage || {};
+            [1,2,3].forEach(tab => CATEGORY_ORDER.forEach(cat => {
+                const src = loadedCoverage?.[tab]?.[cat] || {};
+                const dst = categoryCoverage[tab][cat];
+                Object.keys(dst).forEach(key => dst[key] = src[key] === true);
+            }));
+
+            readingHundredCoverage = createEmptyReadingHundredCoverage();
+            if (data.readingHundredCoverage && typeof data.readingHundredCoverage === 'object') {
+                Object.keys(readingHundredCoverage).forEach(key => readingHundredCoverage[key] = data.readingHundredCoverage[key] === true);
+            } else {
+                // v8からの移行：各カテゴリーに分散していた百の読み実績を共有技能へ統合。
+                CATEGORY_ORDER.forEach(cat => {
+                    const src = loadedCoverage?.[2]?.[cat] || {};
+                    if (src.read300) readingHundredCoverage.read300 = true;
+                    if (src.read600) readingHundredCoverage.read600 = true;
+                    if (src.read800) readingHundredCoverage.read800 = true;
+                    if (src.readRegular) readingHundredCoverage.readRegular = true;
+                });
+                CATEGORY_ORDER.forEach(cat => {
+                    categoryHistory[2][cat].forEach(entry => {
+                        if (!isCoverageSuccessOutcome(2, entry.outcome) || entry.kind === 'review') return;
+                        updateReadingHundredCoverage(entry);
+                    });
+                });
+            }
+
+            categoryMastery = createEmptyCategoryMastery();
+            const loadedMastery = data.categoryMastery || {};
+            [1,2,3].forEach(tab => CATEGORY_ORDER.forEach(cat => {
+                categoryMastery[tab][cat] = loadedMastery?.[tab]?.[cat] === true;
+            }));
+
+            const loadedBags = data.mixedCategoryBags || {};
+            mixedCategoryBags = {1:[], 2:[], 3:[]};
+            [1,2,3].forEach(tab => {
+                if (Array.isArray(loadedBags[tab])) {
+                    mixedCategoryBags[tab] = loadedBags[tab].filter(cat => CATEGORY_ORDER.includes(cat)).slice(0, 8);
+                }
+            });
+
+            const loadedMixed = data.mixedPracticeHistory || {};
+            mixedPracticeHistory = {1:[], 2:[], 3:[]};
+            [1,2,3].forEach(tab => {
+                if (!Array.isArray(loadedMixed[tab])) return;
+                mixedPracticeHistory[tab] = loadedMixed[tab].filter(entry =>
+                    entry && CATEGORY_ORDER.includes(entry.category) && allowedOutcomes.has(entry.outcome)
+                ).slice(-12);
+            });
+
+            const loadedCompletion = data.courseCompletion || {};
+            courseCompletion = {1:null, 2:null, 3:null};
+            [1,2,3].forEach(tab => {
+                const mode = loadedCompletion[tab];
+                if (['mastered','verified','selfchecked'].includes(mode)) courseCompletion[tab] = mode;
+            });
+
+            // 旧版の判定をv9の技能軸で再計算する。
+            [1,2,3].forEach(tab => CATEGORY_ORDER.forEach(cat => recalculateCategoryMastery(tab, cat)));
+
+            // 表示中に再読み込みされた復習問題はキューへ戻して、そのタブを復元。
+            if (isValidReviewItem(data.active)) {
+                const item = {...data.active, kind:data.active.kind === 'transfer' ? 'transfer' : 'review'};
+                const exists = reviewQueue.some(q => q.tab === item.tab && q.val === item.val && q.kind === item.kind);
+                if (!exists) reviewQueue.unshift(item);
+                currentTab = Number(item.tab);
+            } else if (isValidCourseProblem(data.activeCourseProblem)) {
+                activeCourseProblem = {...data.activeCourseProblem};
+                currentTab = Number(activeCourseProblem.tab);
+            } else if ([1,2,3].includes(Number(data.currentTab))) {
+                currentTab = Number(data.currentTab);
+            }
+            activeReviewItem = null;
+            saveReviewState();
+        } catch (e) {
+            reviewQueue = [];
+            completedByTab = {1:0, 2:0, 3:0};
+            recentOutcomes = {1:[], 2:[], 3:[]};
+            categoryHistory = createEmptyCategoryHistory();
+            categoryCoverage = createEmptyCategoryCoverage();
+            categoryMastery = createEmptyCategoryMastery();
+            readingHundredCoverage = createEmptyReadingHundredCoverage();
+            mixedCategoryBags = {1:[], 2:[], 3:[]};
+            mixedPracticeHistory = {1:[], 2:[], 3:[]};
+            courseCompletion = {1:null, 2:null, 3:null};
+            activeCourseProblem = null;
+            activeReviewItem = null;
+            console.log('Review state load error:', e);
+        }
+    }
+
+    function loadSettings() {
+        const storedStars = localStorage.getItem(STORAGE_KEYS.stars);
+        const legacyStars = localStorage.getItem('math_app_stars');
+        const parsed = parseInt(storedStars ?? legacyStars ?? '0', 10);
+        stars = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+        if (storedStars === null && legacyStars !== null) {
+            localStorage.setItem(STORAGE_KEYS.stars, String(stars));
+        }
+        isSoundOn = localStorage.getItem(STORAGE_KEYS.sfx) !== 'false';
+        isSpeechOn = localStorage.getItem(STORAGE_KEYS.speech) !== 'false';
+        isRandomMode = localStorage.getItem(STORAGE_KEYS.mode) === 'random';
+        const storedAuto = sessionStorage.getItem(STORAGE_KEYS.autoPractice);
+        const legacyAuto = sessionStorage.getItem(STORAGE_KEYS.legacyAutoPractice);
+        autoPractice = (storedAuto ?? legacyAuto ?? sessionStorage.getItem(STORAGE_KEYS.legacyAutoPractice2)) === 'true';
+        loadReviewState();
+        syncTabButtons();
+        document.getElementById('mode-checkbox').checked = isRandomMode;
+        updateToggleLabels();
+        updateAutoPracticeUI();
+        updateSoundButtons();
+        updateStarDisplay();
+        updateLearningStatus();
+    }
 
     function updateStarDisplay() {
         document.getElementById('star-display').innerText = `🌟 あつめた★: ${stars}こ`;
@@ -424,177 +1448,1086 @@
         playSound('click');
         if(confirm("あつめた★を 0こに リセットしますか？")) {
             stars = 0;
-            localStorage.setItem('math_app_stars', 0);
+            localStorage.setItem(STORAGE_KEYS.stars, '0');
             updateStarDisplay();
         }
     }
 
+    function updateSoundButtons() {
+        const sfx = document.getElementById('sound-toggle-btn');
+        const speech = document.getElementById('speech-toggle-btn');
+        sfx.innerText = isSoundOn ? '🔊' : '🔇';
+        speech.innerText = isSpeechOn ? '🗣️' : '🤐';
+        sfx.classList.toggle('sound-off', !isSoundOn);
+        speech.classList.toggle('sound-off', !isSpeechOn);
+        sfx.setAttribute('aria-pressed', String(isSoundOn));
+        speech.setAttribute('aria-pressed', String(isSpeechOn));
+        sfx.setAttribute('aria-label', isSoundOn ? 'こうかおんを オフにする' : 'こうかおんを オンにする');
+        speech.setAttribute('aria-label', isSpeechOn ? 'よみあげを オフにする' : 'よみあげを オンにする');
+    }
+
     function toggleSound() {
         isSoundOn = !isSoundOn;
-        const btn = document.getElementById('sound-toggle-btn');
-        if (isSoundOn) {
-            btn.innerText = "🔊";
-            btn.classList.remove('sound-off');
-            playSound('click');
-        } else {
-            btn.innerText = "🔇";
-            btn.classList.add('sound-off');
-        }
+        localStorage.setItem(STORAGE_KEYS.sfx, String(isSoundOn));
+        updateSoundButtons();
+        if (isSoundOn) playSound('click');
+    }
+
+    function toggleSpeech() {
+        isSpeechOn = !isSpeechOn;
+        localStorage.setItem(STORAGE_KEYS.speech, String(isSpeechOn));
+        if (!isSpeechOn && window.speechSynthesis) window.speechSynthesis.cancel();
+        updateSoundButtons();
+        document.querySelectorAll('.btn-replay').forEach(replay => {
+            replay.disabled = !isSpeechOn;
+            replay.innerText = isSpeechOn
+                ? (replay.classList.contains('btn-explanation-replay') ? '🔊 解説をきく' : '🔊 もういちど きく')
+                : '🔇 よみあげOFF';
+        });
+        if (isSoundOn) playSound('click');
     }
 
     function playSound(type) {
         if (!isSoundOn) return;
         try {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
             const now = audioCtx.currentTime;
 
             if (type === 'click') {
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(600, now);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now); osc.stop(now + 0.08);
             } else if (type === 'correct') {
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(523.25, now); 
-                osc.frequency.setValueAtTime(659.25, now + 0.1); 
-                osc.frequency.setValueAtTime(783.99, now + 0.2); 
-                osc.frequency.setValueAtTime(1046.50, now + 0.3); 
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.linearRampToValueAtTime(0.15, now + 0.3);
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                gain.gain.setValueAtTime(0.13, now);
+                gain.gain.linearRampToValueAtTime(0.13, now + 0.3);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                osc.start(now);
-                osc.stop(now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
             } else if (type === 'incorrect') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(180, now);
-                osc.frequency.linearRampToValueAtTime(130, now + 0.4);
-                gain.gain.setValueAtTime(0.12, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-                osc.start(now);
-                osc.stop(now + 0.45);
+                // 強い「罰」の音にせず、短い再確認音にする
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(330, now);
+                osc.frequency.setValueAtTime(294, now + 0.12);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+                osc.start(now); osc.stop(now + 0.24);
             }
         } catch (e) {
-            console.log("Audio error:", e);
+            console.log('Audio error:', e);
         }
     }
 
-    // 音声読み上げロジック (Web Speech API)
-    function speakText(text, isWarmup = false) {
-        if (!isWarmup && !isSoundOn) return;
-        if (window.speechSynthesis) {
-            if (!isWarmup) window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ja-JP';
-            // 🆕 ウォームアップ時は完全に無音（ボリューム0、速度最速）で処理を回す
-            if (isWarmup) {
-                utterance.volume = 0;
-                utterance.rate = 10.0; 
-            } else {
-                utterance.rate = 1.0; 
-            }
-            window.speechSynthesis.speak(utterance);
+    function speakText(text) {
+        if (!isSpeechOn || !window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function cancelSpeech() {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+
+    function fitExplanationToFrame() {
+        const area = document.getElementById('explanation-area');
+        const center = document.querySelector('.center-stage');
+        if (!area || !center || window.innerWidth <= 820) return;
+        let size = 15;
+        area.style.fontSize = size + 'px';
+        area.style.lineHeight = '1.38';
+        // 内容が多い時だけ少しずつ縮め、枠内に収める。
+        while (area.scrollHeight > area.clientHeight + 1 && size > 11) {
+            size -= 0.5;
+            area.style.fontSize = size + 'px';
+        }
+        if (area.scrollHeight > area.clientHeight + 1) area.style.lineHeight = '1.26';
+    }
+
+    function fitVisualToFrame() {
+        const area = document.getElementById('visual-area');
+        if (!area || window.innerWidth <= 820) return;
+        const child = area.firstElementChild;
+        if (!child || child.tagName?.toLowerCase() === 'svg') return;
+        child.style.transform = '';
+        child.style.transformOrigin = 'center center';
+        const aw = Math.max(1, area.clientWidth - 4);
+        const ah = Math.max(1, area.clientHeight - 4);
+        const cw = Math.max(1, child.scrollWidth);
+        const ch = Math.max(1, child.scrollHeight);
+        const scale = Math.min(1, aw / cw, ah / ch);
+        if (scale < 0.995) child.style.transform = `scale(${Math.max(0.68, scale)})`;
+    }
+
+    function fitCenterFrames() {
+        requestAnimationFrame(() => {
+            fitExplanationToFrame();
+            fitVisualToFrame();
+        });
+    }
+
+    function buildExplanationSpeechText() {
+        const parts = ['正解です。'];
+        if (currentTab === 3) {
+            parts.push(`${getFullKanji()}は、百のくらいが${prob.h}、`);
+            if (prob.t === 0) parts.push('十をあらわす言葉がないので、十のくらいは0、');
+            else parts.push(`十のくらいが${prob.t}、`);
+            if (prob.o === 0) parts.push('一をあらわす言葉がないので、一のくらいは0です。');
+            else parts.push(`一のくらいが${prob.o}です。`);
+        } else {
+            const hUnit = currentVisualMode === '折り紙' ? '100のまとまり' : '100のたば';
+            const tUnit = currentVisualMode === '折り紙' ? '10のまとまり' : '10のたば';
+            const oUnit = currentVisualMode === '折り紙' ? '1まい' : '1のばら';
+            parts.push(`${hUnit}が${prob.h}つあるので、百のくらいは${prob.h}。`);
+            parts.push(prob.t > 0 ? `${tUnit}が${prob.t}つあるので、十のくらいは${prob.t}。` : `${tUnit}がないので、十のくらいは0。`);
+            parts.push(prob.o > 0 ? `${oUnit}が${prob.o}つあるので、一のくらいは${prob.o}。` : `${oUnit}がないので、一のくらいは0。`);
+        }
+        parts.push(`だから、答えは${prob.val}です。`);
+        return parts.join('');
+    }
+
+    function speakExplanation() {
+        speakText(buildExplanationSpeechText());
+    }
+
+    function clearRecognitionTimer() {
+        if (recognitionTimer) {
+            clearTimeout(recognitionTimer);
+            recognitionTimer = null;
         }
     }
 
-    // 🆕 起動時の音声ウォームアップ処理
-    // ブラウザに「発声準備」をさせて、初回タップ時の遅延をなくします
-    function warmupSpeech() {
-        speakText(" ", true);
+    function stopActiveRecognition() {
+        clearRecognitionTimer();
+        if (activeRecognition) {
+            try { activeRecognition.abort(); } catch (e) {}
+            activeRecognition = null;
+        }
+        isListening = false;
+    }
+
+    function cancelReadingRecognition() {
+        if (activeRecognition) activeRecognition.__cancelledByUser = true;
+        stopActiveRecognition();
+        const action = document.getElementById('action-btn');
+        action.disabled = false;
+        action.innerText = '🎤 よんでみる';
+        setRecognitionMessage('<strong>マイクを止めました。</strong><div class="mic-note">準備ができたら、もう一度「よんでみる」を押そう。</div>');
+    }
+
+    function showAutoNotice(message) {
+        const el = document.getElementById('auto-course-notice');
+        if (!el) return;
+        el.innerText = message || '';
+        clearTimeout(showAutoNotice._timer);
+        if (message) {
+            showAutoNotice._timer = setTimeout(() => {
+                if (el.innerText === message) el.innerText = '';
+            }, 2600);
+        }
+    }
+
+    function exitAutoPractice() {
+        if (!autoPractice) return;
+        autoPractice = false;
+        sessionStorage.setItem(STORAGE_KEYS.autoPractice, 'false');
+        updateAutoPracticeUI();
+        showAutoNotice('自由練習に切りかえました。今の問題はそのまま続けられます。');
+    }
+
+    function toggleAutoPractice() {
+        playSound('click');
+        autoPractice = !autoPractice;
+        sessionStorage.setItem(STORAGE_KEYS.autoPractice, String(autoPractice));
+        mixedCategoryBags[currentTab] = [];
+        updateAutoPracticeUI();
+        showAutoNotice(autoPractice
+            ? '次の問題から、でき具合に合わせて出します。今の問題はそのまま続けよう。'
+            : '自由練習に切りかえました。今の問題はそのまま続けられます。');
+        saveReviewState();
+    }
+
+    function updateAutoPracticeUI() {
+        const btn = document.getElementById('auto-practice-btn');
+        if (!btn) return;
+        btn.classList.toggle('active', autoPractice);
+        btn.setAttribute('aria-pressed', String(autoPractice));
+        btn.innerText = autoPractice ? '🧭 おまかせ練習：ON' : '🧭 おまかせ練習：OFF';
+
+        const zeroBtn = document.getElementById('label-zero');
+        const randomBtn = document.getElementById('label-random');
+        const modeCheckbox = document.getElementById('mode-checkbox');
+        [zeroBtn, randomBtn, modeCheckbox].forEach(el => {
+            if (!el) return;
+            const modeLocked = autoPractice || (currentProblemCourseLocked && !currentProblemCompleted);
+            el.disabled = modeLocked;
+            el.setAttribute('aria-disabled', String(modeLocked));
+        });
+        updateLearningStatus();
     }
 
     function toggleMode() {
         playSound('click');
+        if (autoPractice || (currentProblemCourseLocked && !currentProblemCompleted)) {
+            document.getElementById('mode-checkbox').checked = isRandomMode;
+            showAutoNotice(currentProblemCourseLocked && !autoPractice ? 'この問題は、おまかせ練習で始めた問題です。終えてから出題タイプを変えよう。' : 'おまかせ練習中は、出題タイプをアプリが選びます。');
+            return;
+        }
         isRandomMode = document.getElementById('mode-checkbox').checked;
+        localStorage.setItem(STORAGE_KEYS.mode, isRandomMode ? 'random' : 'zero');
         updateToggleLabels();
         initProblem();
     }
 
     function setMode(mode) {
         playSound('click');
+        if (autoPractice || (currentProblemCourseLocked && !currentProblemCompleted)) {
+            showAutoNotice(currentProblemCourseLocked && !autoPractice ? 'この問題は、おまかせ練習で始めた問題です。終えてから出題タイプを変えよう。' : 'おまかせ練習中は、出題タイプをアプリが選びます。');
+            return;
+        }
         document.getElementById('mode-checkbox').checked = mode;
         isRandomMode = mode;
+        localStorage.setItem(STORAGE_KEYS.mode, isRandomMode ? 'random' : 'zero');
         updateToggleLabels();
         initProblem();
     }
 
     function updateToggleLabels() {
-        document.getElementById('label-zero').classList.toggle('active', !isRandomMode);
-        document.getElementById('label-random').classList.toggle('active', isRandomMode);
+        const zero = document.getElementById('label-zero');
+        const random = document.getElementById('label-random');
+        zero.classList.toggle('active', !isRandomMode);
+        random.classList.toggle('active', isRandomMode);
+        zero.setAttribute('aria-pressed', String(!isRandomMode));
+        random.setAttribute('aria-pressed', String(isRandomMode));
+    }
+
+    function syncTabButtons() {
+        document.querySelectorAll('.tab-menu button').forEach((b, i) => {
+            const active = i + 1 === currentTab;
+            b.classList.toggle('active', active);
+            b.setAttribute('aria-pressed', String(active));
+        });
     }
 
     function changeTab(n) {
         playSound('click');
+        if (n === currentTab) return;
+        if ((autoPractice || currentProblemCourseLocked) && !currentProblemCompleted) {
+            showAutoNotice('この問題を終えてから次の学習へ進もう。');
+            return;
+        }
         currentTab = n;
-        document.querySelectorAll('.tab-menu button').forEach((b, i) => {
-            b.classList.toggle('active', i + 1 === n);
-        });
+        mixedCategoryBags[currentTab] = [];
+        syncTabButtons();
+        updateLearningStatus();
         initProblem();
     }
 
-    function initProblem() {
-        user = { h: 0, t: 0, o: 0 };
-        isHintVisible = false;
-        document.getElementById('explanation-area').style.display = 'none';
-        document.getElementById('next-btn').style.display = 'none';
-        document.getElementById('action-btn').style.display = 'inline-block';
-        document.getElementById('hint-btn').style.display = (currentTab === 3) ? 'inline-block' : 'none';
+    function restoreActiveReviewIfAbandoned() {
+        if (!activeReviewItem || currentProblemCompleted) return;
+        const exists = reviewQueue.some(item => item.tab === activeReviewItem.tab && item.val === activeReviewItem.val);
+        if (!exists) reviewQueue.unshift(activeReviewItem);
+        activeReviewItem = null;
+        saveReviewState();
+    }
 
-        prob.h = Math.floor(Math.random() * 9) + 1; 
+    function getProblemCategory(problem = prob) {
+        if (problem.t === 0 && problem.o === 0) return 'bothZero';
+        if (problem.t === 0) return 'tensZero';
+        if (problem.o === 0) return 'onesZero';
+        return 'full';
+    }
 
-        if (!isRandomMode && Math.random() < 0.5) {
-            let zeroPattern = Math.random();
-            if (zeroPattern < 0.4) {
-                prob.t = 0;                          
-                prob.o = Math.floor(Math.random() * 9) + 1;
-            } else if (zeroPattern < 0.8) {
-                prob.t = Math.floor(Math.random() * 9) + 1;
-                prob.o = 0;                          
+    function getEntryKind(entry) {
+        if (entry?.kind === 'transfer') return 'transfer';
+        if (entry?.kind === 'review' || entry?.review === true) return 'review';
+        return 'new';
+    }
+
+    function getCategoryEntries(tab, category, includeReviews = false) {
+        const list = categoryHistory?.[tab]?.[category] || [];
+        return includeReviews ? list : list.filter(entry => getEntryKind(entry) === 'new');
+    }
+
+    function getMasteryEntries(tab, category) {
+        const list = categoryHistory?.[tab]?.[category] || [];
+        return list.filter(entry => {
+            const kind = getEntryKind(entry);
+            return kind === 'new' || kind === 'transfer';
+        });
+    }
+
+    function isCoverageSuccessOutcome(tab, outcome) {
+        if (tab === 2) return ['independent','verified','selfchecked'].includes(outcome);
+        return outcome === 'independent';
+    }
+
+    function isDifficultyOutcome(outcome) {
+        return !['independent','verified','selfchecked'].includes(outcome);
+    }
+
+    function updateReadingHundredCoverage(entry) {
+        if (!entry || !isCoverageSuccessOutcome(2, entry.outcome)) return;
+        if (entry.h === 3) readingHundredCoverage.read300 = true;
+        else if (entry.h === 6) readingHundredCoverage.read600 = true;
+        else if (entry.h === 8) readingHundredCoverage.read800 = true;
+        else readingHundredCoverage.readRegular = true;
+    }
+
+    function readingHundredCoverageMet() {
+        const c = readingHundredCoverage;
+        return c.read300 && c.read600 && c.read800 && c.readRegular;
+    }
+
+    function getCoverageSummary(tab, category) {
+        if (tab === 2) return {...readingHundredCoverage};
+        return {...(categoryCoverage?.[tab]?.[category] || {})};
+    }
+
+    function categoryCoverageMet(tab, category) {
+        const c = getCoverageSummary(tab, category);
+        if (tab === 1) return c.visualStick && c.visualOrigami;
+        // 読みの300/600/800は「0の位置」と独立した共有技能として扱う。
+        if (tab === 2) return true;
+        if (tab === 3) {
+            const needsTenImplicit = category === 'full' || category === 'onesZero';
+            return c.implicitHundredOne && c.explicitOne && (!needsTenImplicit || c.implicitTenOne);
+        }
+        return true;
+    }
+
+    function getCategoryState(tab, category) {
+        const list = getMasteryEntries(tab, category).slice(-5);
+        const independent = list.filter(e => e.outcome === 'independent').length;
+        const verified = list.filter(e => e.outcome === 'verified').length;
+        const selfchecked = list.filter(e => e.outcome === 'selfchecked').length;
+        const difficulties = list.filter(e => isDifficultyOutcome(e.outcome)).length;
+        const stable = categoryMastery?.[tab]?.[category] === true;
+        const weak = !stable && list.length >= 3 && difficulties >= 2;
+        return {
+            list, independent, verified, selfchecked, stable, weak,
+            coverageMet: categoryCoverageMet(tab, category),
+            verificationLimited: tab === 2 && stable && independent < 4 && (verified + selfchecked) > 0
+        };
+    }
+
+    function updateCategoryCoverage(tab, category, entry) {
+        if (!isCoverageSuccessOutcome(tab, entry.outcome)) return;
+        if (tab === 2) {
+            updateReadingHundredCoverage(entry);
+            return;
+        }
+        const c = categoryCoverage[tab][category];
+        if (tab === 1) {
+            if (entry.visualMode === 'ぼう') c.visualStick = true;
+            if (entry.visualMode === '折り紙') c.visualOrigami = true;
+        } else if (tab === 3) {
+            if (entry.h === 1) c.implicitHundredOne = true;
+            if (entry.t === 1) c.implicitTenOne = true;
+            const tenExplicitEnough = (category === 'full' || category === 'onesZero') ? entry.t !== 1 : true;
+            if (entry.h !== 1 && tenExplicitEnough) c.explicitOne = true;
+        }
+    }
+
+    function recalculateCategoryMastery(tab, category) {
+        const list = getMasteryEntries(tab, category).slice(-5);
+        const independent = list.filter(e => e.outcome === 'independent').length;
+        const verified = list.filter(e => e.outcome === 'verified').length;
+        const selfchecked = list.filter(e => e.outcome === 'selfchecked').length;
+        const latest = list[list.length - 1] || null;
+        const currentlyStable = categoryMastery[tab][category] === true;
+
+        // 類題への転移に失敗したら、その技能は一度再練習へ戻す。
+        if (latest && getEntryKind(latest) === 'transfer' && isDifficultyOutcome(latest.outcome)) {
+            categoryMastery[tab][category] = false;
+            mixedCategoryBags[tab] = [];
+            return;
+        }
+
+        if (!currentlyStable) {
+            const strongPass = list.length >= 4 && independent >= 4;
+            const speechFallbackPass = tab === 2 && list.length >= 5 && (independent + verified + selfchecked) >= 5;
+            if ((strongPass || speechFallbackPass) && categoryCoverageMet(tab, category)) {
+                categoryMastery[tab][category] = true;
+                mixedCategoryBags[tab] = [];
+            }
+            return;
+        }
+
+        // 一度のつまずきでは戻さない。直近4件で2回以上支援が必要なら再練習へ。
+        const lastFour = list.slice(-4);
+        const difficulties = lastFour.filter(e => isDifficultyOutcome(e.outcome)).length;
+        if (lastFour.length >= 4 && difficulties >= 2) {
+            categoryMastery[tab][category] = false;
+            mixedCategoryBags[tab] = [];
+        }
+    }
+
+    function categoriesStableOnly(tab = currentTab) {
+        return CATEGORY_ORDER.every(cat => categoryMastery?.[tab]?.[cat] === true);
+    }
+
+    function allCategoriesStable(tab = currentTab) {
+        if (!categoriesStableOnly(tab)) return false;
+        if (tab === 2 && !readingHundredCoverageMet()) return false;
+        return true;
+    }
+
+    function getAutoTargetCategory(tab = currentTab) {
+        for (const category of CATEGORY_ORDER) {
+            if (!categoryMastery?.[tab]?.[category]) return category;
+        }
+        // 0の位置の4カテゴリーが終わっても、百の変則読みが未確認なら読みタブ内で補う。
+        if (tab === 2 && !readingHundredCoverageMet()) return 'full';
+        return null;
+    }
+
+    function getWeakestCategory(tab = currentTab) {
+        let weakest = null;
+        let weakestRate = 1;
+        for (const cat of CATEGORY_ORDER) {
+            const state = getCategoryState(tab, cat);
+            if (!state.list.length) continue;
+            const rate = (state.independent + (state.verified || 0) * 0.8 + (state.selfchecked || 0) * 0.6) / state.list.length;
+            if (rate < weakestRate) {
+                weakestRate = rate;
+                weakest = cat;
+            }
+        }
+        return weakestRate < 1 ? weakest : null;
+    }
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function refillMixedCategoryBag(tab = currentTab) {
+        const weakest = getWeakestCategory(tab);
+        const bag = [...CATEGORY_ORDER];
+        if (weakest) bag.push(weakest); // 弱い種類だけ1回多く。それでも全種類を必ず経験する。
+        shuffleArray(bag);
+        if (bag.length > 1 && bag[bag.length - 1] === currentProblemCategory) {
+            [bag[bag.length - 1], bag[bag.length - 2]] = [bag[bag.length - 2], bag[bag.length - 1]];
+        }
+        mixedCategoryBags[tab] = bag;
+    }
+
+    function getNextMixedCategory(tab = currentTab) {
+        if (!Array.isArray(mixedCategoryBags[tab]) || mixedCategoryBags[tab].length === 0) {
+            refillMixedCategoryBag(tab);
+        }
+        const cat = mixedCategoryBags[tab].pop();
+        saveReviewState();
+        return cat || CATEGORY_ORDER[Math.floor(Math.random() * CATEGORY_ORDER.length)];
+    }
+
+    function getGenerationHint(tab, category) {
+        if (!autoPractice) return {};
+        // 百の読みは0の位置と独立した共有技能。カテゴリーが安定済みでも未確認なら優先する。
+        if (tab === 2) {
+            const c = readingHundredCoverage;
+            if (!c.read300) return { hValue:3 };
+            if (!c.read600) return { hValue:6 };
+            if (!c.read800) return { hValue:8 };
+            if (!c.readRegular) return { hundredType:'regular' };
+        }
+        if (categoryMastery?.[tab]?.[category]) return {};
+        const c = getCoverageSummary(tab, category);
+        if (tab === 3) {
+            const needsTenImplicit = category === 'full' || category === 'onesZero';
+            if (!c.implicitHundredOne) return { hValue:1, tNotOne:needsTenImplicit };
+            if (needsTenImplicit && !c.implicitTenOne) return { tValue:1, hNotOne:true };
+            if (!c.explicitOne) return { explicitOne:true };
+        }
+        return {};
+    }
+
+    function pickFrom(values) {
+        return values[Math.floor(Math.random() * values.length)];
+    }
+
+    function getPacingSuccessCount(tab, category) {
+        return getCategoryEntries(tab, category, false)
+            .filter(entry => isCoverageSuccessOutcome(tab, entry.outcome))
+            .length;
+    }
+
+    function buildCategoryCandidate(category, hint = {}, tab = currentTab, usePacing = true) {
+        const successCount = getPacingSuccessCount(tab, category);
+        const early = autoPractice && usePacing && successCount < 2;
+        const maxDigit = early ? 4 : 9;
+        let hPool = Array.from({length:maxDigit}, (_,i) => i + 1);
+
+        if (Number.isInteger(hint.hValue)) hPool = [hint.hValue];
+        else if (hint.hundredType === 'irregular') {
+            hPool = [3,6,8].filter(n => !early || n <= 4);
+            if (!hPool.length) hPool = [3];
+        } else if (hint.hundredType === 'regular') {
+            hPool = [1,2,4,5,7,9].filter(n => !early || n <= 4);
+        }
+        if (hint.hNotOne) hPool = hPool.filter(n => n !== 1);
+        if (hint.explicitOne) hPool = hPool.filter(n => n !== 1);
+        if (!hPool.length) hPool = [2,3,4];
+        const h = pickFrom(hPool);
+
+        let nonzero = Array.from({length:maxDigit}, (_,i) => i + 1);
+        let tPool = [...nonzero];
+        if (Number.isInteger(hint.tValue)) tPool = [hint.tValue];
+        if (hint.tNotOne || hint.explicitOne) tPool = tPool.filter(n => n !== 1);
+        if (!tPool.length) tPool = [2];
+
+        let t, o;
+        if (category === 'full') {
+            t = pickFrom(tPool);
+            o = pickFrom(nonzero);
+        } else if (category === 'onesZero') {
+            t = pickFrom(tPool);
+            o = 0;
+        } else if (category === 'tensZero') {
+            t = 0;
+            o = pickFrom(nonzero);
+        } else {
+            t = 0;
+            o = 0;
+        }
+        return { h, t, o, val:h * 100 + t * 10 + o };
+    }
+
+    function generateValuesForCategory(category, hint = {}) {
+        Object.assign(prob, buildCategoryCandidate(category, hint, currentTab, true));
+    }
+
+    function chooseVisualModeForCategory(category) {
+        if (!autoPractice) return Math.random() > 0.5 ? 'ぼう' : '折り紙';
+        const c = getCoverageSummary(1, category);
+        if (!categoryMastery[1][category]) {
+            if (!c.visualStick) return 'ぼう';
+            if (!c.visualOrigami) return '折り紙';
+        }
+        // 定着段階では表現も交互にして、片方だけに偏らないようにする。
+        return currentVisualMode === 'ぼう' ? '折り紙' : 'ぼう';
+    }
+
+    function persistActiveCourseProblem() {
+        if (!currentProblemCourseLocked || currentProblemCompleted || activeReviewItem) return;
+        if (!['step','mixed'].includes(currentProblemPhase)) return;
+        activeCourseProblem = {
+            h:prob.h, t:prob.t, o:prob.o, val:prob.val,
+            tab:currentTab,
+            category:currentProblemCategory,
+            phase:currentProblemPhase,
+            visualMode:currentTab === 1 ? currentVisualMode : null
+        };
+        saveReviewState();
+    }
+
+    function generateProblem() {
+        activeReviewItem = null;
+        isResumingCourseProblem = false;
+
+        // おまかせ中に再読み込みされた未完了問題は、そのまま復元する。
+        if (isValidCourseProblem(activeCourseProblem) && Number(activeCourseProblem.tab) === currentTab) {
+            prob.h = activeCourseProblem.h;
+            prob.t = activeCourseProblem.t;
+            prob.o = activeCourseProblem.o;
+            prob.val = activeCourseProblem.val;
+            currentProblemCategory = activeCourseProblem.category;
+            currentProblemPhase = activeCourseProblem.phase;
+            currentProblemCourseLocked = true;
+            isResumingCourseProblem = true;
+            lastProbVal = prob.val;
+            return;
+        }
+
+        const completed = completedByTab[currentTab] || 0;
+
+        // 復習・転移確認は期限到達後に確定出題。ただし直前と同じ数なら1問はさむ。
+        let dueIndex = reviewQueue.findIndex(item =>
+            item.tab === currentTab && item.dueAt <= completed && item.val !== lastProbVal
+        );
+        if (dueIndex < 0 && lastProbVal === null) {
+            dueIndex = reviewQueue.findIndex(item => item.tab === currentTab && item.dueAt <= completed);
+        }
+        if (dueIndex >= 0) {
+            const item = reviewQueue.splice(dueIndex, 1)[0];
+            prob.h = item.h;
+            prob.t = item.t;
+            prob.o = item.o;
+            prob.val = item.val;
+            currentProblemCategory = item.category || getProblemCategory(prob);
+            activeReviewItem = {...item, kind:item.kind === 'transfer' ? 'transfer' : 'review'};
+            currentProblemPhase = activeReviewItem.kind === 'transfer' ? 'transfer' : 'review';
+            currentProblemCourseLocked = autoPractice;
+            lastProbVal = prob.val;
+            saveReviewState();
+            return;
+        }
+
+        const pendingValues = new Set(
+            reviewQueue.filter(item => item.tab === currentTab).map(item => item.val)
+        );
+        let targetCategory = null;
+        if (autoPractice) {
+            const stepTarget = getAutoTargetCategory(currentTab);
+            if (stepTarget) {
+                currentProblemPhase = 'step';
+                targetCategory = stepTarget;
             } else {
-                prob.t = 0;                          
-                prob.o = 0;
+                currentProblemPhase = 'mixed';
+                targetCategory = getNextMixedCategory(currentTab);
             }
         } else {
-            prob.t = Math.floor(Math.random() * 10);
-            prob.o = Math.floor(Math.random() * 10);
+            currentProblemPhase = 'free';
         }
-        
-        prob.val = prob.h * 100 + prob.t * 10 + prob.o;
+
+        let tries = 0;
+        do {
+            if (targetCategory) {
+                generateValuesForCategory(targetCategory, getGenerationHint(currentTab, targetCategory));
+            } else {
+                prob.h = Math.floor(Math.random() * 9) + 1;
+                // 「空位のれんしゅう」は元仕様を維持：空位問題を増やすモード
+                if (!isRandomMode && Math.random() < 0.5) {
+                    const zeroPattern = Math.random();
+                    if (zeroPattern < 0.4) {
+                        prob.t = 0;
+                        prob.o = Math.floor(Math.random() * 9) + 1;
+                    } else if (zeroPattern < 0.8) {
+                        prob.t = Math.floor(Math.random() * 9) + 1;
+                        prob.o = 0;
+                    } else {
+                        prob.t = 0;
+                        prob.o = 0;
+                    }
+                } else {
+                    prob.t = Math.floor(Math.random() * 10);
+                    prob.o = Math.floor(Math.random() * 10);
+                }
+                prob.val = prob.h * 100 + prob.t * 10 + prob.o;
+            }
+            tries++;
+        } while ((prob.val === lastProbVal || pendingValues.has(prob.val)) && tries < 60);
+
+        currentProblemCategory = getProblemCategory(prob);
+        currentProblemCourseLocked = autoPractice;
+        lastProbVal = prob.val;
+    }
+
+    function queueReviewProblem(reason = 'error', details = {}) {
+        const dueAt = (completedByTab[currentTab] || 0) + (details.dueOffset || 3);
+        const inheritedNoTransfer = details.noTransfer === true
+            || activeReviewItem?.kind === 'transfer'
+            || activeReviewItem?.noTransfer === true;
+        const existing = reviewQueue.find(item => item.tab === currentTab && item.val === prob.val && item.kind !== 'transfer');
+        if (existing) {
+            existing.dueAt = Math.min(existing.dueAt, dueAt);
+            existing.reason = reason || existing.reason;
+            existing.category = existing.category || currentProblemCategory;
+            existing.kind = 'review';
+            existing.noTransfer = existing.noTransfer === true || inheritedNoTransfer;
+            if (Array.isArray(details.wrongPlaces) && details.wrongPlaces.length) existing.wrongPlaces = [...new Set(details.wrongPlaces)];
+            saveReviewState();
+            updateLearningStatus();
+            return;
+        }
+        reviewQueue.push({
+            h: prob.h,
+            t: prob.t,
+            o: prob.o,
+            val: prob.val,
+            tab: currentTab,
+            category: currentProblemCategory,
+            wrongPlaces: Array.isArray(details.wrongPlaces) ? [...new Set(details.wrongPlaces)] : [],
+            visualMode: currentTab === 1 ? currentVisualMode : null,
+            reason,
+            kind:'review',
+            noTransfer:inheritedNoTransfer,
+            dueAt
+        });
+        if (reviewQueue.length > 30) {
+            let removeIndex = 0;
+            for (let i = 1; i < reviewQueue.length; i++) {
+                if (Number(reviewQueue[i].dueAt) > Number(reviewQueue[removeIndex].dueAt)) removeIndex = i;
+            }
+            reviewQueue.splice(removeIndex, 1);
+        }
+        saveReviewState();
+        updateLearningStatus();
+    }
+
+    function makeTransferHint(item) {
+        const hint = {};
+        if (item.tab === 2) {
+            // 600でつまずいたら、まず別の600台で確認する。
+            if ([3,6,8].includes(item.h)) hint.hValue = item.h;
+            else hint.hundredType = 'regular';
+        } else if (item.tab === 3) {
+            const category = item.category || getProblemCategory(item);
+            if (item.h === 1) hint.hValue = 1;
+            else hint.hNotOne = true;
+            if (category === 'full' || category === 'onesZero') {
+                if (item.t === 1) hint.tValue = 1;
+                else hint.tNotOne = true;
+            }
+        }
+        return hint;
+    }
+
+    function queueTransferFromReview(item) {
+        if (!item || item.kind === 'transfer' || item.noTransfer === true) return;
+        const category = item.category || getProblemCategory(item);
+        const hint = makeTransferHint(item);
+        let candidate = null;
+        for (let i = 0; i < 40; i++) {
+            const next = buildCategoryCandidate(category, hint, item.tab, false);
+            if (next.val !== item.val && !reviewQueue.some(q => q.tab === item.tab && q.val === next.val)) {
+                candidate = next;
+                break;
+            }
+        }
+        if (!candidate) {
+            for (let i = 0; i < 40; i++) {
+                const next = buildCategoryCandidate(category, {}, item.tab, false);
+                if (next.val !== item.val && !reviewQueue.some(q => q.tab === item.tab && q.val === next.val)) { candidate = next; break; }
+            }
+        }
+        if (!candidate) return;
+        const exists = reviewQueue.some(q => q.tab === item.tab && q.kind === 'transfer' && q.sourceVal === item.val);
+        if (exists) return;
+        reviewQueue.push({
+            ...candidate,
+            tab:item.tab,
+            category,
+            wrongPlaces:Array.isArray(item.wrongPlaces) ? [...item.wrongPlaces] : [],
+            visualMode:item.tab === 1 ? item.visualMode : null,
+            reason:'transfer-check',
+            kind:'transfer',
+            noTransfer:true,
+            sourceVal:item.val,
+            dueAt:(completedByTab[item.tab] || 0) + 2
+        });
+        if (reviewQueue.length > 30) {
+            let removeIndex = 0;
+            for (let i = 1; i < reviewQueue.length; i++) {
+                if (Number(reviewQueue[i].dueAt) > Number(reviewQueue[removeIndex].dueAt)) removeIndex = i;
+            }
+            reviewQueue.splice(removeIndex, 1);
+        }
+        saveReviewState();
+    }
+
+    function recordCategoryOutcome(outcome, problemKind = 'new') {
+        const cat = currentProblemCategory || getProblemCategory(prob);
+        const kind = ['new','review','transfer'].includes(problemKind) ? problemKind : 'new';
+        const list = categoryHistory[currentTab][cat];
+        const entry = {
+            outcome,
+            kind,
+            review:kind !== 'new',
+            h:prob.h,
+            t:prob.t,
+            o:prob.o,
+            val:prob.val,
+            visualMode: currentTab === 1 ? currentVisualMode : null
+        };
+        list.push(entry);
+        if (list.length > 12) list.splice(0, list.length - 12);
+
+        // 新規問題と転移確認は「理解の証拠」。同じ数の復習は習得判定を水増ししない。
+        if (kind === 'new' || kind === 'transfer') {
+            updateCategoryCoverage(currentTab, cat, entry);
+            recalculateCategoryMastery(currentTab, cat);
+        }
+    }
+
+    function recordMixedPracticeOutcome(outcome) {
+        const list = mixedPracticeHistory[currentTab] || (mixedPracticeHistory[currentTab] = []);
+        list.push({category:currentProblemCategory, outcome, val:prob.val});
+        if (list.length > 12) list.splice(0, list.length - 12);
+    }
+
+    function recordOutcome(outcome) {
+        if (currentOutcomeRecorded) return;
+        if (!['independent','verified','selfchecked','assisted','practice'].includes(outcome)) return;
+        currentOutcomeRecorded = true;
+
+        const reviewItem = activeReviewItem ? {...activeReviewItem} : null;
+        const problemKind = reviewItem
+            ? (reviewItem.kind === 'transfer' ? 'transfer' : 'review')
+            : 'new';
+
+        recordCategoryOutcome(outcome, problemKind);
+
+        // 復習は「自力相当」で解けた時だけ次へ。支援が必要なら同じ復習をもう一度残す。
+        if (problemKind === 'review' && reviewItem) {
+            if (isCoverageSuccessOutcome(currentTab, outcome)) {
+                if (reviewItem.noTransfer !== true) queueTransferFromReview(reviewItem);
+            } else {
+                queueReviewProblem(reviewItem.reason || 'review-retry', {
+                    dueOffset:2,
+                    noTransfer:reviewItem.noTransfer === true,
+                    wrongPlaces:Array.isArray(reviewItem.wrongPlaces) ? reviewItem.wrongPlaces : []
+                });
+            }
+        }
+
+        // 最近5問とSTEP5の混合履歴は、新しい問題だけで構成する。
+        if (problemKind === 'new') {
+            const list = recentOutcomes[currentTab] || (recentOutcomes[currentTab] = []);
+            list.push(outcome);
+            if (list.length > 5) list.splice(0, list.length - 5);
+            if (currentProblemPhase === 'mixed') recordMixedPracticeOutcome(outcome);
+        }
+        saveReviewState();
+        updateLearningStatus();
+    }
+
+    function hasPendingLearningItems(tab) {
+        if (reviewQueue.some(item => item.tab === tab)) return true;
+        return Boolean(activeReviewItem && activeReviewItem.tab === tab && !currentProblemCompleted);
+    }
+
+    function getCourseCompletionCandidate(tab) {
+        if (!allCategoriesStable(tab)) return null;
+        const list = (mixedPracticeHistory[tab] || []).slice(-8);
+        if (list.length < 8) return null;
+        const categories = new Set(list.map(entry => entry.category));
+        if (!CATEGORY_ORDER.every(cat => categories.has(cat))) return null;
+        const successCount = list.filter(entry => isCoverageSuccessOutcome(tab, entry.outcome)).length;
+        if (successCount < 7 || hasPendingLearningItems(tab)) return null;
+
+        if (tab === 2) {
+            const recentEvidence = CATEGORY_ORDER.flatMap(cat => getMasteryEntries(tab, cat).slice(-5));
+            if (list.some(e => e.outcome === 'selfchecked') || recentEvidence.some(e => e.outcome === 'selfchecked')) return 'selfchecked';
+            if (list.some(e => e.outcome === 'verified') || recentEvidence.some(e => e.outcome === 'verified')) return 'verified';
+        }
+        return 'mastered';
+    }
+
+    function refreshCourseCompletion(tab = currentTab) {
+        if (courseCompletion[tab]) return false;
+        const mode = getCourseCompletionCandidate(tab);
+        if (!mode) return false;
+        courseCompletion[tab] = mode;
+        return true;
+    }
+
+    function getCourseCompletionLabel(mode) {
+        if (mode === 'selfchecked') return '🎉 コース完了（読みは自己確認）';
+        if (mode === 'verified') return '🎉 コース完了（読みは音声確認）';
+        return '🎉 3けたマスター！';
+    }
+
+    function getReadingHundredStatusHtml(target = false) {
+        const c = readingHundredCoverage;
+        const mark = ok => ok ? '✓' : '・';
+        const stable = readingHundredCoverageMet();
+        return `<span class="category-chip ${stable ? 'stable' : 'working'} ${target ? 'target' : ''}">百の読み 300${mark(c.read300)} 600${mark(c.read600)} 800${mark(c.read800)} ほか${mark(c.readRegular)}</span>`;
+    }
+
+    function updateLearningStatus() {
+        const root = document.getElementById('learning-status');
+        if (!root) return;
+        const labels = {1:'📷 絵', 2:'🎤 よみ', 3:'✏️ 漢字'};
+        root.innerHTML = [1,2,3].map(tab => {
+            const list = recentOutcomes[tab] || [];
+            const independent = list.filter(x => x === 'independent').length;
+            const verified = list.filter(x => x === 'verified').length;
+            const selfchecked = list.filter(x => x === 'selfchecked').length;
+            const result = list.length
+                ? `新しい問題 自力 ${independent}/${list.length}${tab === 2 && verified ? `・音声確認${verified}` : ''}${tab === 2 && selfchecked ? `・自己確認${selfchecked}` : ''}`
+                : 'まだ記録なし';
+
+            const pendingItems = reviewQueue.filter(item => item.tab === tab);
+            let reviewCount = pendingItems.filter(item => item.kind !== 'transfer').length;
+            let transferCount = pendingItems.filter(item => item.kind === 'transfer').length;
+            if (activeReviewItem && activeReviewItem.tab === tab && !currentProblemCompleted) {
+                if (activeReviewItem.kind === 'transfer') transferCount++;
+                else reviewCount++;
+            }
+            const pendingText = `${reviewCount ? `<span class="review-waiting">・復習${reviewCount}</span>` : ''}${transferCount ? `<span class="review-waiting">・にた問題${transferCount}</span>` : ''}`;
+            return `<span class="skill-status-chip ${currentTab === tab ? 'active' : ''}">${labels[tab]}：${result}${pendingText}</span>`;
+        }).join('');
+
+        const allStable = allCategoriesStable(currentTab);
+        const onlyCategoriesStable = categoriesStableOnly(currentTab);
+        const readingSkillPending = currentTab === 2 && onlyCategoriesStable && !readingHundredCoverageMet();
+        const stepTarget = autoPractice ? getAutoTargetCategory(currentTab) : null;
+        const weakMixed = allStable ? getWeakestCategory(currentTab) : null;
+        const categoryRoot = document.getElementById('category-progress');
+        if (categoryRoot) {
+            let html = CATEGORY_ORDER.map(cat => {
+                const state = getCategoryState(currentTab, cat);
+                const klass = state.stable ? 'stable' : state.weak ? 'weak' : state.list.length ? 'working' : '';
+                const mark = state.stable
+                    ? (state.verificationLimited ? (state.selfchecked ? '自己確認○' : '確認○') : '✓')
+                    : state.list.length
+                        ? `${state.independent}/${state.list.length}${state.verified ? `+確認${state.verified}` : ''}${state.selfchecked ? `+自己${state.selfchecked}` : ''}`
+                        : '・';
+                const target = autoPractice && !readingSkillPending && ((stepTarget && stepTarget === cat) || (!stepTarget && weakMixed === cat));
+                return `<span class="category-chip ${klass} ${target ? 'target' : ''}">${CATEGORY_LABELS[cat]} ${mark}</span>`;
+            }).join('');
+            if (currentTab === 2) html += getReadingHundredStatusHtml(autoPractice && readingSkillPending);
+            categoryRoot.innerHTML = html;
+        }
+
+        const stepLabel = document.getElementById('auto-step-label');
+        if (stepLabel) {
+            if (courseCompletion[currentTab]) {
+                stepLabel.innerText = getCourseCompletionLabel(courseCompletion[currentTab]);
+            } else if (!autoPractice) {
+                stepLabel.innerText = '自由練習';
+            } else if (readingSkillPending) {
+                stepLabel.innerText = 'よみのポイント：300・600・800の読みをたしかめよう';
+            } else if (allStable) {
+                const done = Math.min(8, (mixedPracticeHistory[currentTab] || []).slice(-8).length);
+                stepLabel.innerText = weakMixed
+                    ? `STEP 5：4しゅるいをまぜて定着 ${done}/8（${CATEGORY_LABELS[weakMixed]}を少し多め）`
+                    : `STEP 5：4しゅるいをまぜて定着 ${done}/8`;
+            } else {
+                stepLabel.innerText = CATEGORY_STEP_LABELS[stepTarget];
+            }
+        }
+    }
+
+    function getReviewPrefix(item) {
+        if (!item) return '';
+        if (item.reason === 'answer-error') {
+            const places = Array.isArray(item.wrongPlaces) ? item.wrongPlaces : [];
+            if (places.length === 1) return `🔁 前は${placeNames[places[0]]}で迷った問題　`;
+            if (item.category === 'tensZero') return '🔁 十のくらいの0をもう一度　';
+            if (item.category === 'onesZero') return '🔁 一のくらいの0をもう一度　';
+            if (item.category === 'bothZero') return '🔁 100の倍数をもう一度　';
+            return '🔁 まえにまちがえた問題　';
+        }
+        if (item.reason === 'reading-numeric') return '🔁 よみ方をたしかめよう　';
+        if (item.reason === 'reading-recognition' || item.reason === 'reading-fallback' || item.reason === 'reading-selfcheck') return '🔁 よみをもう一度　';
+        if (item.reason === 'transfer-check') return '🔄 にた問題でたしかめよう　';
+        return '🔁 ふくしゅう　';
+    }
+
+    function markProblemComplete() {
+        if (currentProblemCompleted) return;
+        currentProblemCompleted = true;
+        completedByTab[currentTab] = (completedByTab[currentTab] || 0) + 1;
+        activeReviewItem = null;
+        activeCourseProblem = null;
+        currentProblemCourseLocked = false;
+        refreshCourseCompletion(currentTab);
+        saveReviewState();
+        updateAutoPracticeUI();
+        updateLearningStatus();
+    }
+
+    function supportsSpeechRecognition() {
+        return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+    }
+
+    function placePrimaryActionButton() {
+        const action = document.getElementById('action-btn');
+        const slot = document.getElementById('reading-action-slot');
+        const home = document.getElementById('action-btn-home');
+        if (!action || !slot || !home) return;
+        if (currentTab === 2) {
+            if (action.parentElement !== slot) slot.appendChild(action);
+            slot.style.display = 'flex';
+            action.classList.add('reading-mic-action');
+        } else {
+            if (action.parentElement !== home) home.appendChild(action);
+            slot.style.display = 'none';
+            action.classList.remove('reading-mic-action');
+        }
+    }
+
+    function initProblem() {
+        restoreActiveReviewIfAbandoned();
+        stopActiveRecognition();
+        cancelSpeech();
+        user = { h: null, t: null, o: null };
+        hintLevel = 0;
+        hintUsed = false;
+        attemptCount = 0;
+        feedbackActive = false;
+        lastEvaluatedWrongPlaces = [];
+        currentProblemCompleted = false;
+        currentOutcomeRecorded = false;
+        readingAttempts = 0;
+        numericRecognitionCount = 0;
+        noSpeechCount = 0;
+        readingHadDifficulty = false;
+        recognitionFallback = false;
+        currentProblemCourseLocked = false;
+        clearPlaceFeedback();
+
+        const area = document.getElementById('explanation-area');
+        area.style.display = 'block';
+        area.innerHTML = '';
+        area.style.fontSize = '15px';
+        area.style.lineHeight = '1.38';
+        const centerStage = document.querySelector('.center-stage');
+        if (centerStage) centerStage.classList.toggle('reading-mode', currentTab === 2);
+        placePrimaryActionButton();
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('action-btn').style.display = 'inline-block';
+        document.getElementById('action-btn').disabled = false;
+        document.getElementById('hint-btn').style.display = (currentTab === 3) ? 'inline-block' : 'none';
+        document.getElementById('hint-btn').innerText = 'ヒント';
+
+        generateProblem();
+        currentProblemCourseLocked = currentProblemCourseLocked || autoPractice;
+        updateAutoPracticeUI();
 
         const ins = document.getElementById('instruction');
         const visual = document.getElementById('visual-area');
         const inputSec = document.getElementById('input-section');
+        const sideInputTools = document.getElementById('side-input-tools');
+        const reviewPrefix = getReviewPrefix(activeReviewItem);
+        updateLearningStatus();
 
         if (currentTab === 1) {
-            let mode = Math.random() > 0.5 ? 'ぼう' : '折り紙';
-            ins.innerText = `${mode}の 数を 数字で 書きましょう。`;
-            visual.innerHTML = renderPerfectResponsiveSVG(mode);
+            currentVisualMode = activeReviewItem?.visualMode
+                || (isResumingCourseProblem ? activeCourseProblem?.visualMode : null)
+                || chooseVisualModeForCategory(currentProblemCategory);
+            ins.innerText = `${reviewPrefix}えが あらわしている 数を 数字で 書きましょう。`;
+            visual.innerHTML = renderPerfectResponsiveSVG(currentVisualMode);
             inputSec.style.display = 'block';
-            document.getElementById('action-btn').innerText = "こたえあわせ";
+            if (sideInputTools) sideInputTools.style.display = 'block';
+            document.getElementById('action-btn').innerText = 'こたえあわせ';
         } else if (currentTab === 2) {
-            ins.innerText = "下の 数を 読みましょう。";
-            visual.innerHTML = `<div style="font-size:65px; font-weight:bold; letter-spacing: 2px;">${prob.val}</div>`;
+            ins.innerText = supportsSpeechRecognition()
+                ? `${reviewPrefix}下の 数を 声に出して 読みましょう。マイクのボタンを押してから読んでね。`
+                : `${reviewPrefix}下の 数を 読みましょう。音声認識が使えないので、あとで答えを確かめます。`;
+            visual.innerHTML = `<div style="font-size:65px; font-weight:bold; letter-spacing:2px;">${prob.val}</div>`;
             inputSec.style.display = 'none';
-            document.getElementById('action-btn').innerText = "こたえをみる";
+            if (sideInputTools) sideInputTools.style.display = 'none';
+            document.getElementById('action-btn').innerText = supportsSpeechRecognition() ? '🎤 よんでみる' : 'こたえをみる';
         } else {
-            ins.innerText = "数字で 書きましょう。";
-            visual.innerHTML = renderKanji(false);
+            ins.innerText = `${reviewPrefix}数字で 書きましょう。`;
+            visual.innerHTML = renderKanji(0);
             inputSec.style.display = 'block';
-            document.getElementById('action-btn').innerText = "こたえあわせ";
+            if (sideInputTools) sideInputTools.style.display = 'block';
+            document.getElementById('action-btn').innerText = 'こたえあわせ';
         }
+        persistActiveCourseProblem();
+        selectPlace('h', false);
         updateInputDisplay();
+        fitCenterFrames();
     }
 
     function renderPerfectResponsiveSVG(mode) {
@@ -607,8 +2540,8 @@
                     <stop offset="100%" stop-color="#b57e38"/>
                 </linearGradient>
                 <linearGradient id="origamiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#ff7675"/>
-                    <stop offset="100%" stop-color="#ff7675"/>
+                    <stop offset="0%" stop-color="#dff4fd"/>
+                    <stop offset="100%" stop-color="#8ed8f6"/>
                 </linearGradient>
             </defs>
             <line x1="430" y1="10" x2="430" y2="270" stroke="#e0e0e0" stroke-width="2" stroke-dasharray="5 5"/>
@@ -630,7 +2563,7 @@
                     <line x1="6" y1="5" x2="6" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="10" y1="5" x2="10" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="14" y1="5" x2="14" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="18" y1="5" x2="18" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="22" y1="5" x2="22" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="26" y1="5" x2="26" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="30" y1="5" x2="30" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="34" y1="5" x2="34" y2="80" stroke="#8a5a22" stroke-width="1"/><line x1="38" y1="5" x2="38" y2="80" stroke="#8a5a22" stroke-width="1"/>
                     <path d="M 1,35 Q 21,38 42,35 L 42,47 Q 21,50 1,47 Z" fill="#ff2e2e" stroke="#b30000" stroke-width="1"/>
                     <rect x="7" y="37" width="28" height="11" fill="white" rx="2" stroke="#333" stroke-width="0.5"/>
-                    <text x="21" y="46" font-size="9" font-weight="bold" text-anchor="middle" fill="#000">100</text>
+                    <text x="21" y="46" font-size="14" font-weight="bold" text-anchor="middle" fill="#000">100</text>
                 </g>`;
             } else {
                 svg += `
@@ -638,13 +2571,13 @@
                     <path d="M 0,35 L 12,23 L 47,23 L 35,35 Z" fill="#b2bec3"/>
                     <path d="M 35,0 L 47,-12 L 47,23 L 35,35 Z" fill="#748d92"/>
                     <line x1="37" y1="31" x2="49" y2="19" stroke="#95afc0" stroke-width="1"/><line x1="39" y1="27" x2="51" y2="15" stroke="#95afc0" stroke-width="1"/><line x1="41" y1="23" x2="53" y2="11" stroke="#95afc0" stroke-width="1"/><line x1="43" y1="19" x2="55" y2="7" stroke="#95afc0" stroke-width="1"/><line x1="45" y1="15" x2="57" y2="3" stroke="#95afc0" stroke-width="1"/>
-                    <rect x="8" y="-8" width="35" height="35" fill="#fab1a0" rx="1"/>
-                    <rect x="6" y="-6" width="35" height="35" fill="#ff7675" rx="1"/>
-                    <rect x="4" y="-4" width="35" height="35" fill="#e17055" rx="1"/>
-                    <rect x="2" y="-2" width="35" height="35" fill="#ff7675" rx="1"/>
-                    <rect x="0" y="0" width="35" height="35" fill="url(#origamiGrad)" rx="1" stroke="#d63031" stroke-width="1"/>
+                    <rect x="8" y="-8" width="35" height="35" fill="#bfe9fb" rx="1"/>
+                    <rect x="6" y="-6" width="35" height="35" fill="#8ed8f6" rx="1"/>
+                    <rect x="4" y="-4" width="35" height="35" fill="#5bc0eb" rx="1"/>
+                    <rect x="2" y="-2" width="35" height="35" fill="#8ed8f6" rx="1"/>
+                    <rect x="0" y="0" width="35" height="35" fill="#dff4fd" rx="1" stroke="#008cc2" stroke-width="1"/>
                     <rect x="0" y="11" width="35" height="12" fill="white" opacity="0.9"/>
-                    <text x="17.5" y="21" font-size="10" font-weight="bold" text-anchor="middle" fill="#c0392b">100</text>
+                    <text x="17.5" y="21" font-size="15" font-weight="bold" text-anchor="middle" fill="#008cc2">100</text>
                 </g>`;
             }
         }
@@ -662,16 +2595,16 @@
                     <line x1="4" y1="4" x2="4" y2="76" stroke="#a06d30" stroke-width="1"/><line x1="9" y1="4" x2="9" y2="76" stroke="#a06d30" stroke-width="1"/><line x1="14" y1="4" x2="14" y2="76" stroke="#a06d30" stroke-width="1"/><line x1="18" y1="4" x2="18" y2="76" stroke="#a06d30" stroke-width="1"/>
                     <ellipse cx="11" cy="4" rx="11" ry="3" fill="#f5cd98" stroke="#8a5a22" stroke-width="1"/>
                     <path d="M -1,36 Q 11,39 23,36 L 22,44 Q 11,47 0,44 Z" fill="#ff4757" stroke="#ff2e2e"/>
-                    <text x="11" y="43" font-size="8" font-weight="bold" text-anchor="middle" fill="white">10</text>
+                    <text x="11" y="43" font-size="12" font-weight="bold" text-anchor="middle" fill="white">10</text>
                 </g>`;
             } else {
                 svg += `
                 <g transform="translate(${x + 8}, ${y + 20})">
-                    <rect x="3" y="-3" width="35" height="35" fill="#ffeaa7" rx="1"/>
-                    <rect x="1.5" y="-1.5" width="35" height="35" fill="#ffeaa7" rx="1"/>
-                    <rect x="0" y="0" width="35" height="35" fill="#fdcb6e" rx="1" stroke="#e67e22" stroke-width="1"/>
+                    <rect x="3" y="-3" width="35" height="35" fill="#ffd8a8" rx="1"/>
+                    <rect x="1.5" y="-1.5" width="35" height="35" fill="#ffd8a8" rx="1"/>
+                    <rect x="0" y="0" width="35" height="35" fill="#ffc46b" rx="1" stroke="#d35400" stroke-width="1"/>
                     <rect x="0" y="11" width="35" height="12" fill="white" opacity="0.9"/>
-                    <text x="17.5" y="21" font-size="10" font-weight="bold" text-anchor="middle" fill="#d35400">10</text>
+                    <text x="17.5" y="21" font-size="15" font-weight="bold" text-anchor="middle" fill="#d35400">10</text>
                 </g>`;
             }
         }
@@ -691,9 +2624,9 @@
             } else {
                 svg += `
                 <g transform="translate(${x + 4}, ${y + 20}) rotate(4)">
-                    <rect x="0" y="0" width="35" height="35" fill="#81ecec" rx="1" stroke="#00cec9" stroke-width="1"/>
+                    <rect x="0" y="0" width="35" height="35" fill="#ffc9c9" rx="1" stroke="#c0392b" stroke-width="1"/>
                     <rect x="0" y="11" width="35" height="12" fill="white" opacity="0.8"/>
-                    <text x="17.5" y="20" font-size="9" font-weight="bold" text-anchor="middle" fill="#0097e6">1</text>
+                    <text x="17.5" y="20" font-size="15" font-weight="bold" text-anchor="middle" fill="#c0392b">1</text>
                 </g>`;
             }
         }
@@ -702,167 +2635,740 @@
         return svg;
     }
 
-    function renderKanji(withHint) {
-        let hKanji = kanjiH[prob.h];
-        let hRead  = readH[prob.h];
-        
-        let tKanji = prob.t === 0 ? "" : (prob.t === 1 ? "十" : kanjiT[prob.t]);
-        let tRead  = prob.t === 0 ? "" : readT[prob.t];
-        
-        let oKanji = prob.o === 0 ? "" : kanjiO[prob.o];
-        let oRead  = prob.o === 0 ? "" : readO[prob.o];
-        
-        if(!withHint) {
-            return `<div style="font-size:45px; font-weight:bold; letter-spacing:4px; line-height: 1.7; text-align:center;">
-                <ruby>${hKanji}<rt>${hRead}</rt></ruby>
-                ${tKanji ? `<ruby>${tKanji}<rt>${tRead}</rt></ruby>` : ''}
-                ${oKanji ? `<ruby>${oKanji}<rt>${oRead}</rt></ruby>` : ''}
+    function renderKanji(level = 0) {
+        const hKanji = kanjiH[prob.h];
+        const hRead = readH[prob.h];
+        const tKanji = prob.t === 0 ? '' : (prob.t === 1 ? '十' : kanjiT[prob.t]);
+        const tRead = prob.t === 0 ? '' : readT[prob.t];
+        const oKanji = prob.o === 0 ? '' : kanjiO[prob.o];
+        const oRead = prob.o === 0 ? '' : readO[prob.o];
+
+        if (level === 0) {
+            return `<div style="font-size:48px; font-weight:bold; letter-spacing:2px; line-height:1.7; text-align:center;">${hKanji}${tKanji}${oKanji}</div>`;
+        }
+        if (level === 1) {
+            return `<div style="font-size:45px; font-weight:bold; letter-spacing:2px; line-height:1.8; text-align:center;">
+                <ruby>${hKanji}<rt>${hRead}</rt></ruby>${tKanji ? `<ruby>${tKanji}<rt>${tRead}</rt></ruby>` : ''}${oKanji ? `<ruby>${oKanji}<rt>${oRead}</rt></ruby>` : ''}
             </div>`;
-        } else {
-            return `<div class="hint-text">
-                <span class="hint-box hint-h"><ruby>${hKanji}<rt>${hRead}</rt></ruby></span>
-                ${tKanji ? `<span class="hint-box hint-t"><ruby>${tKanji}<rt>${tRead}</rt></ruby></span>` : ''}
-                ${oKanji ? `<span class="hint-box hint-o"><ruby>${oKanji}<rt>${oRead}</rt></ruby></span>` : ''}
-            </div>`;
+        }
+        return `<div class="hint-text">
+            <span class="hint-box hint-h"><span class="hint-stage-label">百のくらい</span><ruby>${hKanji}<rt>${hRead}</rt></ruby></span>
+            <span class="hint-box hint-t"><span class="hint-stage-label">十のくらい</span>${tKanji ? `<ruby>${tKanji}<rt>${tRead}</rt></ruby>` : '<span class="hint-empty">なし → 0</span>'}</span>
+            <span class="hint-box hint-o"><span class="hint-stage-label">一のくらい</span>${oKanji ? `<ruby>${oKanji}<rt>${oRead}</rt></ruby>` : '<span class="hint-empty">なし → 0</span>'}</span>
+        </div>`;
+    }
+
+    function selectPlace(place, focus = true) {
+        selectedPlace = place;
+        document.querySelectorAll('.pv-col').forEach(col => {
+            col.classList.toggle('selected-place', col.dataset.place === place);
+        });
+        if (focus) {
+            const col = document.querySelector(`.pv-col[data-place="${place}"]`);
+            if (col) col.focus({preventScroll:true});
         }
     }
 
-    function adjustDigit(place, val) {
+    function nextPlace(place) {
+        const places = ['h','t','o'];
+        const idx = places.indexOf(place);
+        return places[Math.min(2, idx + 1)];
+    }
+
+    function prevPlace(place) {
+        const places = ['h','t','o'];
+        const idx = places.indexOf(place);
+        return places[Math.max(0, idx - 1)];
+    }
+
+    function showHundredsZeroPrompt() {
+        const area = document.getElementById('explanation-area');
+        area.style.display = 'block';
+        area.className = 'explanation normal-exp';
+        area.innerHTML = '<strong>百のくらいは 1〜9 だよ。</strong><div class="retry-note">3けたの数なので、百のくらいに0は入りません。</div>';
+        selectPlace('h', false);
+    }
+
+    function adjustDigit(place, delta) {
         playSound('click');
-        user[place] += val;
-        if(user[place] > 9) user[place] = 0;
-        if(user[place] < 0) user[place] = 9;
+        const min = place === 'h' ? 1 : 0;
+        const current = user[place];
+        if (current === null) {
+            user[place] = delta > 0 ? 1 : min;
+        } else {
+            user[place] = Math.max(min, Math.min(9, current + delta));
+        }
         updateInputDisplay();
+        syncFeedbackAfterEdit(place);
+    }
+
+    function setDigit(place, digit, autoAdvance = false) {
+        if (place === 'h' && Number(digit) === 0) {
+            showHundredsZeroPrompt();
+            return false;
+        }
+        user[place] = Math.max(place === 'h' ? 1 : 0, Math.min(9, digit));
+        updateInputDisplay();
+        syncFeedbackAfterEdit(place);
+        if (autoAdvance && place !== 'o') {
+            selectPlace(nextPlace(place));
+        } else if (autoAdvance && ['h','t','o'].every(p => user[p] !== null)) {
+            document.getElementById('action-btn').focus({preventScroll:true});
+        }
+        return true;
+    }
+
+    function inputDigit(digit) {
+        playSound('click');
+        setDigit(selectedPlace, digit, true);
+    }
+
+    function clearSelectedDigit() {
+        playSound('click');
+        const place = selectedPlace;
+        user[place] = null;
+        updateInputDisplay();
+        syncFeedbackAfterEdit(place);
     }
 
     function updateInputDisplay() {
-        const dh = document.getElementById('disp-h');
-        const dt = document.getElementById('disp-t');
-        const do1 = document.getElementById('disp-o');
+        ['h','t','o'].forEach(place => {
+            document.getElementById(`disp-${place}`).innerText = user[place] === null ? '―' : user[place];
+        });
+        const complete = ['h','t','o'].every(place => user[place] !== null);
+        const preview = ['h','t','o'].map(place => user[place] === null ? '―' : user[place]).join('');
+        document.getElementById('current-number').innerText = `いまの入力：${preview}`;
+        if (currentTab !== 2) {
+            document.getElementById('action-btn').disabled = !complete;
+        }
+    }
 
-        dh.innerText = user.h;
-        dt.innerText = user.t;
-        do1.innerText = user.o;
+    function clearPlaceFeedback() {
+        document.querySelectorAll('.pv-col').forEach(col => {
+            col.classList.remove('place-error', 'place-missing', 'place-correct');
+        });
+    }
 
-        dh.classList.remove('hidden-digit');
-        dt.classList.add('hidden-digit'); // 元のバグ修正：初期化で隠れるのを防ぐため、下部で判定
+    function getMissingPlaces() {
+        return ['h','t','o'].filter(place => user[place] === null);
+    }
 
-        if(user.h === 0) {
-            dh.classList.add('hidden-digit');
-            if(user.t === 0) {
-                dt.classList.add('hidden-digit');
-            } else {
-                dt.classList.remove('hidden-digit');
-            }
-        } else {
-            dt.classList.remove('hidden-digit');
+    function getWrongPlaces() {
+        return ['h','t','o'].filter(place => user[place] !== null && user[place] !== prob[place]);
+    }
+
+    function applyEvaluationFeedback(wrongPlaces) {
+        clearPlaceFeedback();
+        ['h','t','o'].forEach(place => {
+            const col = document.querySelector(`.pv-col[data-place="${place}"]`);
+            if (!col) return;
+            col.classList.add(wrongPlaces.includes(place) ? 'place-error' : 'place-correct');
+        });
+    }
+
+    function syncFeedbackAfterEdit(place) {
+        if (!feedbackActive) return;
+        const col = document.querySelector(`.pv-col[data-place="${place}"]`);
+        if (col) {
+            col.classList.remove('place-correct', 'place-missing', 'place-error');
+            if (lastEvaluatedWrongPlaces.includes(place)) col.classList.add('place-error');
+        }
+        const area = document.getElementById('explanation-area');
+        const chips = lastEvaluatedWrongPlaces.map(p => `<span class="wrong-place-chip ${placeClasses[p]}">${placeNames[p]}</span>`).join('');
+        area.className = 'explanation incorrect';
+        area.innerHTML = `<strong style="font-size:20px;">なおしているところ</strong><div class="retry-note">数字を直したら、「もういちど こたえあわせ」を押して確かめよう。赤いわくは、前回まちがっていた位です。</div>${chips ? `<div class="wrong-place-list">${chips}</div>` : ''}`;
+    }
+
+    function showIncompletePrompt() {
+        const missingPlaces = getMissingPlaces();
+        clearPlaceFeedback();
+        missingPlaces.forEach(place => {
+            const col = document.querySelector(`.pv-col[data-place="${place}"]`);
+            if (col) col.classList.add('place-missing');
+        });
+        const area = document.getElementById('explanation-area');
+        area.style.display = 'block';
+        area.className = 'explanation normal-exp';
+        area.innerHTML = '<strong>まだ入力していない位があります。</strong><div class="retry-note">百・十・一の3つを全部入れてから、こたえあわせをしよう。0の位も0を入れます。</div>';
+        selectPlace(missingPlaces[0] || 'h', false);
+        scrollFeedbackIntoView();
+    }
+
+    function scrollFeedbackIntoView() {
+        const area = document.getElementById('explanation-area');
+        fitCenterFrames();
+        if (window.innerWidth <= 820) {
+            requestAnimationFrame(() => area.scrollIntoView({behavior:'smooth', block:'nearest'}));
         }
     }
 
     function toggleHint() {
         playSound('click');
-        isHintVisible = !isHintVisible;
-        document.getElementById('visual-area').innerHTML = renderKanji(isHintVisible);
+        hintUsed = true;
+        if (hintLevel < 2) {
+            hintLevel++;
+        } else {
+            hintLevel = 0;
+        }
+        document.getElementById('visual-area').innerHTML = renderKanji(hintLevel);
+        fitCenterFrames();
+        const btn = document.getElementById('hint-btn');
+        btn.innerText = hintLevel === 0 ? 'ヒント' : (hintLevel === 1 ? 'もう1つヒント' : 'ヒントをかくす');
     }
 
     function processAction() {
-        const area = document.getElementById('explanation-area');
-        area.style.display = 'block';
-        document.getElementById('next-btn').style.display = 'inline-block';
-        document.getElementById('action-btn').style.display = 'none';
-        document.getElementById('hint-btn').style.display = 'none';
-
         if (currentTab === 2) {
-            showReadingExp(area);
-        } else {
-            checkAnswer(area);
+            const area = document.getElementById('explanation-area');
+            if (recognitionFallback || !supportsSpeechRecognition()) showReadingExp(area, {mode:'fallback', autoSpeak:true});
+            else startReadingRecognition();
+            return;
         }
+        if (getMissingPlaces().length) {
+            showIncompletePrompt();
+            return;
+        }
+        checkAnswer(document.getElementById('explanation-area'));
+    }
+
+    function renderRetryFeedback(area, wrongPlaces, includeHeading = true) {
+        const chips = wrongPlaces.map(place => `<span class="wrong-place-chip ${placeClasses[place]}">${placeNames[place]}</span>`).join('');
+        let guidance = '';
+
+        if (attemptCount <= 1) {
+            guidance = '<div class="retry-note">赤いわくのくらいを、もういちど見てみよう。答えはまだ出さないよ。</div>';
+        } else if (attemptCount === 2) {
+            const details = wrongPlaces.map(place => {
+                const unit = place === 'h' ? '100のまとまり' : place === 't' ? '10のまとまり' : (currentVisualMode === '折り紙' ? '1まい' : '1のばら');
+                return `<div>・${placeNames[place]}：前の答えでは <strong>${user[place]}</strong>。${unit}をもういちど確かめよう。</div>`;
+            }).join('');
+            guidance = `<div class="retry-note">まちがっている位だけ、もう一度確かめよう。</div><div class="support-detail">${details}</div>`;
+        } else if (attemptCount === 3) {
+            const details = wrongPlaces.map(place => {
+                if (currentTab === 3) {
+                    const part = place === 'h' ? kanjiH[prob.h] : place === 't' ? (prob.t === 0 ? '十をあらわす言葉はない' : (prob.t === 1 ? '十' : kanjiT[prob.t])) : (prob.o === 0 ? '一をあらわす言葉はない' : kanjiO[prob.o]);
+                    return `<div>・${placeNames[place]}に関係するところは「<strong>${part}</strong>」。ここに注目しよう。</div>`;
+                }
+                const unit = place === 'h' ? '100' : place === 't' ? '10' : '1';
+                return `<div>・${placeNames[place]}：絵の「${unit}」のまとまりだけに注目して数えよう。</div>`;
+            }).join('');
+            guidance = `<div class="retry-note">見る場所をしぼります。</div><div class="support-detail">${details}</div>`;
+        } else {
+            const details = wrongPlaces.map(place => `<div>・${placeNames[place]}は <span class="support-answer ${placeClasses[place]}">${prob[place]}</span></div>`).join('');
+            guidance = `<div class="retry-note">ここまで考えたので、正しい数字を見て自分で入れ直そう。</div><div class="support-detail">${details}</div>`;
+        }
+
+        area.className = 'explanation incorrect';
+        area.innerHTML = `${includeHeading ? '<strong style="font-size:20px;">もういちど かんがえよう</strong>' : '<strong style="font-size:20px;">なおしているところ</strong>'}${guidance}${chips ? `<div class="wrong-place-list">${chips}</div>` : ''}`;
     }
 
     function checkAnswer(area) {
-        let userVal = user.h * 100 + user.t * 10 + user.o;
-        let isCorrect = (userVal === prob.val);
-        
-        if (isCorrect) {
-            playSound('correct');
-        } else {
-            playSound('incorrect');
+        if (getMissingPlaces().length) {
+            showIncompletePrompt();
+            return;
         }
 
-        area.className = `explanation ${isCorrect ? 'correct' : 'incorrect'}`;
-        
-        let title = "";
-        if(isCorrect) {
-            title = "⭕ せいかい！ ★を 1つ ゲットしたよ！";
-            if(currentTab === 1 || currentTab === 3) {
-                stars++;
-                localStorage.setItem('math_app_stars', stars);
-                updateStarDisplay();
-            }
-        } else {
-            title = "❌ まちがい... 次はがんばろう！";
+        attemptCount++;
+        const wrongPlaces = getWrongPlaces();
+        const isCorrect = wrongPlaces.length === 0;
+        area.style.display = 'block';
+        feedbackActive = !isCorrect;
+        lastEvaluatedWrongPlaces = [...wrongPlaces];
+        applyEvaluationFeedback(wrongPlaces);
+
+        if (!isCorrect) {
+            playSound('incorrect');
+            if (attemptCount === 1) queueReviewProblem('answer-error', {wrongPlaces});
+            renderRetryFeedback(area, wrongPlaces);
+            document.getElementById('action-btn').style.display = 'inline-block';
+            document.getElementById('action-btn').innerText = 'もういちど こたえあわせ';
+            document.getElementById('next-btn').style.display = 'none';
+            if (currentTab === 3) document.getElementById('hint-btn').style.display = 'inline-block';
+            selectPlace(wrongPlaces[0], false);
+            scrollFeedbackIntoView();
+            return;
         }
-        
-        let expHtml = `<strong style="font-size:20px;">${title}</strong><br><hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">`;
+
+        playSound('correct');
+        feedbackActive = false;
+        lastEvaluatedWrongPlaces = [];
+        clearPlaceFeedback();
+        const independentAnswer = attemptCount === 1 && !hintUsed;
+        const earnedStar = independentAnswer && !activeReviewItem;
+        recordOutcome(independentAnswer ? 'independent' : 'assisted');
+        markProblemComplete();
+        if (earnedStar) {
+            stars++;
+            localStorage.setItem(STORAGE_KEYS.stars, String(stars));
+            updateStarDisplay();
+        }
+        area.className = 'explanation correct';
+        area.innerHTML = buildFullExplanation(earnedStar)
+            + `<button class="btn-replay btn-explanation-replay" onclick="speakExplanation()" ${isSpeechOn ? '' : 'disabled'}>${isSpeechOn ? '🔊 解説をきく' : '🔇 よみあげOFF'}</button>`;
+        fitCenterFrames();
+        if (isSpeechOn) setTimeout(() => speakExplanation(), 520);
+        document.getElementById('action-btn').style.display = 'none';
+        document.getElementById('hint-btn').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'inline-block';
+        document.getElementById('next-btn').focus({preventScroll:true});
+        scrollFeedbackIntoView();
+    }
+
+    function buildFullExplanation(earnedStar) {
+        let title;
+        if (earnedStar) title = '⭕ せいかい！ ★を 1つ ゲットしたよ！';
+        else if (attemptCount > 1) title = '⭕ なおせたね！ せいかい！';
+        else title = '⭕ せいかい！';
+
+        let html = `<strong style="font-size:20px;">${title}</strong><br><hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">`;
+        if (!earnedStar && (attemptCount > 1 || hintUsed)) {
+            html += `<span class="exp-part">今回は ${attemptCount > 1 ? 'なおして正解' : 'ヒントを使って正解'}。★は、最初の1回でヒントなし正解のときにもらえるよ。</span>`;
+        }
 
         if (currentTab === 3) {
-            expHtml += `<span class="exp-part">・<span class="val-h">${kanjiH[prob.h]}（${readH[prob.h]}）</span>は100が <span class="val-h">${prob.h}つ</span> ということだから、百のくらいは <span class="val-h">${prob.h}</span> だね。</span>`;
-            if(prob.t > 0) {
-                let tName = prob.t === 1 ? "十" : kanjiT[prob.t];
-                expHtml += `<span class="exp-part">・<span class="val-t">${tName}（${readT[prob.t]}）</span>は10が <span class="val-t">${prob.t}つ</span> あるということだから、十のくらいは <span class="val-t">${prob.t}</span> だね。</span>`;
+            html += `<span class="exp-part">・<span class="val-h">${kanjiH[prob.h]}（${readH[prob.h]}）</span>は100が <span class="val-h">${prob.h}つ</span>。百のくらいは <span class="val-h">${prob.h}</span>。</span>`;
+            if (prob.t > 0) {
+                const tName = prob.t === 1 ? '十' : kanjiT[prob.t];
+                html += `<span class="exp-part">・<span class="val-t">${tName}（${readT[prob.t]}）</span>は10が <span class="val-t">${prob.t}つ</span>。十のくらいは <span class="val-t">${prob.t}</span>。</span>`;
             } else {
-                expHtml += `<span class="exp-part">・十の位をあらわす 言葉は<span class="val-t">「ない」</span>から、十のくらいは <span class="val-t">0</span> だね。</span>`;
+                html += `<span class="exp-part">・十をあらわす言葉がないので、十のくらいには <span class="val-t">0</span> を書くよ。0が入ることで、百と一の位置がずれないね。</span>`;
             }
-            if(prob.o > 0) {
-                expHtml += `<span class="exp-part">・<span class="val-o">${kanjiO[prob.o]}（${readO[prob.o]}）</span>は1が <span class="val-o">${prob.o}つ</span> あるということだから、一のくらいは <span class="val-o">${prob.o}</span> だね。</span>`;
+            if (prob.o > 0) {
+                html += `<span class="exp-part">・<span class="val-o">${kanjiO[prob.o]}（${readO[prob.o]}）</span>は1が <span class="val-o">${prob.o}つ</span>。一のくらいは <span class="val-o">${prob.o}</span>。</span>`;
             } else {
-                expHtml += `<span class="exp-part">・一の位をあらわす 言葉は<span class="val-o">「ない」</span>から、一のくらいは <span class="val-o">0</span> だね。</span>`;
+                html += `<span class="exp-part">・一をあらわす言葉がないので、一のくらいには <span class="val-o">0</span> を書くよ。</span>`;
             }
         } else {
-            expHtml += `<span class="exp-part">・100のたば（束）が <span class="val-h">${prob.h}つ</span> あるから、百のくらいは <span class="val-h">${prob.h}</span> だね。</span>`;
-            
-            if(prob.t > 0) {
-                expHtml += `<span class="exp-part">・10のたば（束）が <span class="val-t">${prob.t}つ</span> あるから、十のくらいは <span class="val-t">${prob.t}</span> だね。</span>`;
-            } else {
-                expHtml += `<span class="exp-part">・10のたば（束）は<span class="val-t">「ない」</span>から、十のくらいは <span class="val-t">0</span> だね。</span>`;
-            }
-            
-            if(prob.o > 0) {
-                expHtml += `<span class="exp-part">・1のばらが <span class="val-o">${prob.o}つ</span> あるから、一のくらいは <span class="val-o">${prob.o}</span> だね。</span>`;
-            } else {
-                expHtml += `<span class="exp-part">・1のばらは<span class="val-o">「ない」</span>から、一のくらいは <span class="val-o">0</span> だね。</span>`;
-            }
+            const hUnit = currentVisualMode === '折り紙' ? '100のまとまり' : '100のたば（束）';
+            const tUnit = currentVisualMode === '折り紙' ? '10のまとまり' : '10のたば（束）';
+            const oUnit = currentVisualMode === '折り紙' ? '1まい' : '1のばら';
+            html += `<span class="exp-part">・${hUnit}が <span class="val-h">${prob.h}つ</span> あるから、百のくらいは <span class="val-h">${prob.h}</span>。</span>`;
+            html += prob.t > 0
+                ? `<span class="exp-part">・${tUnit}が <span class="val-t">${prob.t}つ</span> あるから、十のくらいは <span class="val-t">${prob.t}</span>。</span>`
+                : `<span class="exp-part">・${tUnit}がないので、十のくらいは <span class="val-t">0</span>。</span>`;
+            html += prob.o > 0
+                ? `<span class="exp-part">・${oUnit}が <span class="val-o">${prob.o}つ</span> あるから、一のくらいは <span class="val-o">${prob.o}</span>。</span>`
+                : `<span class="exp-part">・${oUnit}がないので、一のくらいは <span class="val-o">0</span>。</span>`;
         }
-        expHtml += `<br><strong style="font-size:20px;">だから、こたえは 「<span style="color:#d35400;">${prob.val}</span>」 だね！</strong>`;
-        area.innerHTML = expHtml;
+        html += `<br><strong style="font-size:20px;">だから、こたえは 「<span style="color:#d35400;">${prob.val}</span>」 だね！</strong>`;
+        return html;
     }
 
-    function showReadingExp(area) {
-        playSound('correct'); 
-        area.className = "explanation normal-exp";
-        let hText = `<span class="val-h">百のくらいが ${prob.h} なので、「${readH[prob.h]}」</span>`;
-        let tText = prob.t === 0 ? `<span class="val-t">十のくらいが 0 なので、読みません。</span>` : `<span class="val-t">十のくらいが ${prob.t} なので、「${readT[prob.t]}」</span>`;
-        let oText = prob.o === 0 ? `<span class="val-o">一のくらいが 0 なので、読みません。</span>` : `<span class="val-o">一のくらいが ${prob.o} なので、「${readO[prob.o]}」</span>`;
-        
-        let fullRead = (readH[prob.h] || "") + (readT[prob.t] || "") + (readO[prob.o] || "");
-        
+    function getFullKanji() {
+        return kanjiH[prob.h] + (prob.t === 0 ? '' : (prob.t === 1 ? '十' : kanjiT[prob.t])) + (prob.o === 0 ? '' : kanjiO[prob.o]);
+    }
+
+    function getFullReading() {
+        return (readH[prob.h] || '') + (readT[prob.t] || '') + (readO[prob.o] || '');
+    }
+
+    function normalizeRecognitionText(text) {
+        return String(text || '')
+            .normalize('NFKC')
+            .toLowerCase()
+            .replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
+            .replace(/[\s、。,.，．!！?？・「」『』（）()\-ー]/g, '')
+            .replace(/です$/g, '');
+    }
+
+    function japaneseDigitValue(ch) {
+        const map = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+        if (/^[1-9]$/.test(ch)) return Number(ch);
+        return Object.prototype.hasOwnProperty.call(map, ch) ? map[ch] : null;
+    }
+
+    function parseJapaneseMixedNumber(text) {
+        const s = normalizeRecognitionText(text);
+        if (!s) return null;
+
+        // 純粋な数字表記は100〜999の3桁だけ許可する。
+        if (/^[1-9][0-9]{2}$/.test(s)) return Number(s);
+
+        // 単位を含む表記は日本語の3桁数として成立する形だけ許可する。
+        const digit = '[1-9一二三四五六七八九]';
+        const hundreds = s.match(new RegExp(`^(${digit}?)百(.*)$`));
+        if (!hundreds) return null;
+        const h = hundreds[1] === '' ? 1 : japaneseDigitValue(hundreds[1]);
+        if (h === null) return null;
+        const rest = hundreds[2];
+        if (rest === '') return h * 100;
+
+        const tensAndOnes = rest.match(new RegExp(`^(${digit}?)十(${digit}?)$`));
+        if (tensAndOnes) {
+            const t = tensAndOnes[1] === '' ? 1 : japaneseDigitValue(tensAndOnes[1]);
+            const o = tensAndOnes[2] === '' ? 0 : japaneseDigitValue(tensAndOnes[2]);
+            if (t === null || o === null) return null;
+            return h * 100 + t * 10 + o;
+        }
+
+        const onesOnly = rest.match(new RegExp(`^(${digit})$`));
+        if (onesOnly) {
+            const o = japaneseDigitValue(onesOnly[1]);
+            return o === null ? null : h * 100 + o;
+        }
+        return null;
+    }
+
+    function classifyRecognitionCandidate(text) {
+        const norm = normalizeRecognitionText(text);
+        if (!norm) return 'none';
+        const canonicalReading = normalizeRecognitionText(getFullReading());
+        const canonicalKanji = normalizeRecognitionText(getFullKanji());
+        if (norm === canonicalReading || norm === canonicalKanji) return 'strong';
+
+        const parsed = parseJapaneseMixedNumber(norm);
+        if (parsed !== prob.val) return 'none';
+        if (/^[1-9][0-9]{2}$/.test(norm)) return 'numeric';
+        if (/[百十]/.test(norm)) return 'strong';
+        return 'none';
+    }
+
+    function recognizedMatchesProblem(text) {
+        return classifyRecognitionCandidate(text) !== 'none';
+    }
+
+    function escapeHtml(text) {
+        return String(text || '').replace(/[&<>"']/g, ch => ({
+            '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+        }[ch]));
+    }
+
+    function setRecognitionMessage(html, className = '') {
+        const area = document.getElementById('explanation-area');
+        area.style.display = 'block';
+        area.className = `explanation normal-exp ${className}`.trim();
+        area.innerHTML = html;
+        scrollFeedbackIntoView();
+    }
+
+    function handleNoSpeechAttempt(message) {
+        noSpeechCount++;
+        readingHadDifficulty = true;
+        const action = document.getElementById('action-btn');
+        action.disabled = false;
+        if (noSpeechCount >= 3) {
+            recognitionFallback = true;
+            action.innerText = 'こたえをみる';
+            setRecognitionMessage(`<strong>${message}</strong><div class="mic-note">3回うまく声を拾えなかったので、マイク判定はいったんやめます。児童の誤答にはしません。答えを確かめよう。</div>`);
+        } else {
+            action.innerText = '🎤 もういちど';
+            setRecognitionMessage(`<strong>${message}</strong><div class="mic-note">マイクに少し近づいて、もう一度読んでみよう。（${noSpeechCount}/3）</div>`);
+        }
+    }
+
+    function enterReadingRecognitionFallback(heard, message, queueReview = true) {
+        readingHadDifficulty = true;
+        if (queueReview) queueReviewProblem('reading-recognition');
+        recognitionFallback = true;
+        const action = document.getElementById('action-btn');
+        action.disabled = false;
+        action.innerText = 'こたえをみる';
+        setRecognitionMessage(`<strong>${message}</strong>${heard ? `<div>「<span class="heard-text">${escapeHtml(heard)}</span>」と聞こえました。</div>` : ''}<div class="mic-note">機械の聞き違いもあるので、ここでは不正解とは決めません。答えを確かめて、あとで同じ数をもう一度出します。</div>`);
+    }
+
+    function startReadingRecognition() {
+        if (isListening || currentProblemCompleted) return;
+        if (!supportsSpeechRecognition()) {
+            recognitionFallback = true;
+            document.getElementById('action-btn').innerText = 'こたえをみる';
+            setRecognitionMessage('<strong>このブラウザでは音声認識が使えません。</strong><div class="mic-note">声に出して読んでから、答えを確かめよう。</div>');
+            return;
+        }
+
+        stopActiveRecognition();
+        cancelSpeech();
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SR();
+        activeRecognition = recognition;
+        recognition.lang = 'ja-JP';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 5;
+
+        const recognitionTab = currentTab;
+        const recognitionVal = prob.val;
+        let handled = false;
+        isListening = true;
+        const action = document.getElementById('action-btn');
+        action.disabled = true;
+        action.innerText = '🎤 きいています…';
+        setRecognitionMessage('<strong>🎤 きいています…</strong><div class="mic-note">「さんびゃくご」のように、数の読み方で1回読んでね。数字を1つずつ読まないようにしよう。</div><button type="button" class="btn-mic-cancel" onclick="cancelReadingRecognition()">マイクをやめる</button>', 'recognition-listening');
+
+        const stale = () => currentTab !== recognitionTab || prob.val !== recognitionVal || currentProblemCompleted;
+
+        recognition.onresult = (event) => {
+            clearRecognitionTimer();
+            if (stale()) return;
+            handled = true;
+            const candidates = [];
+            for (let r = event.resultIndex; r < event.results.length; r++) {
+                const result = event.results[r];
+                for (let i = 0; i < result.length; i++) {
+                    candidates.push({ transcript: result[i].transcript, confidence: result[i].confidence });
+                }
+            }
+            handleReadingRecognitionResult(candidates);
+        };
+
+        recognition.onerror = (event) => {
+            clearRecognitionTimer();
+            if (stale()) return;
+            handled = true;
+            handleReadingRecognitionError(event.error);
+        };
+
+        recognition.onend = () => {
+            clearRecognitionTimer();
+            isListening = false;
+            if (activeRecognition === recognition) activeRecognition = null;
+            if (recognition.__cancelledByUser) return;
+            if (stale()) return;
+            if (!handled) handleNoSpeechAttempt('声をうまく聞き取れませんでした。');
+        };
+
+        try {
+            recognition.start();
+            recognitionTimer = setTimeout(() => {
+                if (stale() || handled || !isListening) return;
+                handled = true;
+                try { recognition.abort(); } catch (e) {}
+                isListening = false;
+                if (activeRecognition === recognition) activeRecognition = null;
+                handleNoSpeechAttempt('時間内に声を聞き取れませんでした。');
+            }, 10000);
+        } catch (e) {
+            clearRecognitionTimer();
+            isListening = false;
+            activeRecognition = null;
+            recognitionFallback = true;
+            action.disabled = false;
+            action.innerText = 'こたえをみる';
+            setRecognitionMessage('<strong>マイクを開始できませんでした。</strong><div class="mic-note">声に出して読んでから、答えを確かめよう。</div>');
+        }
+    }
+
+    function handleReadingRecognitionResult(candidates) {
+        if (currentProblemCompleted) return;
+        const action = document.getElementById('action-btn');
+        action.disabled = false;
+        const ranked = candidates
+            .map(c => ({ transcript: String(c.transcript || '').trim(), confidence: Number(c.confidence) || 0 }))
+            .filter(c => c.transcript);
+        const heard = ranked[0]?.transcript || '';
+        const topType = heard ? classifyRecognitionCandidate(heard) : 'none';
+        const lowerMatch = ranked.slice(1).find(c => classifyRecognitionCandidate(c.transcript) !== 'none');
+
+        if (topType === 'strong') {
+            const independentReading = !readingHadDifficulty && readingAttempts === 0 && noSpeechCount === 0 && numericRecognitionCount === 0;
+            numericRecognitionCount = 0;
+            playSound('correct');
+            showReadingExp(document.getElementById('explanation-area'), {mode:'recognized', heard, autoSpeak:false, independent:independentReading});
+            return;
+        }
+
+        if (topType === 'numeric') {
+            readingHadDifficulty = true;
+            readingAttempts++;
+            numericRecognitionCount++;
+            if (numericRecognitionCount >= 2) {
+                queueReviewProblem('reading-numeric');
+                showReadingExp(document.getElementById('explanation-area'), {mode:'numeric', heard, autoSpeak:true});
+                return;
+            }
+            action.innerText = '🎤 もういちど';
+            setRecognitionMessage(`<strong>数としては「${escapeHtml(heard)}」と聞き取れました。</strong><div class="mic-note">音声認識では「3・0・5」のような桁読みとの区別ができないことがあります。もう1回だけ、「さんびゃくご」のような数の読み方で読んでみよう。</div>`);
+            return;
+        }
+
+        numericRecognitionCount = 0;
+        readingHadDifficulty = true;
+        readingAttempts++;
+        if (readingAttempts >= 3) {
+            enterReadingRecognitionFallback(heard, '3回ためしました。', true);
+            return;
+        }
+
+        action.innerText = '🎤 もういちど';
+        if (lowerMatch) {
+            setRecognitionMessage(`<strong>聞き取りが少しあいまいでした。</strong><div>いちばん強い候補では「<span class="heard-text">${escapeHtml(heard)}</span>」と聞こえました。</div><div class="mic-note">別の候補には正しい数もありました。機械側が迷っているので、もう一度だけはっきり読んでみよう。（${readingAttempts}/3）</div>`);
+        } else {
+            setRecognitionMessage(`<strong>もう一度 読んでみよう。</strong><div>「<span class="heard-text">${escapeHtml(heard || '聞き取れませんでした')}</span>」と聞こえたよ。</div><div class="mic-note">機械が聞き違えることもあります。数の読み方で、はっきり読んでみよう。（${readingAttempts}/3）</div>`);
+        }
+    }
+
+    function handleReadingRecognitionError(error) {
+        const action = document.getElementById('action-btn');
+        isListening = false;
+        action.disabled = false;
+
+        if (error === 'aborted') return;
+        if (error === 'no-speech') {
+            handleNoSpeechAttempt('声を聞き取れませんでした。');
+            return;
+        }
+
+        recognitionFallback = true;
+        action.innerText = 'こたえをみる';
+        const messages = {
+            'not-allowed':'マイクの使用が許可されていません。',
+            'service-not-allowed':'この環境では音声認識サービスを利用できません。',
+            'audio-capture':'マイクを利用できません。',
+            'network':'音声認識サービスにつながりませんでした。',
+            'language-not-supported':'日本語の音声認識を利用できません。'
+        };
+        const msg = messages[error] || '音声認識を利用できませんでした。';
+        setRecognitionMessage(`<strong>${msg}</strong><div class="mic-note">児童の誤答とは扱いません。声に出して読んでから、答えを確かめよう。</div>`);
+    }
+
+    function showReadingExp(area, options = {}) {
+        stopActiveRecognition();
+        const readingIndependent = options.mode === 'recognized' && options.independent === true;
+        const wasReview = Boolean(activeReviewItem);
+        const earnedReadingStar = readingIndependent && !wasReview;
+
+        // 音声認識が使えない場合は、答えを見せたあとに自己確認してから記録する。
+        if (options.mode === 'fallback') {
+            area.style.display = 'block';
+            area.className = 'explanation normal-exp';
+            const fullRead = getFullReading();
+            const hText = `<span class="val-h">百のくらいが ${prob.h} なので、「${readH[prob.h]}」</span>`;
+            const tText = prob.t === 0 ? `<span class="val-t">十のくらいが 0 なので、読みません。</span>` : `<span class="val-t">十のくらいが ${prob.t} なので、「${readT[prob.t]}」</span>`;
+            const oText = prob.o === 0 ? `<span class="val-o">一のくらいが 0 なので、読みません。</span>` : `<span class="val-o">一のくらいが ${prob.o} なので、「${readO[prob.o]}」</span>`;
+            area.innerHTML = `
+                <strong style="font-size:20px;">読み方のこたえ</strong><br><hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
+                ・${hText}<br>・${tText}<br>・${oText}<br><br>
+                <strong>『 <span style="color:#2c3e50; font-size:22px;">${fullRead}</span> 』と読みます。</strong><br>
+                <button class="btn-replay" onclick="speakCurrentReading()" ${isSpeechOn ? '' : 'disabled'}>${isSpeechOn ? '🔊 もういちど きく' : '🔇 よみあげOFF'}</button>
+                <div id="reading-selfcheck" class="reading-selfcheck">
+                    <span class="selfcheck-status">答えを見る前に、この読み方で言えていた？</span>
+                    <button type="button" class="btn-selfcheck" onclick="completeReadingSelfCheck(true)">○ この読み方で言えた</button>
+                    <button type="button" class="btn-selfcheck" onclick="completeReadingSelfCheck(false)">△ あとでもう一度</button>
+                </div>`;
+            document.getElementById('action-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            scrollFeedbackIntoView();
+            if (options.autoSpeak && isSpeechOn) setTimeout(() => speakText(fullRead), 180);
+            return;
+        }
+
+        if (options.mode === 'recognized') recordOutcome(readingIndependent ? 'independent' : 'assisted');
+        else if (options.mode === 'numeric') recordOutcome('verified');
+        else recordOutcome('practice');
+        markProblemComplete();
+        if (earnedReadingStar) {
+            stars++;
+            localStorage.setItem(STORAGE_KEYS.stars, String(stars));
+            updateStarDisplay();
+        }
+        area.style.display = 'block';
+        const strongSuccess = options.mode === 'recognized';
+        area.className = strongSuccess ? 'explanation correct recognition-success' : 'explanation normal-exp';
+        const hText = `<span class="val-h">百のくらいが ${prob.h} なので、「${readH[prob.h]}」</span>`;
+        const tText = prob.t === 0 ? `<span class="val-t">十のくらいが 0 なので、読みません。</span>` : `<span class="val-t">十のくらいが ${prob.t} なので、「${readT[prob.t]}」</span>`;
+        const oText = prob.o === 0 ? `<span class="val-o">一のくらいが 0 なので、読みません。</span>` : `<span class="val-o">一のくらいが ${prob.o} なので、「${readO[prob.o]}」</span>`;
+        const fullRead = getFullReading();
+
+        let heardHtml = '';
+        if (options.mode === 'recognized' && options.heard) {
+            const rewardText = earnedReadingStar ? ' ★を1つゲット！' : readingIndependent && wasReview ? ' 復習でも自力で読めたね。' : ' もう一度挑戦して読めたね。';
+            heardHtml = `<div class="recognition-status recognition-success">○ 読み方として「<span class="heard-text">${escapeHtml(options.heard)}</span>」と聞き取れたよ。${rewardText}</div>`;
+        } else if (options.mode === 'numeric' && options.heard) {
+            heardHtml = `<div class="recognition-status">○ 数として「<span class="heard-text">${escapeHtml(options.heard)}</span>」と聞き取れました。<div class="mic-note">音声認識だけでは桁読みとの区別ができないため、下の正しい読み方を確認しよう。</div></div>`;
+        }
+
         area.innerHTML = `
+            ${heardHtml}
             <strong style="font-size:20px;">読み方のこたえ</strong><br><hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
-            ・${hText}<br>
-            ・${tText}<br>
-            ・${oText}<br><br>
-            <strong>だから、『 <span style="color:#2c3e50; font-size:22px;">${fullRead}</span> 』と読みます。</strong>
-        `;
-
-        speakText(fullRead);
+            ・${hText}<br>・${tText}<br>・${oText}<br><br>
+            <strong>だから、『 <span style="color:#2c3e50; font-size:22px;">${fullRead}</span> 』と読みます。</strong><br>
+            <button class="btn-replay" onclick="speakCurrentReading()" ${isSpeechOn ? '' : 'disabled'}>${isSpeechOn ? '🔊 もういちど きく' : '🔇 よみあげOFF'}</button>`;
+        document.getElementById('action-btn').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'inline-block';
+        document.getElementById('next-btn').focus({preventScroll:true});
+        scrollFeedbackIntoView();
+        if (options.autoSpeak && isSpeechOn) setTimeout(() => speakText(fullRead), 180);
     }
 
-    document.getElementById('next-btn').addEventListener('click', () => {
-        playSound('click');
+    function completeReadingSelfCheck(success) {
+        if (currentProblemCompleted) return;
+        const box = document.getElementById('reading-selfcheck');
+        if (success) {
+            recordOutcome('selfchecked');
+            if (box) box.innerHTML = '<span class="selfcheck-status">○ 自分で確認できたね。これは★ではなく、自己確認として記録します。</span>';
+        } else {
+            queueReviewProblem('reading-selfcheck', {dueOffset:2});
+            recordOutcome('practice');
+            if (box) box.innerHTML = '<span class="selfcheck-status">△ あとでもう一度出します。</span>';
+        }
+        markProblemComplete();
+        document.getElementById('next-btn').style.display = 'inline-block';
+        document.getElementById('next-btn').focus({preventScroll:true});
+        updateLearningStatus();
+    }
+
+    function speakCurrentReading() {
+        speakText(getFullReading());
+    }
+
+    document.getElementById('next-btn').addEventListener('click', () => playSound('click'));
+
+    const centerFitObserver = new MutationObserver(() => fitCenterFrames());
+    const observedExplanation = document.getElementById('explanation-area');
+    const observedVisual = document.getElementById('visual-area');
+    if (observedExplanation) centerFitObserver.observe(observedExplanation, {childList:true, subtree:true, characterData:true});
+    if (observedVisual) centerFitObserver.observe(observedVisual, {childList:true, subtree:true, characterData:true});
+    window.addEventListener('resize', fitCenterFrames);
+
+    function isNativeInteractiveTarget(target) {
+        if (!target) return false;
+        return target.matches('button, input, select, textarea, a, [contenteditable="true"]');
+    }
+
+    document.addEventListener('keydown', (e) => {
+        // ボタン等にフォーカス中はブラウザ標準操作を優先し、Enterの二重発火を防ぐ
+        if (isNativeInteractiveTarget(e.target)) return;
+
+        if (currentTab === 2) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const nextVisible = document.getElementById('next-btn').style.display !== 'none';
+                nextVisible ? initProblem() : processAction();
+            }
+            return;
+        }
+
+        const places = ['h','t','o'];
+        const idx = places.indexOf(selectedPlace);
+        if (/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+            setDigit(selectedPlace, Number(e.key), true);
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+            e.preventDefault();
+            if (user[selectedPlace] === null && selectedPlace !== 'h') {
+                selectPlace(prevPlace(selectedPlace));
+            }
+            user[selectedPlace] = null;
+            updateInputDisplay();
+            syncFeedbackAfterEdit();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            selectPlace(places[Math.max(0, idx - 1)]);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            selectPlace(places[Math.min(2, idx + 1)]);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            adjustDigit(selectedPlace, 1);
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            adjustDigit(selectedPlace, -1);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const nextVisible = document.getElementById('next-btn').style.display !== 'none';
+            nextVisible ? initProblem() : processAction();
+        }
     });
 
-    // 🆕 起動時にウォームアップ（無音読み上げ）を実行
-    warmupSpeech();
+    loadSettings();
     initProblem();
 </script>
 

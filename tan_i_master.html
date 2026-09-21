@@ -122,6 +122,36 @@
         }
         .theme-btn:hover { background-color: #e6f0fa; }
         .theme-btn.active { background-color: var(--primary-color); color: #ffffff; }
+        .theme-selector.is-hidden { display: none; }
+
+        /* 学習中はテーマ一覧を畳み、現在地だけを1行で表示する */
+        .compact-theme-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            background: #eef6fb;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+        }
+        .compact-theme-bar.visible { display: flex; }
+        .compact-theme-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+        .compact-theme-name { font-weight: bold; color: var(--primary-color); font-size: 16px; }
+        .learning-status { font-size: 14px; font-weight: bold; color: #475569; }
+        .learning-dots { color: var(--accent-orange); letter-spacing: 2px; white-space: nowrap; }
+        .compact-theme-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .compact-mini-btn {
+            background: #fff; border: 1px solid #94a3b8; color: #334155; border-radius: 18px;
+            padding: 5px 10px; font-size: 13px; font-weight: bold; cursor: pointer;
+        }
+        .compact-mini-btn:hover { background: #f8fafc; }
+        .compact-mini-btn:disabled { opacity: 0.48; cursor: not-allowed; background: #f1f5f9; }
+        .formula-line { padding: 2px 6px; border-radius: 6px; transition: background 0.2s, outline 0.2s; }
+        .formula-line.relevant-formula { background: #fef3c7; outline: 2px solid #f59e0b; color: #7c2d12; }
+        .info-bar.is-hidden { display: none; }
 
         /* 📊 細かい出題パターン（練習モード）選択コンテナ */
         .submode-container {
@@ -133,6 +163,7 @@
             margin-bottom: 20px;
             text-align: center;
         }
+        .submode-container.visible { display: block; }
         .submode-title {
             font-size: 14px;
             font-weight: bold;
@@ -229,6 +260,8 @@
         .btn-check:hover { background-color: #0fb38d; }
         .btn-next { background-color: var(--primary-color); color: white; }
         .btn-next:hover { background-color: #003d66; }
+        .action-btn:disabled { opacity: 0.38; cursor: not-allowed; filter: grayscale(25%); }
+        .action-btn:disabled:hover { background-color: var(--primary-color); }
 
         /* 解説パネル */
         .result-panel { margin-top: 25px; padding: 20px; border-radius: 8px; display: none; font-size: 18px; line-height: 1.6; }
@@ -253,23 +286,130 @@
         .prefix-table th, .prefix-table td { border: 1px solid #cbd5e1; padding: 10px; text-align: center; }
         .prefix-table th { background-color: #f1f5f9; color: #334155; font-weight: bold; }
         .prefix-table .base-cell { background-color: #e2e8f0; font-weight: bold; color: #0f172a; }
+
+        /* 16:9 Chromebookなど、横長で高さが限られる画面では縦の余白を圧縮 */
+        @media (min-width: 800px) and (max-height: 780px) {
+            body { padding: 8px; }
+            .container { padding: 14px 18px; }
+            .header-area { padding-bottom: 6px; margin-bottom: 10px; }
+            h1 { font-size: 22px; }
+            .star-status-container { padding: 3px 10px; gap: 8px; }
+            .star-count-text { font-size: 15px; }
+            .star-count-text span { font-size: 17px; }
+            .sound-toggle-btn { font-size: 22px; padding: 3px 7px; }
+            .compact-theme-bar { margin-bottom: 8px; padding: 6px 10px; }
+            .submode-container { padding: 8px 10px; margin-bottom: 8px; }
+            .submode-title { margin-bottom: 6px; }
+            .workspace { padding: 14px; }
+            .problem-box { font-size: 23px; padding: 12px; margin-bottom: 12px; }
+            .hint-section { padding: 10px; margin-bottom: 12px; }
+            .formula-text { margin-bottom: 6px; }
+            .place-value-table th, .place-value-table td { padding: 3px 2px; font-size: 14px; }
+            .place-value-table th { height: 24px; }
+            .spin-container { gap: 0; padding: 2px 0; }
+            .spin-btn { padding: 0 8px; line-height: 1.1; }
+            .cell-value { font-size: 22px; padding: 1px 5px; }
+            .answer-container-wrapper { margin: 9px 0; padding: 10px; }
+            .answer-input { font-size: 27px; }
+            .action-btn { padding: 9px 28px; }
+            .result-panel { margin-top: 12px; padding: 12px; }
+        }
+    
+
+        /* ===== 先生チェック・診断学習 ===== */
+        .teacher-check-btn {
+            background: #334155; color: #fff; border: none; border-radius: 22px;
+            padding: 8px 14px; font-size: 13px; font-weight: bold; cursor: pointer;
+            white-space: nowrap;
+        }
+        .teacher-check-btn:hover { background: #1e293b; }
+        .teacher-only-control { display: none !important; }
+        body.teacher-unlocked .teacher-only-control { display: inline-flex !important; }
+        #title-teacher-unlock { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        .teacher-dashboard {
+            width: min(1040px, 96vw); max-height: 92vh; overflow: auto;
+            background: #fff; border-radius: 14px; padding: 20px; box-sizing: border-box;
+            box-shadow: 0 18px 50px rgba(0,0,0,.28);
+        }
+        .teacher-dashboard-header {
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            position: sticky; top: -20px; background: #fff; z-index: 3; padding: 10px 0 12px;
+            border-bottom: 1px solid #e2e8f0; margin-bottom: 12px;
+        }
+        .teacher-dashboard-header h2 { margin: 0; color: #0f172a; font-size: 22px; }
+        .teacher-close {
+            border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 20px;
+            padding: 6px 12px; font-weight: bold; cursor: pointer;
+        }
+        .teacher-theme-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+        .teacher-theme-tab {
+            border: 1px solid #94a3b8; background: #fff; color: #334155; border-radius: 18px;
+            padding: 6px 10px; font-size: 12px; font-weight: bold; cursor: pointer;
+        }
+        .teacher-theme-tab.active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+        .teacher-theme-tab.has-data::after { content: ' ●'; color: #16a34a; }
+        .teacher-theme-tab.active.has-data::after { color: #bbf7d0; }
+        .teacher-summary-grid {
+            display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px; margin: 10px 0 12px;
+        }
+        .teacher-summary-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; }
+        .teacher-summary-label { color: #64748b; font-size: 12px; font-weight: bold; }
+        .teacher-summary-value { margin-top: 3px; color: #0f172a; font-size: 23px; font-weight: 800; }
+        .teacher-weak-box {
+            border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; line-height: 1.5;
+            background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
+        }
+        .teacher-weak-box.good { background: #ecfdf5; border-color: #86efac; color: #166534; }
+        .teacher-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+        .teacher-action-btn {
+            border: none; border-radius: 22px; padding: 9px 15px; font-weight: bold; cursor: pointer; font-size: 13px;
+        }
+        .teacher-action-primary { background: #0f766e; color: #fff; }
+        .teacher-action-secondary { background: #0369a1; color: #fff; }
+        .teacher-action-muted { background: #e2e8f0; color: #334155; }
+        .teacher-action-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .teacher-skill-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .teacher-skill-table th, .teacher-skill-table td { border-bottom: 1px solid #e2e8f0; padding: 8px 6px; text-align: left; vertical-align: middle; }
+        .teacher-skill-table th { position: sticky; top: 54px; background: #f8fafc; z-index: 2; color: #475569; }
+        .skill-status { display: inline-block; min-width: 56px; text-align: center; border-radius: 14px; padding: 3px 7px; font-weight: bold; font-size: 11px; }
+        .skill-red { background: #fee2e2; color: #991b1b; }
+        .skill-yellow { background: #fef3c7; color: #92400e; }
+        .skill-green { background: #dcfce7; color: #166534; }
+        .skill-blue { background: #dbeafe; color: #1d4ed8; }
+        .skill-candidate { background: #ecfccb; color: #3f6212; }
+        .skill-gray { background: #e2e8f0; color: #475569; }
+        .skill-recent { letter-spacing: 2px; white-space: nowrap; font-size: 14px; }
+        .teacher-empty { padding: 24px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 10px; }
+        .diagnostic-badge { color: #0369a1; font-weight: bold; }
+        .weak-badge { color: #b91c1c; font-weight: bold; }
+
+        @media (max-width: 760px) {
+            .teacher-summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .teacher-dashboard { padding: 12px; }
+            .teacher-dashboard-header { top: -12px; }
+            .teacher-skill-table th { top: 51px; }
+            .teacher-skill-table th:nth-child(4), .teacher-skill-table td:nth-child(4),
+            .teacher-skill-table th:nth-child(6), .teacher-skill-table td:nth-child(6) { display:none; }
+        }
+
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-area">
-        <h1>単位換算マスター 👑</h1>
+        <h1 id="title-teacher-unlock">単位換算マスター 👑</h1>
         
         <div class="star-status-container">
             <div class="star-count-text">たまった★の数：<span id="star-display">★×0</span></div>
             <button class="btn-reset-star" onclick="resetStars()">🔄 リセット</button>
         </div>
 
+        <button class="teacher-check-btn teacher-only-control" onclick="openTeacherDashboard()" title="学習記録を先生が確認">👩‍🏫 先生チェック</button>
         <button id="sound-toggle" class="sound-toggle-btn" onclick="toggleSound()" title="音声をきりかえ">🔊</button>
     </div>
     
-    <div class="theme-selector">
+    <div id="theme-selector" class="theme-selector">
         <button class="theme-btn" onclick="selectTheme('length2_short', this)">2年 長さ (cm, mm)</button>
         <button class="theme-btn" onclick="selectTheme('length2_long', this)">2年 長い長さ (m, cm)</button>
         <button class="theme-btn" onclick="selectTheme('length3', this)">3年 長い長さ (km, m)</button>
@@ -282,12 +422,25 @@
         <button class="theme-btn" onclick="selectTheme('area', this)">4年 面積 (㎡, a, ha, ㎢, ㎠)</button>
     </div>
 
+    <div id="compact-theme-bar" class="compact-theme-bar">
+        <div class="compact-theme-main">
+            <span id="compact-theme-name" class="compact-theme-name">--</span>
+            <span id="learning-status" class="learning-status">--</span>
+        </div>
+        <div class="compact-theme-actions">
+            <button class="compact-mini-btn" onclick="showThemeSelector()">↩ 単位を変える</button>
+            <button id="practice-toggle-btn" class="compact-mini-btn" onclick="togglePracticePanel()" style="display:none;">🔒 れんしゅう</button>
+            <button class="compact-mini-btn teacher-only-control" onclick="openTeacherDashboard()">👩‍🏫 先生チェック</button>
+            <button class="compact-mini-btn" onclick="openPrefixModal()">📏 たんいのひみつ</button>
+        </div>
+    </div>
+
     <div id="submode-container" class="submode-container">
         <div id="submode-title" class="submode-title">📊 れんしゅうモード（えらぶと、そのもんだいだけが出るよ！）</div>
         <div id="submode-flex" class="submode-flex"></div>
     </div>
 
-    <div class="info-bar">
+    <div id="info-bar" class="info-bar">
         <button class="btn-popup-trigger" onclick="openPrefixModal()">📏 たんいのひみつ（接頭辞の表）をみる</button>
     </div>
 
@@ -307,10 +460,25 @@
 
         <div class="control-btns">
             <button class="action-btn btn-check" onclick="checkAnswer()">こたえ合わせ</button>
-            <button class="action-btn btn-next" onclick="nextProblem()">つぎの問題</button>
+            <button id="next-problem-btn" class="action-btn btn-next" onclick="goNextProblem()" disabled>つぎの問題</button>
         </div>
 
         <div id="result-panel" class="result-panel"></div>
+    </div>
+</div>
+
+
+<div id="teacher-modal" class="modal-overlay" onclick="closeTeacherDashboard()" style="z-index:2600;">
+    <div class="teacher-dashboard" onclick="event.stopPropagation()">
+        <div class="teacher-dashboard-header">
+            <h2>👩‍🏫 先生チェック</h2>
+            <button class="teacher-close" onclick="closeTeacherDashboard()">閉じる ×</button>
+        </div>
+        <div style="font-size:13px; color:#64748b; line-height:1.5;">
+            <strong>診断・苦手練習・再診断</strong>を分けて記録します。1回のミスだけでは「苦手」にせず、時間を空けた再確認でもつまずいた技能だけを苦手と判定します。
+        </div>
+        <div id="teacher-theme-tabs" class="teacher-theme-tabs"></div>
+        <div id="teacher-dashboard-body"></div>
     </div>
 </div>
 
@@ -379,19 +547,86 @@
 
 <script>
     let activeTheme = '';
-    let activeSubMode = 'all'; // 練習用サブモード管理用変数
+    let activeSubMode = 'learn'; // 初期は、易→難を保証する学習コース
     let currentProblem = null;
     let userTableVals = []; 
     let isSoundOn = true;
     let audioCtx = null;
     let starCount = 0;
     let alreadyCorrectThisProblem = false;
+    let currentWrongCount = 0;
+    let currentAnswerRevealed = false;
+    let learningGenerationOverride = null;
+    let currentLearningCase = null;
+    let currentDiagnosticSkill = null;
+    let diagnosticOutcomeRecorded = false;
+    let diagnosticRevealRecorded = false;
+    let diagnosticRecoveryRecorded = false;
+    let diagnosticFirstWasCorrect = null;
+    let currentTrackingMode = null; // activeSubModeとは別に、再診断中の間隔問題など実際の記録先を保持
+    let diagnosticFormulaHidden = false;
+    let currentTeacherTheme = '';
+    let lastPresentedSkillId = null; // currentDiagnosticSkillを初期化しても直前技能を保持
+    const learningState = {};
+    const DIAGNOSTIC_STORAGE_KEY = 'tan_i_master_diagnostics_v2';
+    const DIAGNOSTIC_ARCHIVE_STORAGE_KEY = 'tan_i_master_diagnostics_archive_v1';
+    const CLEARED_STORAGE_KEY = 'tan_i_master_cleared_themes_v1';
+    const RELEARNING_STORAGE_KEY = 'tan_i_master_relearning_v1';
+    const TEACHER_PIN_STORAGE_KEY = 'tan_i_master_teacher_pin_v1';
+    const TEACHER_UNLOCKED_AT_KEY = 'tan_i_teacher_unlocked_at';
+    const DEFAULT_TEACHER_PIN = '2468';
+    const CURRICULUM_VERSION = 1; // 学習STEP/技能定義を変えたら+1。旧クリア状態で新STEPを飛ばさないための版番号
+    const RETEST_GAP_QUESTIONS = 2; // 同じ技能の再診断2回目までに挟む別問題数
+    const IMPROVED_RECHECK_GAP = 4; // 改善直後に通常診断で同技能をすぐ再出題しない
+    let diagnosticData = loadLocalJSON(DIAGNOSTIC_STORAGE_KEY, {});
+    let diagnosticArchive = loadLocalJSON(DIAGNOSTIC_ARCHIVE_STORAGE_KEY, {});
+    let clearedThemes = loadLocalJSON(CLEARED_STORAGE_KEY, {});
+    let relearningThemes = loadLocalJSON(RELEARNING_STORAGE_KEY, {});
+
+
+    function loadLocalJSON(key, fallback) {
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function saveDiagnosticData() {
+        localStorage.setItem(DIAGNOSTIC_STORAGE_KEY, JSON.stringify(diagnosticData));
+    }
+
+    function saveDiagnosticArchive() {
+        localStorage.setItem(DIAGNOSTIC_ARCHIVE_STORAGE_KEY, JSON.stringify(diagnosticArchive));
+    }
+
+    function saveClearedThemes() {
+        localStorage.setItem(CLEARED_STORAGE_KEY, JSON.stringify(clearedThemes));
+    }
+
+    function saveRelearningThemes() {
+        localStorage.setItem(RELEARNING_STORAGE_KEY, JSON.stringify(relearningThemes));
+    }
+
+    function setRelearningTheme(themeKey, enabled) {
+        if (!themeKey) return;
+        if (enabled) relearningThemes[themeKey] = { version: CURRICULUM_VERSION, startedAt: new Date().toISOString() };
+        else delete relearningThemes[themeKey];
+        saveRelearningThemes();
+    }
+
+    function isRelearningTheme(themeKey) {
+        const v = relearningThemes[themeKey];
+        return !!v && Number(v.version || 0) === CURRICULUM_VERSION;
+    }
 
     window.addEventListener('DOMContentLoaded', () => {
         const savedStars = localStorage.getItem('tan_i_master_stars');
         if (savedStars !== null) starCount = parseInt(savedStars, 10);
         updateStarDisplay();
         warmUpAudio();
+        setupTeacherUnlock();
     });
 
     window.addEventListener('click', warmUpAudio, { once: true });
@@ -406,6 +641,89 @@
             localStorage.setItem('tan_i_master_stars', starCount);
             updateStarDisplay();
         }
+    }
+
+    function getTeacherPin() {
+        return localStorage.getItem(TEACHER_PIN_STORAGE_KEY) || DEFAULT_TEACHER_PIN;
+    }
+
+    let teacherAutoLockTimer = null;
+    function scheduleTeacherAutoLock() {
+        if (teacherAutoLockTimer) clearTimeout(teacherAutoLockTimer);
+        if (!document.body.classList.contains('teacher-unlocked')) return;
+        let unlockedAt = Number(sessionStorage.getItem(TEACHER_UNLOCKED_AT_KEY) || 0);
+        if (!unlockedAt) {
+            unlockedAt = Date.now();
+            sessionStorage.setItem(TEACHER_UNLOCKED_AT_KEY, String(unlockedAt));
+        }
+        const remaining = Math.max(0, (5 * 60 * 1000) - (Date.now() - unlockedAt));
+        teacherAutoLockTimer = setTimeout(() => {
+            closeTeacherDashboard();
+            setTeacherUnlocked(false);
+        }, remaining);
+    }
+
+    function setTeacherUnlocked(unlocked, preserveUnlockTime = false) {
+        document.body.classList.toggle('teacher-unlocked', !!unlocked);
+        if (unlocked) {
+            sessionStorage.setItem('tan_i_teacher_unlocked', '1');
+            if (!preserveUnlockTime || !sessionStorage.getItem(TEACHER_UNLOCKED_AT_KEY)) {
+                sessionStorage.setItem(TEACHER_UNLOCKED_AT_KEY, String(Date.now()));
+            }
+            scheduleTeacherAutoLock();
+        } else {
+            sessionStorage.removeItem('tan_i_teacher_unlocked');
+            sessionStorage.removeItem(TEACHER_UNLOCKED_AT_KEY);
+            if (teacherAutoLockTimer) clearTimeout(teacherAutoLockTimer);
+            teacherAutoLockTimer = null;
+        }
+    }
+
+    function requestTeacherUnlock() {
+        if (document.body.classList.contains('teacher-unlocked')) return;
+        const pin = prompt('先生用PINを入力してください。');
+        if (pin === null) return;
+        if (pin === getTeacherPin()) {
+            setTeacherUnlocked(true);
+            alert('先生モードを開きました。');
+        } else {
+            alert('PINが違います。');
+        }
+    }
+
+    function setupTeacherUnlock() {
+        if (sessionStorage.getItem('tan_i_teacher_unlocked') === '1') {
+            const unlockedAt = Number(sessionStorage.getItem(TEACHER_UNLOCKED_AT_KEY) || 0);
+            if (unlockedAt && Date.now() - unlockedAt < 5 * 60 * 1000) setTeacherUnlocked(true, true);
+            else setTeacherUnlocked(false);
+        }
+        const title = document.getElementById('title-teacher-unlock');
+        if (!title) return;
+        let timer = null;
+        const cancel = () => { if (timer) clearTimeout(timer); timer = null; };
+        const start = () => {
+            cancel();
+            timer = setTimeout(() => { timer = null; requestTeacherUnlock(); }, 3000);
+        };
+        title.addEventListener('pointerdown', start);
+        title.addEventListener('contextmenu', e => e.preventDefault());
+        ['pointerup','pointercancel','pointerleave'].forEach(ev => title.addEventListener(ev, cancel));
+    }
+
+    function changeTeacherPin() {
+        const current = prompt('現在の先生用PINを入力してください。');
+        if (current === null) return;
+        if (current !== getTeacherPin()) { alert('現在のPINが違います。'); return; }
+        const next = prompt('新しい4桁のPINを入力してください。');
+        if (next === null) return;
+        if (!/^\d{4}$/.test(next)) { alert('PINは数字4桁にしてください。'); return; }
+        localStorage.setItem(TEACHER_PIN_STORAGE_KEY, next);
+        alert('先生用PINを変更しました。');
+    }
+
+    function lockTeacherMode() {
+        closeTeacherDashboard();
+        setTeacherUnlocked(false);
     }
 
     function warmUpAudio() {
@@ -674,7 +992,11 @@
 
     // 空位パターン均等抽選ロジック（3桁）
     function generateThreeDigitsWithZeroPatterns() {
-        const pattern = Math.floor(Math.random() * 8); 
+        let pattern;
+        const override = learningGenerationOverride && learningGenerationOverride.threeDigitPattern;
+        if (override === 'mixed') pattern = Math.floor(Math.random() * 7); // 000以外
+        else if (Number.isInteger(override)) pattern = override;
+        else pattern = Math.floor(Math.random() * 8); 
         let d100 = Math.floor(Math.random() * 9) + 1;
         let d10  = Math.floor(Math.random() * 9) + 1;
         let d1   = Math.floor(Math.random() * 9) + 1;
@@ -703,7 +1025,11 @@
 
     // 空位パターン均等抽選ロジック（2桁）
     function generateTwoDigitsWithZeroPatterns() {
-        const pattern = Math.floor(Math.random() * 3); 
+        let pattern;
+        const override = learningGenerationOverride && learningGenerationOverride.twoDigitPattern;
+        if (override === 'mixed') pattern = Math.floor(Math.random() * 3); // 00以外
+        else if (Number.isInteger(override)) pattern = override;
+        else pattern = Math.floor(Math.random() * 4); // 00も同じ確率で出す
         let d10 = Math.floor(Math.random() * 9) + 1;
         let d1  = Math.floor(Math.random() * 9) + 1;
 
@@ -711,8 +1037,22 @@
             case 0: break; 
             case 1: d10 = 0; break; 
             case 2: d1  = 0; break; 
+            case 3: d10 = 0; d1 = 0; break;
         }
         return { d10, d1, total: d10 * 10 + d1 };
+    }
+
+    // 60進の問題も、学習コースでは「ちょうど」→「端数あり」を確実に分ける
+    function generateSixtyBasedTotal() {
+        const mode = learningGenerationOverride && learningGenerationOverride.sixtyMode;
+        if (mode === 'pure') {
+            return [60, 120, 180][Math.floor(Math.random() * 3)];
+        }
+        if (mode === 'mixed') {
+            const mixed = [70, 80, 90, 100, 110, 130, 140, 150, 160, 170];
+            return mixed[Math.floor(Math.random() * mixed.length)];
+        }
+        return 60 + Math.floor(Math.random() * 13) * 10;
     }
 
     const standardTables = {
@@ -786,15 +1126,19 @@
                     let m = Math.floor(Math.random() * 8) + 1;
                     const digits = generateTwoDigitsWithZeroPatterns();
                     let c10 = digits.d10; let c1 = digits.d1; let cm = digits.total;
-                    if(cm === 0) { c10 = 5; cm = 50; } 
+                    if (cm === 0) {
+                        return { q: `${m}m は 何cmですか？`, targets: ['cm'], check: (ans) => ans['cm'] === (m * 100), correctStr: `${m * 100} cm`, tableVals: [m, 0, 0], hint: `1mは100cmです。mの部屋の数字のあとに「0」を2つ書こう。` };
+                    }
                     return { q: `${m}m ${cm}cm は 何cmですか？`, targets: ['cm'], check: (ans) => ans['cm'] === (m * 100 + cm), correctStr: `${m * 100 + cm} cm`, tableVals: [m, c10, c1], hint: `mに「${m}」、10cmに「${c10}」、1cmに「${c1}」を順番に書くよ。` };
                 }},
                 { submode: "all", gen: () => {
                     let m = Math.floor(Math.random() * 8) + 1;
                     const digits = generateTwoDigitsWithZeroPatterns();
                     let c10 = digits.d10; let c1 = digits.d1; let cm = digits.total;
-                    if(cm === 0) { c1 = 4; cm = 4; }
                     let total = m * 100 + cm;
+                    if (cm === 0) {
+                        return { q: `${total}cm は 何mですか？`, targets: ['m'], check: (ans) => ans['m'] === m, correctStr: `${m} m`, tableVals: [m, "書かない！", "書かない！"], hint: `100cmで1mになります。cmの部分が0のときは、mの数字だけを答えます。` };
+                    }
                     const tensCell = c10 === 0 ? "書かない！" : c10;
                     return { q: `${total}cm は 何m 何cmですか？`, targets: ['m', 'cm'], check: (ans) => ans['m'] === m && ans['cm'] === cm, correctStr: `${m} m ${cm} cm`, tableVals: [m, tensCell, c1], hint: `右端から数字を表にあてはめます。mの部屋に入った数字がmの答え、残りがcmの答えになるよ。10cmの部屋が0のときは「書かない！」になることに注意しよう。` };
                 }}
@@ -881,7 +1225,8 @@
                 }},
                 // 🌟 新規追加: mL ⇔ dL 換算 (dL -> mL) 空位パターン均等化
                 { submode: "mL_dL", gen: () => {
-                    const pat = Math.floor(Math.random() * 3);
+                    const dlOverride = learningGenerationOverride && learningGenerationOverride.dlPattern;
+                    const pat = Number.isInteger(dlOverride) ? dlOverride : Math.floor(Math.random() * 3);
                     let dl = 0;
                     if (pat === 0) { dl = Math.floor(Math.random() * 7) + 3; } // 3〜9 dL (1桁)
                     else if (pat === 1) { dl = (Math.floor(Math.random() * 3) + 1) * 10; } // 10, 20, 30 dL (10の倍数)
@@ -893,7 +1238,8 @@
                 }},
                 // 🌟 新規追加: mL ⇔ dL 換算 (mL -> dL) 空位パターン均等化
                 { submode: "mL_dL", gen: () => {
-                    const pat = Math.floor(Math.random() * 3);
+                    const dlOverride = learningGenerationOverride && learningGenerationOverride.dlPattern;
+                    const pat = Number.isInteger(dlOverride) ? dlOverride : Math.floor(Math.random() * 3);
                     let dl = 0;
                     if (pat === 0) { dl = Math.floor(Math.random() * 7) + 3; }
                     else if (pat === 1) { dl = (Math.floor(Math.random() * 3) + 1) * 10; }
@@ -1003,6 +1349,11 @@
                     let ha = Math.floor(Math.random() * 8) + 1;
                     return { tableType: 'large', q: `${ha}ha は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (ha * 10000), correctStr: `${ha * 10000} ㎡`, tableVals: ["書かない！", "書かない！", "書かない！", ha, 0, 0, 0, 0], hint: `1haは10000㎡！haから㎡の右端までは4つのマス離れています。` };
                 }},
+                { submode: "ha_m2", gen: () => {
+                    let ha = Math.floor(Math.random() * 8) + 1;
+                    const m2 = ha * 10000;
+                    return { tableType: 'large', q: `${m2}㎡ は 何haですか？`, targets: ['ha'], check: (ans) => ans['ha'] === ha, correctStr: `${ha} ha`, tableVals: ["書かない！", "書かない！", "書かない！", ha, 0, 0, 0, 0], hint: `10000㎡で1haです。㎡から4桁上がった「ha」の部屋を見よう。` };
+                }},
                 // 🌟 新規追加: ha ⇔ km2
                 { submode: "ha_km2", gen: () => {
                     let km2 = Math.floor(Math.random() * 5) + 1;
@@ -1016,6 +1367,11 @@
                 { submode: "km2_m2", gen: () => {
                     let km2 = Math.floor(Math.random() * 5) + 1;
                     return { tableType: 'large', q: `${km2}㎢ は 何㎡ですか？`, targets: ['㎡'], check: (ans) => ans['㎡'] === (km2 * 1000000), correctStr: `${km2 * 1000000} ㎡`, tableVals: ["書かない！", km2, 0, 0, 0, 0, 0, 0], hint: `1㎢は1000000㎡！マスが6つ離れているので「0」を6つ補いましょう。` };
+                }},
+                { submode: "km2_m2", gen: () => {
+                    let km2 = Math.floor(Math.random() * 5) + 1;
+                    const m2 = km2 * 1000000;
+                    return { tableType: 'large', q: `${m2}㎡ は 何㎢ですか？`, targets: ['㎢'], check: (ans) => ans['㎢'] === km2, correctStr: `${km2} ㎢`, tableVals: ["書かない！", km2, 0, 0, 0, 0, 0, 0], hint: `1000000㎡で1㎢です。㎡から6桁上がった「㎢」の部屋を見よう。` };
                 }}
             ]
         },
@@ -1096,7 +1452,7 @@
                 }},
                 // 時間 ⇔ 分 (10分刻み、1時間〜3時間=60分〜180分の範囲)
                 { submode: "h_min", gen: () => {
-                    const totalMinutes = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const totalMinutes = generateSixtyBasedTotal(); // 学習コースでは「ちょうど／端数あり」を制御
                     const h = Math.floor(totalMinutes / 60);
                     const m = totalMinutes % 60;
                     const steps = buildAddSteps(60, h, m, '1時間', '分');
@@ -1110,7 +1466,7 @@
                     return { q: `${h}時間${m}分は 何分ですか？`, targets: ['分'], check: (ans) => ans['分'] === totalMinutes, correctStr: `${totalMinutes} 分`, hint: `1時間は60分なので、${h}時間は${h * 60}分です。そこに${m}分をたすと、${totalMinutes}分になります。`, tape };
                 }},
                 { submode: "h_min", gen: () => {
-                    const totalMinutes = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const totalMinutes = generateSixtyBasedTotal(); // 学習コースでは「ちょうど／端数あり」を制御
                     const h = Math.floor(totalMinutes / 60);
                     const m = totalMinutes % 60;
                     const steps = buildSubtractSteps(totalMinutes, 60, h, '1時間');
@@ -1132,7 +1488,7 @@
             problems: [
                 // 分 ⇔ 秒 (10秒刻み、1分〜3分=60秒〜180秒の範囲。時間⇔分と同じロジック)
                 { submode: "min_sec", gen: () => {
-                    const totalSeconds = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const totalSeconds = generateSixtyBasedTotal(); // 学習コースでは「ちょうど／端数あり」を制御
                     const m = Math.floor(totalSeconds / 60);
                     const s = totalSeconds % 60;
                     const steps = buildAddSteps(60, m, s, '1分', '秒');
@@ -1146,7 +1502,7 @@
                     return { q: `${m}分${s}秒は 何秒ですか？`, targets: ['秒'], check: (ans) => ans['秒'] === totalSeconds, correctStr: `${totalSeconds} 秒`, hint: `1分は60秒なので、${m}分は${m * 60}秒です。そこに${s}秒をたすと、${totalSeconds}秒になります。`, tape };
                 }},
                 { submode: "min_sec", gen: () => {
-                    const totalSeconds = 60 + Math.floor(Math.random() * 13) * 10; // 60,70,...,180
+                    const totalSeconds = generateSixtyBasedTotal(); // 学習コースでは「ちょうど／端数あり」を制御
                     const m = Math.floor(totalSeconds / 60);
                     const s = totalSeconds % 60;
                     const steps = buildSubtractSteps(totalSeconds, 60, m, '1分');
@@ -1163,39 +1519,1026 @@
         }
     };
 
+    // 学習コース：STEP内も「必須ケース」を上から順に通過する。
+    // 「つぎの問題」で飛ばしても未達成ケースは残るため、苦手な方向や空位パターンを飛ばして先へは進めない。
+    const C = (id, template, label, override = null, formula = null) => ({ id, template, label, override, formula });
+    const F = {
+        cm_mm: '1cm = 10mm',
+        m_cm: '1m = 100cm',
+        km_m: '1km = 1000m',
+        L_dL: '1L = 10dL',
+        dL_mL: '1dL = 100mL',
+        L_mL: '1L = 1000mL',
+        kg_g: '1kg = 1000g',
+        t_kg: '1t = 1000kg',
+        m2_cm2: '1㎡ = 10000㎠ (100cm×100cm)',
+        a_m2: '1a = 100㎡ (10m×10m)',
+        ha: '1ha = 100a = 10000㎡ (100m×100m)',
+        km2: '1㎢ = 100ha = 1000000㎡ (1000m×1000m)',
+        cm3_mL: '1cm³ = 1mL',
+        L_cm3: '1L = 1000cm³ = 1000mL',
+        m3_L: '1m³ = 1000L',
+        m3_cm3: '1m³ = 1000000cm³ （100×100×100 → 3じょうで6けたシフト！）',
+        day_h: '1日 = 24時間',
+        h_min: '1時間 = 60分',
+        min_sec: '1分 = 60秒'
+    };
+
+    const threeDigitMixedCases = (template, prefix, formula) => [
+        C(`${prefix}_full`, template, '空位なし', { threeDigitPattern: 0 }, formula),
+        C(`${prefix}_ones0`, template, '1の位が0', { threeDigitPattern: 3 }, formula),
+        C(`${prefix}_tens0`, template, '10の位が0', { threeDigitPattern: 2 }, formula),
+        C(`${prefix}_hundreds0`, template, '100の位が0', { threeDigitPattern: 1 }, formula),
+        C(`${prefix}_tens_ones0`, template, '10・1の位が0', { threeDigitPattern: 6 }, formula),
+        C(`${prefix}_hundreds_ones0`, template, '100・1の位が0', { threeDigitPattern: 5 }, formula),
+        C(`${prefix}_hundreds_tens0`, template, '100・10の位が0', { threeDigitPattern: 4 }, formula)
+    ];
+
+    const twoDigitMixedCases = (template, prefix, formula) => [
+        C(`${prefix}_full`, template, '空位なし', { twoDigitPattern: 0 }, formula),
+        C(`${prefix}_ones0`, template, '1cmの位が0', { twoDigitPattern: 2 }, formula),
+        C(`${prefix}_tens0`, template, '10cmの位が0', { twoDigitPattern: 1 }, formula)
+    ];
+
+    const learningPlans = {
+        length2_short: [
+            { label: 'cm → mm（ちょうど）', cases: [C('cm_mm_1', 1, '基本1', null, F.cm_mm), C('cm_mm_2', 1, '基本2', null, F.cm_mm)] },
+            { label: 'cm・mm → mm', cases: [C('mix_to_mm_1', 0, '基本1', null, F.cm_mm), C('mix_to_mm_2', 0, '基本2', null, F.cm_mm)] },
+            { label: 'mm → cm・mm', cases: [C('mm_to_mix_1', 2, '基本1', null, F.cm_mm), C('mm_to_mix_2', 2, '基本2', null, F.cm_mm)] }
+        ],
+        length2_long: [
+            { label: 'm → cm（ちょうど）', cases: [C('m_cm_pure1', 0, '基本1', { twoDigitPattern: 3 }, F.m_cm), C('m_cm_pure2', 0, '基本2', { twoDigitPattern: 3 }, F.m_cm)] },
+            { label: 'm・cm → cm', cases: twoDigitMixedCases(0, 'mcm_to_cm', F.m_cm) },
+            { label: 'cm → m（ちょうど）', cases: [C('cm_m_pure1', 1, '基本1', { twoDigitPattern: 3 }, F.m_cm), C('cm_m_pure2', 1, '基本2', { twoDigitPattern: 3 }, F.m_cm)] },
+            { label: 'cm → m・cm', cases: twoDigitMixedCases(1, 'cm_to_mcm', F.m_cm) }
+        ],
+        length3: [
+            { label: 'km → m（ちょうど）', cases: [C('km_m_pure1', 0, '基本1', { threeDigitPattern: 7 }, F.km_m), C('km_m_pure2', 0, '基本2', { threeDigitPattern: 7 }, F.km_m)] },
+            { label: 'km・m → m', cases: threeDigitMixedCases(0, 'kmm_to_m', F.km_m) },
+            { label: 'm → km（ちょうど）', cases: [C('m_km_pure1', 1, '基本1', { threeDigitPattern: 7 }, F.km_m), C('m_km_pure2', 1, '基本2', { threeDigitPattern: 7 }, F.km_m)] },
+            { label: 'm → km・m', cases: threeDigitMixedCases(1, 'm_to_kmm', F.km_m) }
+        ],
+        volume: [
+            { label: 'L ⇔ dL', cases: [C('L_to_dL', 4, 'L → dL', null, F.L_dL), C('dL_to_L', 5, 'dL → L', null, F.L_dL)] },
+            { label: 'L・dL ⇔ dL', cases: [C('LdL_to_dL', 6, 'L・dL → dL', null, F.L_dL), C('dL_to_LdL', 7, 'dL → L・dL', null, F.L_dL)] },
+            { label: 'dL ⇔ mL', cases: [
+                C('dL_to_mL_1digit', 8, '1桁dL → mL', { dlPattern: 0 }, F.dL_mL),
+                C('dL_to_mL_tens', 8, '10の倍数dL → mL', { dlPattern: 1 }, F.dL_mL),
+                C('dL_to_mL_mixed', 8, '2桁dL → mL', { dlPattern: 2 }, F.dL_mL),
+                C('mL_to_dL_1digit', 9, 'mL → 1桁dL', { dlPattern: 0 }, F.dL_mL),
+                C('mL_to_dL_tens', 9, 'mL → 10の倍数dL', { dlPattern: 1 }, F.dL_mL),
+                C('mL_to_dL_mixed', 9, 'mL → 2桁dL', { dlPattern: 2 }, F.dL_mL)
+            ] },
+            { label: 'L ⇔ mL', cases: [C('L_to_mL', 0, 'L → mL', null, F.L_mL), C('mL_to_L', 1, 'mL → L', null, F.L_mL)] },
+            { label: 'L・dL ⇔ mL', cases: [C('LdL_to_mL', 2, 'L・dL → mL', null, [F.L_mL, F.dL_mL]), C('mL_to_LdL', 3, 'mL → L・dL', null, [F.L_mL, F.dL_mL])] }
+        ],
+        weight: [
+            { label: 'kg → g（ちょうど）', cases: [C('kg_g_pure1', 0, '基本1', { threeDigitPattern: 7 }, F.kg_g), C('kg_g_pure2', 0, '基本2', { threeDigitPattern: 7 }, F.kg_g)] },
+            { label: 'kg・g → g', cases: threeDigitMixedCases(0, 'kgg_to_g', F.kg_g) },
+            { label: 'g → kg（ちょうど）', cases: [C('g_kg_pure1', 1, '基本1', { threeDigitPattern: 7 }, F.kg_g), C('g_kg_pure2', 1, '基本2', { threeDigitPattern: 7 }, F.kg_g)] },
+            { label: 'g → kg・g', cases: threeDigitMixedCases(1, 'g_to_kgg', F.kg_g) }
+        ],
+        weight2: [
+            { label: 't → kg（ちょうど）', cases: [C('t_kg_pure1', 0, '基本1', { threeDigitPattern: 7 }, F.t_kg), C('t_kg_pure2', 0, '基本2', { threeDigitPattern: 7 }, F.t_kg)] },
+            { label: 't・kg → kg', cases: threeDigitMixedCases(0, 'tkg_to_kg', F.t_kg) },
+            { label: 'kg → t（ちょうど）', cases: [C('kg_t_pure1', 1, '基本1', { threeDigitPattern: 7 }, F.t_kg), C('kg_t_pure2', 1, '基本2', { threeDigitPattern: 7 }, F.t_kg)] },
+            { label: 'kg → t・kg', cases: threeDigitMixedCases(1, 'kg_to_tkg', F.t_kg) }
+        ],
+        area: [
+            { label: '㎡ ⇔ ㎠', cases: [C('m2_to_cm2', 0, '㎡ → ㎠', null, F.m2_cm2), C('cm2_to_m2', 1, '㎠ → ㎡', null, F.m2_cm2)] },
+            { label: '㎡ ⇔ a', cases: [C('m2_to_a', 2, '㎡ → a', null, F.a_m2), C('a_to_m2', 3, 'a → ㎡', null, F.a_m2)] },
+            { label: 'a ⇔ ha', cases: [C('ha_to_a', 4, 'ha → a', null, F.ha), C('a_to_ha', 5, 'a → ha', null, F.ha)] },
+            { label: 'ha ⇔ ㎢', cases: [C('km2_to_ha', 8, '㎢ → ha', null, F.km2), C('ha_to_km2', 9, 'ha → ㎢', null, F.km2)] },
+            { label: 'ha ⇔ ㎡', cases: [C('ha_to_m2', 6, 'ha → ㎡', null, F.ha), C('m2_to_ha', 7, '㎡ → ha', null, F.ha)] },
+            { label: '㎢ ⇔ ㎡', cases: [C('km2_to_m2', 10, '㎢ → ㎡', null, F.km2), C('m2_to_km2', 11, '㎡ → ㎢', null, F.km2)] }
+        ],
+        volume2: [
+            { label: 'cm³ ⇔ mL', cases: [C('cm3_to_mL', 1, 'cm³ → mL', null, F.cm3_mL), C('mL_to_cm3', 0, 'mL → cm³', null, F.cm3_mL)] },
+            { label: 'L ⇔ cm³', cases: [C('L_to_cm3', 2, 'L → cm³', null, F.L_cm3), C('cm3_to_L', 3, 'cm³ → L', null, F.L_cm3)] },
+            { label: 'm³ ⇔ L', cases: [C('m3_to_L', 4, 'm³ → L', null, F.m3_L), C('L_to_m3', 5, 'L → m³', null, F.m3_L)] },
+            { label: 'm³ ⇔ cm³', cases: [C('m3_to_cm3', 6, 'm³ → cm³', null, F.m3_cm3), C('cm3_to_m3', 7, 'cm³ → m³', null, F.m3_cm3)] }
+        ],
+        time2: [
+            { label: '日 ⇔ 時間', cases: [C('day_to_h', 0, '日 → 時間', null, F.day_h), C('h_to_day', 1, '時間 → 日', null, F.day_h)] },
+            { label: '時間 ⇔ 分（ちょうど）', cases: [C('h_to_min_pure', 2, '時間 → 分', { sixtyMode: 'pure' }, F.h_min), C('min_to_h_pure', 3, '分 → 時間', { sixtyMode: 'pure' }, F.h_min)] },
+            { label: '時間・分 ⇔ 分（端数あり）', cases: [C('hm_to_min', 2, '時間・分 → 分', { sixtyMode: 'mixed' }, F.h_min), C('min_to_hm', 3, '分 → 時間・分', { sixtyMode: 'mixed' }, F.h_min)] }
+        ],
+        time3: [
+            { label: '分 ⇔ 秒（ちょうど）', cases: [C('min_to_sec_pure', 0, '分 → 秒', { sixtyMode: 'pure' }, F.min_sec), C('sec_to_min_pure', 1, '秒 → 分', { sixtyMode: 'pure' }, F.min_sec)] },
+            { label: '分・秒 ⇔ 秒（端数あり）', cases: [C('ms_to_sec', 0, '分・秒 → 秒', { sixtyMode: 'mixed' }, F.min_sec), C('sec_to_ms', 1, '秒 → 分・秒', { sixtyMode: 'mixed' }, F.min_sec)] }
+        ]
+    };
+
+    const themeLabels = {
+        length2_short: '2年 長さ (cm, mm)',
+        length2_long: '2年 長い長さ (m, cm)',
+        length3: '3年 長い長さ (km, m)',
+        volume: '2年 かさ (L, dL, mL)',
+        weight: '3年 重さ (kg, g)',
+        weight2: '3年 重い重さ (kg, t)',
+        volume2: '5年 体積 (cm³, m³, mL, L)',
+        time2: '2年 時間 (日, 時間, 分)',
+        time3: '3年 時間 (分, 秒)',
+        area: '4年 面積 (㎡, a, ha, ㎢, ㎠)'
+    };
+
+
+    function stableOverrideString(override) {
+        if (!override) return '{}';
+        const keys = Object.keys(override).sort();
+        const obj = {};
+        keys.forEach(k => obj[k] = override[k]);
+        return JSON.stringify(obj);
+    }
+
+    function legacyDiagnosticSkillKey(c) {
+        return `t${c.template}|${stableOverrideString(c.override)}`;
+    }
+
+    function canonicalSkillId(caseId) {
+        // 学習用に同じ技能を2問置いている *_1/*_2, *_pure1/*_pure2 は診断では同一技能にまとめる。
+        return String(caseId || '').replace(/_(?:pure)?[12]$/, '');
+    }
+
+    function diagnosticSkillKey(c) {
+        // 配列indexではなく固定case id由来。問題配列の途中に追加しても過去データが別技能に化けない。
+        return canonicalSkillId(c.skillId || c.id);
+    }
+
+    function getDiagnosticSkills(themeKey = activeTheme) {
+        const plan = learningPlans[themeKey] || [];
+        const byKey = new Map();
+        plan.forEach((step, stepIndex) => {
+            (step.cases || []).forEach(c => {
+                const key = diagnosticSkillKey(c);
+                if (!byKey.has(key)) {
+                    byKey.set(key, {
+                        key, stepIndex, stepLabel: step.label, caseLabel: c.label,
+                        case: c, duplicates: 0
+                    });
+                }
+                byKey.get(key).duplicates++;
+            });
+        });
+        return Array.from(byKey.values()).map(s => {
+            const simple = /^基本\d*$/.test(s.caseLabel || '') || s.duplicates > 1;
+            s.displayLabel = simple ? s.stepLabel : `${s.stepLabel}｜${s.caseLabel}`;
+            return s;
+        });
+    }
+
+    function makeDiagnosticBucket() {
+        return {
+            attempts: 0, firstCorrect: 0, wrongFirst: 0, skips: 0,
+            wrongAnswers: 0, recovered: 0, reveals: 0,
+            recent: [], wrongValues: [], lastAt: null
+        };
+    }
+
+    function normalizeDiagnosticBucket(bucket) {
+        const b = bucket || {};
+        return {
+            attempts: Number(b.attempts || 0),
+            firstCorrect: Number(b.firstCorrect || 0),
+            wrongFirst: Number(b.wrongFirst || 0),
+            skips: Number(b.skips || 0),
+            wrongAnswers: Number(b.wrongAnswers || 0),
+            recovered: Number(b.recovered || 0),
+            reveals: Number(b.reveals || 0),
+            recent: Array.isArray(b.recent) ? b.recent.slice(-12) : [],
+            wrongValues: Array.isArray(b.wrongValues) ? b.wrongValues.slice(-5) : [],
+            lastAt: b.lastAt || null
+        };
+    }
+
+    function createThemeDiagnosticRecord() {
+        return { skills: {}, startedAt: null, lastUpdated: null, curriculumVersion: CURRICULUM_VERSION, sequence: 0 };
+    }
+
+    function getThemeDiagnosticRecord(themeKey = activeTheme) {
+        const existing = diagnosticData[themeKey];
+        if (existing) {
+            const existingVersion = Number(existing.curriculumVersion || 1);
+            if (existingVersion !== CURRICULUM_VERSION) {
+                const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+                diagnosticArchive[`${themeKey}@v${existingVersion}@${stamp}`] = existing;
+                saveDiagnosticArchive();
+                diagnosticData[themeKey] = createThemeDiagnosticRecord();
+                saveDiagnosticData();
+            }
+        }
+        if (!diagnosticData[themeKey]) diagnosticData[themeKey] = createThemeDiagnosticRecord();
+        if (!diagnosticData[themeKey].skills) diagnosticData[themeKey].skills = {};
+        if (!Number.isFinite(Number(diagnosticData[themeKey].sequence))) diagnosticData[themeKey].sequence = 0;
+        diagnosticData[themeKey].curriculumVersion = CURRICULUM_VERSION;
+        return diagnosticData[themeKey];
+    }
+
+    function getSkillDiagnosticRecord(themeKey, skill, create = true) {
+        let themeRec = diagnosticData[themeKey];
+        if (themeRec) themeRec = getThemeDiagnosticRecord(themeKey); // 版違いならここで旧記録をアーカイブ
+        else if (create) themeRec = getThemeDiagnosticRecord(themeKey);
+        if (!themeRec) return null;
+        if (!themeRec.skills) themeRec.skills = {};
+        // v2までの「template index + override」キーを、固定skillIdへ遅延移行する。
+        if (!themeRec.skills[skill.key] && skill.case) {
+            const legacyKey = legacyDiagnosticSkillKey(skill.case);
+            if (legacyKey !== skill.key && themeRec.skills[legacyKey]) {
+                themeRec.skills[skill.key] = themeRec.skills[legacyKey];
+                delete themeRec.skills[legacyKey];
+            }
+        }
+        if (!themeRec.skills[skill.key] && create) {
+            themeRec.skills[skill.key] = {
+                label: skill.displayLabel, stepLabel: skill.stepLabel,
+                diagnosis: makeDiagnosticBucket(),
+                remediation: makeDiagnosticBucket(),
+                retest: makeDiagnosticBucket(),
+                weakConfirmedAt: null, improvedAt: null,
+                currentPhase: null, monitorRecent: [],
+                weakHistory: [], improvementHistory: [],
+                lastRetestSequence: null, improvedSequence: null
+            };
+        }
+        const rec = themeRec.skills[skill.key] || null;
+        if (rec) {
+            // 既存localStorageの旧形式も、読むだけの先生画面で必ず正規化
+            rec.diagnosis = normalizeDiagnosticBucket(rec.diagnosis);
+            rec.remediation = normalizeDiagnosticBucket(rec.remediation);
+            rec.retest = normalizeDiagnosticBucket(rec.retest);
+            if (rec.weakConfirmedAt === undefined) rec.weakConfirmedAt = null;
+            if (rec.improvedAt === undefined) rec.improvedAt = null;
+            if (!Array.isArray(rec.weakHistory)) rec.weakHistory = rec.weakConfirmedAt ? [rec.weakConfirmedAt] : [];
+            if (!Array.isArray(rec.improvementHistory)) rec.improvementHistory = rec.improvedAt ? [rec.improvedAt] : [];
+            if (!Array.isArray(rec.monitorRecent)) rec.monitorRecent = [];
+            if (rec.currentPhase === undefined) rec.currentPhase = rec.improvedAt ? 'improved' : (rec.weakConfirmedAt ? 'weak' : null);
+            if (rec.lastRetestSequence === undefined) rec.lastRetestSequence = null;
+            if (rec.improvedSequence === undefined) rec.improvedSequence = null;
+        }
+        return rec;
+    }
+
+    function markThemeCleared(themeKey = activeTheme) {
+        if (!themeKey) return;
+        clearedThemes[themeKey] = { version: CURRICULUM_VERSION, clearedAt: new Date().toISOString() };
+        saveClearedThemes();
+        setRelearningTheme(themeKey, false);
+    }
+
+    function hasEverClearedTheme(themeKey = activeTheme) {
+        const v = clearedThemes[themeKey];
+        if (!v) return false;
+        // 旧版の true は初回だけ現行v1として扱い、その場で版情報へ移行する。
+        if (v === true && CURRICULUM_VERSION === 1) {
+            clearedThemes[themeKey] = { version: 1, clearedAt: null };
+            saveClearedThemes();
+            return true;
+        }
+        return Number(v.version || 0) === CURRICULUM_VERSION;
+    }
+
+    function diagnosticObservationCount(rec) {
+        if (!rec) return 0;
+        const b = rec.diagnosis || {};
+        return Number(b.attempts || 0) + Number(b.skips || 0);
+    }
+
+    function bucketObservationCount(bucket) {
+        return bucket ? Number(bucket.attempts || 0) + Number(bucket.skips || 0) : 0;
+    }
+
+    function getAccuracyFromBucket(bucket) {
+        const total = bucketObservationCount(bucket);
+        return total > 0 ? Number(bucket.firstCorrect || 0) / total : null;
+    }
+
+    function getAccuracy(rec) {
+        return rec ? getAccuracyFromBucket(rec.diagnosis) : null;
+    }
+
+    function lastTwoAre(bucket, value) {
+        const r = (bucket && Array.isArray(bucket.recent)) ? bucket.recent : [];
+        return r.length >= 2 && r[r.length - 1] === value && r[r.length - 2] === value;
+    }
+
+    function firstDiagnosticOutcome(rec) {
+        const r = rec && rec.diagnosis && Array.isArray(rec.diagnosis.recent) ? rec.diagnosis.recent : [];
+        return r.length ? r[0] : null;
+    }
+
+    function pushShortRecent(arr, value, max = 6) {
+        arr.push(value);
+        if (arr.length > max) arr.splice(0, arr.length - max);
+    }
+
+    function confirmWeak(rec, now) {
+        if (!rec) return;
+        if (rec.currentPhase !== 'weak') {
+            rec.currentPhase = 'weak';
+            rec.weakConfirmedAt = now;
+            rec.weakHistory = Array.isArray(rec.weakHistory) ? rec.weakHistory : [];
+            rec.weakHistory.push(now);
+            // 新しい苦手サイクルでは、以前の練習・再診断を再利用しない。
+            rec.remediation = makeDiagnosticBucket();
+            rec.retest = makeDiagnosticBucket();
+        }
+        rec.monitorRecent = [];
+    }
+
+    function markImproved(rec, now, sequence = null) {
+        if (!rec) return;
+        rec.currentPhase = 'improved';
+        rec.improvedAt = now;
+        rec.improvementHistory = Array.isArray(rec.improvementHistory) ? rec.improvementHistory : [];
+        rec.improvementHistory.push(now);
+        rec.monitorRecent = [];
+        rec.improvedSequence = sequence;
+    }
+
+    function updateWeakAndImprovedMarkers(rec, mode, now, sequence = null) {
+        if (!rec) return;
+        if (mode === 'diagnostic') {
+            const recent = rec.diagnosis.recent || [];
+            const outcome = recent.length ? recent[recent.length - 1] : null;
+
+            // 一度「改善」した技能は、その後の通常診断で現在状態を更新する。
+            if (rec.currentPhase === 'improved' || rec.currentPhase === 'postcheck') {
+                rec.monitorRecent = Array.isArray(rec.monitorRecent) ? rec.monitorRecent : [];
+                pushShortRecent(rec.monitorRecent, outcome, 4);
+                if (outcome === 1) {
+                    // 改善後に一度崩れても、次の独立した確認で○なら改善状態へ戻す。
+                    rec.currentPhase = 'improved';
+                    rec.monitorRecent = [];
+                } else if (rec.currentPhase === 'improved') {
+                    rec.currentPhase = 'postcheck';
+                } else {
+                    const r = rec.monitorRecent;
+                    if (r.length >= 2 && r[r.length - 1] !== 1 && r[r.length - 2] !== 1) confirmWeak(rec, now);
+                }
+                return;
+            }
+
+            if (rec.currentPhase !== 'weak' && recent.length >= 2) {
+                const a = recent[recent.length - 2], b = recent[recent.length - 1];
+                if (a !== 1 && b !== 1) confirmWeak(rec, now);
+            }
+        } else if (mode === 'retest') {
+            if (rec.currentPhase === 'weak' && lastTwoAre(rec.retest, 1)) markImproved(rec, now, sequence);
+        }
+    }
+
+    function getSkillStatus(rec) {
+        const obs = diagnosticObservationCount(rec);
+        if (!rec || obs === 0) return { key: 'unseen', text: '未確認', cls: 'skill-gray' };
+        if (rec.currentPhase === 'weak') return { key: 'weak', text: '苦手', cls: 'skill-red' };
+        if (rec.currentPhase === 'postcheck') return { key: 'check', text: '要確認', cls: 'skill-yellow' };
+        if (rec.currentPhase === 'improved') return { key: 'improved', text: '改善', cls: 'skill-blue' };
+
+        const recent = rec.diagnosis.recent || [];
+        if (lastTwoAre(rec.diagnosis, 1)) return { key: 'stable', text: '安定', cls: 'skill-green' };
+        if (recent.length === 1 && recent[0] === 1) return { key: 'candidate', text: '安定候補', cls: 'skill-candidate' };
+        return { key: 'check', text: '要確認', cls: 'skill-yellow' };
+    }
+
+    function isWeakRecord(rec) {
+        return getSkillStatus(rec).key === 'weak';
+    }
+
+    function getWeakSkills(themeKey = activeTheme) {
+        return getDiagnosticSkills(themeKey).filter(skill => isWeakRecord(getSkillDiagnosticRecord(themeKey, skill, false)));
+    }
+
+    function getDiagnosticProgress(themeKey = activeTheme) {
+        const skills = getDiagnosticSkills(themeKey);
+        let observed = 0, pendingRecheck = 0, candidate = 0, stable = 0, weak = 0, improved = 0, unseen = 0;
+        skills.forEach(skill => {
+            const rec = getSkillDiagnosticRecord(themeKey, skill, false);
+            const status = getSkillStatus(rec);
+            const obs = diagnosticObservationCount(rec);
+            if (obs > 0) observed++; else unseen++;
+            if (status.key === 'check') pendingRecheck++;
+            else if (status.key === 'candidate') candidate++;
+            else if (status.key === 'stable') stable++;
+            else if (status.key === 'weak') weak++;
+            else if (status.key === 'improved') improved++;
+        });
+        const baselineComplete = skills.length > 0 && unseen === 0;
+        // 初回×/スキップだった技能は最低2回診断されるまで「再確認待ち」
+        const priorityRechecks = skills.filter(skill => {
+            const rec = getSkillDiagnosticRecord(themeKey, skill, false);
+            if (!rec || rec.currentPhase === 'weak' || rec.currentPhase === 'improved') return false;
+            const first = firstDiagnosticOutcome(rec);
+            return first !== null && first !== 1 && diagnosticObservationCount(rec) < 2;
+        }).length;
+        const initialDiagnosisSettled = baselineComplete && priorityRechecks === 0;
+        const retestReady = skills.filter(skill => isRetestEligibleRecord(getSkillDiagnosticRecord(themeKey, skill, false))).length;
+        return { total: skills.length, observed, unseen, pendingRecheck, priorityRechecks, candidate, stable, weak, improved, retestReady, baselineComplete, initialDiagnosisSettled };
+    }
+
+    function getWeakPracticePendingSkills(themeKey = activeTheme) {
+        return getWeakSkills(themeKey).filter(skill => !isRetestEligibleRecord(getSkillDiagnosticRecord(themeKey, skill, false)));
+    }
+
+    function canStartWeakPractice(themeKey = activeTheme) {
+        const p = getDiagnosticProgress(themeKey);
+        return p.initialDiagnosisSettled && getWeakPracticePendingSkills(themeKey).length > 0;
+    }
+
+    function isRetestEligibleRecord(rec) {
+        return !!rec && getSkillStatus(rec).key === 'weak' && lastTwoAre(rec.remediation, 1);
+    }
+
+    function getRetestEligibleSkills(themeKey = activeTheme) {
+        return getWeakSkills(themeKey).filter(skill => isRetestEligibleRecord(getSkillDiagnosticRecord(themeKey, skill, false)));
+    }
+
+    function canStartRetest(themeKey = activeTheme) {
+        return getRetestEligibleSkills(themeKey).length > 0;
+    }
+
+    function isRetestCooldownReady(themeKey, rec) {
+        if (!rec || rec.lastRetestSequence === null || rec.lastRetestSequence === undefined) return true;
+        const themeRec = getThemeDiagnosticRecord(themeKey);
+        return Number(themeRec.sequence || 0) - Number(rec.lastRetestSequence || 0) >= RETEST_GAP_QUESTIONS;
+    }
+
+    function isImprovedCooldownReady(themeKey, rec) {
+        if (!rec || rec.currentPhase !== 'improved' || rec.improvedSequence === null || rec.improvedSequence === undefined) return true;
+        const themeRec = getThemeDiagnosticRecord(themeKey);
+        return Number(themeRec.sequence || 0) - Number(rec.improvedSequence || 0) >= IMPROVED_RECHECK_GAP;
+    }
+
+    function pickDiagnosticSkill(themeKey = activeTheme) {
+        const skills = getDiagnosticSkills(themeKey);
+        if (!skills.length) return null;
+
+        // 1巡目：未確認技能を最優先。これで同じ技能を直後に再確認しない。
+        let candidates = skills.filter(s => diagnosticObservationCount(getSkillDiagnosticRecord(themeKey, s, false)) === 0);
+        if (!candidates.length) {
+            // 1巡後：初回×/スキップだけをまず再確認
+            candidates = skills.filter(s => {
+                const rec = getSkillDiagnosticRecord(themeKey, s, false);
+                if (!rec || rec.currentPhase === 'weak' || rec.currentPhase === 'improved') return false;
+                const first = firstDiagnosticOutcome(rec);
+                return first !== null && first !== 1 && diagnosticObservationCount(rec) < 2;
+            });
+        }
+        if (!candidates.length) {
+            // その後は苦手確定技能を除き、確認回数の少ない技能から均等に。
+            // 改善直後は少し間を空け、短期記憶だけで「維持」と見なさない。
+            candidates = skills.filter(s => {
+                const rec = getSkillDiagnosticRecord(themeKey, s, false);
+                const st = getSkillStatus(rec);
+                return st.key !== 'weak' && isImprovedCooldownReady(themeKey, rec);
+            });
+            // 全候補がクールダウン中なら停止はせず、苦手以外から選ぶ。
+            if (!candidates.length) {
+                candidates = skills.filter(s => getSkillStatus(getSkillDiagnosticRecord(themeKey, s, false)).key !== 'weak');
+            }
+        }
+        if (!candidates.length) return null;
+        const counts = candidates.map(s => diagnosticObservationCount(getSkillDiagnosticRecord(themeKey, s, false)));
+        const minCount = Math.min(...counts);
+        candidates = candidates.filter((s, i) => counts[i] === minCount);
+        if (candidates.length > 1 && lastPresentedSkillId) {
+            const withoutSame = candidates.filter(s => s.key !== lastPresentedSkillId);
+            if (withoutSame.length) candidates = withoutSame;
+        }
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    function pickWeakPracticeSkill(themeKey = activeTheme, mode = 'weak') {
+        let skills;
+        if (mode === 'retest') {
+            skills = getRetestEligibleSkills(themeKey).filter(s => isRetestCooldownReady(themeKey, getSkillDiagnosticRecord(themeKey, s, false)));
+        } else {
+            // 苦手練習で初回○○を達成した技能は「再診断待ち」。苦手練習には再登場させない。
+            skills = getWeakSkills(themeKey).filter(s => !isRetestEligibleRecord(getSkillDiagnosticRecord(themeKey, s, false)));
+        }
+        if (!skills.length) return null;
+        const bucketName = mode === 'retest' ? 'retest' : 'remediation';
+        const counts = skills.map(s => {
+            const rec = getSkillDiagnosticRecord(themeKey, s, false);
+            return rec ? bucketObservationCount(rec[bucketName]) : 0;
+        });
+        const minCount = Math.min(...counts);
+        let candidates = skills.filter((s, i) => counts[i] === minCount);
+        if (candidates.length > 1 && lastPresentedSkillId) {
+            const withoutSame = candidates.filter(s => s.key !== lastPresentedSkillId);
+            if (withoutSame.length) candidates = withoutSame;
+        }
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    function pickNeutralIntervalSkill(themeKey = activeTheme, avoidSkillId = lastPresentedSkillId) {
+        const skills = getDiagnosticSkills(themeKey);
+        if (!skills.length) return null;
+        let candidates = skills.filter(s => s.key !== avoidSkillId);
+        if (!candidates.length) candidates = skills.slice();
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    function isDiagnosticTrackingMode() {
+        return activeSubMode === 'diagnostic' || activeSubMode === 'weak' || activeSubMode === 'retest';
+    }
+
+    function isCurrentDiagnosticTracked() {
+        return isDiagnosticTrackingMode() && currentTrackingMode !== 'neutral';
+    }
+
+    function getTrackingBucket(rec) {
+        if (!rec) return null;
+        const mode = currentTrackingMode || activeSubMode;
+        if (mode === 'weak') return rec.remediation;
+        if (mode === 'retest') return rec.retest;
+        return rec.diagnosis;
+    }
+
+    function pushRecentOutcome(bucket, value) {
+        bucket.recent = Array.isArray(bucket.recent) ? bucket.recent : [];
+        bucket.recent.push(value);
+        if (bucket.recent.length > 12) bucket.recent = bucket.recent.slice(-12);
+    }
+
+    function recordDiagnosticFirstAttempt(correct, answerText = '') {
+        if (!isCurrentDiagnosticTracked() || !currentDiagnosticSkill || diagnosticOutcomeRecorded) return;
+        diagnosticOutcomeRecorded = true;
+        diagnosticFirstWasCorrect = !!correct;
+        const now = new Date().toISOString();
+        const themeRec = getThemeDiagnosticRecord(activeTheme);
+        const rec = getSkillDiagnosticRecord(activeTheme, currentDiagnosticSkill, true);
+        const bucket = getTrackingBucket(rec);
+        const trackingMode = currentTrackingMode || activeSubMode;
+        themeRec.sequence = Number(themeRec.sequence || 0) + 1;
+        bucket.attempts++;
+        if (correct) bucket.firstCorrect++; else bucket.wrongFirst++;
+        pushRecentOutcome(bucket, correct ? 1 : 0);
+        bucket.lastAt = now;
+        if (!themeRec.startedAt) themeRec.startedAt = now;
+        themeRec.lastUpdated = now;
+        if (trackingMode === 'retest') rec.lastRetestSequence = themeRec.sequence;
+        updateWeakAndImprovedMarkers(rec, trackingMode, now, themeRec.sequence);
+        saveDiagnosticData();
+    }
+
+    function recordDiagnosticSkip() {
+        if (!isCurrentDiagnosticTracked() || !currentDiagnosticSkill || diagnosticOutcomeRecorded) return;
+        diagnosticOutcomeRecorded = true;
+        diagnosticFirstWasCorrect = false;
+        const now = new Date().toISOString();
+        const themeRec = getThemeDiagnosticRecord(activeTheme);
+        const rec = getSkillDiagnosticRecord(activeTheme, currentDiagnosticSkill, true);
+        const bucket = getTrackingBucket(rec);
+        const trackingMode = currentTrackingMode || activeSubMode;
+        themeRec.sequence = Number(themeRec.sequence || 0) + 1;
+        bucket.skips = (bucket.skips || 0) + 1;
+        pushRecentOutcome(bucket, 'S');
+        bucket.lastAt = now;
+        if (!themeRec.startedAt) themeRec.startedAt = now;
+        themeRec.lastUpdated = now;
+        if (trackingMode === 'retest') rec.lastRetestSequence = themeRec.sequence;
+        updateWeakAndImprovedMarkers(rec, trackingMode, now, themeRec.sequence);
+        saveDiagnosticData();
+    }
+
+    function recordDiagnosticWrongAnswer(answerText = '') {
+        if (!isCurrentDiagnosticTracked() || !currentDiagnosticSkill) return;
+        const rec = getSkillDiagnosticRecord(activeTheme, currentDiagnosticSkill, true);
+        const bucket = getTrackingBucket(rec);
+        bucket.wrongAnswers = (bucket.wrongAnswers || 0) + 1;
+        if (answerText) {
+            bucket.wrongValues.push(answerText);
+            if (bucket.wrongValues.length > 5) bucket.wrongValues = bucket.wrongValues.slice(-5);
+        }
+        bucket.lastAt = new Date().toISOString();
+        getThemeDiagnosticRecord(activeTheme).lastUpdated = bucket.lastAt;
+        saveDiagnosticData();
+    }
+
+    function recordDiagnosticRecovery() {
+        if (!isCurrentDiagnosticTracked() || !currentDiagnosticSkill || diagnosticRecoveryRecorded) return;
+        if (diagnosticFirstWasCorrect !== false || currentAnswerRevealed) return;
+        diagnosticRecoveryRecorded = true;
+        const rec = getSkillDiagnosticRecord(activeTheme, currentDiagnosticSkill, true);
+        const bucket = getTrackingBucket(rec);
+        bucket.recovered = (bucket.recovered || 0) + 1;
+        bucket.lastAt = new Date().toISOString();
+        getThemeDiagnosticRecord(activeTheme).lastUpdated = bucket.lastAt;
+        saveDiagnosticData();
+    }
+
+    function recordDiagnosticReveal() {
+        if (!isCurrentDiagnosticTracked() || !currentDiagnosticSkill || diagnosticRevealRecorded) return;
+        diagnosticRevealRecorded = true;
+        const rec = getSkillDiagnosticRecord(activeTheme, currentDiagnosticSkill, true);
+        const bucket = getTrackingBucket(rec);
+        bucket.reveals = (bucket.reveals || 0) + 1;
+        bucket.lastAt = new Date().toISOString();
+        getThemeDiagnosticRecord(activeTheme).lastUpdated = bucket.lastAt;
+        saveDiagnosticData();
+    }
+
+    function formatPercent(n) {
+        return n == null ? '—' : `${Math.round(n * 100)}%`;
+    }
+
+    function formatRecentBucket(bucket) {
+        if (!bucket || !bucket.recent || !bucket.recent.length) return '—';
+        return bucket.recent.slice(-5).map(v => v === 1 ? '○' : (v === 'S' ? '△' : '×')).join('');
+    }
+
+    function formatBucketSupport(bucket) {
+        if (!bucket) return '';
+        const bits = [];
+        if (bucket.recovered) bits.push(`自力修正${bucket.recovered}`);
+        if (bucket.reveals) bits.push(`答え表示${bucket.reveals}`);
+        return bits.length ? `<span style="font-size:11px;color:#64748b;">${bits.join('・')}</span>` : '';
+    }
+
+    function formatWrongValues(rec) {
+        if (!rec) return '—';
+        const vals = [];
+        ['diagnosis', 'retest'].forEach(k => {
+            const a = rec[k] && Array.isArray(rec[k].wrongValues) ? rec[k].wrongValues : [];
+            vals.push(...a);
+        });
+        return vals.length ? vals.slice(-3).join(' / ') : '—';
+    }
+
+    function chooseTeacherTheme(themeKey) {
+        currentTeacherTheme = themeKey;
+        renderTeacherDashboard();
+    }
+
+    function openTeacherDashboard(themeKey = '') {
+        const keys = Object.keys(themeLabels);
+        const dataKeys = keys.filter(k => diagnosticData[k] && diagnosticData[k].skills && Object.keys(diagnosticData[k].skills).length > 0);
+        currentTeacherTheme = themeKey || activeTheme || currentTeacherTheme || dataKeys[0] || keys[0];
+        document.getElementById('teacher-modal').style.display = 'flex';
+        renderTeacherDashboard();
+    }
+
+    function closeTeacherDashboard() {
+        document.getElementById('teacher-modal').style.display = 'none';
+    }
+
+    function renderTeacherDashboard() {
+        const tabs = document.getElementById('teacher-theme-tabs');
+        const body = document.getElementById('teacher-dashboard-body');
+        if (!tabs || !body) return;
+        tabs.innerHTML = '';
+        Object.keys(themeLabels).forEach(k => {
+            const b = document.createElement('button');
+            const hasData = !!(diagnosticData[k] && diagnosticData[k].skills && Object.keys(diagnosticData[k].skills).length > 0);
+            b.className = `teacher-theme-tab${k === currentTeacherTheme ? ' active' : ''}${hasData ? ' has-data' : ''}`;
+            b.innerText = themeLabels[k];
+            b.onclick = () => chooseTeacherTheme(k);
+            tabs.appendChild(b);
+        });
+
+        const themeKey = currentTeacherTheme;
+        const skills = getDiagnosticSkills(themeKey);
+        const progress = getDiagnosticProgress(themeKey);
+        const themeRec = diagnosticData[themeKey] || { skills: {} };
+        const statusPriority = { weak: 0, check: 2, candidate: 3, improved: 4, stable: 5, unseen: 6 };
+        const rows = skills.map(skill => {
+            const rec = getSkillDiagnosticRecord(themeKey, skill, false);
+            return { skill, rec, status: getSkillStatus(rec) };
+        }).sort((a, b) => {
+            const aReady = a.status.key === 'weak' && isRetestEligibleRecord(a.rec);
+            const bReady = b.status.key === 'weak' && isRetestEligibleRecord(b.rec);
+            const ap = a.status.key === 'weak' ? (aReady ? 1 : 0) : (statusPriority[a.status.key] ?? 9);
+            const bp = b.status.key === 'weak' ? (bReady ? 1 : 0) : (statusPriority[b.status.key] ?? 9);
+            return ap - bp || a.skill.displayLabel.localeCompare(b.skill.displayLabel, 'ja');
+        });
+        const weakRows = rows.filter(x => x.status.key === 'weak');
+        const checkRows = rows.filter(x => x.status.key === 'check');
+        const mastered = hasEverClearedTheme(themeKey) || getLearningState(themeKey).completed;
+        const updated = themeRec.lastUpdated ? new Date(themeRec.lastUpdated).toLocaleString('ja-JP') : '—';
+
+        let notice;
+        if (!mastered) {
+            notice = '<div class="teacher-weak-box" style="background:#f8fafc;border-color:#cbd5e1;color:#475569;"><strong>この単元はまだSTEP未クリアです。</strong> 診断は全STEPクリア後に始まります。</div>';
+        } else if (!progress.baselineComplete) {
+            notice = `<div class="teacher-weak-box"><strong>📊 診断1巡目：${progress.observed}/${progress.total}技能</strong>　まだ${progress.unseen}技能が未確認です。1回のミスでは苦手判定しません。</div>`;
+        } else if (progress.priorityRechecks > 0) {
+            notice = `<div class="teacher-weak-box"><strong>🔎 再確認中：あと${progress.priorityRechecks}技能</strong>　1巡目で×・スキップだった技能を、間を空けてもう一度確認しています。</div>`;
+        } else if (weakRows.length) {
+            const names = weakRows.slice(0, 5).map(x => x.skill.displayLabel).join('／');
+            notice = `<div class="teacher-weak-box"><strong>🔴 苦手 ${weakRows.length}技能：</strong>${names}${weakRows.length > 5 ? ` ほか${weakRows.length - 5}技能` : ''}</div>`;
+        } else if (progress.candidate || progress.pendingRecheck) {
+            notice = `<div class="teacher-weak-box" style="background:#fffbeb;border-color:#fde68a;color:#92400e;"><strong>苦手確定はありません。</strong> 安定候補${progress.candidate}技能・要確認${progress.pendingRecheck}技能。診断を続けると「安定」判定が増えます。</div>`;
+        } else {
+            notice = '<div class="teacher-weak-box good"><strong>✓ 現在、苦手確定の技能はありません。</strong> 全技能が安定または改善状態です。</div>';
+        }
+
+        const tableRows = rows.map(({skill, rec, status}) => {
+            const d = rec ? rec.diagnosis : null;
+            const r = rec ? rec.remediation : null;
+            const t = rec ? rec.retest : null;
+            const diagObs = rec ? diagnosticObservationCount(rec) : 0;
+            const dCounts = d ? `○${d.firstCorrect || 0} ×${d.wrongFirst || 0} △${d.skips || 0}` : '—';
+            const remRecent = formatRecentBucket(r);
+            const retestRecent = formatRecentBucket(t);
+            const retestReady = isRetestEligibleRecord(rec) ? '<br><span style="font-size:11px;font-weight:bold;color:#0369a1;">再診断可</span>' : '';
+            const historyNote = rec && rec.improvementHistory && rec.improvementHistory.length ? `<br><span style="font-size:10px;color:#64748b;">改善歴${rec.improvementHistory.length}回</span>` : '';
+            return `<tr>
+                <td><span class="skill-status ${status.cls}">${status.text}</span>${historyNote}</td>
+                <td><strong>${skill.displayLabel}</strong></td>
+                <td><strong>${dCounts}</strong> <span style="color:#64748b;">(${diagObs}回)</span><br><span class="skill-recent">${formatRecentBucket(d)}</span><br>${formatBucketSupport(d)}</td>
+                <td class="skill-recent">${remRecent}<br>${formatBucketSupport(r)}${retestReady}</td>
+                <td class="skill-recent">${retestRecent}<br>${formatBucketSupport(t)}</td>
+                <td>${formatWrongValues(rec)}</td>
+            </tr>`;
+        }).join('');
+
+        const remediationCount = rows.reduce((sum, x) => sum + (x.rec ? bucketObservationCount(x.rec.remediation) : 0), 0);
+        body.innerHTML = `
+            <h3 style="margin:6px 0;color:#0f172a;">${themeLabels[themeKey]}</h3>
+            <div class="teacher-summary-grid">
+                <div class="teacher-summary-card"><div class="teacher-summary-label">第1巡</div><div class="teacher-summary-value">${progress.observed}/${progress.total}</div></div>
+                <div class="teacher-summary-card"><div class="teacher-summary-label">未確認</div><div class="teacher-summary-value">${progress.unseen}</div></div>
+                <div class="teacher-summary-card"><div class="teacher-summary-label">安定候補</div><div class="teacher-summary-value">${progress.candidate}</div></div>
+                <div class="teacher-summary-card"><div class="teacher-summary-label">要確認</div><div class="teacher-summary-value">${progress.pendingRecheck}</div></div>
+                <div class="teacher-summary-card"><div class="teacher-summary-label">苦手</div><div class="teacher-summary-value">${progress.weak}</div></div>
+                <div class="teacher-summary-card"><div class="teacher-summary-label">再診断待ち</div><div class="teacher-summary-value">${progress.retestReady}</div></div>
+                <div class="teacher-summary-card"><div class="teacher-summary-label">改善</div><div class="teacher-summary-value">${progress.improved}</div></div>
+                <div class="teacher-summary-card"><div class="teacher-summary-label">安定</div><div class="teacher-summary-value">${progress.stable}</div></div>
+            </div>
+            ${notice}
+            <div style="font-size:13px;font-weight:bold;color:#334155;margin:8px 0 10px;">現在：🔴苦手 ${progress.weak}（再診断待ち${progress.retestReady}）　🟡要確認 ${progress.pendingRecheck}　○安定候補 ${progress.candidate}　🔵改善 ${progress.improved}　🟢安定 ${progress.stable}　⚪未確認 ${progress.unseen}</div>
+            <div class="teacher-actions">
+                <button class="teacher-action-btn teacher-action-secondary" onclick="startTeacherPractice('diagnostic')" ${mastered ? '' : 'disabled style="opacity:.45;cursor:not-allowed;"'}>📊 診断を続ける</button>
+                <button class="teacher-action-btn teacher-action-primary" onclick="startTeacherPractice('weak')" ${(mastered && canStartWeakPractice(themeKey)) ? '' : 'disabled style="opacity:.45;cursor:not-allowed;"'}>🎯 苦手だけ練習</button>
+                <button class="teacher-action-btn teacher-action-secondary" onclick="startTeacherPractice('retest')" ${(mastered && canStartRetest(themeKey)) ? '' : 'disabled style="opacity:.45;cursor:not-allowed;"'}>🔁 苦手を再診断</button>
+                <button class="teacher-action-btn teacher-action-muted" onclick="restartLearningFromTeacher()">📚 STEPをやり直す</button>
+                <button class="teacher-action-btn teacher-action-danger" onclick="resetThemeDiagnosticData()">🗑 この単元の診断記録を消す</button>
+                <button class="teacher-action-btn teacher-action-muted" onclick="changeTeacherPin()">🔐 PIN変更</button>
+                <button class="teacher-action-btn teacher-action-muted" onclick="lockTeacherMode()">🔒 先生モードを閉じる</button>
+            </div>
+            <div style="font-size:12px;color:#64748b;margin:4px 0 10px;line-height:1.5;">
+                判定：1回目×/△は「要確認」→ 後日の再確認も×/△なら「苦手」→ 苦手練習は別記録（初回正解2回連続でその技能の再診断を解放）→ 再診断で初回正解2回連続なら「改善」。改善後も通常診断で崩れれば要確認／苦手へ戻ります。<br>
+                ○＝初回正解、×＝初回不正解、△＝スキップ（診断件数・判定に含む）。診断・再診断では初回回答まで基本式を隠します。苦手練習${remediationCount}回。最終更新：${updated}
+            </div>
+            ${skills.length ? `<table class="teacher-skill-table"><thead><tr><th>状態</th><th>技能</th><th>診断</th><th>苦手練習</th><th>再診断</th><th>最近の誤答</th></tr></thead><tbody>${tableRows}</tbody></table>` : '<div class="teacher-empty">技能情報がありません。</div>'}
+        `;
+    }
+
+    function recordPendingDiagnosticSkipBeforeModeChange() {
+        if (currentProblem && isCurrentDiagnosticTracked() && currentDiagnosticSkill && !diagnosticOutcomeRecorded) {
+            recordDiagnosticSkip();
+        }
+    }
+
+    function abandonCurrentProblemForNavigation() {
+        recordPendingDiagnosticSkipBeforeModeChange();
+    }
+
+    function activateThemeForTeacher(themeKey) {
+        if (activeTheme !== themeKey) lastPresentedSkillId = null;
+        activeTheme = themeKey;
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        const themeBtn = Array.from(document.querySelectorAll('.theme-btn')).find(btn => (btn.getAttribute('onclick') || '').includes(`'${themeKey}'`));
+        if (themeBtn) themeBtn.classList.add('active');
+        document.getElementById('workspace').style.display = 'block';
+        document.getElementById('submode-container').classList.remove('visible');
+        collapseThemeSelector();
+    }
+
+    function startTeacherPractice(mode) {
+        const themeKey = currentTeacherTheme;
+        const mastered = hasEverClearedTheme(themeKey) || getLearningState(themeKey).completed;
+        if (!mastered) { alert('この単元はまだ全STEPをクリアしていません。'); return; }
+        if (mode === 'weak' && !canStartWeakPractice(themeKey)) {
+            const p = getDiagnosticProgress(themeKey);
+            if (!p.initialDiagnosisSettled) alert('まず診断1巡目と、×・スキップだった技能の再確認を終えてください。');
+            else if (p.retestReady > 0) alert('苦手練習は一区切りです。再診断待ちの技能があります。「苦手を再診断」へ進んでください。');
+            else alert('現在、苦手確定の技能はありません。');
+            return;
+        }
+        if (mode === 'retest' && !canStartRetest(themeKey)) {
+            alert('再診断する技能は、先に苦手練習で「初回正解を2回連続」してください。');
+            return;
+        }
+        if (mode === 'weak') {
+            const p = getDiagnosticProgress(themeKey);
+            if ((p.pendingRecheck > 0 || p.candidate > 0) && !confirm(`苦手は${p.weak}技能です。ほかに要確認${p.pendingRecheck}・安定候補${p.candidate}技能が残っています。
+苦手練習へ進みますか？`)) return;
+        }
+        recordPendingDiagnosticSkipBeforeModeChange();
+        activateThemeForTeacher(themeKey);
+        const state = getLearningState(themeKey);
+        state.completed = true;
+        state.pendingAdvance = null;
+        activeSubMode = mode;
+        closeTeacherDashboard();
+        updateSubModeUI();
+        updateLearningStatus();
+        nextProblem();
+    }
+
+    function restartLearningFromTeacher() {
+        const themeKey = currentTeacherTheme;
+        recordPendingDiagnosticSkipBeforeModeChange();
+        activateThemeForTeacher(themeKey);
+        resetLearningState(themeKey);
+        setRelearningTheme(themeKey, true);
+        activeSubMode = 'learn';
+        closeTeacherDashboard();
+        updateSubModeUI();
+        nextProblem();
+    }
+
+    function resetThemeDiagnosticData() {
+        if (!confirm(`「${themeLabels[currentTeacherTheme]}」の診断・苦手練習・再診断記録を消しますか？`)) return;
+        const themeKey = currentTeacherTheme;
+        const isCurrent = activeTheme === themeKey;
+        delete diagnosticData[themeKey];
+        saveDiagnosticData();
+        if (isCurrent && !isRelearningTheme(themeKey) && hasEverClearedTheme(themeKey)) {
+            currentProblem = null;
+            currentDiagnosticSkill = null;
+            diagnosticOutcomeRecorded = true;
+            lastPresentedSkillId = null;
+            activeSubMode = 'diagnostic';
+            closeTeacherDashboard();
+            updateSubModeUI();
+            updateLearningStatus();
+            nextProblem();
+        } else {
+            renderTeacherDashboard();
+        }
+    }
+
+    function createLearningState() {
+        return { stepIndex: 0, completedCases: {}, pendingAdvance: null, completed: false };
+    }
+
+    function resetLearningState(themeKey = activeTheme) {
+        learningState[themeKey] = createLearningState();
+    }
+
+    function getLearningState(themeKey = activeTheme) {
+        if (!learningState[themeKey]) learningState[themeKey] = createLearningState();
+        return learningState[themeKey];
+    }
+
+    function getCurrentLearningStep() {
+        const plan = learningPlans[activeTheme] || [];
+        const state = getLearningState();
+        if (!plan.length || state.completed) return null;
+        return plan[Math.min(state.stepIndex, plan.length - 1)];
+    }
+
+    function getNextRequiredCase(step, state) {
+        if (!step || !step.cases) return null;
+        return step.cases.find(c => !state.completedCases[c.id]) || null;
+    }
+
+    function getStepProgress(step, state) {
+        const total = step && step.cases ? step.cases.length : 0;
+        const done = step && step.cases ? step.cases.filter(c => !!state.completedCases[c.id]).length : 0;
+        return { done, total };
+    }
+
+    function supportsPracticeModes(themeKey = activeTheme) {
+        return !!themeKey && !!learningPlans[themeKey];
+    }
+
+    function updatePracticeToggle() {
+        const btn = document.getElementById('practice-toggle-btn');
+        if (!btn) return;
+        if (!supportsPracticeModes()) {
+            btn.style.display = 'none';
+            document.getElementById('submode-container').classList.remove('visible');
+            return;
+        }
+        btn.style.display = '';
+        const state = getLearningState();
+        const unlocked = state.completed;
+        btn.disabled = !unlocked;
+        btn.innerText = unlocked ? '🧪 診断・れんしゅう' : '🔒 れんしゅう';
+        btn.title = unlocked ? '診断ランダム・苦手練習・個別練習を選べます' : '全STEPクリア後に使えます';
+        if (!unlocked) document.getElementById('submode-container').classList.remove('visible');
+    }
+
+    function updateLearningStatus() {
+        const el = document.getElementById('learning-status');
+        if (!el || !activeTheme) return;
+        if (activeSubMode !== 'learn') {
+            let modeText = 'えらんだ問題だけ練習';
+            if (activeSubMode === 'diagnostic') {
+                const p = getDiagnosticProgress(activeTheme);
+                if (currentTrackingMode === 'neutral') modeText = '<span class="diagnostic-badge">診断の間隔問題</span>（記録なし）';
+                else if (!p.baselineComplete) modeText = `<span class="diagnostic-badge">診断1巡目</span> ${p.observed}/${p.total}技能`;
+                else if (p.priorityRechecks > 0) modeText = `<span class="diagnostic-badge">再確認</span> あと${p.priorityRechecks}技能`;
+                else modeText = `<span class="diagnostic-badge">診断ランダム</span> 苦手${p.weak}・要確認${p.pendingRecheck}`;
+            }
+            else if (activeSubMode === 'weak') modeText = '<span class="weak-badge">苦手だけ練習</span>（診断とは別記録）';
+            else if (activeSubMode === 'retest') modeText = currentTrackingMode === 'neutral'
+                ? '<span class="diagnostic-badge">再診断の間隔問題</span>（記録なし・同じ技能を連続させません）'
+                : '<span class="diagnostic-badge">苦手を再診断</span>（再診断○○で改善）';
+            else if (activeSubMode === 'all') modeText = '総合ランダム練習';
+            el.innerHTML = `🧪 ${modeText}`;
+            updatePracticeToggle();
+            return;
+        }
+        const plan = learningPlans[activeTheme] || [];
+        const state = getLearningState();
+        if (state.completed || plan.length === 0) {
+            el.innerHTML = `🏁 全STEPクリア　<span class="diagnostic-badge">診断ランダムへ</span>`;
+            updatePracticeToggle();
+            return;
+        }
+        const step = plan[state.stepIndex];
+        const { done, total } = getStepProgress(step, state);
+        const dots = '●'.repeat(done) + '○'.repeat(Math.max(0, total - done));
+        const pending = state.pendingAdvance ? '　✅ STEPクリア' : '';
+        el.innerHTML = `STEP ${state.stepIndex + 1}/${plan.length}　${step.label}　<span class="learning-dots">${dots}</span> ${done}/${total}${pending}`;
+        updatePracticeToggle();
+    }
+
+    function collapseThemeSelector() {
+        document.getElementById('theme-selector').classList.add('is-hidden');
+        document.getElementById('info-bar').classList.add('is-hidden');
+        document.getElementById('compact-theme-bar').classList.add('visible');
+        document.body.classList.add('study-active');
+        document.getElementById('compact-theme-name').innerText = themeLabels[activeTheme] || activeTheme;
+        updateLearningStatus();
+    }
+
+    function showThemeSelector() {
+        document.getElementById('theme-selector').classList.remove('is-hidden');
+        document.getElementById('info-bar').classList.remove('is-hidden');
+        document.getElementById('compact-theme-bar').classList.remove('visible');
+        document.getElementById('submode-container').classList.remove('visible');
+        document.body.classList.remove('study-active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     function selectTheme(themeKey, element) {
+        if (activeTheme) abandonCurrentProblemForNavigation();
         activeTheme = themeKey;
-        activeSubMode = 'all'; // テーマ変更時はサブモードをランダムにリセット
-        
+        currentLearningCase = null;
+        currentDiagnosticSkill = null;
+        lastPresentedSkillId = null;
+        if (isRelearningTheme(themeKey)) {
+            activeSubMode = 'learn';
+            resetLearningState(themeKey); // 再訪・再読込時はSTEP1から確実に再開
+        } else if (hasEverClearedTheme(themeKey)) {
+            resetLearningState(themeKey);
+            getLearningState(themeKey).completed = true;
+            activeSubMode = 'diagnostic'; // 一度クリアした単元は、次回から診断ランダムへ
+        } else {
+            activeSubMode = 'learn';
+            resetLearningState(themeKey);
+        }
+
         document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
         if(element) element.classList.add('active');
 
         document.getElementById('workspace').style.display = 'block';
         document.getElementById('result-panel').style.display = 'none';
+        document.getElementById('submode-container').classList.remove('visible');
 
+        collapseThemeSelector();
         updateSubModeUI();
         nextProblem();
     }
 
-    // 🌟 細かい練習モード（サブモード）のUIボタンを生成・制御する関数
+    function togglePracticePanel() {
+        const state = getLearningState();
+        if (!supportsPracticeModes() || !state.completed) return;
+        const container = document.getElementById('submode-container');
+        container.classList.toggle('visible');
+    }
+
+    // 細かい練習モード。全STEPクリアまではロックし、学習順序を飛ばせないようにする。
     function updateSubModeUI() {
         const container = document.getElementById('submode-container');
         const flex = document.getElementById('submode-flex');
-        
-        // かさと面積と体積と時間(2年)以外は、サブモードボタンを隠す
-        if (activeTheme !== 'volume' && activeTheme !== 'area' && activeTheme !== 'volume2' && activeTheme !== 'time2') {
+
+        if (!supportsPracticeModes()) {
+            container.classList.remove('visible');
             container.style.display = 'none';
+            updateLearningStatus();
             return;
         }
-        
-        container.style.display = 'block';
+
+        container.style.display = '';
+        document.getElementById('submode-title').innerText = '📊 全STEPクリア後の 診断・れんしゅうモード';
         flex.innerHTML = '';
-        
+
         let modes = [];
+        const diagnosticModes = [
+            { id: 'diagnostic', label: '📊 診断ランダム' },
+            { id: 'weak', label: '🎯 苦手だけ' },
+            { id: 'retest', label: '🔁 苦手を再診断' }
+        ];
         if (activeTheme === 'volume') {
             modes = [
-                { id: 'all', label: '🌈 ランダム' },
+                { id: 'learn', label: '📚 学習コース' },
+                { id: 'all', label: '🌈 自由ランダム（記録なし）' },
                 { id: 'L_dL', label: 'L ⇔ dL' },
                 { id: 'L_mL', label: 'L ⇔ mL' },
                 { id: 'L_dL_dL', label: 'L, dL ⇔ dL' },
@@ -1204,7 +2547,8 @@
             ];
         } else if (activeTheme === 'area') {
             modes = [
-                { id: 'all', label: '🌈 ランダム' },
+                { id: 'learn', label: '📚 学習コース' },
+                { id: 'all', label: '🌈 自由ランダム（記録なし）' },
                 { id: 'cm2_m2', label: '㎠ ⇔ ㎡' },
                 { id: 'm2_a', label: '㎡ ⇔ a' },
                 { id: 'a_ha', label: 'a ⇔ ha' },
@@ -1214,7 +2558,8 @@
             ];
         } else if (activeTheme === 'volume2') {
             modes = [
-                { id: 'all', label: '🌈 ランダム' },
+                { id: 'learn', label: '📚 学習コース' },
+                { id: 'all', label: '🌈 自由ランダム（記録なし）' },
                 { id: 'cm3_mL', label: 'cm³ ⇔ mL' },
                 { id: 'L_cm3', label: 'L ⇔ cm³' },
                 { id: 'm3_L', label: 'm³ ⇔ L' },
@@ -1222,23 +2567,105 @@
             ];
         } else if (activeTheme === 'time2') {
             modes = [
-                { id: 'all', label: '🌈 ランダム' },
+                { id: 'learn', label: '📚 学習コース' },
+                { id: 'all', label: '🌈 自由ランダム（記録なし）' },
                 { id: 'h_min', label: '時間 ⇔ 分' },
                 { id: 'd_h', label: '日 ⇔ 時間' }
             ];
         }
-        
+
+        if (!modes.length) {
+            modes = [{ id: 'learn', label: '📚 学習コース' }, { id: 'all', label: '🌈 自由ランダム（記録なし）' }];
+        }
+        modes = [modes[0], ...diagnosticModes, ...modes.slice(1)];
+
+        const unlocked = getLearningState().completed;
         modes.forEach(m => {
             const btn = document.createElement('button');
             btn.className = `submode-btn${activeSubMode === m.id ? ' active' : ''}`;
-            btn.innerText = m.label;
+            btn.innerText = (m.id === 'learn' && unlocked) ? '📚 STEPをやり直す' : m.label;
+            btn.disabled = (m.id !== 'learn' && !unlocked)
+                || (m.id === 'weak' && unlocked && !canStartWeakPractice(activeTheme))
+                || (m.id === 'retest' && unlocked && !canStartRetest(activeTheme));
+            if (m.id === 'weak' && unlocked && !canStartWeakPractice(activeTheme)) btn.title = '診断1巡目と再確認が終わり、苦手が確定すると使えます';
+            if (m.id === 'retest' && unlocked && !canStartRetest(activeTheme)) btn.title = '苦手練習で初回正解を2回連続した技能があると使えます';
             btn.onclick = () => {
+                if (m.id !== 'learn' && !getLearningState().completed) return;
+                if (m.id === 'learn' && getLearningState().completed) {
+                    if (!confirm('STEP1から学習コースをやり直しますか？ 診断記録は消えません。')) return;
+                    abandonCurrentProblemForNavigation();
+                    resetLearningState(activeTheme);
+                    setRelearningTheme(activeTheme, true);
+                    activeSubMode = 'learn';
+                    updateSubModeUI(); updateLearningStatus(); nextProblem();
+                    return;
+                }
+                if (m.id === 'weak' && !canStartWeakPractice(activeTheme)) { const p=getDiagnosticProgress(activeTheme); alert(p.retestReady>0 ? '苦手練習は一区切りです。再診断待ちの技能があります。' : 'まず診断1巡目と再確認を終えてください。苦手が確定すると使えます。'); return; }
+                if (m.id === 'retest' && !canStartRetest(activeTheme)) { alert('再診断する技能は、先に苦手練習で初回正解を2回連続してください。'); return; }
+                abandonCurrentProblemForNavigation();
                 activeSubMode = m.id;
                 updateSubModeUI();
+                updateLearningStatus();
                 nextProblem();
             };
             flex.appendChild(btn);
         });
+        updatePracticeToggle();
+    }
+
+    function shouldHideFormulaForDiagnosis() {
+        return (currentTrackingMode === 'diagnostic' || currentTrackingMode === 'retest') && diagnosticFormulaHidden;
+    }
+
+    function renderFormulaDisplay(themeKey = activeTheme, forceReveal = false) {
+        const formulaDiv = document.getElementById('formula-display');
+        const formulas = (themeData[themeKey] && themeData[themeKey].formulas) || [];
+        if (!forceReveal && shouldHideFormulaForDiagnosis()) {
+            formulaDiv.innerHTML = '<div class="formula-line" style="color:#64748b;font-weight:normal;">診断中：まずは式を見ずに考えてみよう。間違えたら必要な式が出ます。</div>';
+            return;
+        }
+        formulaDiv.innerHTML = formulas.map((f, i) => `<div class="formula-line" data-formula-index="${i}">【 ${f} 】</div>`).join('');
+    }
+
+    function getRelevantFormulas() {
+        const formulaSource = currentLearningCase || (currentDiagnosticSkill ? currentDiagnosticSkill.case : null);
+        if (formulaSource && formulaSource.formula) {
+            return Array.isArray(formulaSource.formula) ? formulaSource.formula : [formulaSource.formula];
+        }
+        const formulas = (themeData[activeTheme] && themeData[activeTheme].formulas) || [];
+        if (formulas.length <= 1) return formulas;
+        const q = currentProblem ? currentProblem.q : '';
+        if (activeTheme === 'volume') {
+            if (q.includes('L') && q.includes('dL') && q.includes('mL')) return [F.L_mL, F.dL_mL];
+            if (q.includes('dL') && q.includes('mL')) return [F.dL_mL];
+            if (q.includes('L') && q.includes('mL')) return [F.L_mL];
+            return [F.L_dL];
+        }
+        if (activeTheme === 'area') {
+            if (q.includes('㎠')) return [F.m2_cm2];
+            if (q.includes('㎢')) return [F.km2];
+            if (q.includes('ha')) return [F.ha];
+            if (q.includes('a')) return [F.a_m2];
+        }
+        if (activeTheme === 'volume2') {
+            if (q.includes('cm³') && q.includes('mL')) return [F.cm3_mL];
+            if (q.includes('m³') && q.includes('cm³')) return [F.m3_cm3];
+            if (q.includes('m³') && q.includes('L')) return [F.m3_L];
+            if (q.includes('L') && q.includes('cm³')) return [F.L_cm3];
+        }
+        if (activeTheme === 'time2') return q.includes('日') ? [F.day_h] : [F.h_min];
+        return formulas.slice(0, 1);
+    }
+
+    function highlightRelevantFormula() {
+        diagnosticFormulaHidden = false;
+        renderFormulaDisplay(activeTheme, true);
+        const relevant = getRelevantFormulas();
+        const all = (themeData[activeTheme] && themeData[activeTheme].formulas) || [];
+        document.querySelectorAll('#formula-display .formula-line').forEach((el, i) => {
+            el.classList.toggle('relevant-formula', relevant.includes(all[i]));
+        });
+        return relevant;
     }
 
     function renderTable(themeKey, tableType) {
@@ -1273,8 +2700,7 @@
         
         table.innerHTML = html;
 
-        const formulaDiv = document.getElementById('formula-display');
-        formulaDiv.innerHTML = themeData[themeKey].formulas.map(f => `<div>【 ${f} 】</div>`).join('');
+        renderFormulaDisplay(themeKey);
     }
 
     function adjustTableVal(idx, amount) {
@@ -1286,32 +2712,147 @@
         }
     }
 
+    function applyPendingLearningAdvance() {
+        if (activeSubMode !== 'learn') return;
+        const state = getLearningState();
+        if (!state.pendingAdvance) return;
+        if (state.pendingAdvance === 'complete') {
+            state.completed = true;
+            markThemeCleared(activeTheme);
+            activeSubMode = 'diagnostic';
+        } else if (state.pendingAdvance === 'next') {
+            state.stepIndex++;
+            state.completedCases = {};
+        }
+        state.pendingAdvance = null;
+        currentLearningCase = null;
+        updateSubModeUI();
+    }
+
+    function setNextProblemEnabled(enabled) {
+        const btn = document.getElementById('next-problem-btn');
+        if (btn) btn.disabled = !enabled;
+    }
+
+    function goNextProblem() {
+        const btn = document.getElementById('next-problem-btn');
+        if (btn && btn.disabled) return;
+        // 記録対象の診断問題だけ、未回答なら「△スキップ」。中立問題は成績に入れない。
+        if (currentProblem && isCurrentDiagnosticTracked() && currentDiagnosticSkill && !diagnosticOutcomeRecorded) {
+            recordDiagnosticSkip();
+        }
+        nextProblem();
+    }
+
     function nextProblem() {
+        setNextProblemEnabled(false);
         document.getElementById('result-panel').style.display = 'none';
         document.getElementById('tape-display').style.display = 'none';
         document.getElementById('tape-display').innerHTML = '';
         alreadyCorrectThisProblem = false;
-        
+        currentWrongCount = 0;
+        currentAnswerRevealed = false;
+        learningGenerationOverride = null;
+        currentLearningCase = null;
+        currentDiagnosticSkill = null;
+        diagnosticOutcomeRecorded = false;
+        diagnosticRevealRecorded = false;
+        diagnosticRecoveryRecorded = false;
+        diagnosticFirstWasCorrect = null;
+        currentTrackingMode = null;
+        diagnosticFormulaHidden = false;
+
+        applyPendingLearningAdvance();
+
         const data = themeData[activeTheme];
-        let probTemplates = data.problems;
-        
-        // 🌟 選択されたサブモードに応じて、出題テンプレートをフィルタリング
-        if (activeSubMode !== 'all') {
-            probTemplates = probTemplates.filter(p => p.submode === activeSubMode);
-        }
-        
-        // 万が一フィルター結果が空の場合はセーフティとして全件から抽出
-        if (probTemplates.length === 0) {
-            probTemplates = data.problems;
+        let probTemplate;
+
+        if (activeSubMode === 'diagnostic' || activeSubMode === 'weak' || activeSubMode === 'retest') {
+            let skill = null;
+            currentTrackingMode = activeSubMode;
+            if (activeSubMode === 'diagnostic') {
+                skill = pickDiagnosticSkill(activeTheme);
+                // 直前と同じ技能を再確認するしかない場合は、中立問題を1問挟む。
+                if (skill && lastPresentedSkillId === skill.key && diagnosticObservationCount(getSkillDiagnosticRecord(activeTheme, skill, false)) > 0) {
+                    currentTrackingMode = 'neutral';
+                    skill = pickNeutralIntervalSkill(activeTheme, lastPresentedSkillId);
+                    const tr = getThemeDiagnosticRecord(activeTheme);
+                    tr.sequence = Number(tr.sequence || 0) + 1;
+                    saveDiagnosticData();
+                }
+            } else if (activeSubMode === 'weak') {
+                skill = pickWeakPracticeSkill(activeTheme, 'weak');
+                if (!skill) {
+                    // ○○達成済みは再診断待ち。通常診断へ戻す。
+                    activeSubMode = 'diagnostic';
+                    currentTrackingMode = 'diagnostic';
+                    updateLearningStatus();
+                    skill = pickDiagnosticSkill(activeTheme);
+                }
+            } else {
+                const allEligible = getRetestEligibleSkills(activeTheme);
+                skill = pickWeakPracticeSkill(activeTheme, 'retest');
+                if (!skill && allEligible.length) {
+                    // クールダウン中。全技能が苦手でも止まらないよう、中立問題を挟む。
+                    currentTrackingMode = 'neutral';
+                    skill = pickNeutralIntervalSkill(activeTheme, lastPresentedSkillId);
+                    const tr = getThemeDiagnosticRecord(activeTheme);
+                    tr.sequence = Number(tr.sequence || 0) + 1;
+                    saveDiagnosticData();
+                } else if (!skill) {
+                    // 再診断対象がなくなったら通常診断へ戻す。
+                    activeSubMode = 'diagnostic';
+                    currentTrackingMode = 'diagnostic';
+                    updateLearningStatus();
+                    skill = pickDiagnosticSkill(activeTheme);
+                }
+            }
+            if (!skill) {
+                activeSubMode = 'diagnostic';
+                currentTrackingMode = 'diagnostic';
+                updateLearningStatus();
+                skill = pickDiagnosticSkill(activeTheme);
+                if (!skill) return;
+            }
+            currentDiagnosticSkill = skill;
+            lastPresentedSkillId = skill.key;
+            diagnosticFormulaHidden = (currentTrackingMode === 'diagnostic' || currentTrackingMode === 'retest');
+            learningGenerationOverride = skill.case.override || null;
+            probTemplate = data.problems[skill.case.template];
+        } else if (activeSubMode === 'learn') {
+            const state = getLearningState();
+            const plan = learningPlans[activeTheme] || [];
+
+            if (state.completed || plan.length === 0) {
+                activeSubMode = 'diagnostic';
+                updateLearningStatus();
+                return nextProblem();
+            } else {
+                const step = plan[state.stepIndex];
+                const requiredCase = getNextRequiredCase(step, state);
+                if (!requiredCase) {
+                    // 通常はregisterLearningSuccessでpendingになる。念のためここでも安全に進める。
+                    state.pendingAdvance = state.stepIndex >= plan.length - 1 ? 'complete' : 'next';
+                    applyPendingLearningAdvance();
+                    return nextProblem();
+                }
+                currentLearningCase = requiredCase;
+                probTemplate = data.problems[requiredCase.template];
+                learningGenerationOverride = requiredCase.override || null;
+            }
+        } else {
+            let probTemplates = data.problems;
+            if (activeSubMode !== 'all') probTemplates = probTemplates.filter(p => p.submode === activeSubMode);
+            if (probTemplates.length === 0) probTemplates = data.problems;
+            probTemplate = probTemplates[Math.floor(Math.random() * probTemplates.length)];
         }
 
-        const probTemplate = probTemplates[Math.floor(Math.random() * probTemplates.length)];
         currentProblem = probTemplate.gen();
+        learningGenerationOverride = null;
 
         const problemText = "もんだい： " + currentProblem.q;
         document.getElementById('problem-text').innerText = problemText;
 
-        // 🌟 時間のテーマ（日・時間・分・秒）は10進法の位取り表が使えないので、表を非表示にする
         const isTimeTheme = (activeTheme === 'time2' || activeTheme === 'time3');
         document.getElementById('table-title').style.display = isTimeTheme ? 'none' : '';
         document.getElementById('table-display').style.display = isTimeTheme ? 'none' : '';
@@ -1319,10 +2860,10 @@
         if (!isTimeTheme) {
             renderTable(activeTheme, currentProblem.tableType);
         } else {
-            const formulaDiv = document.getElementById('formula-display');
-            formulaDiv.innerHTML = themeData[activeTheme].formulas.map(f => `<div>【 ${f} 】</div>`).join('');
+            renderFormulaDisplay(activeTheme);
         }
         buildAnswerUI(currentProblem.targets);
+        updateLearningStatus();
 
         speakText(currentProblem.q);
     }
@@ -1347,32 +2888,13 @@
         });
     }
 
-    function checkAnswer() {
-        if (!currentProblem) return;
-
-        let finalAnswers = {};
-        let allFilled = true;
-        let hasLeadingZero = false; 
-
+    function showCorrectRepresentation() {
         const isTimeTheme = (activeTheme === 'time2' || activeTheme === 'time3');
-
-        currentProblem.targets.forEach(unit => {
-            const inputEl = document.getElementById(`input-${unit}`);
-            if (!inputEl || inputEl.value === '') { allFilled = false; return; }
-            const rawValueStr = inputEl.value.trim();
-            
-            if (!isTimeTheme && /^0\d+/.test(rawValueStr)) { hasLeadingZero = true; }
-            finalAnswers[unit] = parseInt(rawValueStr, 10);
-        });
-
-        if (!allFilled) { alert('すべての空欄に数字を入力してね！'); return; }
-
         if (isTimeTheme && currentProblem.tape) {
             const tapeEl = document.getElementById('tape-display');
             tapeEl.innerHTML = buildTapeDiagramHTML(currentProblem.tape);
             tapeEl.style.display = 'block';
         }
-
         (currentProblem.tableVals || []).forEach((correctDigit, idx) => {
             const cell = document.getElementById(`cell-val-${idx}`);
             if (cell) {
@@ -1382,16 +2904,85 @@
                 } else {
                     cell.style.color = '#005088'; cell.style.backgroundColor = '#fef08a'; cell.style.fontSize = '26px'; cell.style.padding = '2px 6px';
                 }
-                userTableVals[idx] = correctDigit; 
+                userTableVals[idx] = correctDigit;
             }
         });
+    }
+
+    function registerLearningSuccess() {
+        if (activeSubMode !== 'learn' || currentAnswerRevealed || !currentLearningCase) {
+            return { counted: false, advanced: false, completed: false };
+        }
+        const state = getLearningState();
+        const plan = learningPlans[activeTheme] || [];
+        if (state.completed || plan.length === 0 || state.pendingAdvance) {
+            return { counted: false, advanced: false, completed: state.completed };
+        }
+
+        const step = plan[state.stepIndex];
+        state.completedCases[currentLearningCase.id] = true;
+        const allDone = step.cases.every(c => !!state.completedCases[c.id]);
+        let advanced = false;
+        let completed = false;
+
+        if (allDone) {
+            if (state.stepIndex >= plan.length - 1) {
+                state.pendingAdvance = 'complete';
+                completed = true;
+            } else {
+                state.pendingAdvance = 'next';
+                advanced = true;
+            }
+        }
+        updateLearningStatus();
+        return { counted: true, advanced, completed };
+    }
+
+    function checkAnswer() {
+        if (!currentProblem) return;
+
+        let finalAnswers = {};
+        let rawAnswerParts = [];
+        let allFilled = true;
+        let hasLeadingZero = false; 
+
+        const isTimeTheme = (activeTheme === 'time2' || activeTheme === 'time3');
+
+        currentProblem.targets.forEach(unit => {
+            const inputEl = document.getElementById(`input-${unit}`);
+            if (!inputEl || inputEl.value === '') { allFilled = false; return; }
+            const rawValueStr = inputEl.value.trim();
+            if (!/^\d+$/.test(rawValueStr)) {
+                allFilled = false;
+                inputEl.dataset.invalidInteger = '1';
+                return;
+            }
+            inputEl.dataset.invalidInteger = '';
+            if (!isTimeTheme && /^0\d+/.test(rawValueStr)) { hasLeadingZero = true; }
+            finalAnswers[unit] = Number(rawValueStr);
+            rawAnswerParts.push(`${unit}=${rawValueStr}`);
+        });
+
+        if (!allFilled) {
+            const invalid = Array.from(document.querySelectorAll('.answer-input')).some(el => el.dataset.invalidInteger === '1');
+            alert(invalid ? 'こたえは、小数や記号を使わず整数で入力してね！' : 'すべての空欄に数字を入力してね！');
+            return;
+        }
 
         const resultPanel = document.getElementById('result-panel');
         resultPanel.style.display = 'block';
-
         const isCorrect = currentProblem.check(finalAnswers);
+        // 有効な回答で一度『こたえ合わせ』をした時点で、次の問題へ進める。
+        setNextProblemEnabled(true);
+        const answerSnapshot = rawAnswerParts.join('、');
+        recordDiagnosticFirstAttempt(isCorrect && !hasLeadingZero, answerSnapshot);
 
+        // 「書かない！」に関する従来の特別フィードバックは維持する
         if (hasLeadingZero) {
+            recordDiagnosticWrongAnswer(answerSnapshot);
+            showCorrectRepresentation();
+            currentAnswerRevealed = true;
+            recordDiagnosticReveal();
             playEffect('almost');
             const alertMsg = "おしい！数の左端の位が0になる時は、「0」は普通は書かないよ！";
             resultPanel.className = "result-panel result-wrong";
@@ -1402,8 +2993,12 @@
                 <p style="margin: 8px 0 0 0; font-size:15px; color:#444;">上の表で<span style="color:#b91c1c; font-weight:bold;">「書かない！」</span>になっている部屋には、0を書かずにそのまま空欄にするのがルールだよ！</p>
             `;
             speakText(alertMsg + "正しい答えは、" + currentProblem.correctStr + "です。");
+            return;
+        }
 
-        } else if (isCorrect) {
+        if (isCorrect) {
+            recordDiagnosticRecovery();
+            showCorrectRepresentation();
             if (alreadyCorrectThisProblem) {
                 playEffect('correct');
                 resultPanel.className = "result-panel result-success";
@@ -1413,42 +3008,83 @@
                     <span style="font-size:15px; color:#b91c1c; font-weight:bold;">もう正解しているので、つぎの問題に進みます！</span>
                 `;
                 speakText("もう正解しています。次の問題に進みます。");
-
                 setTimeout(nextProblem, 1200);
-
             } else {
                 alreadyCorrectThisProblem = true;
-                starCount++;
-                localStorage.setItem('tan_i_master_stars', starCount);
-                updateStarDisplay();
+                const learningResult = registerLearningSuccess();
+                const trackedDiagnosticMode = isCurrentDiagnosticTracked();
+                const diagnosticSessionMode = isDiagnosticTrackingMode();
+                if (!diagnosticSessionMode) {
+                    starCount++;
+                    localStorage.setItem('tan_i_master_stars', starCount);
+                    updateStarDisplay();
+                }
 
                 playEffect('correct');
                 resultPanel.className = "result-panel result-success";
                 const successTip = isTimeTheme
                     ? `よくできました！下のテープ図で、考え方をたしかめてみよう！`
                     : `バッチリです！「書かない！」のマスと数字の位置の関係をよく覚えておこう！`;
+                let stepMessage = '';
+                if (learningResult.completed) {
+                    stepMessage = `<br><strong style="color:#b45309;">🏁 全STEPクリア！ 「つぎの問題」から診断ランダムを始め、正誤を記録します。</strong>`;
+                } else if (learningResult.advanced) {
+                    stepMessage = `<br><strong style="color:#0369a1;">✅ STEPクリア！ 「つぎの問題」で次の段階へ進みます。</strong>`;
+                }
                 resultPanel.innerHTML = `
                     <strong>🎉 大せいかい！素晴らしい！</strong><br>
                     【こたえ】 ${currentProblem.correctStr}<br>
-                    <span style="font-size:15px;">${successTip}</span>
+                    <span style="font-size:15px;">${successTip}</span>${stepMessage}
                 `;
 
-                speakText("大正解！素晴らしい！答えは、" + currentProblem.correctStr + " です。たまった星が1つふえたよ！");
-
-                setTimeout(openStarModal, 200);
+                if (diagnosticSessionMode) {
+                    speakText(trackedDiagnosticMode
+                        ? "正解です。答えは、" + currentProblem.correctStr + " です。"
+                        : "正解です。これは間隔問題なので診断記録には入りません。");
+                    setTimeout(nextProblem, 900);
+                } else {
+                    speakText("大正解！素晴らしい！答えは、" + currentProblem.correctStr + " です。たまった星が1つふえたよ！");
+                    setTimeout(openStarModal, 200);
+                }
             }
+            return;
+        }
 
-        } else {
-            playEffect('wrong');
-            resultPanel.className = "result-panel result-wrong";
+        // 9: 誤答時は正解を即公開せず、段階的にヒントを強くする
+        recordDiagnosticWrongAnswer(answerSnapshot);
+        currentWrongCount++;
+        playEffect('wrong');
+        resultPanel.className = "result-panel result-wrong";
+
+        if (currentWrongCount === 1) {
+            const relevantFormulas = highlightRelevantFormula();
+            const formulaText = relevantFormulas.length ? relevantFormulas.map(f => `「${f}」`).join(' と ') : '上のもとになる式';
             resultPanel.innerHTML = `
-                <strong>😢 ざんねん！ちがう数字が入ったよ</strong><br>
-                【ただしいこたえ】 <strong style="font-size:22px;">${currentProblem.correctStr}</strong><br>
-                <p style="margin: 8px 0 0 0; font-size:15px; color:#444;"><strong>解き方のヒント：</strong>${currentProblem.hint}</p>
+                <strong>🤔 もういちど考えてみよう</strong><br>
+                <p style="margin:8px 0 0 0; font-size:16px;">まず、上で黄色くした ${formulaText} を使えるか確かめよう。まだ答えは出しません。</p>
             `;
-            speakText("残念。正しい答えは、" + currentProblem.correctStr + "です。");
+            speakText("もういちど考えてみよう。黄色くした、もとになる式を見てみよう。");
+        } else if (currentWrongCount === 2) {
+            resultPanel.innerHTML = `
+                <strong>💡 ヒントをもう1つ</strong><br>
+                <p style="margin:8px 0 0 0; font-size:16px;">${currentProblem.hint}</p>
+                <p style="margin:6px 0 0 0; font-size:14px; color:#475569;">まだ正しい答えは表示していません。もう一度入力してみよう。</p>
+            `;
+            speakText("ヒントです。" + currentProblem.hint);
+        } else {
+            currentAnswerRevealed = true;
+            recordDiagnosticReveal();
+            showCorrectRepresentation();
+            resultPanel.innerHTML = `
+                <strong>📘 ここで答えをたしかめよう</strong><br>
+                【ただしいこたえ】 <strong style="font-size:22px;">${currentProblem.correctStr}</strong><br>
+                <p style="margin:8px 0 0 0; font-size:15px; color:#444;"><strong>解き方：</strong>${currentProblem.hint}</p>
+                <p style="margin:6px 0 0 0; font-size:14px; color:#475569;">答えを見たこの問題は、学習コースのSTEPクリア数には数えません。次の問題でもう一度ためそう。</p>
+            `;
+            speakText("答えを確かめます。正しい答えは、" + currentProblem.correctStr + "です。");
         }
     }
+
 </script>
 </body>
 </html>
