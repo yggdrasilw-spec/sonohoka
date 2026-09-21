@@ -45,9 +45,9 @@ description: 児童向け自力学習Webアプリに「1授業限定・リアル
 <script src="js/teacher-bridge.js"></script>
 ```
 
-### ステップ 2: カバー画面またはヘッダーへのUI配置
-カバー画面（または設定エリア）に、先生コード入力欄と接続状態ランプを配置します：
+### ステップ 2: UI配置パターン（静的HTML型 または 動的SPA型）
 
+#### パターンA: 静的HTML型（カバー画面やスタート画面がHTML直書きの場合）
 ```html
 <div class="teacher-connect-card" style="margin: 16px auto; max-width: 480px; background: #fff; border: 2px solid #dbe2e8; border-radius: 16px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
   <div style="display: flex; align-items: center; gap: 8px;">
@@ -65,11 +65,27 @@ description: 児童向け自力学習Webアプリに「1授業限定・リアル
 </div>
 ```
 
-### ステップ 3: 先生対応中の安心バナー配置
-画面上部に、先生が向かっている時の通知バナーを配置します（初期状態は非表示）：
+#### パターンB: 動的SPA型（`renderHome()` 等でJSからDOM生成する場合）
+`renderTeacherConnectCard()` 共通関数を用意し、ホーム描画時にカードDOMを生成して挿入します：
+```javascript
+// renderHome() の中で
+main.appendChild(renderTeacherConnectCard());
+updateTeacherIndicator();
+```
+※ 画面遷移で再描画されても、`TeacherBridge.getSessionState()` から接続中コードや前回のコードが自動復元されます。
 
+### ステップ 3: ヘッダー常時ステータスバッジ（推奨）
+学習画面中も児童が接続中であることを安心して確認できるよう、ヘッダーにコンパクトな表示を置きます：
 ```html
-<div id="teacherNoticeBanner" class="teacher-notice-banner hidden" style="position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 95; background: #fffbeb; border: 2px solid #f59e0b; border-radius: 999px; padding: 8px 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 10px; font-weight: 900; color: #92400e;">
+<button id="topTeacherStatusBtn" class="support-btn" style="display:none; padding:4px 10px; font-size:12px; background:rgba(255,255,255,0.9); border-radius:999px; border:none; color:#334155; font-weight:800; align-items:center; gap:4px; cursor:pointer;" title="先生に接続中">
+  <span>🟢</span><span id="topTeacherStatusText">先生: ----</span>
+</button>
+```
+
+### ステップ 4: 先生対応中の安心バナー配置
+画面上部に、先生が向かっている時・一緒に見ている時の通知バナーを配置します（初期状態は非表示）：
+```html
+<div id="teacherNoticeBanner" class="teacher-notice-banner hidden" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; background: #fffbeb; border: 2px solid #f59e0b; border-radius: 999px; padding: 8px 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: flex; align-items: center; gap: 10px; font-weight: 900; color: #92400e;">
   <span id="teacherNoticeIcon" style="font-size: 20px;">🏃</span>
   <div>
     <span id="teacherNoticeMain" style="font-size: 14px;">先生が見に来ます</span>
@@ -85,19 +101,19 @@ description: 児童向け自力学習Webアプリに「1授業限定・リアル
 ### ① 初期化
 ```javascript
 TeacherBridge.init({
-  appId: 'your-app-id',    // 例: 'kakezan', 'hikizan-hissan'
-  appName: '教材の表示名' // 例: 'かけ算九九', '引き算の筆算'
+  appId: 'your-app-id',    // 例: 'tashizan-daibouken', 'seisuu-seishitsu'
+  appName: '教材の表示名' // 例: 'たしざん大冒険', '整数のせいしつ'
 });
 ```
 
 ### ② 画面遷移フック（進捗同期）
-問題や画面が切り替わる箇所（例: `renderScene`, `nextQuestion` など）で呼び出します：
+問題や画面が切り替わる箇所（例: `renderScene`, `renderStage`, `showScreen` など）で呼び出します：
 ```javascript
 if (window.TeacherBridge) {
   TeacherBridge.updateProgress({
-    step: 'STEP ' + currentStep,
-    screenId: currentScreenId,
-    screenName: currentScreenTitle
+    step: 'ステージ1 ステップ1',
+    screenId: 'stage-1-step-0',
+    screenName: 'ステージ1：ひだりからけいさん'
   });
 }
 ```
@@ -115,7 +131,6 @@ if (window.TeacherBridge) {
 // 「先生に聞く」ボタン押下時
 function onAskTeacherClick() {
   if (window.TeacherBridge) TeacherBridge.requestHelp();
-  openAskTeacherModal();
 }
 
 // 児童が「やっぱり大丈夫」で戻った時
@@ -123,42 +138,52 @@ function onCancelHelp() {
   if (window.TeacherBridge) TeacherBridge.cancelHelp();
 }
 
-// 先生と一緒に見て解決した時（「先生といっしょに見た」ボタンなど）
-function onResolveHelp() {
+// 問題正解時、または先生と一緒に解決した時（自動解決）
+function onQuestionSolved() {
   if (window.TeacherBridge) TeacherBridge.resolveHelp();
 }
 ```
 
 ### ⑤ 休憩・再開フック
 ```javascript
-// 「休む」ボタン押下時
+// ホーム画面へ戻る時・休む時
 if (window.TeacherBridge) TeacherBridge.pause();
 
-// 学習開始・再開時
+// ステージ開始・学習再開時
 if (window.TeacherBridge) TeacherBridge.resume();
 ```
 
 ### ⑥ 先生ステータス監視 & セッション終了通知
 ```javascript
-// 先生がダッシュボードで「対応する」などを押した時の通知
 TeacherBridge.onTeacherStatusChange(({ status }) => {
   const banner = document.getElementById('teacherNoticeBanner');
+  const icon = document.getElementById('teacherNoticeIcon');
+  const main = document.getElementById('teacherNoticeMain');
+  const sub = document.getElementById('teacherNoticeSub');
   if (!banner) return;
   if (status === 'teacher_coming') {
     banner.classList.remove('hidden');
-    document.getElementById('teacherNoticeMain').textContent = '先生が見に来ます';
-    document.getElementById('teacherNoticeSub').textContent = 'この画面で待っていてね';
+    banner.style.borderColor = '#f59e0b';
+    banner.style.background = '#fffbeb';
+    banner.style.color = '#92400e';
+    if (icon) icon.textContent = '🏃';
+    if (main) main.textContent = '先生が見に来ます';
+    if (sub) sub.textContent = 'この画面で待っていてね';
   } else if (status === 'teacher_supporting') {
     banner.classList.remove('hidden');
-    document.getElementById('teacherNoticeMain').textContent = '先生といっしょに見ているよ';
-    document.getElementById('teacherNoticeSub').textContent = '';
+    banner.style.borderColor = '#3b82f6';
+    banner.style.background = '#eff6ff';
+    banner.style.color = '#1e40af';
+    if (icon) icon.textContent = '👀';
+    if (main) main.textContent = '先生といっしょに見ているよ';
+    if (sub) sub.textContent = '';
   } else {
     banner.classList.add('hidden');
   }
 });
 
-// 授業終了時（先生が終了を押した、または60分経過）
 TeacherBridge.onSessionEnded(() => {
+  updateTeacherIndicator('none');
   const banner = document.getElementById('teacherNoticeBanner');
   if (banner) banner.classList.add('hidden');
   alert('この先生コードの時間は終了しました。\n教材はこのまま続けられます。先生に新しいコードを聞いてください。');
@@ -167,6 +192,49 @@ TeacherBridge.onSessionEnded(() => {
 
 ---
 
-## 4. リファレンスコード
+## 4. 学習支援モジュール（`LearningSupport`）との統合例
+
+アプリ内に独自のヒント・誤答診断層（`LearningSupport`）がある場合は、各メソッドにフックを挟むだけでシームレスに同期します：
+
+```javascript
+LearningSupport = {
+  begin(stage, step) {
+    ...
+    if (window.TeacherBridge) TeacherBridge.updateSupportLevel(0);
+  },
+  recordWrong(detail) {
+    ...
+    if (window.TeacherBridge) TeacherBridge.updateSupportLevel(this.current.hintLevel);
+  },
+  requestHint() {
+    ...
+    if (window.TeacherBridge) TeacherBridge.updateSupportLevel(this.current.hintLevel);
+  },
+  requestTeacherHelp() {
+    ...
+    if (window.TeacherBridge) TeacherBridge.requestHelp();
+  },
+  recordCorrect() {
+    ...
+    if (window.TeacherBridge && (this.current.teacherRequestId || window.TeacherBridge.getSessionState().status === 'help_requested')) {
+      TeacherBridge.resolveHelp();
+    }
+  }
+};
+```
+
+---
+
+## 5. 対応済みアプリ一覧 & App ID
+
+| ファイル名 | App ID | 表示名 | UIパターン |
+|---|---|---|---|
+| `seisuu_no_seishitsu_yasashiku.html` | `seisuu-seishitsu` | 整数のせいしつ | 静的HTML型（カバー画面） |
+| `tashizan_daibouken.html` | `tashizan-daibouken` | たしざん大冒険 | 動的SPA型（`renderHome`） |
+
+---
+
+## 6. リファレンスコード
 
 詳細な組み込み実装コードテンプレートは [references/teacher-support-template.js](references/teacher-support-template.js) を参照してください。
+
