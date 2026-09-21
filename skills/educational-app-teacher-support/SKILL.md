@@ -231,6 +231,7 @@ LearningSupport = {
 |---|---|---|---|
 | `seisuu_no_seishitsu_yasashiku.html` | `seisuu-seishitsu` | 整数のせいしつ | 静的HTML型（カバー画面） |
 | `tashizan_daibouken.html` | `tashizan-daibouken` | たしざん大冒険 | 動的SPA型（`renderHome`） |
+| `warizan_renshu_hint.html` | `warizan-renshu-hint` | わり算れんしゅう ヒントつき | 静的HTML型（ヘッダー常設） |
 
 ---
 

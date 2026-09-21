@@ -4,10 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>わり算れんしゅう ヒントつき もんだいしゅう</title>
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<!-- Firebase SDK is loaded lazily only when Raid Boss connection is requested. -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap');
 
@@ -309,6 +306,17 @@
   #levelSelect::-webkit-scrollbar-thumb:hover {
     background: var(--ink-soft);
   }
+
+  .mastery-tools{
+    display:flex; align-items:center; justify-content:flex-end; gap:8px;
+    margin:0 2px 10px;
+  }
+  .mastery-tools button{
+    border:2px solid var(--paper-line); background:#fff; color:var(--ink-soft);
+    border-radius:999px; padding:6px 12px; font-family:inherit; font-weight:800;
+    cursor:pointer; font-size:.8rem;
+  }
+  .mastery-tools button:hover{ background:var(--paper-line); }
 
   .level-category {
     margin-bottom: 12px;
@@ -734,6 +742,11 @@
     50% { transform: scale(1.06); box-shadow: inset 0 0 0 3.5px #f97316, 0 6px 16px rgba(249, 115, 22, 0.45); background-color: rgba(255, 152, 0, 0.32) !important; }
   }
 
+  .current-input-cell {
+    box-shadow: inset 0 0 0 4px #f97316, 0 0 0 4px rgba(249,115,22,.18), 0 6px 16px rgba(249,115,22,.35) !important;
+    transform: scale(1.08);
+    z-index: 20 !important;
+  }
   .hl-ref-blue   .main-num { color: #1d4ed8; font-weight: 900; }
   .hl-ref-green  .main-num { color: #15803d; font-weight: 900; }
   .hl-ref-red    .main-num { color: #b91c1c; font-weight: 900; }
@@ -945,7 +958,10 @@
     opacity:.35;
     cursor:not-allowed;
   }
-  #hintBackBtn{ background:#fff; color: var(--ink-soft); border-color: var(--paper-line); }
+  #hintBackBtn, #hissanPrevBtn{ background:#fff; color: var(--ink-soft); border-color: var(--paper-line); }
+  #hissanPrevBtn{ display:none; }
+  #hissanSkipHintBtn{ display:none; background:#fff; color:#166534; border-color:#86efac; }
+  #hissanSkipHintBtn.on{ background:#dcfce7; color:#166534; border-color:#22c55e; box-shadow:0 0 0 2px rgba(34,197,94,.10) inset; }
 
   #hintDots{ display:flex; gap:4px; flex-wrap:wrap; justify-content:center; max-width:140px; }
   #hintDots span{
@@ -1186,6 +1202,9 @@
     .shake, .fade-in, .pop, .wrong-row.strike .strike-line, .wrong-row.shatter{ animation: none !important; }
   }
 </style>
+<!-- 先生支援モジュール（TeacherBridge） -->
+<script src="js/student-profile.js"></script>
+<script src="js/teacher-bridge.js"></script>
 </head>
 <body>
 
@@ -1193,6 +1212,16 @@
 <div id="app">
   <header class="top">
     <h1>わり算れんしゅう</h1>
+
+    <!-- 先生コード接続カード -->
+    <div id="teacherConnectCard" style="display:flex; align-items:center; gap:6px; background:#fff; border:2px solid #dbe2e8; border-radius:999px; padding:3px 8px; flex-shrink:0;">
+      <span style="font-size:.95rem;">🧑‍🏫</span>
+      <span id="teacherConnSubText" style="font-size:.78rem; color:#64748b; white-space:nowrap;">先生コード</span>
+      <input type="text" id="teacherCodeInput" placeholder="コード" maxlength="8" autocomplete="off"
+        style="width:72px; border:none; outline:none; background:transparent; font-family:inherit; font-weight:800; font-size:.85rem; text-align:center; text-transform:uppercase; color:#0284c7;">
+      <button id="teacherConnectBtn" class="raid-btn" type="button">つなぐ</button>
+      <span id="teacherConnIndicator" title="先生との接続状態" style="font-size:.95rem;">⚪</span>
+    </div>
 
     <div class="raid-bar" id="raidBar">
       <div class="raid-code-box">
@@ -1229,12 +1258,22 @@
     </div>
 
     <div style="display:flex; align-items:center; gap:8px;">
-      <div id="scoreBox"><span>せいかい</span><b id="scoreCorrect">0</b><span>/</span><span id="scoreTotal">0</span>もん</div>
+      <div id="scoreBox"><span>いっぱつ正解</span><b id="scoreCorrect">0</b><span>/</span><span id="scoreTotal">0</span>もん</div>
       <button id="soundBtn" class="sound-btn" title="おと ON/OFF" type="button" aria-pressed="true">🔊</button>
     </div>
   </header>
 
+  <!-- 先生対応中バナー（初期状態は非表示） -->
+  <div id="teacherNoticeBanner" class="hidden" style="display:none; position:absolute; top:50px; left:50%; transform:translateX(-50%); z-index:95; background:#fffbeb; border:2px solid #f59e0b; border-radius:999px; padding:6px 18px; box-shadow:0 8px 24px rgba(0,0,0,0.12); align-items:center; gap:10px; font-weight:900; color:#92400e; white-space:nowrap;">
+    <span id="teacherNoticeIcon" style="font-size:1.1rem;">🏃</span>
+    <span id="teacherNoticeMain" style="font-size:.85rem;">先生が見に来ます</span>
+    <span id="teacherNoticeSub" style="font-size:.78rem; color:#b45309; margin-left:4px;">この画面で待っていてね</span>
+  </div>
+
   <section id="levelSelect" class="card">
+    <div class="mastery-tools">
+      <button id="resetMasteryBtn" type="button" title="この端末に保存した習熟度をすべて初期化します">習熟度をリセット</button>
+    </div>
     <!-- カテゴリー1: 九九の基本 -->
     <div class="level-category open">
       <button class="category-header" type="button">
@@ -1376,7 +1415,7 @@
         <button class="level-btn lv6" data-level="6-3">
           <span class="badge">6-3</span>
           <span class="txt">
-            <strong>レベル６-３　3けた ÷ 1けたの筆算</strong>
+            <strong>レベル６-３　3けた ÷ 1けたの筆算（わりきれる）</strong>
             <span>756÷3 や 256÷4。百の位からたつか十の位からたつか見極めよう</span>
           </span>
         </button>
@@ -1393,7 +1432,7 @@
         <button class="level-btn lv7" data-level="7-1">
           <span class="badge">7-1</span>
           <span class="txt">
-            <strong>レベル７-１　4けた ÷ 1けたの筆算</strong>
+            <strong>レベル７-１　4けた ÷ 1けたの筆算（わりきれる）</strong>
             <span>1002÷6 や 1500÷4。千の位からじゅんばんに商をたてていこう</span>
           </span>
         </button>
@@ -1489,7 +1528,9 @@
         </div>
 
         <div id="hintControls">
-          <button id="hintBackBtn">◀ もどる</button>
+          <button id="hissanPrevBtn" type="button">◀ 前の工程</button>
+          <button id="hissanSkipHintBtn" type="button" aria-pressed="true">✓ ヒントを とばす</button>
+          <button id="hintBackBtn">◀ ヒント</button>
           <span id="hintDots"></span>
           <button id="hintNextBtn">ヒント ▶</button>
         </div>
@@ -1586,63 +1627,319 @@
     problem: null,
     hintStage: 0,
     maxHint: 0,
-    inputDigits: "",      // quotient digits typed by the child (level1) or "active field" digits
-    inputRemainder: "",   // level2 remainder digits
-    activeField: "q",     // 'q' or 'r' for level2
+    inputDigits: "",
+    inputRemainder: "",
+    activeField: "q",
     answered: false,
     isWrongState: false,
     lastKey: null,
     score: { correct: 0, total: 0 },
     streak: 0,
     avatar: "⚔️",
-    // レベル5（筆算キーパッド入力モード）用
-    hissanTargets: [],    // [{r,c,char,stepIdx}, ...] 途中式の入力対象マス（たてる→かける→ひく→おろすの順）
-    hissanEntries: {},    // "r,c" -> 入力済みの数字
-    hissanIdx: 0          // 現在アクティブな入力対象マスの index
+    // 筆算入力モード：画面に見せる工程と、数字入力を要求する工程を分けて管理する。
+    hissanTargets: [],       // 互換・テスト用の全入力セル一覧
+    hissanFlow: [],          // [{stepIdx,cells:[...]}] 実際に児童が通る工程列
+    hissanFlowPos: 0,        // hissanFlow上の現在位置
+    hissanEntries: {},       // "stepIdx|r,c" -> 正答して確定した数字
+    hissanBuffer: "",       // 現在工程で入力途中の数字列（工程単位で採点）
+    hissanStepMistakes: {},  // stepIdx -> その工程での誤答回数
+    hissanHintDepth: 0,      // 0=自力 / 1=考え方 / 2=具体ヒント
+    hissanSkipHints: true,  // true=説明だけの工程は自動で飛ばし、必要な時だけヒントを見る
+    hadMistake: false,
+    usedConcreteHint: false,
+    levelSolved: 0,          // 同じレベル内で解けた問題数（保存対象）
+    masteryPoints: 0,        // 累積の参考値
+    masteryRecent: [],       // 直近5問の質（2=一発 / 1=自己修正 / 0=具体ヒント）
+    adaptiveTier: 1,         // 実際に難易度・支援へ使う段階 1〜4
+    masterySinceTierChange: 0,
+    problemSerial: 0
   };
 
-  // レベル5系（商・あまりだけでなく、途中式のマスもキーパッドで埋めるモード）かどうか
   function isHissanInputLevel(p){
     if(!p || !p.isLongDivision) return false;
     if(p.hissanInput === true) return true;
-    return !!(typeof p.level === "string" && p.level.slice(0, 2) === "5-");
+    if(typeof p.level !== "string") return false;
+    return p.level.slice(0, 2) === "5-" || p.level.slice(0, 2) === "6-" || p.level.slice(0, 2) === "7-";
   }
 
-  // AdvancedDivisionEngine.generateSteps() の steps から、
-  // 実際にキーパッドで入力させるマス（ガイドの✕や罫線延長の空マスは除く）を
-  // たてる→かける→ひく→おろすの順（=steps配列に出てくる順）で取り出す
-  function buildHissanTargets(appState){
-    var targets = [];
-    if(!appState || !appState.steps) return targets;
-    appState.steps.forEach(function(step, stepIdx){
-      (step.writeCells || []).forEach(function(wc){
-        if(wc.isGuide) return;
-        if(wc.isLineExtend) return;
-        if(wc.isAutoFill) return;
-        if(wc.char === "" || wc.char === undefined || wc.char === null) return;
-        targets.push({ r: wc.r, c: wc.c, char: String(wc.char), stepIdx: stepIdx });
-      });
-    });
-    return targets;
+  function isTrialInteractiveStep(step, p){
+    if(!step || !p) return false;
+    var lvl = String(p.level || "");
+    if(lvl !== "8-3" && lvl !== "8-4") return false;
+    return step.phase === "trial-build" || step.phase === "trial-multiply" || step.phase === "trial-fix";
   }
 
-  // 現在アクティブな入力対象マスを idx に移動する（状態更新のみ、描画は呼び出し側で行う）。
-  // skipHintSync=true のときは state.hintStage を書き換えない
-  // （問題を読み込んだ直後、まだ何も入力していない状態でヒントが
-  // 勝手に2〜3ステップ目から始まって見えてしまうバグの対策。
-  // 通常の入力中の呼び出し（1マス埋めるたびに次のマスへ進める場合）は
-  // これまで通りヒントの進み具合も一緒に同期させたいので、その場合は
-  // このフラグを付けない）。
-  function activateHissanTarget(idx, skipHintSync){
-    var targets = state.hissanTargets || [];
-    idx = Math.max(0, Math.min(idx, targets.length));
-    state.hissanIdx = idx;
-    if(skipHintSync) return;
-    if(idx < targets.length){
-      state.hintStage = Math.max(state.hintStage, targets[idx].stepIdx);
-    } else if(state.maxHint){
-      state.hintStage = state.maxHint;
+  var MASTERY_STORAGE_KEY = "warizan_mastery_by_level_v1";
+
+  function loadMasteryStore(){
+    try{
+      var raw = localStorage.getItem(MASTERY_STORAGE_KEY);
+      var obj = raw ? JSON.parse(raw) : {};
+      return (obj && typeof obj === "object") ? obj : {};
+    }catch(e){ return {}; }
+  }
+
+  function saveCurrentMastery(){
+    if(!state.level) return;
+    try{
+      var store = loadMasteryStore();
+      store[String(state.level)] = {
+        points: state.masteryPoints || 0,
+        recent: (state.masteryRecent || []).slice(-5),
+        tier: Math.max(1, Math.min(4, state.adaptiveTier || 1)),
+        since: state.masterySinceTierChange || 0,
+        solved: state.levelSolved || 0
+      };
+      localStorage.setItem(MASTERY_STORAGE_KEY, JSON.stringify(store));
+    }catch(e){}
+  }
+
+  function restoreMasteryForLevel(lvl){
+    var rec = loadMasteryStore()[String(lvl)] || {};
+    state.masteryPoints = Number(rec.points) || 0;
+    state.masteryRecent = Array.isArray(rec.recent) ? rec.recent.slice(-5).map(function(v){ return Math.max(0, Math.min(2, Number(v)||0)); }) : [];
+    state.adaptiveTier = Math.max(1, Math.min(4, Number(rec.tier) || 1));
+    state.masterySinceTierChange = Math.max(0, Number(rec.since) || 0);
+    state.levelSolved = Math.max(0, Number(rec.solved) || 0);
+  }
+
+  function resetAllMastery(){
+    try{ localStorage.removeItem(MASTERY_STORAGE_KEY); }catch(e){}
+    state.masteryPoints = 0;
+    state.masteryRecent = [];
+    state.adaptiveTier = 1;
+    state.masterySinceTierChange = 0;
+    state.levelSolved = 0;
+  }
+
+  function masteryTier(){
+    return Math.max(1, Math.min(4, state.adaptiveTier || 1));
+  }
+
+  function hissanSupportMode(){
+    var tier = masteryTier();
+    return tier === 1 ? "full" : (tier === 2 ? "guided" : (tier === 3 ? "compact" : "minimal"));
+  }
+
+  function awardMasteryForSolvedProblem(){
+    var quality = state.usedConcreteHint ? 0 : (state.hadMistake ? 1 : 2);
+    state.levelSolved = (state.levelSolved || 0) + 1;
+    state.masteryPoints = (state.masteryPoints || 0) + quality;
+    state.masteryRecent = (state.masteryRecent || []).concat([quality]).slice(-5);
+    state.masterySinceTierChange = (state.masterySinceTierChange || 0) + 1;
+
+    // 直近5問で判断する。良ければ上げ、苦戦が続けば1段階戻す。
+    // 毎問上下して落ち着かなくならないよう、段階変更後は最低3問見る。
+    if(state.masteryRecent.length >= 5 && state.masterySinceTierChange >= 3){
+      var recentSum = state.masteryRecent.reduce(function(a,b){ return a+b; }, 0);
+      var oldTier = masteryTier();
+      if(recentSum >= 8 && oldTier < 4) state.adaptiveTier = oldTier + 1;
+      else if(recentSum <= 3 && oldTier > 1) state.adaptiveTier = oldTier - 1;
+      if(state.adaptiveTier !== oldTier) state.masterySinceTierChange = 0;
     }
+    saveCurrentMastery();
+    return quality;
+  }
+
+  // 通常問題は「最後のヒント」より前に答えが実質見えるレベルがある。
+  // その段階へ到達した時点で具体ヒント使用として扱う。
+  var NORMAL_REVEAL_STAGE = {
+    "1":2, "2":2, "3-1":2, "3-2":2,
+    "4-1":3, "4-2":3, "4-3":3,
+    "8-1":2
+  };
+  function markConcreteHintIfRevealed(){
+    var reveal = NORMAL_REVEAL_STAGE[String(state.level || "")];
+    if(reveal !== undefined && state.hintStage >= reveal) state.usedConcreteHint = true;
+  }
+
+  function hissanCellIsInput(wc, step, p){
+    if(!wc || wc.isGuide || wc.isLineExtend) return false;
+    if(wc.char === "" || wc.char === undefined || wc.char === null) return false;
+    if(wc.isAutoFill && !isTrialInteractiveStep(step, p)) return false;
+    return true;
+  }
+
+  function hissanEntryKey(stepIdx, cell){
+    return stepIdx + "|" + cell.r + "," + cell.c;
+  }
+
+  function inputCellsForHissanStep(step, stepIdx, p){
+    var cells = [];
+    (step && step.writeCells ? step.writeCells : []).forEach(function(wc){
+      if(!hissanCellIsInput(wc, step, p)) return;
+      cells.push({ r: wc.r, c: wc.c, char: String(wc.char), stepIdx: stepIdx });
+    });
+    return cells;
+  }
+
+  // 入力の無い工程も、学習上意味のあるものは必ず通す。
+  // initだけは準備画面なのでフローから外す。
+  function buildHissanFlow(appState, p){
+    var flow = [];
+    var flatTargets = [];
+    if(!appState || !Array.isArray(appState.steps)) return { flow: flow, targets: flatTargets };
+    var support = hissanSupportMode();
+    // 数学的な4工程と特殊判断は常に残す。補助的な「全体を見る／隠す」は
+    // 習熟に応じて徐々に省き、支援をフェードアウトする。
+    var keepNoInput = { skip:true, subtract:true, drop:true, "trial-fix":true, complete:true };
+    if(support === "full"){ keepNoInput.cover = true; keepNoInput.hide = true; }
+    else if(support === "guided"){ keepNoInput.hide = true; }
+    appState.steps.forEach(function(step, stepIdx){
+      if(!step || step.phase === "init") return;
+      var cells = inputCellsForHissanStep(step, stepIdx, p);
+      cells.forEach(function(c){ flatTargets.push(c); });
+      if(cells.length > 0 || keepNoInput[step.phase]){
+        flow.push({ stepIdx: stepIdx, cells: cells });
+      }
+    });
+    return { flow: flow, targets: flatTargets };
+  }
+
+  function currentHissanFlowItem(){
+    var flow = state.hissanFlow || [];
+    return (state.hissanFlowPos >= 0 && state.hissanFlowPos < flow.length) ? flow[state.hissanFlowPos] : null;
+  }
+
+  function currentHissanStep(){
+    var item = currentHissanFlowItem();
+    if(!item || !HissanSim.appState || !HissanSim.appState.steps) return null;
+    return HissanSim.appState.steps[item.stepIdx] || null;
+  }
+
+  function currentHissanHasInput(){
+    var item = currentHissanFlowItem();
+    return !!(item && item.cells && item.cells.length);
+  }
+
+  function hissanFlowItemCompleted(item){
+    if(!item || !item.cells || !item.cells.length) return false;
+    return item.cells.every(function(cell){
+      return state.hissanEntries[hissanEntryKey(item.stepIdx, cell)] === cell.char;
+    });
+  }
+
+  function hissanPhaseLabel(step){
+    if(!step) return "";
+    if(step.phase === "trial-build") return "仮の商";
+    if(step.phase === "trial-multiply") return "仮商をたしかめる";
+    if(step.phase === "trial-fix") return "仮商を直す";
+    if(["cover","hide","skip","build","build-zero"].includes(step.phase)) return "たてる";
+    if(step.phase === "multiply") return "かける";
+    if(step.phase === "subtract") return "ひく";
+    if(step.phase === "drop") return "おろす";
+    if(step.phase === "complete") return "完成";
+    return "筆算";
+  }
+
+  function hissanFlowItemHasInput(item){
+    return !!(item && item.cells && item.cells.length);
+  }
+
+  // 「ヒントをとばす」がONのときは、説明だけの工程には着地せず、
+  // 次（または前）の実入力工程まで一気に移動する。
+  // 児童が必要なときは入力工程の「ヒント▶」をいつでも使える。
+  function findHissanRequiredPos(fromPos, direction){
+    var flow = state.hissanFlow || [];
+    var i = fromPos + direction;
+    while(i >= 0 && i < flow.length){
+      if(hissanFlowItemHasInput(flow[i])) return i;
+      i += direction;
+    }
+    return -1;
+  }
+
+  function jumpToNextRequiredHissanStep(){
+    var next = findHissanRequiredPos(state.hissanFlowPos, 1);
+    if(next < 0){
+      checkHissanAnswer();
+      return;
+    }
+    setHissanFlowPos(next);
+    renderAll(true);
+  }
+
+  function applyHissanSkipHintMode(immediate){
+    if(!isHissanInputLevel(state.problem)) return;
+    if(state.hissanSkipHints && !currentHissanHasInput()){
+      var next = findHissanRequiredPos(state.hissanFlowPos - 1, 1);
+      if(next >= 0){
+        setHissanFlowPos(next);
+        if(immediate) renderAll(false);
+      }
+    }
+  }
+
+  function toggleHissanSkipHints(){
+    state.hissanSkipHints = !state.hissanSkipHints;
+    if(state.hissanSkipHints) applyHissanSkipHintMode(false);
+    renderAll(false);
+  }
+
+  function backHissanFlow(){
+    if(state.answered || state.hissanFlowPos <= 0) return;
+    if(state.hissanBuffer && state.hissanBuffer.length){
+      feedback.textContent = "入力途中の数字を『けす』で消してから前の工程へ戻ろう。";
+      feedback.className = "bad";
+      return;
+    }
+    if(state.hissanSkipHints){
+      var prevRequired = findHissanRequiredPos(state.hissanFlowPos, -1);
+      if(prevRequired < 0) return;
+      setHissanFlowPos(prevRequired);
+    } else {
+      setHissanFlowPos(state.hissanFlowPos - 1);
+    }
+    renderAll(false);
+  }
+
+  function setHissanFlowPos(pos){
+    var flow = state.hissanFlow || [];
+    if(!flow.length){
+      state.hissanFlowPos = 0;
+      state.hintStage = 0;
+      return;
+    }
+    state.hissanFlowPos = Math.max(0, Math.min(pos, flow.length - 1));
+    state.hintStage = flow[state.hissanFlowPos].stepIdx;
+    state.hissanBuffer = "";
+    state.hissanHintDepth = 0;
+    state.isWrongState = false;
+  }
+
+  function advanceHissanFlow(){
+    var flow = state.hissanFlow || [];
+    if(!flow.length || state.answered) return;
+    if(state.hissanSkipHints){
+      jumpToNextRequiredHissanStep();
+      return;
+    }
+    if(state.hissanFlowPos >= flow.length - 1){
+      checkHissanAnswer();
+      return;
+    }
+    setHissanFlowPos(state.hissanFlowPos + 1);
+    var step = currentHissanStep();
+    if(step && step.phase === "complete"){
+      checkHissanAnswer();
+    } else {
+      renderAll(true);
+    }
+  }
+
+  function hissanConceptHint(step){
+    if(!step) return "今の工程を、筆算の順番にそって考えよう。";
+    var phase = step.phase;
+    if(phase === "trial-build") return "『仮の商』：上の位どうしを見て、まず入りそうな商を予想しよう。";
+    if(phase === "trial-multiply") return "『たしかめる』：今の仮の商 × わる数 を計算して、わられる数をこえないか確かめよう。";
+    if(phase === "trial-fix") return "大きすぎた仮の商は1小さくして、もう一度かけ算で確かめよう。";
+    if(phase === "build" || phase === "build-zero" || phase === "skip" || phase === "hide" || phase === "cover"){
+      return "『たてる』：今見ている数の中に、わる数がいくつ入るか考えよう。";
+    }
+    if(phase === "multiply") return "『かける』：今たてた商 × わる数 を計算しよう。";
+    if(phase === "subtract") return "『ひく』：上の数から、今かけて出した数をひこう。";
+    if(phase === "drop") return "『おろす』：となりの数字を、同じ位の列へまっすぐおろそう。";
+    return "今の工程で何をするか、色とマスの位置を見て考えよう。";
   }
 
   // initLevel4Scene / renderLevel4 が使う実行コンテキスト。
@@ -1666,6 +1963,25 @@
       ctx.timers.forEach(function(t){ clearTimeout(t); });
       ctx.timers = [];
     }
+  }
+
+  // レベル2のSVG演出は通常の setTimeout を直接残すと、次の問題へ移った後に
+  // 古い問題のコールバックが新しいDOMを書き換えることがある。問題切替時に
+  // 一括破棄できる専用レジストリを使う。
+  var level2Timers = [];
+  function clearLevel2Timers(){
+    level2Timers.forEach(function(t){ clearTimeout(t); });
+    level2Timers = [];
+  }
+  function scheduleLevel2(fn, delay){
+    var args = Array.prototype.slice.call(arguments, 2);
+    var serial = state.problemSerial;
+    var id = setTimeout(function(){
+      if(serial !== state.problemSerial) return;
+      fn.apply(null, args);
+    }, delay);
+    level2Timers.push(id);
+    return id;
   }
 
   // 筆算ステップ図解(レベル5) の演出タイマー
@@ -1834,6 +2150,8 @@
   var hintDots = document.getElementById("hintDots");
   var hintNextBtn = document.getElementById("hintNextBtn");
   var hintBackBtn = document.getElementById("hintBackBtn");
+  var hissanPrevBtn = document.getElementById("hissanPrevBtn");
+  var hissanSkipHintBtn = document.getElementById("hissanSkipHintBtn");
   var answerDisplay = document.getElementById("answerDisplay");
   var keypad = document.getElementById("keypad");
   var submitBtn = document.getElementById("submitBtn");
@@ -1859,29 +2177,62 @@
   // ------------------------------------------------------------------
   var db = null;
   var authPromise = null;
-  try {
-    var firebaseConfig = {
-      apiKey: "AIzaSyDdqalOwQFkZnNvFCKzXqM4VeP4IBPhzXo",
-      authDomain: "raid-boss-project.firebaseapp.com",
-      databaseURL: "https://raid-boss-project-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "raid-boss-project",
-      storageBucket: "raid-boss-project.firebasestorage.app",
-      messagingSenderId: "195656323635",
-      appId: "1:195656323635:web:ca2dd1251af61929080946",
-      measurementId: "G-6VBWZVLKLK"
-    };
-    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-      if (!firebase.apps || !firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+  var firebaseLoadPromise = null;
+  var firebaseConfig = {
+    apiKey: "AIzaSyDdqalOwQFkZnNvFCKzXqM4VeP4IBPhzXo",
+    authDomain: "raid-boss-project.firebaseapp.com",
+    databaseURL: "https://raid-boss-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "raid-boss-project",
+    storageBucket: "raid-boss-project.firebasestorage.app",
+    messagingSenderId: "195656323635",
+    appId: "1:195656323635:web:ca2dd1251af61929080946",
+    measurementId: "G-6VBWZVLKLK"
+  };
+
+  function loadExternalScript(src){
+    return new Promise(function(resolve, reject){
+      var existing = document.querySelector('script[data-lazy-src="' + src + '"]');
+      if(existing){
+        if(existing.getAttribute("data-loaded") === "1") return resolve();
+        if(existing.getAttribute("data-failed") === "1"){ existing.remove(); existing = null; }
+        else {
+          existing.addEventListener("load", resolve, { once:true });
+          existing.addEventListener("error", function(err){ existing.setAttribute("data-failed","1"); existing.remove(); reject(err); }, { once:true });
+          return;
+        }
       }
-      db = firebase.database();
-      authPromise = firebase.auth().signInAnonymously().catch(function(err){
-        console.error("匿名認証エラー:", err);
-        return null;
+      var sc = document.createElement("script");
+      sc.src = src;
+      sc.async = true;
+      sc.setAttribute("data-lazy-src", src);
+      sc.addEventListener("load", function(){ sc.setAttribute("data-loaded", "1"); resolve(); }, { once:true });
+      sc.addEventListener("error", function(err){ sc.setAttribute("data-failed","1"); sc.remove(); reject(err); }, { once:true });
+      document.head.appendChild(sc);
+    });
+  }
+
+  function ensureFirebase(){
+    if(db) return Promise.resolve(true);
+    if(firebaseLoadPromise) return firebaseLoadPromise;
+    firebaseLoadPromise = loadExternalScript("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js")
+      .then(function(){ return loadExternalScript("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"); })
+      .then(function(){ return loadExternalScript("https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"); })
+      .then(function(){
+        if(typeof firebase === "undefined" || !firebase.initializeApp) throw new Error("Firebase SDK unavailable");
+        if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        authPromise = firebase.auth().signInAnonymously().catch(function(err){
+          console.error("匿名認証エラー:", err);
+          return null;
+        });
+        return true;
+      })
+      .catch(function(err){
+        firebaseLoadPromise = null;
+        console.error("Firebase遅延読込エラー:", err);
+        return false;
       });
-    }
-  } catch (err) {
-    console.error("Firebase初期化エラー:", err);
+    return firebaseLoadPromise;
   }
 
   var currentRaidCode = "";
@@ -1946,15 +2297,17 @@
       return;
     }
 
-    if(!db){
-      updateConnStatus("error", "Firebaseが初期化されていません");
-      showRaidMsg("⚠️ Firebaseの接続に失敗しました", "error");
+    updateConnStatus("connecting", "接続確認中: ルーム " + cleanCode);
+    if(!isAuto) showRaidMsg("🔍 ルーム「" + cleanCode + "」を確認中...", "warn");
+
+    var firebaseReady = await ensureFirebase();
+    if(!firebaseReady || !db){
+      updateConnStatus("error", "Firebaseを読み込めませんでした");
+      showRaidMsg("⚠️ レイド機能を読み込めませんでした。通常練習はそのまま使えます", "error");
       return;
     }
 
     updateConnStatus("connecting", "接続確認中: ルーム " + cleanCode);
-    if(!isAuto) showRaidMsg("🔍 ルーム「" + cleanCode + "」を確認中...", "warn");
-
     if(authPromise){
       await authPromise;
     }
@@ -2027,7 +2380,9 @@
     try { localStorage.setItem("raid_boss_student_name", name); } catch(e){}
 
     studentRoomRef.child("boss/currentHp").transaction(function(currentHp){
-      return (currentHp || 0) - damage;
+      // 複数端末から同時攻撃されてもHPが0未満にならないよう、
+      // transaction 内で原子的に下限0へクランプする。
+      return Math.max(0, (currentHp || 0) - damage);
     });
 
     studentRoomRef.child("logs").push({
@@ -2104,6 +2459,10 @@
   // ------------------------------------------------------------------
   // problem generation (Levels 1 to 6-3)
   // ------------------------------------------------------------------
+  function problemKey(p){
+    if(!p) return "";
+    return [String(p.level || ""), p.dividend, p.divisor, p.quotient, p.remainder || 0].join("|");
+  }
   function genLevel1(prevKey){
     var problem, key, tries = 0;
     do{
@@ -2115,7 +2474,7 @@
         dividend: divisor * quotient,
         title: "レベル1　わりきれる もんだい"
       };
-      key = divisor + "-" + quotient;
+      key = problemKey(problem);
       tries++;
     } while(key === prevKey && tries < 20);
     return problem;
@@ -2133,7 +2492,7 @@
         dividend: divisor * quotient + remainder,
         title: "レベル2　あまりの ある もんだい"
       };
-      key = divisor + "-" + quotient + "-" + remainder;
+      key = problemKey(problem);
       tries++;
     } while(key === prevKey && tries < 20);
     return problem;
@@ -2152,7 +2511,7 @@
         dividend: dividend, q_ten: q_ten,
         title: "レベル3-1　何十 ÷ 1けた（わりきれる）"
       };
-      key = divisor + "-" + quotient;
+      key = problemKey(problem);
       tries++;
     } while(key === prevKey && tries < 20);
     return problem;
@@ -2171,7 +2530,7 @@
         dividend: dividend, q_hun: q_hun,
         title: "レベル3-2　何百 ÷ 1けた（わりきれる）"
       };
-      key = divisor + "-" + quotient;
+      key = problemKey(problem);
       tries++;
     } while(key === prevKey && tries < 20);
     return problem;
@@ -2201,7 +2560,7 @@
           tenPart: divisor * q_ten * 10, onePart: divisor * q_one,
           title: "レベル4-1　分解なしでわりきれる暗算"
         };
-        key = divisor + "-" + quotient;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 30);
@@ -2245,7 +2604,7 @@
           unbundlePart: unbundlePart,
           title: "レベル4-2　十の位を解体する暗算（あまりなし）"
         };
-        key = divisor + "-" + quotient;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 50);
@@ -2289,7 +2648,7 @@
           unbundlePart: unbundlePart,
           title: "レベル4-3　解体＋あまりが出る暗算"
         };
-        key = divisor + "-" + quotient + "-" + remainder;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 50);
@@ -2322,7 +2681,7 @@
           dividend: dividend, isLongDivision: true,
           title: "レベル5-1　筆算：商が2けた（解体なし）"
         };
-        key = divisor + "-" + quotient;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 30);
@@ -2348,11 +2707,16 @@
           dividend: dividend, isLongDivision: true,
           title: "レベル5-2　筆算：商が2けた（解体あり）"
         };
-        key = divisor + "-" + quotient;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 40);
-    return problem || genLevel5_1(prevKey);
+    return problem || {
+      level: "5-2", divisor: 2, quotient: 26, remainder: 0,
+      hasRemainder: false, targetQuotientDigits: 2,
+      dividend: 52, isLongDivision: true,
+      title: "レベル5-2　筆算：商が2けた（解体あり）"
+    };
   }
 
   function genLevel5_3(prevKey){
@@ -2370,11 +2734,16 @@
           dividend: dividend, isLongDivision: true,
           title: "レベル5-3　筆算：商が2けた（あまりあり）"
         };
-        key = divisor + "-" + quotient + "-" + remainder;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 40);
-    return problem || genLevel5_1(prevKey);
+    return problem || {
+      level: "5-3", divisor: 2, quotient: 26, remainder: 1,
+      hasRemainder: true, targetQuotientDigits: 2,
+      dividend: 53, isLongDivision: true,
+      title: "レベル5-3　筆算：商が2けた（あまりあり）"
+    };
   }
 
   function genLevel5_4(prevKey){
@@ -2391,11 +2760,16 @@
           dividend: dividend, isLongDivision: true, tenSkip: true,
           title: "レベル5-4　筆算：商が1けた（十の位がわれない）"
         };
-        key = divisor + "-" + quotient;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 40);
-    return problem || genLevel1(prevKey);
+    return problem || {
+      level: "5-4", divisor: 6, quotient: 7, remainder: 0,
+      hasRemainder: false, targetQuotientDigits: 1,
+      dividend: 42, isLongDivision: true, tenSkip: true,
+      title: "レベル5-4　筆算：商が1けた（十の位がわれない）"
+    };
   }
 
   function genLevel6_1(prevKey){
@@ -2406,16 +2780,23 @@
       var q_one = rand(1, 4);
       var quotient = q_hun * 100 + q_one;
       var dividend = divisor * quotient;
-      problem = {
-        level: "6-1", divisor: divisor, quotient: quotient, remainder: 0,
-        hasRemainder: false, targetQuotientDigits: 3,
-        dividend: dividend, isLongDivision: true, zeroInMiddle: true,
-        title: "レベル6-1　筆算：商の途中に「0」がたつ型"
-      };
-      key = divisor + "-" + quotient;
+      if(dividend >= 100 && dividend <= 999){
+        problem = {
+          level: "6-1", divisor: divisor, quotient: quotient, remainder: 0,
+          hasRemainder: false, targetQuotientDigits: 3,
+          dividend: dividend, isLongDivision: true, zeroInMiddle: true,
+          title: "レベル6-1　筆算：商の途中に「0」がたつ型"
+        };
+        key = problemKey(problem);
+      }
       tries++;
-    } while(key === prevKey && tries < 20);
-    return problem;
+    } while((!problem || key === prevKey) && tries < 40);
+    return problem || {
+      level: "6-1", divisor: 2, quotient: 401, remainder: 0,
+      hasRemainder: false, targetQuotientDigits: 3,
+      dividend: 802, isLongDivision: true, zeroInMiddle: true,
+      title: "レベル6-1　筆算：商の途中に「0」がたつ型"
+    };
   }
 
   function genLevel6_2(prevKey){
@@ -2431,7 +2812,7 @@
         dividend: dividend, isLongDivision: true, zeroAtEnd: true,
         title: "レベル6-2　筆算：商の末尾に「0」がたつ型"
       };
-      key = divisor + "-" + quotient + "-" + remainder;
+      key = problemKey(problem);
       tries++;
     } while(key === prevKey && tries < 20);
     return problem;
@@ -2454,9 +2835,9 @@
         level: "6-3", divisor: divisor, quotient: quotient, remainder: 0,
         hasRemainder: false, targetQuotientDigits: isThreeDigitQ ? 3 : 2,
         dividend: dividend, isLongDivision: true,
-        title: "レベル6-3　筆算：3けた ÷ 1けた"
+        title: "レベル6-3　筆算：3けた ÷ 1けた（わりきれる）"
       };
-      key = divisor + "-" + quotient;
+      key = problemKey(problem);
       tries++;
     } while(key === prevKey && tries < 20);
     return problem;
@@ -2476,9 +2857,9 @@
         level: "7-1", divisor: divisor, quotient: quotient, remainder: 0,
         hasRemainder: false, targetQuotientDigits: String(quotient).length,
         dividend: dividend, isLongDivision: true,
-        title: "レベル7-1　筆算：4けた ÷ 1けた"
+        title: "レベル7-1　筆算：4けた ÷ 1けた（わりきれる）"
       };
-      key = divisor + "-" + quotient;
+      key = problemKey(problem);
       tries++;
     } while(key === prevKey && tries < 20);
     return problem;
@@ -2507,7 +2888,7 @@
           dividend: dividend, isLongDivision: false,
           title: "レベル8-1　何十 ÷ 何十（商が1けた）"
         };
-        key = divisor + "-" + quotient;
+        key = problemKey(problem);
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 40);
@@ -2528,6 +2909,23 @@
     return Math.min(9, Math.floor(topVal / d1));
   }
 
+  // 商が複数桁になる問題は、問題全体ではなく各ラウンドごとの仮商修正幅で難易度を見る。
+  function maxTrialAdjustmentForDivision(dividend, divisor){
+    var digits = String(dividend).split("");
+    var d1 = parseInt(String(divisor)[0], 10);
+    var rem = 0;
+    var maxAdjust = 0;
+    for(var i=0;i<digits.length;i++){
+      var target = rem * 10 + parseInt(digits[i],10);
+      if(target < divisor){ rem = target; continue; }
+      var q = Math.floor(target / divisor);
+      var trial = Math.min(9, Math.floor(Math.floor(target / 10) / d1));
+      maxAdjust = Math.max(maxAdjust, Math.max(0, trial - q));
+      rem = target - q * divisor;
+    }
+    return maxAdjust;
+  }
+
   function genLevel8_2(prevKey){
     // 2けた÷2けたの筆算：かりの商がそのまま正しい商になる型（調整なし）
     var problem, key, tries = 0;
@@ -2546,7 +2944,7 @@
             dividend: dividend, isLongDivision: true, hissanInput: true,
             title: "レベル8-2　2けた÷2けたの筆算（かりの商がそのまま使える型）"
           };
-          key = divisor + "-" + quotient + "-" + remainder;
+          key = problemKey(problem);
         }
       }
       tries++;
@@ -2571,59 +2969,191 @@
       var dividend = divisor * quotient + remainder;
       if(dividend >= 10 && dividend < 100 && remainder < divisor){
         var trial = estimateTrialQuotient(dividend, divisor);
-        if(trial > quotient){
+        var mt = masteryTier();
+        var allowedAdjust = mt === 1 ? 1 : (mt === 2 ? 2 : 5);
+        if(trial > quotient && (trial - quotient) <= allowedAdjust){
           problem = {
             level: "8-3", divisor: divisor, quotient: quotient, remainder: remainder,
             hasRemainder: hasRem, targetQuotientDigits: 1,
             dividend: dividend, isLongDivision: true, hissanInput: true,
             title: "レベル8-3　2けた÷2けたの筆算（かりの商を調整する型）"
           };
-          key = divisor + "-" + quotient + "-" + remainder;
+          key = problemKey(problem);
         }
       }
       tries++;
     } while((!problem || key === prevKey) && tries < 60);
-    return problem || {
-      level: "8-3", divisor: 23, quotient: 3, remainder: 17,
-      hasRemainder: true, targetQuotientDigits: 1,
-      dividend: 86, isLongDivision: true, hissanInput: true,
-      title: "レベル8-3　2けた÷2けたの筆算（かりの商を調整する型）"
-    };
+    if(problem && key !== prevKey) return problem;
+    var fallbacks = [
+      { level:"8-3", divisor:23, quotient:3, remainder:17, hasRemainder:true, targetQuotientDigits:1, dividend:86, isLongDivision:true, hissanInput:true, title:"レベル8-3　2けた÷2けたの筆算（かりの商を調整する型）" },
+      { level:"8-3", divisor:23, quotient:2, remainder:22, hasRemainder:true, targetQuotientDigits:1, dividend:68, isLongDivision:true, hissanInput:true, title:"レベル8-3　2けた÷2けたの筆算（かりの商を調整する型）" }
+    ];
+    return problemKey(fallbacks[0]) !== prevKey ? fallbacks[0] : fallbacks[1];
   }
 
   function genLevel8_4(prevKey){
-    // 3けた÷2けたの筆算（商は1けたまたは2けた）
+    // 3けた÷2けたは内部で段階化する。
+    // 習熟度で段階化する（問題数だけでは上げない）。
+    // Tier1: 商1けた・わりきれる・仮商修正なし
+    // Tier2: 商1けた・あまり可・仮商修正は最大1回
+    // Tier3: 商2けた中心・まずはわりきれる
+    // Tier4: 全範囲
+    var tier = masteryTier();
     var problem, key, tries = 0;
     do{
       var divisor = rand(11, 89);
       var minQ = Math.max(2, Math.ceil(100 / divisor));
       var maxQ = Math.floor(999 / divisor);
       if(minQ > maxQ){ tries++; continue; }
-      var quotient = rand(minQ, maxQ);
-      var hasRem = Math.random() < 0.5;
-      var remainder = hasRem ? rand(1, divisor - 1) : 0;
-      var dividend = divisor * quotient + remainder;
-      if(dividend >= 100 && dividend <= 999){
-        problem = {
-          level: "8-4", divisor: divisor, quotient: quotient, remainder: remainder,
-          hasRemainder: hasRem, targetQuotientDigits: String(quotient).length,
-          dividend: dividend, isLongDivision: true, hissanInput: true,
-          title: "レベル8-4　3けた÷2けたの筆算"
-        };
-        key = divisor + "-" + quotient + "-" + remainder;
+
+      var quotient;
+      var remainder = 0;
+      if(tier <= 2){
+        var qMin1 = Math.max(minQ, 2);
+        var qMax1 = Math.min(maxQ, 9);
+        if(qMin1 > qMax1){ tries++; continue; }
+        quotient = rand(qMin1, qMax1);
+        remainder = (tier === 2 && Math.random() < 0.45) ? rand(1, divisor - 1) : 0;
+      } else if(tier === 3){
+        var qMin2 = Math.max(minQ, 10);
+        var qMax2 = Math.min(maxQ, 39);
+        if(qMin2 > qMax2){ tries++; continue; }
+        quotient = rand(qMin2, qMax2);
+        remainder = 0;
+      } else {
+        quotient = rand(minQ, maxQ);
+        remainder = Math.random() < 0.5 ? rand(1, divisor - 1) : 0;
       }
+
+      var dividend = divisor * quotient + remainder;
+      if(dividend < 100 || dividend > 999){ tries++; continue; }
+      var maxRoundAdjust = maxTrialAdjustmentForDivision(dividend, divisor);
+      if(tier === 1 && maxRoundAdjust !== 0){ tries++; continue; }
+      if(tier === 2 && maxRoundAdjust > 1){ tries++; continue; }
+      if(tier === 3 && maxRoundAdjust > 1){ tries++; continue; }
+      problem = {
+        level: "8-4", divisor: divisor, quotient: quotient, remainder: remainder,
+        hasRemainder: remainder > 0, targetQuotientDigits: String(quotient).length,
+        dividend: dividend, isLongDivision: true, hissanInput: true,
+        difficultyTier: tier,
+        title: "レベル8-4　3けた÷2けたの筆算"
+      };
+      key = problemKey(problem);
       tries++;
-    } while((!problem || key === prevKey) && tries < 60);
-    return problem || {
-      level: "8-4", divisor: 24, quotient: 6, remainder: 9,
-      hasRemainder: true, targetQuotientDigits: 1,
-      dividend: 153, isLongDivision: true, hissanInput: true,
-      title: "レベル8-4　3けた÷2けたの筆算"
+    } while((!problem || key === prevKey) && tries < 200);
+
+    if(problem) return problem;
+    var fallbackByTier = {
+      1:{divisor:12,quotient:9,remainder:0,dividend:108},
+      2:{divisor:24,quotient:6,remainder:9,dividend:153},
+      3:{divisor:21,quotient:16,remainder:0,dividend:336},
+      4:{divisor:21,quotient:16,remainder:9,dividend:345}
     };
+    var f = fallbackByTier[tier];
+    return {
+      level:"8-4", divisor:f.divisor, quotient:f.quotient, remainder:f.remainder,
+      hasRemainder:f.remainder>0, targetQuotientDigits:String(f.quotient).length,
+      dividend:f.dividend, isLongDivision:true, hissanInput:true, difficultyTier:tier,
+      title:"レベル8-4　3けた÷2けたの筆算"
+    };
+  }
+
+  // 各generatorのランダム再試行が上限に達しても、直前と同じ問題を
+  // 返さないための最終安全弁。同じレベル内の代表問題を2つずつ持ち、
+  // prevKeyと異なる方を選ぶ。通常はgeneratorの結果がそのまま使われる。
+  function alternateProblemForLevel(lvl, prevKey){
+    var alts = {
+      "1": [
+        {level:"1",divisor:2,quotient:3,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:6,title:"レベル1　わりきれる もんだい"},
+        {level:"1",divisor:4,quotient:2,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:8,title:"レベル1　わりきれる もんだい"}
+      ],
+      "2": [
+        {level:"2",divisor:2,quotient:3,remainder:1,hasRemainder:true,targetQuotientDigits:1,dividend:7,title:"レベル2　あまりの ある もんだい"},
+        {level:"2",divisor:3,quotient:3,remainder:2,hasRemainder:true,targetQuotientDigits:1,dividend:11,title:"レベル2　あまりの ある もんだい"}
+      ],
+      "3-1": [
+        {level:"3-1",divisor:2,quotient:20,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:40,q_ten:2,title:"レベル3-1　何十 ÷ 1けた（わりきれる）"},
+        {level:"3-1",divisor:3,quotient:30,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:90,q_ten:3,title:"レベル3-1　何十 ÷ 1けた（わりきれる）"}
+      ],
+      "3-2": [
+        {level:"3-2",divisor:3,quotient:200,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:600,q_hun:2,title:"レベル3-2　何百 ÷ 1けた（わりきれる）"},
+        {level:"3-2",divisor:4,quotient:200,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:800,q_hun:2,title:"レベル3-2　何百 ÷ 1けた（わりきれる）"}
+      ],
+      "4-1": [
+        {level:"4-1",divisor:2,quotient:23,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:46,tenDigit:4,oneDigit:6,q_ten:2,q_one:3,tenRem:0,unbundlePart:6,tenPart:40,onePart:6,title:"レベル4-1　分解なしでわりきれる暗算"},
+        {level:"4-1",divisor:4,quotient:21,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:84,tenDigit:8,oneDigit:4,q_ten:2,q_one:1,tenRem:0,unbundlePart:4,tenPart:80,onePart:4,title:"レベル4-1　分解なしでわりきれる暗算"}
+      ],
+      "4-2": [
+        {level:"4-2",divisor:2,quotient:26,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:52,tenDigit:5,oneDigit:2,q_ten:2,q_one:6,tenRem:1,tenPart:40,unbundlePart:12,title:"レベル4-2　十の位を解体する暗算（あまりなし）"},
+        {level:"4-2",divisor:3,quotient:14,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:42,tenDigit:4,oneDigit:2,q_ten:1,q_one:4,tenRem:1,tenPart:30,unbundlePart:12,title:"レベル4-2　十の位を解体する暗算（あまりなし）"}
+      ],
+      "4-3": [
+        {level:"4-3",divisor:2,quotient:26,remainder:1,hasRemainder:true,targetQuotientDigits:2,dividend:53,tenDigit:5,oneDigit:3,q_ten:2,q_one:6,tenRem:1,tenPart:40,unbundlePart:13,title:"レベル4-3　解体＋あまりが出る暗算"},
+        {level:"4-3",divisor:3,quotient:14,remainder:1,hasRemainder:true,targetQuotientDigits:2,dividend:43,tenDigit:4,oneDigit:3,q_ten:1,q_one:4,tenRem:1,tenPart:30,unbundlePart:13,title:"レベル4-3　解体＋あまりが出る暗算"}
+      ],
+      "5-1": [
+        {level:"5-1",divisor:4,quotient:21,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:84,isLongDivision:true,title:"レベル5-1　筆算：商が2けた（解体なし）"},
+        {level:"5-1",divisor:3,quotient:22,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:66,isLongDivision:true,title:"レベル5-1　筆算：商が2けた（解体なし）"}
+      ],
+      "5-2": [
+        {level:"5-2",divisor:2,quotient:26,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:52,isLongDivision:true,title:"レベル5-2　筆算：商が2けた（解体あり）"},
+        {level:"5-2",divisor:3,quotient:25,remainder:0,hasRemainder:false,targetQuotientDigits:2,dividend:75,isLongDivision:true,title:"レベル5-2　筆算：商が2けた（解体あり）"}
+      ],
+      "5-3": [
+        {level:"5-3",divisor:2,quotient:26,remainder:1,hasRemainder:true,targetQuotientDigits:2,dividend:53,isLongDivision:true,title:"レベル5-3　筆算：商が2けた（あまりあり）"},
+        {level:"5-3",divisor:3,quotient:25,remainder:1,hasRemainder:true,targetQuotientDigits:2,dividend:76,isLongDivision:true,title:"レベル5-3　筆算：商が2けた（あまりあり）"}
+      ],
+      "5-4": [
+        {level:"5-4",divisor:6,quotient:7,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:42,isLongDivision:true,tenSkip:true,title:"レベル5-4　筆算：商が1けた（十の位がわれない）"},
+        {level:"5-4",divisor:7,quotient:8,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:56,isLongDivision:true,tenSkip:true,title:"レベル5-4　筆算：商が1けた（十の位がわれない）"}
+      ],
+      "6-1": [
+        {level:"6-1",divisor:2,quotient:401,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:802,isLongDivision:true,zeroInMiddle:true,title:"レベル6-1　筆算：商の途中に「0」がたつ型"},
+        {level:"6-1",divisor:3,quotient:303,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:909,isLongDivision:true,zeroInMiddle:true,title:"レベル6-1　筆算：商の途中に「0」がたつ型"}
+      ],
+      "6-2": [
+        {level:"6-2",divisor:3,quotient:20,remainder:1,hasRemainder:true,targetQuotientDigits:2,dividend:61,isLongDivision:true,zeroAtEnd:true,title:"レベル6-2　筆算：商の末尾に「0」がたつ型"},
+        {level:"6-2",divisor:4,quotient:20,remainder:3,hasRemainder:true,targetQuotientDigits:2,dividend:83,isLongDivision:true,zeroAtEnd:true,title:"レベル6-2　筆算：商の末尾に「0」がたつ型"}
+      ],
+      "6-3": [
+        {level:"6-3",divisor:3,quotient:252,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:756,isLongDivision:true,title:"レベル6-3　筆算：3けた ÷ 1けた（わりきれる）"},
+        {level:"6-3",divisor:4,quotient:216,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:864,isLongDivision:true,title:"レベル6-3　筆算：3けた ÷ 1けた（わりきれる）"}
+      ],
+      "7-1": [
+        {level:"7-1",divisor:4,quotient:250,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:1000,isLongDivision:true,title:"レベル7-1　筆算：4けた ÷ 1けた（わりきれる）"},
+        {level:"7-1",divisor:3,quotient:400,remainder:0,hasRemainder:false,targetQuotientDigits:3,dividend:1200,isLongDivision:true,title:"レベル7-1　筆算：4けた ÷ 1けた（わりきれる）"}
+      ],
+      "8-1": [
+        {level:"8-1",divisor:20,quotient:3,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:60,isLongDivision:false,title:"レベル8-1　何十 ÷ 何十（商が1けた）"},
+        {level:"8-1",divisor:30,quotient:4,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:120,isLongDivision:false,title:"レベル8-1　何十 ÷ 何十（商が1けた）"}
+      ],
+      "8-2": [
+        {level:"8-2",divisor:21,quotient:4,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:84,isLongDivision:true,hissanInput:true,title:"レベル8-2　2けた÷2けたの筆算（かりの商がそのまま使える型）"},
+        {level:"8-2",divisor:24,quotient:3,remainder:0,hasRemainder:false,targetQuotientDigits:1,dividend:72,isLongDivision:true,hissanInput:true,title:"レベル8-2　2けた÷2けたの筆算（かりの商がそのまま使える型）"}
+      ],
+      "8-3": [
+        {level:"8-3",divisor:23,quotient:3,remainder:17,hasRemainder:true,targetQuotientDigits:1,dividend:86,isLongDivision:true,hissanInput:true,title:"レベル8-3　2けた÷2けたの筆算（かりの商を調整する型）"},
+        {level:"8-3",divisor:23,quotient:2,remainder:22,hasRemainder:true,targetQuotientDigits:1,dividend:68,isLongDivision:true,hissanInput:true,title:"レベル8-3　2けた÷2けたの筆算（かりの商を調整する型）"}
+      ],
+      "8-4": [
+        {level:"8-4",divisor:24,quotient:6,remainder:9,hasRemainder:true,targetQuotientDigits:1,dividend:153,isLongDivision:true,hissanInput:true,title:"レベル8-4　3けた÷2けたの筆算"},
+        {level:"8-4",divisor:21,quotient:16,remainder:9,hasRemainder:true,targetQuotientDigits:2,dividend:345,isLongDivision:true,hissanInput:true,title:"レベル8-4　3けた÷2けたの筆算"}
+      ]
+    };
+    var choices = alts[String(lvl)] || [];
+    for(var i=0; i<choices.length; i++){
+      if(problemKey(choices[i]) !== prevKey) return Object.assign({}, choices[i]);
+    }
+    return null;
   }
 
   var lastKey = null;
   function newProblem(){
+    state.problemSerial++;
+    clearLevel2Timers();
+    clearHissanIllusTimers();
+    if(typeof clearHissanRoundTimers === "function") clearHissanRoundTimers();
+    if(typeof clearHissanRevealTimers === "function") clearHissanRevealTimers();
     level4Ctx.scene = null;
     clearCtxTimers(level4Ctx);
     var lvl = String(state.level || "1");
@@ -2651,7 +3181,11 @@
     else if(lvl === "8-4") { p = genLevel8_4(lastKey); maxH = 5; }
     else { p = genLevel1(lastKey); maxH = 3; }
 
-    lastKey = p.dividend + "-" + p.divisor + "-" + p.quotient;
+    if(problemKey(p) === lastKey){
+      var alternate = alternateProblemForLevel(lvl, lastKey);
+      if(alternate) p = alternate;
+    }
+    lastKey = problemKey(p);
     state.problem = p;
     state.hintStage = 0;
     state.inputDigits = "";
@@ -2660,6 +3194,11 @@
     state.answered = false;
     state.counted = false;
     state.isWrongState = false;
+    state.hadMistake = false;
+    state.usedConcreteHint = false;
+    state.hissanStepMistakes = {};
+    state.hissanBuffer = "";
+    state.hissanHintDepth = 0;
     feedback.textContent = "";
     feedback.className = "";
     nextProblemBtn.classList.remove("show");
@@ -2674,10 +3213,15 @@
       state.maxHint = HissanSim.appState.steps.length - 1;
 
       if(isHissanInputLevel(p)){
-        state.hissanTargets = buildHissanTargets(HissanSim.appState);
+        var builtFlow = buildHissanFlow(HissanSim.appState, p);
+        state.hissanFlow = builtFlow.flow;
+        state.hissanTargets = builtFlow.targets;
         state.hissanEntries = {};
-        state.hintStage = 0;
-        activateHissanTarget(0, true);
+        state.hissanStepMistakes = {};
+        state.hissanBuffer = "";
+        state.hissanHintDepth = 0;
+        setHissanFlowPos(0);
+        applyHissanSkipHintMode(false);
       }
     } else {
       if(stageSvgWrap) stageSvgWrap.style.display = "flex";
@@ -2725,6 +3269,17 @@
     }
   }
 
+  // 「いっぱつ正解」の集計を通常問題・筆算問題で共通化する。
+  function recordFirstTryScore(correct, disqualifiedByEarlierMistake){
+    if(state.counted) return;
+    state.counted = true;
+    state.score.total++;
+    if(correct && !disqualifiedByEarlierMistake) state.score.correct++;
+    scoreBox.classList.add("show");
+    document.getElementById("scoreCorrect").textContent = state.score.correct;
+    document.getElementById("scoreTotal").textContent = state.score.total;
+  }
+
   function checkCurrentAnswer(){
     if(state.answered) return;
     var p = state.problem;
@@ -2746,17 +3301,11 @@
                 parseInt(state.inputRemainder, 10) === p.remainder;
     }
 
-    if(!state.counted){
-      state.counted = true;
-      state.score.total++;
-      if(correct) state.score.correct++;
-      scoreBox.classList.add("show");
-      document.getElementById("scoreCorrect").textContent = state.score.correct;
-      document.getElementById("scoreTotal").textContent = state.score.total;
-    }
+    recordFirstTryScore(correct, state.usedConcreteHint);
 
     if(correct){
       state.answered = true;
+      awardMasteryForSolvedProblem();
       state.isWrongState = false;
       hintNextBtn.disabled = true;
 
@@ -2769,12 +3318,14 @@
         var baseDamage = 10;
         var multiplier = 1;
         var isCritical = false;
-        if(state.streak >= 5){
-          multiplier = 3;
-          isCritical = true;
-        } else if(state.streak >= 3){
-          multiplier = 2;
-          isCritical = true;
+        if(!state.usedConcreteHint){
+          if(state.streak >= 5){
+            multiplier = 3;
+            isCritical = true;
+          } else if(state.streak >= 3){
+            multiplier = 2;
+            isCritical = true;
+          }
         }
         var finalDamage = baseDamage * multiplier;
 
@@ -2788,7 +3339,8 @@
         }
 
         var critMsg = isCritical ? " 🔥【" + state.streak + "れんぞく！ " + multiplier + "倍クリティカル！】" : "";
-        feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg;
+        var hintMsg = state.usedConcreteHint ? "（具体ヒント使用：通常ダメージ）" : "";
+        feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg + hintMsg;
       } else {
         state.streak = 0;
         updateStreakUI();
@@ -2802,6 +3354,7 @@
       nextProblemBtn.classList.add("show");
     } else {
       state.streak = 0;
+      state.hadMistake = true;
       state.isWrongState = true;
       updateStreakUI();
       playSound('wrong');
@@ -2899,124 +3452,135 @@
   }
 
   // ------------------------------------------------------------------
-  // レベル5：筆算の途中式マスへのキーパッド入力
+  // 筆算：工程単位のキーパッド入力
   // ------------------------------------------------------------------
+  function commitCurrentHissanGroup(item){
+    item.cells.forEach(function(cell, i){
+      state.hissanEntries[hissanEntryKey(item.stepIdx, cell)] = state.hissanBuffer[i];
+    });
+  }
+
   function pressHissanDigit(n){
-    var targets = state.hissanTargets || [];
+    var item = currentHissanFlowItem();
+    if(!item || !item.cells || item.cells.length === 0 || state.answered || hissanFlowItemCompleted(item)) return;
 
-    // 不正解直後の数字押下時はクリアして新規入力
     if(state.isWrongState){
+      state.hissanBuffer = "";
       state.isWrongState = false;
-      state.hissanEntries = {};
-      activateHissanTarget(0);
-      feedback.textContent = "";
-      feedback.className = "";
+    }
+    if(state.hissanBuffer.length >= item.cells.length) return;
+    state.hissanBuffer += String(n);
+    renderAll(false);
+
+    if(state.hissanBuffer.length < item.cells.length) return;
+
+    var expected = item.cells.map(function(c){ return c.char; }).join("");
+    if(state.hissanBuffer !== expected){
+      var firstMistakeThisProblem = !state.hadMistake;
+      state.hadMistake = true;
+      if(firstMistakeThisProblem){
+        // 通常問題と同じ意味にそろえる：最初の誤答で「一発正解」の分母を確定し、連勝も切る。
+        recordFirstTryScore(false, true);
+        state.streak = 0;
+        updateStreakUI();
+      }
+      state.isWrongState = true;
+      state.hissanStepMistakes[item.stepIdx] = (state.hissanStepMistakes[item.stepIdx] || 0) + 1;
+      var miss = state.hissanStepMistakes[item.stepIdx];
+      playSound('wrong');
+      if(miss === 1){
+        feedback.textContent = "ちがうよ。この工程の計算をもう一度たしかめよう。";
+      } else if(miss === 2){
+        state.hissanHintDepth = Math.max(state.hissanHintDepth, 1);
+        feedback.textContent = "考え方のヒントを出したよ。工程ぜんたいを考え直そう。";
+      } else {
+        state.hissanHintDepth = 2;
+        state.usedConcreteHint = true;
+        feedback.textContent = "具体ヒントを見て、この工程をもう一度入力しよう。";
+      }
+      feedback.className = "bad";
+      var card = document.querySelector("#problemScreen .card");
+      if(card){ card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); }
+      renderAll(false);
+      return;
     }
 
-    var idx = state.hissanIdx;
-    if(idx >= targets.length) return;
-    var t = targets[idx];
-    state.hissanEntries[t.r + "," + t.c] = String(n);
-    activateHissanTarget(idx + 1);
-    renderAll(true);
-
-    if(idx + 1 >= targets.length){
-      checkHissanAnswer();
-    }
+    commitCurrentHissanGroup(item);
+    state.hissanBuffer = "";
+    state.isWrongState = false;
+    state.hissanHintDepth = 0;
+    feedback.textContent = "";
+    feedback.className = "";
+    playSound('step');
+    advanceHissanFlow();
   }
 
   function clearHissanDigit(){
-    var targets = state.hissanTargets || [];
+    if(state.answered) return;
     state.isWrongState = false;
     feedback.textContent = "";
     feedback.className = "";
-
-    var idx = state.hissanIdx;
-    if(idx < targets.length && state.hissanEntries[targets[idx].r + "," + targets[idx].c] !== undefined){
-      delete state.hissanEntries[targets[idx].r + "," + targets[idx].c];
-    } else if(idx > 0){
-      idx = idx - 1;
-      delete state.hissanEntries[targets[idx].r + "," + targets[idx].c];
-      activateHissanTarget(idx);
+    if(state.hissanBuffer.length > 0){
+      state.hissanBuffer = state.hissanBuffer.slice(0, -1);
+      renderAll(false);
     }
-    renderAll(true);
   }
 
   function checkHissanAnswer(){
     if(state.answered) return;
     var p = state.problem;
     if(!p) return;
-    var targets = state.hissanTargets || [];
-
-    var correct = targets.length > 0 && targets.every(function(t){
-      return state.hissanEntries[t.r + "," + t.c] === t.char;
+    var allInputItems = (state.hissanFlow || []).filter(function(item){ return item.cells && item.cells.length; });
+    var correct = allInputItems.length > 0 && allInputItems.every(function(item){
+      return item.cells.every(function(cell){
+        return state.hissanEntries[hissanEntryKey(item.stepIdx, cell)] === cell.char;
+      });
     });
 
-    if(!state.counted){
-      state.counted = true;
-      state.score.total++;
-      if(correct) state.score.correct++;
-      scoreBox.classList.add("show");
-      document.getElementById("scoreCorrect").textContent = state.score.correct;
-      document.getElementById("scoreTotal").textContent = state.score.total;
+    if(!correct){
+      state.isWrongState = true;
+      feedback.textContent = "まだ入力していない工程があるよ。順番に進めよう。";
+      feedback.className = "bad";
+      renderAll(false);
+      return;
     }
 
-    if(correct){
-      state.answered = true;
-      state.isWrongState = false;
-      hintNextBtn.disabled = true;
+    recordFirstTryScore(true, state.hadMistake || state.usedConcreteHint);
+    state.answered = true;
+    state.isWrongState = false;
+    awardMasteryForSolvedProblem();
+    state.hintStage = state.maxHint;
+    hintNextBtn.disabled = true;
 
-      var raidActive = isRaidConnected();
-
-      if(raidActive){
-        state.streak++;
-        updateStreakUI();
-
-        var baseDamage = 10;
-        var multiplier = 1;
-        var isCritical = false;
-        if(state.streak >= 5){
-          multiplier = 3;
-          isCritical = true;
-        } else if(state.streak >= 3){
-          multiplier = 2;
-          isCritical = true;
-        }
-        var finalDamage = baseDamage * multiplier;
-
-        var modeDesc = p.title || ("わり算Lv" + state.level);
-        sendAttack(finalDamage, modeDesc + " (" + state.streak + "連勝 " + multiplier + "倍)");
-
-        if(isCritical){
-          playSound('critical');
-        } else {
-          playSound('correct');
-        }
-
-        var critMsg = isCritical ? " 🔥【" + state.streak + "れんぞく！ " + multiplier + "倍クリティカル！】" : "";
-        feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg;
-      } else {
-        state.streak = 0;
-        updateStreakUI();
-        playSound('correct');
-        feedback.textContent = "せいかい！ よくできました！";
+    var raidActive = isRaidConnected();
+    if(raidActive){
+      state.streak++;
+      updateStreakUI();
+      var baseDamage = 10;
+      var multiplier = 1;
+      var isCritical = false;
+      if(!state.usedConcreteHint){
+        if(state.streak >= 5){ multiplier = 3; isCritical = true; }
+        else if(state.streak >= 3){ multiplier = 2; isCritical = true; }
       }
-
-      feedback.className = "good";
-      activateHissanTarget(targets.length);
-      renderAll(false);
-      nextProblemBtn.classList.add("show");
+      var finalDamage = baseDamage * multiplier;
+      var modeDesc = p.title || ("わり算Lv" + state.level);
+      sendAttack(finalDamage, modeDesc + " (" + state.streak + "連勝 " + multiplier + "倍)");
+      playSound(isCritical ? 'critical' : 'correct');
+      var critMsg = isCritical ? " 🔥【" + state.streak + "れんぞく！ " + multiplier + "倍クリティカル！】" : "";
+      var hintMsg = state.usedConcreteHint ? "（具体ヒント使用：通常ダメージ）" : "";
+      feedback.textContent = "💥 せいかい！ ボスに " + finalDamage + " ダメージ！" + critMsg + hintMsg;
     } else {
       state.streak = 0;
-      state.isWrongState = true;
       updateStreakUI();
-      playSound('wrong');
-      feedback.textContent = "おしい！ もういちど かんがえてみよう";
-      feedback.className = "bad";
-      var card = document.querySelector("#problemScreen .card");
-      card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
-      renderAll(true);
+      playSound('correct');
+      feedback.textContent = state.usedConcreteHint
+        ? "せいかい！ ヒントを使って最後までできたね！"
+        : (state.hadMistake ? "せいかい！ 直してできたね！" : "せいかい！ いっぱつでできたね！");
     }
+    feedback.className = "good";
+    renderAll(false);
+    nextProblemBtn.classList.add("show");
   }
 
   function renderAnswerDisplay(){
@@ -3025,15 +3589,29 @@
     if(!p) return;
 
     if(isHissanInputLevel(p)){
-      var targets = state.hissanTargets || [];
-      var filled = Math.min(state.hissanIdx, targets.length);
       var info = document.createElement("span");
-      info.textContent = state.answered
-        ? "ひっさん かんせい！"
-        : "ひっさんの ますに すうじを いれよう（" + filled + " / " + targets.length + "）";
+      var item = currentHissanFlowItem();
+      var step = currentHissanStep();
+      var phaseLabel = hissanPhaseLabel(step);
+      var completed = hissanFlowItemCompleted(item);
+      if(state.answered){
+        info.textContent = "ひっさん かんせい！";
+      } else if(item && item.cells && item.cells.length && !completed){
+        info.textContent = "いまは「" + phaseLabel + "」：この工程の数字をぜんぶ入れよう" + (state.hissanSkipHints ? "（ヒントは必要なときだけ）" : "");
+      } else {
+        info.textContent = "いまは「" + phaseLabel + "」：見直したら『つぎの工程』へ";
+      }
       answerDisplay.appendChild(info);
+      if(keypad){
+        var canType = !state.answered && item && item.cells && item.cells.length && !completed;
+        keypad.style.opacity = canType ? "1" : ".35";
+        keypad.style.pointerEvents = canType ? "auto" : "none";
+      }
       updateEquationSlots();
       return;
+    } else if(keypad){
+      keypad.style.opacity = "1";
+      keypad.style.pointerEvents = "auto";
     }
 
     var hasRem = !!p.hasRemainder;
@@ -3245,10 +3823,47 @@
   }
 
   function renderHintControls(){
+    var hissanInput = isHissanInputLevel(state.problem);
+    hintDots.innerHTML = "";
+    if(hissanInput && !state.answered){
+      if(hissanSkipHintBtn){
+        hissanSkipHintBtn.style.display = "inline-flex";
+        hissanSkipHintBtn.classList.toggle("on", !!state.hissanSkipHints);
+        hissanSkipHintBtn.setAttribute("aria-pressed", state.hissanSkipHints ? "true" : "false");
+        hissanSkipHintBtn.textContent = state.hissanSkipHints ? "✓ ヒントを とばす" : "ヒント工程も 見る";
+        hissanSkipHintBtn.title = state.hissanSkipHints
+          ? "説明だけの工程を自動で飛ばします。必要なときは『ヒント▶』を押せます"
+          : "説明・図解の工程も順番に見ます";
+      }
+      if(hissanPrevBtn){
+        hissanPrevBtn.style.display = "inline-flex";
+        hissanPrevBtn.disabled = state.hissanFlowPos <= 0 || !!(state.hissanBuffer && state.hissanBuffer.length);
+        hissanPrevBtn.title = (state.hissanBuffer && state.hissanBuffer.length) ? "入力途中は、けしてから前へ戻れます" : "前の工程を見る";
+      }
+      var item = currentHissanFlowItem();
+      var hasInput = !!(item && item.cells && item.cells.length);
+      var completed = hissanFlowItemCompleted(item);
+      if(!hasInput || completed){
+        hintBackBtn.disabled = true;
+        hintNextBtn.disabled = !item;
+        hintNextBtn.textContent = "つぎの工程 ▶";
+        return;
+      }
+      hintBackBtn.disabled = state.hissanHintDepth <= 0;
+      hintNextBtn.disabled = state.hissanHintDepth >= 2;
+      hintNextBtn.textContent = state.hissanHintDepth >= 2 ? "ヒント おわり" : "ヒント ▶";
+      for(var h=1; h<=2; h++){
+        var hd = document.createElement("span");
+        if(h <= state.hissanHintDepth) hd.className = "on";
+        hintDots.appendChild(hd);
+      }
+      return;
+    }
+    if(hissanPrevBtn) hissanPrevBtn.style.display = "none";
+    if(hissanSkipHintBtn) hissanSkipHintBtn.style.display = "none";
     hintBackBtn.disabled = state.hintStage <= 0;
     hintNextBtn.disabled = state.hintStage >= state.maxHint || state.answered;
     hintNextBtn.textContent = state.hintStage >= state.maxHint ? "ヒント おわり" : "ヒント ▶";
-    hintDots.innerHTML = "";
     for(var i=1;i<=state.maxHint;i++){
       var d = document.createElement("span");
       if(i <= state.hintStage) d.className = "on";
@@ -3401,7 +4016,7 @@
     if(stage === 3 && forward){
       g1.style.transform = "translateY(10px)";
       g1.style.transition = "transform .45s ease";
-      setTimeout(function(){ g1.style.transform = "translateY(0)"; }, 40);
+      scheduleLevel2(function(){ g1.style.transform = "translateY(0)"; }, 40);
     }
     svg.appendChild(g1);
 
@@ -3411,7 +4026,7 @@
     var captionMap = {
       1: "ちょうどに ならない！ わりきれないね！",
       2: "これが いちばん おおきくて、ちかいね",
-      3: "３が わり算の こたえだよ",
+      3: p.quotient + "が わり算の こたえだよ",
       4: "つぎは あまりを もとめるよ！",
       5: "あまりが わかったね！"
     };
@@ -3488,11 +4103,11 @@
           rowG.classList.add("gray", "shatter");
         } else {
           (function(target, delay){
-            setTimeout(function(){
+            scheduleLevel2(function(){
               target.classList.add("strike");
-              setTimeout(function(){
+              scheduleLevel2(function(){
                 target.classList.add("gray");
-                setTimeout(function(){ target.classList.add("shatter"); }, 220);
+                scheduleLevel2(function(){ target.classList.add("shatter"); }, 220);
               }, 430);
             }, delay);
           })(rowG, Math.max(20, (i-1)*40));
@@ -3507,7 +4122,7 @@
           rowG.style.transform = "translate(0," + shift + ")";
         } else {
           (function(target, shift){
-            setTimeout(function(){ target.style.transform = "translate(0," + shift + ")"; }, 920);
+            scheduleLevel2(function(){ target.style.transform = "translate(0," + shift + ")"; }, 920);
           })(rowG, shift);
         }
       }
@@ -3521,7 +4136,7 @@
           if(forward){
             rowG.style.transform = "translateY(" + (originalY-correctFinalY) + "px)";
             rowG.style.transition = "transform .45s ease";
-            setTimeout(function(target){ target.style.transform = "translateY(0)"; }, 60, rowG);
+            scheduleLevel2(function(target){ target.style.transform = "translateY(0)"; }, 60, rowG);
           } else {
             rowG.style.transform = "translateY(0)";
           }
@@ -3546,10 +4161,12 @@
         container.appendChild(arrow);
         container.appendChild(arrowHeadEl);
         if(forward){
-          setTimeout(function(pathEl, headEl, pRef){
+          var level2Serial = state.problemSerial;
+          scheduleLevel2(function(pathEl, headEl, pRef){
             pathEl.style.opacity = "1";
             // The triangle only appears once the line has fully drawn itself in.
             animateDraw(pathEl, 500, function(){
+              if(level2Serial !== state.problemSerial) return;
               headEl.style.opacity = "1";
               var qSlot = document.getElementById("qSlot");
               if(qSlot){ qSlot.textContent = pRef.quotient; qSlot.setAttribute("class","slot-orange pop"); }
@@ -3645,15 +4262,16 @@
 
       if(forward && stage === 5){
         remEl.style.opacity = "0";
+        var level2RemainderSerial = state.problemSerial;
         // Step 1: the subtraction's own answer appears first, by itself.
-        setTimeout(function(){
+        scheduleLevel2(function(){
           remEl.style.opacity = "1";
           remEl.setAttribute("class", "slot-orange pop");
 
           // Step 2: only once that's visible does the arrow start growing up to
           // the "あまり ?" slot. Its endpoint is measured against the slot's real
           // position, so it always lands exactly on it regardless of layout.
-          setTimeout(function(){
+          scheduleLevel2(function(){
             var rSlot = document.getElementById("rSlot");
             if(!rSlot) return;
             var eqRow = document.getElementById("listG");
@@ -3687,6 +4305,7 @@
             // Step 3: only after the arrow finishes does "?" become the number,
             // and the triangle only appears once the line is fully drawn.
             animateDraw(arrow2, 650, function(){
+              if(level2RemainderSerial !== state.problemSerial) return;
               head4.style.opacity = "1";
               rSlot.textContent = p.remainder;
               rSlot.setAttribute("class", "slot-orange pop");
@@ -5598,11 +6217,19 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     return html;
   }
 
-  function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient, trialHistory) {
+  function generateBrainWorkHtml(currentTargetValue, divisorInt, trialQuotient, trialHistory, options) {
+    options = options || {};
     if (currentTargetValue === 0 || currentTargetValue < divisorInt) return "";
     var trueQuotient = Math.floor(currentTargetValue / divisorInt);
 
     if (divisorInt < 10) {
+      if(options.concealAnswer){
+        return '<div style="font-size:13px;color:#334155;">' +
+          '<b>💡 ひらめき九九メモ</b>' +
+          '<div style="margin-top:4px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:4px 8px;line-height:1.6;">' +
+          '<b style="color:#15803d;">' + divisorInt + ' × ？</b> で、' + currentTargetValue + ' をこえない一番近い数を探そう。' +
+          '</div></div>';
+      }
       var p = divisorInt * trueQuotient;
       return '<div style="font-size:13px;color:#334155;">' +
         '<b>💡 ひらめき九九メモ</b>' +
@@ -5617,6 +6244,16 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     var topVal = Math.floor(currentTargetValue / Math.pow(10, topLen - 1));
     var displayTrial = (trialQuotient !== undefined) ? trialQuotient : trueQuotient;
     var trialProduct = divisorInt * displayTrial;
+
+    if(options.concealAnswer){
+      return '<div style="font-size:13px;color:#334155;">' +
+        '<b>🔍 仮商を見つけよう！</b>' +
+        '<div style="margin-top:6px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:6px 10px;line-height:1.6;">' +
+        '<div style="color:#0369a1;">わる数 <b>' + divisorInt + '</b> の上1けた ➜ <b>' + d1 + '</b></div>' +
+        '<div style="color:#0369a1;">わられる数 <b>' + currentTargetValue + '</b> の上' + topLen + 'けた ➜ <b>' + topVal + '</b></div>' +
+        '<div style="margin-top:3px;color:#334155;"><b>' + topVal + ' ÷ ' + d1 + '</b> で、まず仮の商を自分で考えよう。</div>' +
+        '</div></div>';
+    }
 
     var html = '<div style="font-size:13px;color:#334155;">' +
       '<b>🔍 仮商を見つけよう！</b>' +
@@ -5740,7 +6377,7 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
           var _true  = Math.floor(currentTargetValue / divisorInt);
           preTrialQ = (_trial > _true) ? _trial : _true;
         }
-        var brainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt, preTrialQ);
+        var brainHtml = generateBrainWorkHtml(currentTargetValue, divisorInt, preTrialQ, null, { concealAnswer: true });
         currentMaskFromCol = targetCol + 1;
 
         var canStand = (currentTargetValue >= divisorInt);
@@ -5829,10 +6466,9 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
           // 正しい商(q)より大きいときは、実物の筆算とまったく同じ流れで
           // 「①仮の商をたてる→②かけて確認→（大きすぎたら）消して1つ
           // 小さい仮の商をたてなおす」を、trialQ===q になるまで繰り返す。
-          // 消す・たてなおす途中経過は isAutoFill:true にして、実際に
-          // 書き込む最終ステップ（この後のbuild/multiply）だけを生徒が
-          // キーパッドで入力する対象にする（buildHissanTargets/
-          // applyStepUIのisAutoFill判定を参照）。
+          // 仮商・確認の掛け算・1小さく直す操作も、8-3/8-4では
+          // 児童が実際に入力して確かめる。工程番号付きで入力値を保持するため、
+          // 同じ商のマスを何度使っても前の仮商と混線しない。
           // ================================================================
           var trialQ = q;
           if (divisorInt >= 10) {
@@ -5888,16 +6524,16 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
             while (trialQ > q) {
               var oldTrialQ = trialQ;
               trialQ--;
-              var eraseCells = [{ r: 0, c: targetCol, char: "", isAutoFill: true }]
+              var eraseCells = [{ r: 0, c: targetCol, char: trialQ.toString(), isAutoFill: true, isTrialCorrection: true }]
                 .concat(trialMultiplyCells.map(function(mc){ return { r: mc.r, c: mc.c, char: "", borderBottom: false, isAutoFill: true }; }));
               steps.push({
                 phase: "trial-fix",
-                description: "【商の修正】「" + oldTrialQ + "」では大きすぎたので、商を1小さくして「" + trialQ + "」に直します。",
+                description: "【商の修正】「" + oldTrialQ + "」では大きすぎたね。商を1小さくすると、いくつになるかな？",
                 writeCells: eraseCells,
                 maskFromCol: currentMaskFromCol,
-                brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, oldTrialQ, trialHistory),
-                highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), []),
-                formulaHtml: formulaHtml("blue", currentTargetValue + " ÷ " + divisorInt + " ＝ " + trialQ + "（直す）"),
+                brainHtml: generateBrainWorkHtml(currentTargetValue, divisorInt, oldTrialQ, trialHistory, { concealAnswer: true }),
+                highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), [{ r:0, c:targetCol }]),
+                formulaHtml: formulaHtml("blue", currentTargetValue + " ÷ " + divisorInt + " ＝ ？（1小さくして直す）"),
                 hissanRound: hissanRoundData
               });
 
@@ -5945,7 +6581,7 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
             description: (divisorInt >= 10)
               ? "【たてる】これでバッチリ！正しい商「" + q + "」が立ちます。"
               : "【たてる】商に " + q + " を書きます。",
-            writeCells: [{ r: 0, c: targetCol, char: q.toString(), isGuide: false }],
+            writeCells: [{ r: 0, c: targetCol, char: q.toString(), isGuide: false, isAutoFill: trialHistory.length > 0 }],
             pulseBoxes: [{ r: 0, c: targetCol }], maskFromCol: currentMaskFromCol,
             brainHtml: buildBrainHtml,
             highlightCells: makeHighlight("blue", currentDvdPartCells.concat(divisorCells), [{ r: 0, c: targetCol }]),
@@ -6527,6 +7163,91 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     var badgeSz = calcSvgFontSize(badgeText, badgeW - 16, 11.5, 8.5);
     gBadge.appendChild(middleText(230, badgeY + 16, badgeText, null, { size: badgeSz, weight: 800 }));
     svg.appendChild(gBadge);
+
+    // 数が増えたら段階的に圧縮する。
+    // 21〜40個は「10こ束＋ばら」を実際に並べ、41個以上は要約カードへ。
+    // current unit を明示し、位取りの変換（例：10が10こ＝100）そのものを学習材料にする。
+    var currentUnitValue = Math.pow(10, round.exponent);
+    var nextUnitValue = Math.max(1, currentUnitValue / 10);
+    if(round.value > 20 && round.value <= 40){
+      var semiG = el("g", {});
+      if(roundStage === 0){
+        var semiBundles = Math.floor(round.value / 10);
+        var semiLoose = round.value % 10;
+        var bundleValue = currentUnitValue * 10;
+        var totalItems = semiBundles + semiLoose;
+        var semiGap = 4;
+        var semiW = Math.min(42, Math.max(26, Math.floor((390 - Math.max(0,totalItems-1)*semiGap) / Math.max(1,totalItems))));
+        var semiStart = 230 - ((totalItems * semiW + Math.max(0,totalItems-1)*semiGap) / 2);
+        for(var sb=0; sb<semiBundles; sb++){
+          var sx = semiStart + sb*(semiW+semiGap);
+          semiG.appendChild(el("rect", {x:sx,y:92,width:semiW,height:48,rx:9,fill:"#e0f2fe",stroke:"#0284c7","stroke-width":2}));
+          semiG.appendChild(middleText(sx+semiW/2,111,String(bundleValue),null,{size:Math.min(12,Math.max(8,semiW/3)),weight:900,fill:"#0369a1"}));
+          var bundleMini = currentUnitValue + "×10";
+          semiG.appendChild(middleText(sx+semiW/2,130,bundleMini,null,{size:calcSvgFontSize(bundleMini,semiW-3,8,5.5),weight:800,fill:"#075985"}));
+        }
+        for(var sl=0; sl<semiLoose; sl++){
+          var lx = semiStart + (semiBundles+sl)*(semiW+semiGap);
+          semiG.appendChild(el("rect", {x:lx,y:98,width:semiW,height:36,rx:8,fill:"#f8fafc",stroke:"#94a3b8","stroke-width":1.5}));
+          semiG.appendChild(middleText(lx+semiW/2,121,String(currentUnitValue),null,{size:12,weight:900,fill:"#475569"}));
+        }
+        semiG.appendChild(middleText(230,164,currentUnitValue+"が "+round.value+"こ ＝ "+(currentUnitValue*round.value),null,{size:12.5,weight:900,fill:"#475569"}));
+      } else if(roundStage === 1){
+        var semiQ = Math.max(0, Math.min(9, round.quotient));
+        var sw = 40, sg=6, stw=semiQ*sw+Math.max(0,semiQ-1)*sg, ssx=230-stw/2;
+        for(var sq=0; sq<semiQ; sq++){
+          semiG.appendChild(el("rect", {x:ssx+sq*(sw+sg),y:92,width:sw,height:48,rx:8,fill:"#eff6ff",stroke:"#3b82f6","stroke-width":1.5}));
+          semiG.appendChild(middleText(ssx+sq*(sw+sg)+sw/2,112,currentUnitValue+"が"+divisor+"こ",null,{size:8.2,weight:800,fill:"#1d4ed8"}));
+          semiG.appendChild(middleText(ssx+sq*(sw+sg)+sw/2,131,(sq+1)+"まとまり",null,{size:7.5,weight:700,fill:"#64748b"}));
+        }
+        if(hasRem) semiG.appendChild(middleText(230,171,"のこり："+currentUnitValue+"が "+round.remainder+"こ",null,{size:12.5,weight:900,fill:"#be123c"}));
+      } else {
+        var sNextD=view.nextDigit||0;
+        var sNextTotal=round.remainder*10+sNextD;
+        semiG.appendChild(el("rect", {x:75,y:91,width:310,height:82,rx:14,fill:"#fff7ed",stroke:"#fb923c","stroke-width":2}));
+        semiG.appendChild(middleText(230,116,currentUnitValue+"が "+round.remainder+"こ → "+nextUnitValue+"が "+(round.remainder*10)+"こ",null,{size:12.5,weight:900,fill:"#c2410c"}));
+        semiG.appendChild(middleText(230,140,"＋ 次の位 "+sNextD+"こ",null,{size:12,weight:800,fill:"#c2410c"}));
+        semiG.appendChild(middleText(230,162,"＝ "+nextUnitValue+"が "+sNextTotal+"こ",null,{size:15,weight:900,fill:"#9a3412"}));
+      }
+      svg.appendChild(semiG);
+      return;
+    }
+
+    if(round.value > 40){
+      var compactG = el("g", {});
+      if(roundStage === 0){
+        var tensBundles = Math.floor(round.value / 10);
+        var looseOnes = round.value % 10;
+        var higherUnit = currentUnitValue * 10;
+        compactG.appendChild(el("rect", {x:82,y:86,width:296,height:90,rx:16,fill:"#f8fafc",stroke:"#94a3b8","stroke-width":2}));
+        compactG.appendChild(middleText(230,110,currentUnitValue + "が " + round.value + "こ",null,{size:22,weight:900,fill:"#334155"}));
+        compactG.appendChild(middleText(230,136,currentUnitValue+"が10こ＝"+higherUnit+" の束 × "+tensBundles+(looseOnes?" ＋ "+currentUnitValue+"が"+looseOnes+"こ":""),null,{size:11.5,weight:900,fill:"#475569"}));
+        compactG.appendChild(middleText(230,159,currentUnitValue+"を "+divisor+"こずつの まとまりに分ける",null,{size:11.2,weight:800,fill:"#64748b"}));
+      } else if(roundStage === 1){
+        var qCount = Math.max(0, Math.min(9, round.quotient));
+        var cardW = 42, gap = 5;
+        var totalW = qCount * cardW + Math.max(0,qCount-1)*gap;
+        var startX = 230 - totalW/2;
+        for(var qi=0; qi<qCount; qi++){
+          compactG.appendChild(el("rect", {x:startX+qi*(cardW+gap),y:92,width:cardW,height:48,rx:8,fill:"#eff6ff",stroke:"#3b82f6","stroke-width":1.5}));
+          compactG.appendChild(middleText(startX+qi*(cardW+gap)+cardW/2,112,currentUnitValue+"が"+divisor+"こ",null,{size:8.2,weight:800,fill:"#1d4ed8"}));
+          compactG.appendChild(middleText(startX+qi*(cardW+gap)+cardW/2,131,(qi+1)+"まとまり",null,{size:7.5,weight:700,fill:"#64748b"}));
+        }
+        if(hasRem){
+          compactG.appendChild(el("rect", {x:150,y:154,width:160,height:38,rx:10,fill:"#fff1f2",stroke:"#fda4af","stroke-width":1.5}));
+          compactG.appendChild(middleText(230,178,"のこり："+currentUnitValue+"が "+round.remainder+"こ",null,{size:12,weight:900,fill:"#be123c"}));
+        }
+      } else {
+        var nextD = view.nextDigit || 0;
+        var nextTotal = round.remainder * 10 + nextD;
+        compactG.appendChild(el("rect", {x:72,y:90,width:316,height:82,rx:14,fill:"#fff7ed",stroke:"#fb923c","stroke-width":2}));
+        compactG.appendChild(middleText(230,116,currentUnitValue+"が "+round.remainder+"こ → "+nextUnitValue+"が "+(round.remainder*10)+"こ",null,{size:12.5,weight:900,fill:"#c2410c"}));
+        compactG.appendChild(middleText(230,140,"＋ 次の位 "+nextD+"こ",null,{size:12,weight:800,fill:"#c2410c"}));
+        compactG.appendChild(middleText(230,162,"＝ 次に見るのは "+nextUnitValue+"が "+nextTotal+"こ",null,{size:14.5,weight:900,fill:"#9a3412"}));
+      }
+      svg.appendChild(compactG);
+      return;
+    }
 
     // ---- 3. レイヤー ----
     var gGhosts = el("g", {});
@@ -7540,6 +8261,8 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     var isFirstRoundOfProblem = (roundIdx === 0);
     var nextDigit = (round.nextRoundDigit !== undefined) ? round.nextRoundDigit : 0;
     var renderRound = (round.kind === "quotitive") ? renderHissanRoundQuotitive : renderHissanRound;
+    var activeItem = currentHissanFlowItem();
+    var concealActiveAnswer = !!(isHissanInputLevel(state.problem) && !state.answered && activeItem && activeItem.stepIdx === HissanSim.currentStepIdx && activeItem.cells && activeItem.cells.length && state.hissanHintDepth < 2);
 
     // ==================================================================
     // 「かくす」＝隠れた状態そのものを見せる、独立したステップ。
@@ -7581,9 +8304,12 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     }
 
     if (phase === "skip" || phase === "build-zero" || phase === "build") {
-      // ①たてる：まだ配っていない状態から、divisor人に配る（or 商0で
-      // 全部あまりトレイへ）様子をアニメーションで見せる。
-      renderRound(hissanSvg, round, { roundStage: 1, phase: "build", forward: true });
+      // 入力前は図解側から答えが見えないようにし、具体ヒントで初めて完成図を見せる。
+      if(concealActiveAnswer){
+        renderRound(hissanSvg, round, { roundStage: 0, phase: "hide" });
+      } else {
+        renderRound(hissanSvg, round, { roundStage: 1, phase: "build", forward: true });
+      }
       return;
     }
 
@@ -7596,14 +8322,18 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     }
 
     if (phase === "multiply") {
-      // ②かける：配り終えたスナップショットのまま、式バッジだけ切り替える。
-      renderRound(hissanSvg, round, { roundStage: 1, phase: "multiply", forward: false });
+      // 積の入力前は、図解の式から積を先に見せない。
+      renderRound(hissanSvg, round, concealActiveAnswer
+        ? { roundStage: 0, phase: "hide" }
+        : { roundStage: 1, phase: "multiply", forward: false });
       return;
     }
 
     if (phase === "subtract") {
-      // ③ひく：同じスナップショットのまま、あまりを強調して式バッジを切り替える。
-      renderRound(hissanSvg, round, { roundStage: 1, phase: "subtract", forward: false });
+      // 差を入力する工程では、具体ヒントを見るまで差・あまりを図解から先出ししない。
+      renderRound(hissanSvg, round, concealActiveAnswer
+        ? { roundStage: 0, phase: "hide" }
+        : { roundStage: 1, phase: "subtract", forward: false });
       return;
     }
 
@@ -7718,11 +8448,12 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
 
       var inputMode = isHissanInputLevel(state.problem);
       var targetLookup = null;
-      if(inputMode){
+      if(inputMode && !state.answered){
         targetLookup = {};
-        (state.hissanTargets || []).forEach(function(t, i){
-          targetLookup[t.r + "," + t.c] = i;
-        });
+        var activeItem = currentHissanFlowItem();
+        if(activeItem && activeItem.cells){
+          activeItem.cells.forEach(function(t, i){ targetLookup[t.r + "," + t.c] = i; });
+        }
       }
 
       for (var r = 0; r < this.appState.totalRows; r++) {
@@ -7738,19 +8469,16 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
 
           if(inputMode && targetLookup){
             var tIdx = targetLookup[r + "," + c];
-            if(tIdx !== undefined){
+            if(tIdx !== undefined && !state.answered){
+              var activeNow = currentHissanFlowItem();
+              var completedNow = hissanFlowItemCompleted(activeNow);
               cellDiv.classList.add('hissan-input-cell');
-              if(tIdx === state.hissanIdx && !state.answered){
+              if(!completedNow){
                 cellDiv.classList.add('active-target');
+                var cursorIdx = state.isWrongState ? 0 : Math.min(state.hissanBuffer.length, Math.max(0, activeNow.cells.length - 1));
+                if(tIdx === cursorIdx) cellDiv.classList.add('current-input-cell');
+                if(state.isWrongState) cellDiv.classList.add('red-border');
               }
-              (function(targetIdx){
-                cellDiv.addEventListener('click', function(){
-                  if(state.answered) return;
-                  playSound('switch');
-                  activateHissanTarget(targetIdx);
-                  renderAll(true);
-                });
-              })(tIdx);
             }
           }
 
@@ -7870,13 +8598,13 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
       var soft = "#ffffff";
       var label = "じゅんび";
 
-      if (["cover", "build", "build-zero", "skip", "hide"].includes(phase)) {
+      if (["cover", "build", "build-zero", "skip", "hide", "trial-build", "trial-fix"].includes(phase)) {
         activeKey = "tateru";
         bg = "rgba(219, 234, 254, 0.85)";
         accent = "#2563eb";
         soft = "#eff6ff";
         label = "たてる";
-      } else if (phase === "multiply") {
+      } else if (phase === "multiply" || phase === "trial-multiply") {
         activeKey = "kakeru";
         bg = "rgba(220, 252, 231, 0.85)";
         accent = "#16a34a";
@@ -7932,18 +8660,32 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
       var step = this.appState.steps[this.currentStepIdx];
       if(!step) return;
 
+      var inputModeForHint = isHissanInputLevel(state.problem) && !state.answered;
+      var activeFlowItem = currentHissanFlowItem();
+      var isActiveInputStep = !!(inputModeForHint && activeFlowItem && activeFlowItem.stepIdx === this.currentStepIdx && activeFlowItem.cells && activeFlowItem.cells.length);
+      var hintDepth = isActiveInputStep ? state.hissanHintDepth : 2;
       var narrationEl = document.getElementById('hissan-narration');
       if(narrationEl){
-        var escapedDesc = String(step.description)
+        var narrationText;
+        var formulaPart = "";
+        if(isActiveInputStep && hintDepth === 0){
+          narrationText = "自分で考えて、光っているマスをこの工程ぶん全部うめよう。";
+        } else if(isActiveInputStep && hintDepth === 1){
+          narrationText = hissanConceptHint(step);
+        } else {
+          narrationText = String(step.description);
+          formulaPart = step.formulaHtml || "";
+        }
+        var escapedDesc = String(narrationText)
           .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        narrationEl.innerHTML = escapedDesc + (step.formulaHtml || "");
+        narrationEl.innerHTML = escapedDesc + formulaPart;
       }
 
       this.updateStepFlow(step);
 
       var brainCard = document.getElementById('hissan-brain-work');
       if(brainCard){
-        if (step.brainHtml) {
+        if (step.brainHtml && (!isActiveInputStep || hintDepth >= 2)) {
           brainCard.innerHTML = step.brainHtml;
           brainCard.style.display = "block";
         } else {
@@ -7952,7 +8694,10 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
       }
 
       var illusPanel = document.getElementById('hissanIllustrationPanel');
-      if (step.hissanRound) {
+      // 「ヒントをとばす」中は、図解そのものも強制表示しない。
+      // 必要な児童が「ヒント▶」を押した時だけ再表示する。
+      var minimalHideIllus = (state.hissanSkipHints || hissanSupportMode() === "minimal") && isActiveInputStep && hintDepth === 0;
+      if (step.hissanRound && !minimalHideIllus) {
         if (illusPanel) illusPanel.style.display = "flex";
         buildHissanIllustration(step);
       } else {
@@ -7967,10 +8712,18 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
       if (step.writeCells) {
         step.writeCells.forEach(function(wc){
           if (self.gridData[wc.r] && self.gridData[wc.r][wc.c]) {
-            var isRealInputCell = inputMode && !wc.isGuide && !wc.isLineExtend && !wc.isAutoFill && wc.char !== "";
+            var isRealInputCell = inputMode && hissanCellIsInput(wc, step, state.problem);
             var useChar = wc.char;
             if (isRealInputCell) {
-              useChar = state.hissanEntries[wc.r + "," + wc.c] || "";
+              var key = hissanEntryKey(self.currentStepIdx, wc);
+              useChar = state.hissanEntries[key] || "";
+              if(useChar === "" && activeFlowItem && activeFlowItem.stepIdx === self.currentStepIdx){
+                var activeCellIdx = -1;
+                for(var aci = 0; aci < activeFlowItem.cells.length; aci++){
+                  if(activeFlowItem.cells[aci].r === wc.r && activeFlowItem.cells[aci].c === wc.c){ activeCellIdx = aci; break; }
+                }
+                if(activeCellIdx >= 0 && activeCellIdx < state.hissanBuffer.length) useChar = state.hissanBuffer[activeCellIdx];
+              }
             }
             self.gridData[wc.r][wc.c].char = useChar;
             self.gridData[wc.r][wc.c].isGuide = !!wc.isGuide;
@@ -8045,13 +8798,51 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
   // ------------------------------------------------------------------
   // hint navigation
   // ------------------------------------------------------------------
+  if(hissanSkipHintBtn){
+    hissanSkipHintBtn.addEventListener("click", function(){
+      playSound('step');
+      toggleHissanSkipHints();
+    });
+  }
+
+  if(hissanPrevBtn){
+    hissanPrevBtn.addEventListener("click", function(){
+      playSound('step');
+      backHissanFlow();
+    });
+  }
+
   hintNextBtn.addEventListener("click", function(){
-    if(state.hintStage >= state.maxHint || state.answered) return;
+    if(state.answered) return;
+    if(isHissanInputLevel(state.problem)){
+      var item = currentHissanFlowItem();
+      if(item && ((!item.cells || item.cells.length === 0) || hissanFlowItemCompleted(item))){
+        playSound('step');
+        advanceHissanFlow();
+        return;
+      }
+      if(state.hissanHintDepth >= 2) return;
+      playSound('step');
+      state.hissanHintDepth++;
+      if(state.hissanHintDepth >= 2) state.usedConcreteHint = true;
+      renderAll(false);
+      return;
+    }
+    if(state.hintStage >= state.maxHint) return;
     playSound('step');
     state.hintStage++;
+    markConcreteHintIfRevealed();
     renderAll(true);
   });
   hintBackBtn.addEventListener("click", function(){
+    if(isHissanInputLevel(state.problem) && !state.answered){
+      if(!currentHissanHasInput()) return;
+      if(state.hissanHintDepth <= 0) return;
+      playSound('step');
+      state.hissanHintDepth--;
+      renderAll(false);
+      return;
+    }
     if(state.hintStage <= 0) return;
     playSound('step');
     state.hintStage--;
@@ -8066,6 +8857,34 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
       checkCurrentAnswer();
     });
   }
+
+  document.addEventListener("keydown", function(e){
+    var tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
+    if(tag === "input" || tag === "textarea" || (e.target && e.target.isContentEditable)) return;
+    if(!document.getElementById("problemScreen").classList.contains("show")) return;
+    if(e.key >= "0" && e.key <= "9"){
+      e.preventDefault();
+      pressDigit(parseInt(e.key,10));
+      return;
+    }
+    if(e.key === "Backspace" || e.key === "Delete"){
+      e.preventDefault();
+      clearDigit();
+      return;
+    }
+    if(isHissanInputLevel(state.problem) && !state.answered){
+      var ki = currentHissanFlowItem();
+      if((e.key === "Enter" || e.key === "ArrowRight") && (!currentHissanHasInput() || hissanFlowItemCompleted(ki))){
+        e.preventDefault();
+        advanceHissanFlow();
+        return;
+      }
+      if(e.key === "ArrowLeft" && state.hissanFlowPos > 0){
+        e.preventDefault();
+        backHissanFlow();
+      }
+    }
+  });
 
   nextProblemBtn.addEventListener("click", function(){
     playSound('click');
@@ -8083,10 +8902,23 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
     });
   });
 
+  var resetMasteryBtn = document.getElementById("resetMasteryBtn");
+  if(resetMasteryBtn){
+    resetMasteryBtn.addEventListener("click", function(){
+      resetAllMastery();
+      resetMasteryBtn.textContent = "習熟度をリセットしました";
+      setTimeout(function(){ resetMasteryBtn.textContent = "習熟度をリセット"; }, 1400);
+    });
+  }
+
   document.querySelectorAll("#levelSelect .level-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
       playSound('click');
       state.level = btn.getAttribute("data-level");
+      restoreMasteryForLevel(state.level);
+      document.querySelectorAll(".level-category").forEach(function(cat){
+        cat.classList.toggle("open", cat.contains(btn));
+      });
       state.score = { correct:0, total:0 };
       scoreBox.classList.remove("show");
       document.getElementById("levelSelect").style.display = "none";
@@ -8098,6 +8930,12 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
 
   document.getElementById("backToLevels").addEventListener("click", function(){
     playSound('click');
+    state.problemSerial++;
+    clearLevel2Timers();
+    clearCtxTimers(level4Ctx);
+    clearHissanIllusTimers();
+    if(typeof clearHissanRoundTimers === "function") clearHissanRoundTimers();
+    if(typeof clearHissanRevealTimers === "function") clearHissanRevealTimers();
     document.getElementById("problemScreen").classList.remove("show");
     document.getElementById("levelSelect").style.display = "block";
     scoreBox.classList.remove("show");
@@ -8112,14 +8950,202 @@ boxW = 24; boxH = 24; gap = 3; fontSize = 9.5; rx = 4;
   // Initialize Raid Boss UI
   initRaidUI();
 
+  // ==============================================================
+  // 先生支援（TeacherBridge）連携
+  // ==============================================================
+  (function initTeacherBridge() {
+    if (!window.TeacherBridge) return;
+
+    // 1. 初期化
+    TeacherBridge.init({
+      appId: 'warizan-renshu-hint',
+      appName: 'わり算れんしゅう ヒントつき'
+    });
+
+    // 2. UI要素
+    var tbCodeInput  = document.getElementById('teacherCodeInput');
+    var tbConnBtn    = document.getElementById('teacherConnectBtn');
+    var tbIndicator  = document.getElementById('teacherConnIndicator');
+    var tbSubText    = document.getElementById('teacherConnSubText');
+    var tbBanner     = document.getElementById('teacherNoticeBanner');
+    var tbBannerIcon = document.getElementById('teacherNoticeIcon');
+    var tbBannerMain = document.getElementById('teacherNoticeMain');
+    var tbBannerSub  = document.getElementById('teacherNoticeSub');
+
+    // 3. インジケーター更新
+    function updateTbIndicator(status, code) {
+      if (status === 'connected') {
+        if (tbIndicator) { tbIndicator.textContent = '🟢'; tbIndicator.title = '先生に接続中: ' + code; }
+        if (tbConnBtn)   tbConnBtn.textContent = '切断';
+        if (tbSubText)   tbSubText.textContent = '先生: ' + code;
+      } else if (status === 'connecting') {
+        if (tbIndicator) { tbIndicator.textContent = '🟡'; tbIndicator.title = '接続確認中...'; }
+        if (tbConnBtn)   tbConnBtn.textContent = '確認中';
+        if (tbSubText)   tbSubText.textContent = '接続確認中...';
+      } else {
+        if (tbIndicator) { tbIndicator.textContent = '⚪'; tbIndicator.title = '先生未接続'; }
+        if (tbConnBtn)   tbConnBtn.textContent = 'つなぐ';
+        if (tbSubText)   tbSubText.textContent = '先生コード';
+      }
+    }
+
+    // 4. 接続・切断ハンドラ
+    async function handleTbConnect() {
+      if (!window.TeacherBridge) return;
+      var code = tbCodeInput ? tbCodeInput.value.trim() : '';
+      var sess = TeacherBridge.getSessionState();
+
+      if (sess.connected) {
+        TeacherBridge.leaveSession(true);
+        updateTbIndicator('none');
+        if (tbCodeInput) tbCodeInput.value = '';
+        return;
+      }
+
+      if (!code) { alert('先生コードを入力してください。'); return; }
+
+      updateTbIndicator('connecting');
+      var res = await TeacherBridge.joinSession(code);
+      if (res.success) {
+        updateTbIndicator('connected', res.code);
+      } else {
+        updateTbIndicator('none');
+        alert(res.message);
+      }
+    }
+
+    if (tbConnBtn) tbConnBtn.addEventListener('click', handleTbConnect);
+    if (tbCodeInput) {
+      tbCodeInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') handleTbConnect();
+      });
+    }
+
+    // 5. ニックネーム・前回コードの復元
+    (function() {
+      if (window.StudentProfile) {
+        var urlParams = new URLSearchParams(window.location.search);
+        var codeFromUrl = urlParams.get('teacherCode') || urlParams.get('tcode');
+        var lastCode = codeFromUrl || StudentProfile.getLastTeacherCode();
+        if (lastCode && tbCodeInput) {
+          tbCodeInput.value = lastCode;
+          if (codeFromUrl) handleTbConnect();
+        }
+      }
+    })();
+
+    // 6. 先生からのステータス変化バナー
+    TeacherBridge.onTeacherStatusChange(function(e) {
+      if (!tbBanner) return;
+      if (e.status === 'teacher_coming') {
+        tbBanner.style.display    = 'flex';
+        tbBanner.style.borderColor = '#f59e0b';
+        tbBanner.style.background  = '#fffbeb';
+        tbBanner.style.color       = '#92400e';
+        if (tbBannerIcon) tbBannerIcon.textContent = '🏃';
+        if (tbBannerMain) tbBannerMain.textContent = '先生が見に来ます';
+        if (tbBannerSub)  tbBannerSub.textContent  = 'この画面で待っていてね';
+      } else if (e.status === 'teacher_supporting') {
+        tbBanner.style.display    = 'flex';
+        tbBanner.style.borderColor = '#3b82f6';
+        tbBanner.style.background  = '#eff6ff';
+        tbBanner.style.color       = '#1e40af';
+        if (tbBannerIcon) tbBannerIcon.textContent = '👀';
+        if (tbBannerMain) tbBannerMain.textContent = '先生といっしょに見ているよ';
+        if (tbBannerSub)  tbBannerSub.textContent  = '';
+      } else {
+        tbBanner.style.display = 'none';
+      }
+    });
+
+    TeacherBridge.onSessionEnded(function() {
+      updateTbIndicator('none');
+      if (tbBanner) tbBanner.style.display = 'none';
+      alert('この先生コードの時間は終了しました。\n教材はこのまま続けられます。先生に新しいコードを聞いてください。');
+    });
+
+    // 7. 学習イベントフック
+    // 7-a. newProblem：問題開始時に進捗・支援レベルリセット
+    var _origNewProblem = newProblem;
+    newProblem = function() {
+      _origNewProblem();
+      if (TeacherBridge.getSessionState().connected) {
+        var lvl = String(state.level || '1');
+        TeacherBridge.updateProgress({
+          step: 'レベル' + lvl,
+          screenId: 'level-' + lvl,
+          screenName: 'わり算レベル' + lvl
+        });
+        TeacherBridge.updateSupportLevel(0);
+        TeacherBridge.resume();
+      }
+    };
+
+    // 7-b. ヒント段階変化フック
+    var hintNextBtnEl = document.getElementById('hintNextBtn');
+    var hintBackBtnEl = document.getElementById('hintBackBtn');
+    if (hintNextBtnEl) {
+      hintNextBtnEl.addEventListener('click', function() {
+        TeacherBridge.updateSupportLevel(state.hintStage);
+      }, true);
+    }
+    if (hintBackBtnEl) {
+      hintBackBtnEl.addEventListener('click', function() {
+        TeacherBridge.updateSupportLevel(state.hintStage);
+      }, true);
+    }
+
+    // 7-c. 正解時フック（resolveHelp）
+    var _origCheck = checkCurrentAnswer;
+    checkCurrentAnswer = function() {
+      var prevAnswered = state.answered;
+      _origCheck();
+      if (!prevAnswered && state.answered) {
+        TeacherBridge.resolveHelp();
+      }
+    };
+
+    // 7-d. ホームに戻る時（pause）
+    var backToLevelsEl = document.getElementById('backToLevels');
+    if (backToLevelsEl) {
+      backToLevelsEl.addEventListener('click', function() {
+        TeacherBridge.updateProgress({ step: 'ホーム', screenId: 'home', screenName: 'レベルせんたく' });
+        TeacherBridge.pause();
+      }, true);
+    }
+
+  })();
+
   // Test hooks
   window.__warizan = {
     state: state,
     HissanSim: HissanSim,
     pressDigit: pressDigit,
     clearDigit: clearDigit,
+    currentHissanFlowItem: currentHissanFlowItem,
+    advanceHissanFlow: advanceHissanFlow,
+    backHissanFlow: backHissanFlow,
+    buildHissanFlow: buildHissanFlow,
+    maxTrialAdjustmentForDivision: maxTrialAdjustmentForDivision,
+    masteryTier: masteryTier,
+    hissanSupportMode: hissanSupportMode,
+    toggleHissanSkipHints: toggleHissanSkipHints,
+    findHissanRequiredPos: findHissanRequiredPos,
+    restoreMasteryForLevel: restoreMasteryForLevel,
+    saveCurrentMastery: saveCurrentMastery,
+    resetAllMastery: resetAllMastery,
+    markConcreteHintIfRevealed: markConcreteHintIfRevealed,
     newProblem: newProblem,
-    checkCurrentAnswer: checkCurrentAnswer
+    checkCurrentAnswer: checkCurrentAnswer,
+    problemKey: problemKey,
+    alternateProblemForLevel: alternateProblemForLevel,
+    generators: {
+      "1": genLevel1, "2": genLevel2, "3-1": genLevel3_1, "3-2": genLevel3_2,
+      "4-1": genLevel4_1, "4-2": genLevel4_2, "4-3": genLevel4_3,
+      "5-1": genLevel5_1, "5-2": genLevel5_2, "5-3": genLevel5_3, "5-4": genLevel5_4,
+      "6-1": genLevel6_1, "6-2": genLevel6_2, "6-3": genLevel6_3, "7-1": genLevel7_1,
+      "8-1": genLevel8_1, "8-2": genLevel8_2, "8-3": genLevel8_3, "8-4": genLevel8_4
+    }
   };
 
 })();
