@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>かけ算① 児童自走・気づき重視 v22</title>
+<!-- Firebase SDK (v10 compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<!-- 共通先生支援モジュール -->
+<script src="js/student-profile.js"></script>
+<script src="js/teacher-bridge.js"></script>
 <style>
 :root{--ink:#251b18;--muted:#6f6660;--green:#11a85a;--green-pale:#e3f3e5;--cyan:#2eb4cb;--blue:#c9e9fa;--pink:#f8d9d8;--yellow:#fff0c8;--line:#ddd6cf;--paper:#fff;--bg:#fbfaf6;--orange:#ee9d38}
 *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:"Nunito","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;line-height:1.55}
@@ -325,12 +332,75 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:28;background:rgba(255,255
   .page[data-id="p21"] .actions{margin-top:5px}
 }
 
+/* ===== 先生コード機能 ===== */
+.teacher-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.teacher-modal-overlay.open{display:flex}
+.teacher-dialog{background:#fff;border-radius:20px;padding:20px 22px;width:min(440px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.18);position:relative}
+.teacher-dialog h2{margin:0 0 12px;font-size:1.15rem;font-weight:900}
+.teacher-dialog-close{position:absolute;right:14px;top:14px;border:0;background:transparent;font-size:1.3rem;cursor:pointer;color:#888;line-height:1}
+.teacher-connect-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.teacher-connect-row input{flex:1;min-width:90px;padding:8px 10px;border:2px solid #cbd5e1;border-radius:10px;font-size:15px;font-weight:900;text-align:center;text-transform:uppercase;font-family:inherit}
+.teacher-connect-row button{border:0;border-radius:11px;padding:9px 16px;font-weight:900;font-size:14px;cursor:pointer;background:var(--green);color:#fff}
+.teacher-conn-status{font-size:13px;color:#64748b;font-weight:800;margin-top:4px}
+.ask-teacher-panel{text-align:center;padding:8px 0 4px}
+.ask-teacher-icon{font-size:2.5rem;margin-bottom:6px}
+.ask-teacher-title{font-size:1.1rem;font-weight:900;margin-bottom:6px}
+.ask-teacher-msg{color:#555;font-size:.95rem;margin:0 0 14px;font-weight:800}
+.ask-teacher-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.teacher-notice-banner{display:none;position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:95;background:#fffbeb;border:2px solid #f59e0b;border-radius:999px;padding:9px 20px;box-shadow:0 8px 24px rgba(0,0,0,.12);align-items:center;gap:10px;font-weight:900;color:#92400e;animation:slideDown .3s ease;white-space:nowrap}
+.teacher-notice-banner.visible{display:flex}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+#askTeacherFooterBtn{border:0;border-radius:13px;padding:10px 14px;font-weight:900;background:#fff4d6;color:#775311;border:1px solid #e6c56b;cursor:pointer}
+#askTeacherFooterBtn:hover{background:#ffe9a0}
+.teacher-ind{font-size:14px;cursor:default}
+
 </style>
 </head>
 <body>
-<header><div class="top"><div class="chapter">1 かけ算</div><div class="title">見て → ためして → くらべて → 気づこう</div><div class="tools"><button class="tool" id="soundBtn" title="読み上げ">🔇</button><button class="tool" id="restartBtn" title="さいしょから" aria-label="さいしょから">↺</button></div></div><div class="progress"><div id="bar"></div></div></header>
+<!-- 先生対応中の安心通知バナー -->
+<div id="teacherNoticeBanner" class="teacher-notice-banner">
+  <span id="teacherNoticeIcon">🏃</span>
+  <div>
+    <span id="teacherNoticeMain">先生が見に来ます</span>
+    <span id="teacherNoticeSub" style="font-size:12px;color:#b45309;margin-left:6px">この画面で待っていてね</span>
+  </div>
+</div>
+
+<!-- 先生コード接続モーダル -->
+<div id="teacherConnModal" class="teacher-modal-overlay" aria-hidden="true">
+  <div class="teacher-dialog" role="dialog" aria-modal="true">
+    <button class="teacher-dialog-close" id="teacherConnModalClose" aria-label="閉じる">✕</button>
+    <h2>🧑‍🏫 先生コードにつなぐ</h2>
+    <p style="font-size:.9rem;color:#64748b;font-weight:800;margin:0 0 10px">先生からもらった4〜8けたのコードを入れてね。</p>
+    <div style="margin-bottom:8px;font-size:13px;font-weight:900;color:#334155">なまえ：<span id="kz_nicknameDisplay" style="color:#0284c7;cursor:pointer" title="クリックして名前を変更">たろう</span></div>
+    <div class="teacher-connect-row">
+      <input type="text" id="kz_teacherCodeInput" placeholder="先生コード" maxlength="8" autocomplete="off">
+      <button id="kz_teacherConnectBtn" type="button">つなぐ</button>
+      <span id="kz_teacherConnIndicator" class="teacher-ind" title="接続状態">⚪</span>
+    </div>
+    <div class="teacher-conn-status" id="kz_teacherConnSubText">先生コードがあれば入れよう</div>
+  </div>
+</div>
+
+<!-- 先生に聞くモーダル -->
+<div id="askTeacherModal" class="teacher-modal-overlay" aria-hidden="true">
+  <div class="teacher-dialog" role="dialog" aria-modal="true" style="max-width:360px">
+    <button class="teacher-dialog-close" id="askTeacherModalClose" aria-label="もどる">✕</button>
+    <div class="ask-teacher-panel">
+      <div class="ask-teacher-icon">🙋</div>
+      <div class="ask-teacher-title">先生に聞いて大丈夫</div>
+      <p class="ask-teacher-msg">画面はこのままで待つよ。先生が来たら、いっしょに見よう。</p>
+      <div class="ask-teacher-actions">
+        <button id="teacherHelpDoneBtn" class="primary" type="button" style="border:0;border-radius:13px;padding:11px 18px;font-weight:900;background:var(--green);color:#fff;cursor:pointer">先生といっしょに見た</button>
+        <button id="teacherHelpBackBtn" class="secondary" type="button" style="border:1px solid #ddd;border-radius:13px;padding:11px 16px;font-weight:900;background:#fff;cursor:pointer">もどる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header><div class="top"><div class="chapter">1 かけ算</div><div class="title">見て → ためして → くらべて → 気づこう</div><div class="tools"><button class="tool" id="teacherCodeBtn" title="先生コード接続" aria-label="先生コード接続">🧑‍🏫<span id="kz_topConnInd" style="font-size:10px;margin-left:2px"></span></button><button class="tool" id="soundBtn" title="読み上げ">🔇</button><button class="tool" id="restartBtn" title="さいしょから" aria-label="さいしょから">↺</button></div></div><div class="progress"><div id="bar"></div></div></header>
 <main id="main"></main>
-<footer><div class="footerin"><div><div class="status" id="status"></div><div class="gateNote" id="gateNote"></div></div><div class="actions" style="margin:0"><button class="secondary" id="prevBtn" onclick="prevPage()">← まえ</button><button class="primary" id="nextBtn" onclick="nextPage()">つぎのページ →</button></div></div></footer>
+<footer><div class="footerin"><div><div class="status" id="status"></div><div class="gateNote" id="gateNote"></div></div><div class="actions" style="margin:0"><button class="secondary" id="prevBtn" onclick="prevPage()">← まえ</button><button id="askTeacherFooterBtn" type="button" onclick="openAskTeacher()" title="先生に聞く">🙋 先生に聞く</button><button class="primary" id="nextBtn" onclick="nextPage()">つぎのページ →</button></div></div></footer>
 <script>
 const ONE='one',HOW='how',TOTAL='total';
 let pageIndex=0,soundOn=false,pages=[];
@@ -1142,4 +1212,191 @@ renderMatchQuestion();
 chestnutInteractive();
 p26Render();
 showPage(0);
+
+/* ===== 先生コード機能 (TeacherBridge) ===== */
+(function() {
+  'use strict';
+
+  /* --- ユーティリティ --- */
+  function $(sel) { return document.querySelector(sel); }
+
+  /* --- モーダル開閉 --- */
+  function openModal(el) {
+    el.classList.add('open');
+    el.setAttribute('aria-hidden', 'false');
+  }
+  function closeModal(el) {
+    el.classList.remove('open');
+    el.setAttribute('aria-hidden', 'true');
+  }
+
+  /* --- 先生コード接続モーダル --- */
+  var connModal = $('#teacherConnModal');
+  $('#teacherCodeBtn').addEventListener('click', function() {
+    openModal(connModal);
+    setTimeout(function() { var inp = $('#kz_teacherCodeInput'); if (inp) inp.focus(); }, 80);
+  });
+  $('#teacherConnModalClose').addEventListener('click', function() { closeModal(connModal); });
+  connModal.addEventListener('click', function(e) { if (e.target === connModal) closeModal(connModal); });
+
+  /* --- 先生に聞くモーダル --- */
+  var askModal = $('#askTeacherModal');
+  $('#askTeacherModalClose').addEventListener('click', function() {
+    closeModal(askModal);
+    if (window.TeacherBridge) TeacherBridge.cancelHelp();
+  });
+  askModal.addEventListener('click', function(e) { if (e.target === askModal) closeModal(askModal); });
+
+  /* グローバル公開（フッターボタン onclick から呼ばれる） */
+  window.openAskTeacher = function() {
+    openModal(askModal);
+    if (window.TeacherBridge) TeacherBridge.requestHelp();
+  };
+
+  $('#teacherHelpDoneBtn').addEventListener('click', function() {
+    closeModal(askModal);
+    if (window.TeacherBridge) TeacherBridge.resolveHelp();
+  });
+  $('#teacherHelpBackBtn').addEventListener('click', function() {
+    closeModal(askModal);
+    if (window.TeacherBridge) TeacherBridge.cancelHelp();
+  });
+
+  /* --- TeacherBridge がなければここで終了 --- */
+  if (!window.TeacherBridge || !window.StudentProfile) return;
+
+  TeacherBridge.init({
+    appId: 'kakezan-textbook',
+    appName: 'かけ算 教科書インタラクティブ'
+  });
+
+  /* --- インジケーター更新 --- */
+  function updateIndicator(status, code) {
+    var ind = $('#kz_teacherConnIndicator');
+    var topInd = $('#kz_topConnInd');
+    var subTxt = $('#kz_teacherConnSubText');
+    var btn = $('#kz_teacherConnectBtn');
+
+    if (status === 'connected') {
+      if (ind) { ind.textContent = '🟢'; ind.title = '先生に接続中: ' + code; }
+      if (topInd) topInd.textContent = '🟢';
+      if (btn) btn.textContent = '切断';
+      if (subTxt) subTxt.textContent = '先生につながっています (' + code + ')';
+    } else if (status === 'connecting') {
+      if (ind) { ind.textContent = '🟡'; ind.title = '接続確認中...'; }
+      if (topInd) topInd.textContent = '🟡';
+      if (btn) btn.textContent = '確認中';
+      if (subTxt) subTxt.textContent = '接続確認中...';
+    } else {
+      if (ind) { ind.textContent = '⚪'; ind.title = '先生未接続'; }
+      if (topInd) topInd.textContent = '';
+      if (btn) btn.textContent = 'つなぐ';
+      if (subTxt) subTxt.textContent = '先生コードがあれば入れよう';
+    }
+  }
+
+  /* --- 接続処理 --- */
+  async function handleConnect() {
+    var input = $('#kz_teacherCodeInput');
+    var code = input ? input.value.trim() : '';
+    var st = TeacherBridge.getSessionState();
+
+    if (st.connected) {
+      TeacherBridge.leaveSession(true);
+      updateIndicator('none');
+      if (input) input.value = '';
+      return;
+    }
+    if (!code) { alert('先生コードを入力してください。'); return; }
+
+    updateIndicator('connecting');
+    var res = await TeacherBridge.joinSession(code);
+    if (res.success) {
+      updateIndicator('connected', res.code);
+    } else {
+      updateIndicator('none');
+      alert(res.message);
+    }
+  }
+
+  var connectBtn = $('#kz_teacherConnectBtn');
+  if (connectBtn) connectBtn.addEventListener('click', handleConnect);
+  var codeInput = $('#kz_teacherCodeInput');
+  if (codeInput) codeInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') handleConnect(); });
+
+  /* --- ニックネーム管理 --- */
+  (function initNickname() {
+    var name = StudentProfile.getNickname();
+    if (!name) { name = 'たろう'; StudentProfile.setNickname(name); }
+    var nickEl = $('#kz_nicknameDisplay');
+    if (nickEl) {
+      nickEl.textContent = name;
+      nickEl.addEventListener('click', function() {
+        var newName = prompt('なまえを入力してください（ひらがな・カタカナ・漢字）:', StudentProfile.getNickname());
+        if (newName && newName.trim()) {
+          var saved = StudentProfile.setNickname(newName.trim());
+          nickEl.textContent = saved;
+        }
+      });
+    }
+    // URLパラメータまたは前回のコード復元
+    var urlParams = new URLSearchParams(window.location.search);
+    var codeFromUrl = urlParams.get('teacherCode') || urlParams.get('code');
+    var lastCode = codeFromUrl || StudentProfile.getLastTeacherCode();
+    if (lastCode && $('#kz_teacherCodeInput')) {
+      $('#kz_teacherCodeInput').value = lastCode;
+      if (codeFromUrl) handleConnect();
+    }
+  })();
+
+  /* --- ページ進捗の同期（showPage に割り込み） --- */
+  (function patchShowPage() {
+    var origShowPage = window.showPage;
+    window.showPage = function(idx) {
+      origShowPage(idx);
+      if (!TeacherBridge.getSessionState().sessionActive) return;
+      var pageEl = document.querySelector('.page.active');
+      var pageId = pageEl ? (pageEl.dataset.id || 'p' + idx) : 'p' + idx;
+      var title = pageEl ? (pageEl.querySelector('h1,h2') || {}).textContent || pageId : pageId;
+      TeacherBridge.updateProgress({
+        step: 'ページ ' + (idx + 1),
+        screenId: pageId,
+        screenName: title.trim().slice(0, 40)
+      });
+    };
+  })();
+
+  /* --- 先生からの状態監視（teacher_coming等） --- */
+  TeacherBridge.onTeacherStatusChange(function(d) {
+    var banner = $('#teacherNoticeBanner');
+    if (!banner) return;
+    if (d.status === 'teacher_coming') {
+      banner.classList.add('visible');
+      banner.style.borderColor = '#f59e0b';
+      banner.style.background = '#fffbeb';
+      banner.style.color = '#92400e';
+      var icon = $('#teacherNoticeIcon'); if (icon) icon.textContent = '🏃';
+      var main = $('#teacherNoticeMain'); if (main) main.textContent = '先生が見に来ます';
+      var sub = $('#teacherNoticeSub'); if (sub) sub.textContent = 'この画面で待っていてね';
+    } else if (d.status === 'teacher_supporting') {
+      banner.classList.add('visible');
+      banner.style.borderColor = '#3b82f6';
+      banner.style.background = '#eff6ff';
+      banner.style.color = '#1e40af';
+      var icon = $('#teacherNoticeIcon'); if (icon) icon.textContent = '👀';
+      var main = $('#teacherNoticeMain'); if (main) main.textContent = '先生といっしょに見ているよ';
+      var sub = $('#teacherNoticeSub'); if (sub) sub.textContent = '';
+    } else {
+      banner.classList.remove('visible');
+    }
+  });
+
+  TeacherBridge.onSessionEnded(function() {
+    updateIndicator('none');
+    var banner = $('#teacherNoticeBanner');
+    if (banner) banner.classList.remove('visible');
+    alert('この先生コードの時間は終了しました。\n教材はこのまま続けられます。先生に新しいコードを聞いてください。');
+  });
+
+})();
 </script></body></html>
