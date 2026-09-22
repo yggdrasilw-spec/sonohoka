@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>長さの加法・減法アニメーション</title>
+  <title>ながさの たし算・ひき算 v21</title>
   <style>
     :root{
       --bg:#f6f8fc;
@@ -244,48 +244,711 @@
       text-align:center;
       line-height:1.35;
     }
-  </style>
+
+
+    /* ===== 学習の焦点を前面に出す改善UI ===== */
+    body{
+      background:linear-gradient(180deg,#fff8fb 0%,#eef7ff 45%,#f8fffb 100%);
+      position:relative;
+    }
+    body::before,body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;}
+    body::before{
+      background:
+        radial-gradient(circle at 12% 18%, rgba(251,191,36,.22) 0 18px, transparent 19px),
+        radial-gradient(circle at 86% 14%, rgba(96,165,250,.16) 0 16px, transparent 17px),
+        radial-gradient(circle at 20% 88%, rgba(52,211,153,.15) 0 16px, transparent 17px),
+        radial-gradient(circle at 78% 84%, rgba(244,114,182,.14) 0 14px, transparent 15px),
+        radial-gradient(circle at 58% 10%, rgba(167,139,250,.12) 0 12px, transparent 13px);
+      opacity:.9;
+    }
+    body::after{
+      background:linear-gradient(transparent 96%, rgba(255,255,255,.45) 100%);
+    }
+    .app{position:relative;z-index:1;}
+    .app{
+      height:100dvh;
+      padding:8px;
+      gap:8px;
+      grid-template-rows:auto auto minmax(0,1fr) auto;
+    }
+    .bar,.stage,.footer,.concept-strip{
+      background:rgba(255,255,255,.96);
+      border:2px solid #d9e7f4;
+      border-radius:22px;
+      box-shadow:0 10px 24px rgba(15,23,42,.08);
+      backdrop-filter:none;
+    }
+    .bar{
+      padding:8px 10px;
+      display:grid;
+      grid-template-columns:minmax(210px,.72fr) minmax(520px,1.9fr) minmax(190px,.7fr);
+      gap:10px;
+      align-items:center;
+    }
+    .mode-zone{display:grid;gap:7px;align-content:center}
+    .mode-tabs{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:6px;
+      padding:5px;
+      border-radius:16px;
+      background:linear-gradient(180deg,#eef7ff 0%,#f5f3ff 100%);
+      border:1px solid #dbeafe;
+    }
+    .mode-tab{
+      min-height:38px;
+      border:0;
+      border-radius:12px;
+      background:rgba(255,255,255,.55);
+      color:#475569;
+      font-size:13px;
+      font-weight:900;
+      cursor:pointer;
+      transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+    .mode-tab:hover{transform:translateY(-1px)}
+    .mode-tab[data-mode='+']{color:#b45309}
+    .mode-tab[data-mode='−']{color:#0f766e}
+    .mode-tab[data-mode='差']{color:#7c3aed}
+    .mode-tab.active{
+      background:#fff;
+      color:#0f172a;
+      box-shadow:0 3px 10px rgba(15,23,42,.12);
+    }
+    .mode-tab[data-mode='+'].active{background:linear-gradient(180deg,#fff6d8 0%,#fffdf4 100%);border:1px solid #fcd34d}
+    .mode-tab[data-mode='−'].active{background:linear-gradient(180deg,#dcfce7 0%,#f0fdf4 100%);border:1px solid #86efac}
+    .mode-tab[data-mode='差'].active{background:linear-gradient(180deg,#f3e8ff 0%,#faf5ff 100%);border:1px solid #d8b4fe}
+    .preset-row{display:flex;gap:6px;flex-wrap:wrap}
+    .preset-btn{
+      border:2px solid #cbd5e1;
+      border-radius:999px;
+      background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+      color:#334155;
+      padding:7px 11px;
+      font-size:12px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 4px 10px rgba(15,23,42,.06);
+    }
+    .preset-btn.challenge{border-color:#f59e0b;background:linear-gradient(180deg,#fff3c4 0%,#fffbeb 100%);color:#92400e}
+    .preset-btn.active{transform:translateY(-1px);box-shadow:0 7px 14px rgba(15,23,42,.10)}
+    .preset-btn:not(.challenge).active{background:linear-gradient(180deg,#dbeafe 0%,#eff6ff 100%);border-color:#60a5fa;color:#1d4ed8}
+    .preset-btn.challenge.active{background:linear-gradient(180deg,#fde68a 0%,#fff7d6 100%);border-color:#f59e0b;color:#92400e}
+    .preset-btn.challenge{position:relative}
+    .preset-btn.challenge.extension::after{content:'チャレンジ';position:absolute;top:-8px;right:-7px;font-size:9px;line-height:1;padding:3px 5px;border-radius:999px;background:#f59e0b;color:#fff;border:2px solid #fff}
+    .operand-zone{
+      min-width:0;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+      gap:8px;
+      align-items:center;
+    }
+    .side{
+      min-width:0;
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:7px;
+      align-items:center;
+      padding:7px 9px;
+      border-radius:16px;
+      background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);
+      border:2px solid #dce8f5;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+    }
+    .side.right{justify-self:stretch;grid-template-columns:1fr auto}
+    .side-title{
+      width:32px;
+      height:32px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      background:linear-gradient(180deg,#fef3c7 0%,#fde68a 100%);
+      border:2px solid #f59e0b;
+      color:#92400e;
+      font-size:15px;
+      font-weight:950;
+      padding:0;
+      box-shadow:0 4px 8px rgba(245,158,11,.18);
+    }
+    .operand-zone > .side.right .side-title{
+      background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%);
+      border-color:#60a5fa;
+      color:#1d4ed8;
+      box-shadow:0 4px 8px rgba(96,165,250,.18);
+    }
+    .length-card{gap:3px}
+    .operand-name{font-size:11px;font-weight:900;color:#64748b;text-align:center;letter-spacing:.02em}
+    .length-preview{
+      gap:7px;
+      font-size:clamp(18px,1.65vw,24px);
+      justify-content:center;
+    }
+    .length-preview .cm::before{content:'■ ';font-size:.7em;vertical-align:.08em}
+    .length-preview .mm::before{content:'● ';font-size:.68em;vertical-align:.08em}
+    .steppers{display:none;grid-template-columns:repeat(2,minmax(50px,72px));gap:7px;justify-content:center}
+    .app.edit-values .steppers{display:grid}
+    .step-block{min-width:50px;gap:2px}
+    .small{width:40px;height:30px;font-size:16px;border:2px solid transparent;box-shadow:0 3px 7px rgba(15,23,42,.08)}
+    .small[data-unit='cm']{background:linear-gradient(180deg,#fee2e2 0%,#fff1f2 100%);color:#b91c1c;border-color:#fecaca}
+    .small[data-unit='mm']{background:linear-gradient(180deg,#dbeafe 0%,#eff6ff 100%);color:#1d4ed8;border-color:#bfdbfe}
+    .value{font-size:16px;padding:3px 0;background:#fff;border:2px solid #e2e8f0;border-radius:10px}
+    .step-block:nth-child(1) .value{border-color:#fecaca;background:#fff8f8}
+    .step-block:nth-child(2) .value{border-color:#bfdbfe;background:#f8fbff}
+    .step-label{font-size:11px;font-weight:900;padding:1px 8px;border-radius:999px;background:#fff}
+    .step-block:nth-child(1) .step-label{color:#b91c1c;border:1px solid #fecaca}
+    .step-block:nth-child(2) .step-label{color:#1d4ed8;border:1px solid #bfdbfe}
+    .op-wrap{gap:3px}
+    .op-btn{
+      width:48px;height:48px;
+      background:linear-gradient(180deg,#fdf2f8 0%,#eef2ff 100%);
+      color:#0f172a;
+      box-shadow:none;
+      border:2px dashed #c4b5fd;
+      cursor:default;
+      pointer-events:none;
+    }
+    .badge{padding:4px 8px;font-size:11px;background:#fff}
+    .tools-zone{display:grid;gap:7px;justify-items:end;align-content:center}
+    .action-row{gap:6px;justify-content:flex-end;flex-wrap:nowrap}
+    .action{padding:9px 12px;font-size:13px;border:2px solid rgba(255,255,255,.6)}
+    #animateBtn{font-size:14px;padding:10px 15px;background:linear-gradient(180deg,#34d399 0%,#0f766e 100%);box-shadow:0 10px 18px rgba(15,118,110,.22)}
+    #animateBtn:hover{transform:translateY(-1px)}
+    #resetBtn{padding:9px 11px!important;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);border-color:#cbd5e1}
+    .sound-btn{padding:8px 10px;font-size:17px;border:2px solid #bbf7d0}
+    .display-settings{font-size:11px;color:#64748b}
+    .display-settings summary{cursor:pointer;font-weight:800;text-align:right;list-style:none}
+    .display-settings summary::-webkit-details-marker{display:none}
+    .display-settings summary::before{content:'';}
+    .zoom-row{display:flex;gap:5px;align-items:center;justify-content:flex-end;margin-top:5px}
+    .settings-row{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:6px;flex-wrap:wrap}
+    .value-edit-btn,.undo-value-btn{border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;padding:6px 9px;font-size:11px;font-weight:900;cursor:pointer}
+    .value-edit-btn.active{background:#ecfeff;border-color:#67e8f9;color:#0e7490}
+    .undo-value-btn:disabled{opacity:.35;cursor:default}
+    .app:not(.edit-values) .undo-value-btn{display:none}
+    .setting-check{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:7px;font-size:11px;font-weight:850;color:#475569;cursor:pointer;user-select:none}
+    .setting-check input{width:16px;height:16px;accent-color:#0f766e}
+    .practice-pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#ecfdf5;border:2px solid #6ee7b7;color:#047857;font-size:11px;font-weight:950;white-space:nowrap}
+    .practice-pill[hidden]{display:none}
+    .practice-pill.review{background:#fff7ed;border-color:#fdba74;color:#9a3412}
+    .practice-status{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:#f8fafc;border:1px solid #cbd5e1;color:#475569;font-size:10px;font-weight:900;white-space:nowrap}
+    .practice-status[hidden]{display:none}
+
+    .concept-strip{
+      min-height:62px;
+      padding:8px 14px;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      align-items:center;
+      gap:14px;
+      border-width:2px;
+      background:linear-gradient(180deg,#fffef8 0%,#ffffff 100%);
+      position:relative;
+    }
+    .concept-strip::before{
+      content:'💡 ポイント';
+      position:absolute;
+      top:-11px;
+      left:16px;
+      padding:3px 10px;
+      border-radius:999px;
+      background:linear-gradient(180deg,#fef3c7 0%,#fde68a 100%);
+      color:#92400e;
+      font-size:12px;
+      font-weight:950;
+      border:2px solid #f59e0b;
+      box-shadow:0 4px 8px rgba(245,158,11,.14);
+    }
+    .concept-main{min-width:0;display:grid;gap:5px}
+    .question-equation{
+      min-width:0;
+      display:flex;
+      align-items:baseline;
+      justify-content:center;
+      gap:8px;
+      flex-wrap:wrap;
+      font-size:clamp(22px,2.35vw,34px);
+      line-height:1.1;
+      font-weight:950;
+      letter-spacing:.01em;
+    }
+    .hint-line{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:900;color:#475569}
+    .hint-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:#ffffff;border:1px solid #dbeafe;box-shadow:0 2px 6px rgba(15,23,42,.04)}
+    .hint-badge .num{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:950}
+    .hint-badge.em{border-color:#bbf7d0;background:#f0fdf4;color:#065f46}
+    .hint-badge{transition:transform .16s ease,box-shadow .16s ease,opacity .16s ease,background .16s ease}
+    .hint-badge.active{transform:translateY(-1px) scale(1.05);background:#fff7d6;border-color:#f59e0b;color:#92400e;box-shadow:0 0 0 4px rgba(245,158,11,.12),0 5px 12px rgba(15,23,42,.08)}
+    .hint-badge.done{opacity:.58;background:#f8fafc;border-color:#cbd5e1}
+    .hint-badge.active .num{background:#f59e0b;color:#fff}
+    .hint-badge.done .num{background:#94a3b8;color:#fff}
+    .check-prompt{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:950;color:#334155}
+    .check-prompt::before{content:'?';display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;background:#e0f2fe;color:#0369a1;font-size:13px}
+    .check-choice{border:2px solid #cbd5e1;border-radius:999px;background:#fff;padding:6px 12px;font-size:13px;font-weight:950;color:#334155;cursor:pointer;box-shadow:0 2px 6px rgba(15,23,42,.05);transition:transform .12s ease,background .12s ease,border-color .12s ease}
+    .check-choice:hover{transform:translateY(-1px)}
+    .check-choice.correct{background:#ecfdf5;border-color:#34d399;color:#047857}
+    .check-choice.wrong{background:#fff7ed;border-color:#fb923c;color:#9a3412;animation:checkShake .26s ease}
+    .check-note{font-size:12px;font-weight:900;color:#92400e}
+    .check-note.ok{color:#047857;background:#ecfdf5;border:2px solid #6ee7b7;border-radius:999px;padding:5px 10px}
+    @keyframes checkShake{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}70%{transform:translateX(4px)}}
+    .question-equation .cm,.concept-strip .cm{color:var(--cm)}
+    .question-equation .mm,.concept-strip .mm{color:var(--mm)}
+    .question-equation .unknown{font-size:1.15em;color:#0f766e}
+    .question-equation .word{font-size:.68em;color:#475569}
+    .zero-length{color:#475569;font-weight:900}
+    .unit-rule{display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:13px;font-weight:900;color:#475569}
+    .unit-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      padding:8px 11px;
+      border-radius:999px;
+      border:2px solid currentColor;
+      background:#fff;
+      transition:transform .18s ease,box-shadow .18s ease,background .18s ease,opacity .18s ease;
+      box-shadow:0 3px 8px rgba(15,23,42,.06);
+    }
+    .unit-chip.cm{background:linear-gradient(180deg,#fff4f4 0%,#ffffff 100%)}
+    .unit-chip.mm{background:linear-gradient(180deg,#f2f8ff 0%,#ffffff 100%)}
+    .unit-chip.cm::before{content:'■';font-size:11px}
+    .unit-chip.mm::before{content:'●';font-size:11px}
+    .equiv-chip{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:#fff7ed;border:2px solid #fdba74;color:#9a3412;font-size:12px;font-weight:950;box-shadow:0 3px 8px rgba(15,23,42,.05)}
+    .equiv-chip .cm-eq{color:var(--cm)}
+    .equiv-chip .mm-eq{color:var(--mm)}
+    .equiv-chip[hidden]{display:none}
+    .practice-strip{grid-column:1/-1;display:grid;grid-template-columns:auto auto auto auto minmax(150px,1fr);align-items:center;justify-content:center;gap:8px;padding:6px 8px 1px;border-top:1px dashed #cbd5e1}
+    .practice-strip[hidden]{display:none}
+    .practice-title{font-size:13px;font-weight:950;color:#047857;white-space:nowrap}
+    .practice-answer-label{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:900;color:#475569;white-space:nowrap}
+    .practice-zero-note{font-size:11px;font-weight:850;color:#64748b;white-space:nowrap}
+    .practice-input{width:58px;height:34px;border:2px solid #cbd5e1;border-radius:10px;background:#fff;text-align:center;font-size:18px;font-weight:950;color:#0f172a;outline:none}
+    .practice-input.cm-input{border-color:#fca5a5;background:#fff7f7}
+    .practice-input.mm-input{border-color:#93c5fd;background:#f7fbff}
+    .practice-input:focus{box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+    .practice-check-btn{border:0;border-radius:999px;background:linear-gradient(180deg,#34d399 0%,#0f766e 100%);color:#fff;padding:8px 13px;font-size:12px;font-weight:950;cursor:pointer;box-shadow:0 5px 10px rgba(15,118,110,.16)}
+    .practice-check-btn:disabled{opacity:.45;cursor:default;box-shadow:none}
+    .practice-feedback{min-height:1.2em;font-size:12px;font-weight:900;color:#b45309;text-align:left}
+    .practice-feedback.ok{color:#047857}
+    .practice-feedback.hint{color:#92400e}
+    .unit-chip.focus{transform:scale(1.06);box-shadow:0 0 0 4px rgba(15,118,110,.08)}
+    .unit-chip.dim{opacity:.35;transform:scale(.96)}
+
+    .now-doing{position:absolute;top:7px;left:50%;transform:translateX(-50%);z-index:18;padding:6px 13px;border-radius:999px;background:rgba(255,247,214,.96);border:2px solid #f59e0b;color:#92400e;font-size:13px;font-weight:950;box-shadow:0 5px 12px rgba(15,23,42,.09);pointer-events:none;white-space:nowrap}
+    .now-doing[hidden]{display:none}
+
+    .success-card{
+      position:absolute;
+      left:50%;top:50%;bottom:auto;
+      transform:translate(-50%,-50%);
+      z-index:40;
+      width:min(760px,92%);max-width:92%;min-width:0;
+      height:min(350px,calc(100% - 24px));
+      max-height:calc(100% - 24px);
+      box-sizing:border-box;
+      padding:20px 24px;border-radius:24px;
+      background:linear-gradient(180deg,rgba(255,255,255,.985) 0%,rgba(240,253,250,.985) 100%);
+      border:3px solid #34d399;box-shadow:0 18px 40px rgba(15,118,110,.20);
+      text-align:center;pointer-events:auto;
+      overflow-y:auto;overflow-x:hidden;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      animation:successPop .34s cubic-bezier(.2,.8,.2,1) both;
+    }
+    /* たしかめ中も、できた後も、同じ中央ポップアップ枠を使う。 */
+    .success-card.bottom{top:50%;bottom:auto}
+    .success-title{font-size:clamp(25px,3vw,38px);font-weight:950;color:#047857;line-height:1.08}
+    .success-main{margin-top:8px;font-size:clamp(17px,1.9vw,23px);font-weight:950;color:#0f172a;line-height:1.35}
+    .success-sub{margin-top:7px;font-size:clamp(14px,1.4vw,18px);font-weight:850;color:#475569;line-height:1.45}
+    .success-check{width:100%;box-sizing:border-box;margin-top:9px;padding:8px 10px;border-radius:14px;background:#fffbeb;border:2px solid #fde68a;display:grid;gap:7px;justify-items:center}
+    .success-check:empty{display:none}
+    .success-check-guide{font-size:11px;font-weight:950;color:#92400e}
+    .success-check-row{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}
+    .success-check .check-prompt{font-size:12px;font-weight:950;color:#334155}
+    .success-check .check-choice{border:2px solid #cbd5e1;border-radius:999px;background:#fff;padding:6px 10px;font-size:12px;font-weight:950;color:#334155;cursor:pointer}
+    .success-check .check-choice:hover{background:#f8fafc}
+    .success-check .check-choice.correct{border-color:#34d399;background:#ecfdf5;color:#047857}
+    .success-check .check-choice.wrong{border-color:#fb7185;background:#fff1f2;color:#be123c;animation:checkShake .25s ease}
+    .success-check .check-note{font-size:15px;font-weight:900;color:#b45309;line-height:1.45}
+    .success-check .check-note.ok{color:#047857}
+    .success-lock-note{margin-top:10px;font-size:14px;font-weight:900;color:#92400e;line-height:1.4}
+    @keyframes checkShake{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}70%{transform:translateX(4px)}}
+    .success-actions{display:flex;justify-content:center;gap:12px;margin-top:14px;position:relative;z-index:2;flex-wrap:wrap}
+    .success-btn{border:0;border-radius:999px;padding:12px 22px;font-size:17px;font-weight:950;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.10);transition:transform .1s ease;min-height:48px}
+    .success-btn:active{transform:translateY(1px)}
+    .success-btn:disabled{opacity:.42;cursor:default;filter:grayscale(.25);box-shadow:none}
+    .success-btn.next.ready{box-shadow:0 0 0 4px rgba(245,158,11,.15),0 5px 12px rgba(15,23,42,.10)}
+    .success-btn.repeat{background:#fff;color:#475569;border:2px solid #cbd5e1}
+    .success-btn.next{background:linear-gradient(180deg,#fbbf24 0%,#f59e0b 100%);color:#78350f;border:2px solid #f59e0b}
+    .success-spark{position:absolute;top:48%;font-size:20px;animation:sparkFly 1.25s ease-out both;opacity:0}
+    .success-card.needs-check{
+      border-color:#f59e0b;
+      background:linear-gradient(180deg,#fffdf3 0%,#ffffff 100%);
+      box-shadow:0 20px 46px rgba(146,64,14,.24);
+    }
+    .success-card.needs-check .success-title{font-size:clamp(25px,3vw,38px);color:#92400e}
+    .success-card.needs-check .success-main{font-size:clamp(17px,1.9vw,23px);margin-top:8px}
+    .success-card.needs-check .success-sub{display:none}
+    .success-card.needs-check .success-check{margin-top:14px;padding:16px 16px 18px;border-radius:20px;border:3px solid #fbbf24;background:#fff7d6;gap:14px}
+    .success-card.needs-check .success-check-guide{font-size:18px;color:#92400e}
+    .success-card.needs-check .success-check-row{gap:12px}
+    .success-card.needs-check .success-check .check-prompt{width:100%;justify-content:center;font-size:clamp(20px,2.2vw,28px);line-height:1.35}
+    .success-card.needs-check .success-check .check-choice{min-width:180px;min-height:54px;padding:11px 18px;font-size:clamp(17px,1.8vw,22px);border-width:3px}
+    .success-card.needs-check .success-check .check-note{font-size:15px;line-height:1.4}
+    .success-card.needs-check .success-lock-note{font-size:14px;margin-top:10px;color:#92400e}
+    .success-card.needs-check .success-actions{margin-top:14px}
+    .success-card.needs-check .success-btn.next{font-size:17px;padding:12px 22px}
+    .success-card:not(.needs-check) .success-title{font-size:clamp(25px,3vw,38px)}
+    .success-card:not(.needs-check) .success-main{font-size:clamp(17px,1.9vw,23px)}
+    .success-card:not(.needs-check) .success-sub{font-size:clamp(14px,1.4vw,18px)}
+    .success-card:not(.needs-check) .success-btn{font-size:17px;padding:12px 22px;min-height:48px}
+    @media (max-width:700px){
+      .success-card{width:94%;max-width:94%;padding:16px 14px}
+      .success-card.needs-check{width:94%;max-width:94%;padding:16px 14px}
+      .success-card.needs-check .success-check .check-choice{min-width:135px}
+    }
+    @keyframes successPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.88)}70%{opacity:1;transform:translate(-50%,-50%) scale(1.02)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+    @keyframes sparkFly{0%{opacity:0;transform:translate(0,0) scale(.4) rotate(0)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.25) rotate(var(--rot))}}
+
+    .stage{
+      padding:4px;
+      border-width:2px;
+      box-shadow:0 5px 16px rgba(15,23,42,.06);
+      background:linear-gradient(180deg,#ffffff 0%,#fcfdff 100%);
+    }
+    svg{overflow:visible}
+    .footer{
+      min-height:60px;
+      padding:7px 12px;
+      gap:4px;
+      box-shadow:0 5px 16px rgba(15,23,42,.06);
+      background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);
+    }
+    .equation{font-size:clamp(18px,1.8vw,25px);line-height:1.2}
+    .result{font-size:clamp(17px,1.75vw,24px);min-height:1.2em}
+    .tiny{font-size:13px;font-weight:800;color:#475569;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:5px 10px}
+    .tiny strong{color:#0f172a}
+
+    .footer.result-hidden{min-height:36px;padding:5px 12px}
+    .footer.result-hidden .equation,.footer.result-hidden .result{display:none}
+
+    @media (max-width:1050px){
+      .bar{grid-template-columns:190px minmax(480px,1fr) 175px;gap:7px}
+      .preset-btn{padding:5px 7px;font-size:11px}
+      .side{padding:5px}
+      .steppers{grid-template-columns:repeat(2,52px)}
+      .action{padding:8px 9px}
+      #animateBtn{padding:9px 10px;font-size:12px}
+      .concept-strip{grid-template-columns:1fr;gap:5px;padding:6px 10px}
+      .unit-rule{justify-content:center}
+      .hint-line{font-size:11px}
+      .practice-strip{grid-template-columns:1fr auto auto;gap:6px}
+      .practice-title{grid-column:1/-1;text-align:center}
+      .practice-feedback{grid-column:1/-1;text-align:center}
+    }
+    @media (max-width:820px){
+      body{overflow:auto}
+      .app{height:auto;min-height:100dvh;grid-template-rows:auto auto minmax(420px,1fr) auto}
+      .bar{grid-template-columns:1fr;}
+      .mode-zone{grid-template-columns:1fr auto;align-items:center}
+      .operand-zone{grid-row:2}
+      .tools-zone{grid-template-columns:1fr auto;justify-items:stretch}
+      .action-row{justify-content:center}
+      .display-settings{justify-self:end}
+    }
+
+    /* ===== v18: 情報を厳選した児童向けUI ===== */
+    .bar{grid-template-columns:minmax(210px,.62fr) minmax(500px,2fr) minmax(132px,.42fr);gap:8px;padding:7px 9px}
+    .mode-zone{gap:0}
+    .mode-tabs{padding:4px;gap:4px}
+    .mode-tab{min-height:40px;font-size:14px}
+    .operand-name,.badge{display:none!important}
+    .side{padding:8px 10px}
+    .tools-zone{display:flex;align-items:center;justify-content:flex-end;gap:5px}
+    .action-row{gap:5px}
+    #animateBtn{font-size:15px;padding:11px 16px}
+    #resetBtn{min-width:42px;width:42px;padding:9px!important;font-size:0}
+    #resetBtn::before{content:'↺';font-size:20px}
+    .sound-btn{min-width:42px;width:42px;padding:8px;font-size:17px}
+    .display-settings{position:relative}
+    .display-settings summary{width:42px;height:42px;display:grid;place-items:center;border:1px solid #cbd5e1;border-radius:12px;background:#fff;font-size:18px;text-align:center}
+    .display-settings[open]{z-index:20}
+    .display-settings[open]::after{content:'';position:absolute;right:0;top:46px;width:290px;height:1px}
+    .display-settings > :not(summary){position:relative;z-index:21}
+    .display-settings[open]{padding:0}
+    .display-settings[open] .settings-caption:first-of-type{margin-top:7px}
+    .display-settings .settings-caption{font-size:10px;font-weight:950;color:#64748b;text-align:left;margin:8px 0 3px}
+    .display-settings .preset-row{display:flex;justify-content:flex-end}
+    .preset-row{display:none}
+    .display-settings[open]{background:#fff;border:1px solid #dbe4ee;border-radius:14px;padding:5px 8px 9px;box-shadow:0 12px 28px rgba(15,23,42,.14)}
+    .display-settings[open] summary{margin-left:auto}
+    .display-settings .preset-btn{padding:6px 8px;font-size:10px;box-shadow:none}
+    .learning-meta{display:flex;justify-content:center;min-height:0}
+    .practice-status{display:none!important}
+    .practice-pill{padding:4px 9px;border-width:1px;font-size:10px}
+    .concept-strip{grid-template-columns:minmax(0,1fr) auto;min-height:54px;padding:7px 12px;gap:8px}
+    .concept-strip::before{display:none}
+    .concept-main{gap:3px}
+    .hint-line{min-height:18px;font-size:12px;gap:4px}
+    .hint-line .hint-badge{padding:3px 8px;box-shadow:none;border-width:1px}
+    .unit-rule{display:none}
+    .unit-rule.show-equivalence{display:flex}
+    .unit-rule #cmRule,.unit-rule #mmRule,.unit-rule > span:not(.equiv-chip){display:none}
+    .footer.result-hidden{display:none}
+    .footer .tiny{display:none}
+    .footer{min-height:48px;padding:6px 10px}
+    .success-spark{display:none}
+    .success-card{padding:20px 24px;width:min(760px,92%);max-width:92%}
+    .success-sub{font-size:clamp(14px,1.4vw,18px)}
+    .practice-strip{padding-top:5px}
+    @media (max-width:1050px){
+      .bar{grid-template-columns:180px minmax(470px,1fr) 132px}
+    }
+    @media (max-width:820px){
+      .bar{grid-template-columns:1fr}
+      .tools-zone{justify-content:center}
+      .display-settings{position:static}
+    }
+
+    /* v18b: 通常時は重複する数値編集欄を隠す */
+    .bar{grid-template-columns:minmax(280px,420px) auto;justify-content:space-between}
+    .mode-zone{max-width:420px}
+    .operand-zone{display:none}
+    .app.edit-values .bar{grid-template-columns:180px minmax(500px,1fr) 132px}
+    .app.edit-values .operand-zone{display:grid}
+    @media (max-width:1050px){
+      .bar{grid-template-columns:minmax(250px,400px) auto}
+      .app.edit-values .bar{grid-template-columns:170px minmax(450px,1fr) 132px}
+    }
+    @media (max-width:820px){
+      .bar,.app.edit-values .bar{grid-template-columns:1fr}
+      .app.edit-values .operand-zone{display:grid}
+    }
+
+  
+
+    /* ===== v19: 練習では答え入力を主役にする ===== */
+    .app.practice-mode .concept-strip{
+      grid-template-columns:1fr;
+      padding:8px 10px 10px;
+      gap:5px;
+      background:linear-gradient(180deg,#ffffff 0%,#f7fffb 100%);
+      border-color:#a7f3d0;
+    }
+    .app.practice-mode .hint-line{display:none}
+    .app.practice-mode #animateBtn{display:none}
+    .app.practice-mode .question-equation{font-size:clamp(24px,2.65vw,38px);margin:1px 0 3px}
+    .app.practice-mode .learning-meta{margin-bottom:1px}
+    .app.practice-mode .unit-rule.show-equivalence{justify-content:center;margin:1px 0 2px}
+    .practice-strip{
+      grid-column:1/-1;
+      display:grid;
+      grid-template-columns:1fr;
+      justify-items:center;
+      gap:7px;
+      padding:9px 10px 8px;
+      border:3px solid #6ee7b7;
+      border-radius:20px;
+      background:linear-gradient(180deg,#ecfdf5 0%,#ffffff 72%);
+      box-shadow:0 7px 18px rgba(5,150,105,.10);
+    }
+    .practice-strip[hidden]{display:none}
+    .practice-title{
+      font-size:clamp(17px,1.7vw,22px);
+      font-weight:950;
+      color:#065f46;
+      line-height:1.05;
+    }
+    .practice-answer-box{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      width:min(650px,100%);
+      padding:8px 12px;
+      border-radius:16px;
+      background:#fff;
+      border:2px solid #d1fae5;
+    }
+    .practice-answer-prefix{font-size:17px;font-weight:950;color:#334155;margin-right:2px}
+    .practice-unit-field{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 8px;
+      border-radius:14px;
+      border:2px solid transparent;
+      background:#fff;
+    }
+    .practice-unit-field.cm-field{border-color:#fecaca;background:#fff7f7}
+    .practice-unit-field.mm-field{border-color:#bfdbfe;background:#f7fbff}
+    .practice-unit-name{font-size:20px;font-weight:950;white-space:nowrap;letter-spacing:.01em}
+    .cm-field .practice-unit-name{color:#b91c1c}
+    .mm-field .practice-unit-name{color:#1d4ed8}
+    .practice-input{
+      width:82px;
+      height:54px;
+      border:3px solid #94a3b8;
+      border-radius:12px;
+      background:#fff;
+      text-align:center;
+      font-size:29px;
+      font-weight:950;
+      line-height:1;
+      color:#0f172a;
+      outline:none;
+      appearance:textfield;
+      -moz-appearance:textfield;
+    }
+    .practice-input::-webkit-outer-spin-button,.practice-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+    .practice-input::placeholder{color:#94a3b8;opacity:1}
+    .practice-input.cm-input{border-color:#ef4444;background:#fff}
+    .practice-input.mm-input{border-color:#2563eb;background:#fff}
+    .practice-input.cm-input:focus{box-shadow:0 0 0 5px rgba(239,68,68,.14);border-color:#dc2626}
+    .practice-input.mm-input:focus{box-shadow:0 0 0 5px rgba(37,99,235,.14);border-color:#1d4ed8}
+    .practice-actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+    .practice-check-btn{
+      min-height:46px;
+      border-radius:14px;
+      padding:10px 22px;
+      font-size:16px;
+      box-shadow:0 7px 14px rgba(15,118,110,.18);
+    }
+    .practice-hint-btn{
+      min-height:42px;
+      border:2px solid #cbd5e1;
+      border-radius:14px;
+      background:#fff;
+      color:#475569;
+      padding:8px 13px;
+      font-size:12px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .practice-hint-btn:disabled{opacity:.42;cursor:default}
+    .practice-zero-note{font-size:11px;font-weight:850;color:#64748b}
+    .practice-zero-note[hidden]{display:none}
+    .practice-feedback{
+      min-height:22px;
+      max-width:680px;
+      font-size:13px;
+      line-height:1.35;
+      font-weight:900;
+      color:#b45309;
+      text-align:center;
+    }
+    .practice-feedback.ok{font-size:15px;color:#047857}
+    .app.practice-mode .stage{margin-top:0}
+    @media (max-width:700px){
+      .practice-answer-box{gap:6px;padding:7px}
+      .practice-answer-prefix{width:100%;text-align:center;font-size:15px}
+      .practice-unit-field{padding:4px 6px}
+      .practice-unit-name{font-size:17px}
+      .practice-input{width:68px;height:50px;font-size:26px}
+      .practice-check-btn{width:min(280px,100%)}
+    }
+
+    .app.practice-mode .practice-strip{animation:answerReady .32s ease-out both}
+    .app.practice-mode .success-sub{display:none}
+    @keyframes answerReady{from{opacity:.72;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+</style>
 </head>
 <body>
   <div class="app">
     <div class="bar">
-      <div class="side">
-        <div class="side-title">左</div>
-        <div class="length-card">
-          <div class="length-preview" id="leftPreview"></div>
-          <div class="steppers" id="leftSteppers"></div>
+      <div class="mode-zone">
+        <div class="mode-tabs" role="group" aria-label="けいさんの しゅるい">
+          <button class="mode-tab active" data-mode="+" id="modeAddBtn">たしざん</button>
+          <button class="mode-tab" data-mode="−" id="modeSubBtn">ひきざん</button>
+          <button class="mode-tab" data-mode="差" id="modeDiffBtn">ちがい</button>
         </div>
       </div>
 
-      <div class="op-wrap">
-        <button class="btn op-btn" id="opBtn">＋</button>
-        <div class="badge" id="modeBadge">加法</div>
-      </div>
-
-      <div class="side right">
-        <div class="length-card">
-          <div class="length-preview" id="rightPreview" style="justify-content:flex-end;"></div>
-          <div class="steppers" id="rightSteppers" style="justify-content:flex-end;"></div>
+      <div class="operand-zone">
+        <div class="side">
+          <div class="side-title">①</div>
+          <div class="length-card">
+            <div class="operand-name">① の ながさ</div>
+            <div class="length-preview" id="leftPreview"></div>
+            <div class="steppers" id="leftSteppers"></div>
+          </div>
         </div>
-        <div class="side-title">右</div>
+
+        <div class="op-wrap">
+          <button class="btn op-btn" id="opBtn" aria-label="けいさんの きごう">＋</button>
+          <div class="badge" id="modeBadge">たしざん</div>
+        </div>
+
+        <div class="side right">
+          <div class="length-card">
+            <div class="operand-name">② の ながさ</div>
+            <div class="length-preview" id="rightPreview"></div>
+            <div class="steppers" id="rightSteppers"></div>
+          </div>
+          <div class="side-title">②</div>
+        </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;align-self:stretch;">
+      <div class="tools-zone">
         <div class="action-row">
-          <button class="action" id="animateBtn">アニメ開始</button>
-          <button class="btn secondary action" id="resetBtn" style="padding:10px 14px;">リセット</button>
-          <button class="sound-btn" id="soundBtn" title="音のオン/オフ">🔊</button>
+          <button class="action" id="animateBtn">▶ やってみる</button>
+          <button class="btn secondary action" id="resetBtn" aria-label="はじめにもどす" title="はじめにもどす">↺ はじめにもどす</button>
+          <button class="sound-btn" id="soundBtn" title="おとの オン・オフ">🔊</button>
         </div>
-        <div style="display:flex;gap:6px;align-items:center;align-self:flex-start;">
-          <button class="btn small" id="scaleDownBtn" style="width:28px;height:24px;font-size:16px;">－</button>
-          <div id="scaleDisplay" style="min-width:46px;text-align:center;font-size:12px;font-weight:900;padding:3px 5px;border-radius:8px;background:#f8fafc;border:1px solid rgba(148,163,184,.25);color:#1f2937;">100%</div>
-          <button class="btn small" id="scaleUpBtn" style="width:28px;height:24px;font-size:16px;">＋</button>
+        <details class="display-settings">
+          <summary>⚙</summary>
+          <div class="settings-caption">まなびかた</div>
+          <div class="preset-row settings-levels">
+            <button class="preset-btn" id="presetBasicBtn">① きほん</button>
+            <button class="preset-btn challenge" id="presetChallengeBtn">★ チャレンジ 10mm→1cm</button>
+          </div>
+          <div class="settings-caption">かず・ひょうじ</div>
+          <div class="settings-row"><button class="value-edit-btn" id="valueEditBtn">✏ かずを かえる</button><button class="undo-value-btn" id="undoValueBtn" disabled>↩ ひとつ もどす</button></div>
+          <label class="setting-check"><input type="checkbox" id="joinFirstToggle"><span>まず2ほんを つないで みる</span></label>
+          <div class="zoom-row">
+            <button class="btn small" id="scaleDownBtn">－</button>
+            <div id="scaleDisplay" style="min-width:46px;text-align:center;font-size:12px;font-weight:900;padding:3px 5px;border-radius:8px;background:#f8fafc;border:1px solid #cbd5e1;color:#1f2937;">100%</div>
+            <button class="btn small" id="scaleUpBtn">＋</button>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="concept-strip">
+      <div class="concept-main">
+        <div class="question-equation" id="questionEquation" aria-live="polite"></div>
+        <div class="learning-meta"><span class="practice-pill" id="practicePill" hidden></span><span class="practice-status" id="practiceStatus" hidden></span></div>
+        <div class="hint-line" id="hintLine" aria-live="polite"></div>
+      </div>
+      <div class="unit-rule" id="unitRule" aria-label="cmとmmの かえかた">
+        <span class="unit-chip cm" id="cmRule">cm の なかま</span>
+        <span>と</span>
+        <span class="unit-chip mm" id="mmRule">mm の なかま</span>
+        <span class="equiv-chip" id="equivChip" hidden><span class="cm-eq">■ 1cm</span><span>＝</span><span class="mm-eq">● 10mm</span></span>
+      </div>
+      <div class="practice-strip" id="practiceStrip" hidden>
+        <div class="practice-title">こたえを いれよう</div>
+        <div class="practice-answer-box" aria-label="こたえを いれる">
+          <span class="practice-answer-prefix">こたえ</span>
+          <label class="practice-unit-field cm-field">
+            <input class="practice-input cm-input" id="practiceCmInput" type="number" inputmode="numeric" min="0" max="25" autocomplete="off" placeholder="□" aria-label="cmの こたえ">
+            <span class="practice-unit-name">cm</span>
+          </label>
+          <label class="practice-unit-field mm-field">
+            <input class="practice-input mm-input" id="practiceMmInput" type="number" inputmode="numeric" min="0" max="9" autocomplete="off" placeholder="□" aria-label="mmの こたえ">
+            <span class="practice-unit-name">mm</span>
+          </label>
         </div>
+        <div class="practice-actions">
+          <button class="practice-check-btn" id="practiceCheckBtn" type="button">✓ こたえあわせ</button>
+          <button class="practice-hint-btn" id="practiceHintBtn" type="button">💡 うごきで ヒント</button>
+        </div>
+        <span class="practice-zero-note" id="practiceZeroNote">ないほうは からっぽでOK</span>
+        <span class="practice-feedback" id="practiceFeedback" aria-live="polite"></span>
       </div>
     </div>
 
     <div class="stage">
-      <svg id="svg" viewBox="0 0 2200 760" aria-label="長さの加法・減法アニメーション">
+      <div class="now-doing" id="nowDoing" hidden aria-live="polite"></div>
+      <svg id="svg" viewBox="0 0 2200 760" aria-label="ながさの たしざん・ひきざん">
         <defs>
           <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity=".14"/>
@@ -310,7 +973,7 @@
     <div class="footer">
       <div class="equation" id="equation"></div>
       <div class="result" id="resultText"></div>
-      <div class="tiny">cm 部分は赤、mm 部分は青。区切り線と黄色いラインを単位ごとに分けて、下に集めるアニメーションです。</div>
+      <div class="tiny"><strong>ポイント：</strong> <span class="cm">cm は cm どうし</span>、<span class="mm">mm は mm どうし</span>で けいさんしよう。</div>
     </div>
   </div>
 
@@ -325,7 +988,7 @@
   const PX   = 17;          // 1mm = 17px
   const CMpx = 10 * PX;    // 1cm = 170px
   const LX   = 60;          // 左の線 X
-  const RX   = 1200;        // 右の線 X（横並びレイアウト）
+  const RX   = 1200;        // 互換用（実際の右位置は getRX() で自動調整）
   const TY   = 50;          // 上段 Y（左の線）
   const CX   = 60;          // まとめる場所 X
   const VB_W = 2200;        // SVG viewBox 幅
@@ -339,8 +1002,8 @@
   const CY_STACK = 340;   // まとめる場所 Y（上下レイアウト時）
 
   // viewBox高さ
-  const VB_H_SIDE  = 640;
-  const VB_H_STACK = 780;
+  const VB_H_SIDE  = 560;
+  const VB_H_STACK = 700;
   // 減法専用レイアウト定数
   const SUB_TY_TOP = 50;   // 上段（被減数）Y
   const SUB_TY_BOT = 210;  // 下段（減数）Y
@@ -348,9 +1011,11 @@
 
   // 現在のレイアウトに応じた値を返すヘルパー（加法用）
   const isStack = () => state.op === '−' || state.op === '差' || state.left.cm >= LAYOUT_THRESHOLD_CM;
-  const getRX   = () => isStack() ? LX : RX;
+  const getRX   = () => isStack() ? LX : LX + totMm(state.left) * PX + 220;
   const getRY   = () => isStack() ? TY2 : TY;
   const getCY   = () => isStack() ? CY_STACK : CY_SIDE;
+  // 減法の右側説明パネル。長い線でも重ならず、必ずviewBox内へ収める。
+  const getSubPanelX = () => Math.max(1400, LX + Math.max(totMm(state.left), totMm(state.right)) * PX + 360);
 
   // まとめる場所の線の合計幅(px)を計算し、はみ出す場合のスケールを返す
   // 合計16cmを超えると CX + totalMm*PX > VB_W になり得る
@@ -368,7 +1033,7 @@
   }
 
   /* ── state ── */
-  const state = { left:{cm:3,mm:4}, right:{cm:2,mm:7}, op:'+', animating:false, manualScale:1.0 };
+  const state = { left:{cm:3,mm:4}, right:{cm:2,mm:3}, op:'+', animating:false, manualScale:1.0, currentPreset:'basic', practiceIndex:0, isPractice:false, practiceRound:0, practiceSolved:false, practiceTier:'core', practiceFocus:'', directGroup:true, adaptiveReviewQueue:[], adaptivePrepared:false, currentProblemAdaptive:false, currentProblemTag:'', currentProblemWrong:0, currentProblemHint:false, practiceStats:{wrong:0,hints:0,independent:0,weaknesses:{},errorPatterns:{}} };
 
   /* ── DOM refs ── */
   const svg         = document.getElementById('svg');
@@ -386,6 +1051,31 @@
   const resetBtn    = document.getElementById('resetBtn');
   const equation    = document.getElementById('equation');
   const resultText  = document.getElementById('resultText');
+  const footerPanel = document.querySelector('.footer');
+  const questionEquation = document.getElementById('questionEquation');
+  const cmRule = document.getElementById('cmRule');
+  const mmRule = document.getElementById('mmRule');
+  const unitRule = document.getElementById('unitRule');
+  const presetBasicBtn = document.getElementById('presetBasicBtn');
+  const presetChallengeBtn = document.getElementById('presetChallengeBtn');
+  const hintLine = document.getElementById('hintLine');
+  const valueEditBtn = document.getElementById('valueEditBtn');
+  const undoValueBtn = document.getElementById('undoValueBtn');
+  const joinFirstToggle = document.getElementById('joinFirstToggle');
+  const equivChip = document.getElementById('equivChip');
+  const nowDoing = document.getElementById('nowDoing');
+  const practicePill = document.getElementById('practicePill');
+  const practiceStatus = document.getElementById('practiceStatus');
+  const practiceStrip = document.getElementById('practiceStrip');
+  const practiceCmInput = document.getElementById('practiceCmInput');
+  const practiceMmInput = document.getElementById('practiceMmInput');
+  const practiceCheckBtn = document.getElementById('practiceCheckBtn');
+  const practiceHintBtn = document.getElementById('practiceHintBtn');
+  const practiceZeroNote = document.getElementById('practiceZeroNote');
+  const practiceFeedback = document.getElementById('practiceFeedback');
+  const appEl = document.querySelector('.app');
+  const undoStack = [];
+  const modeTabs = [...document.querySelectorAll('.mode-tab')];
 
   /* ── 音声エンジン ── */
   let soundOn = true;
@@ -394,7 +1084,7 @@
   function updateSoundBtn() {
     soundBtn.textContent = soundOn ? '🔊' : '🔇';
     soundBtn.classList.toggle('off', !soundOn);
-    soundBtn.title = soundOn ? '音をオフにする' : '音をオンにする';
+    soundBtn.title = soundOn ? 'おとを きる' : 'おとを だす';
   }
   soundBtn.addEventListener('click', () => { soundOn = !soundOn; updateSoundBtn(); });
   updateSoundBtn();
@@ -588,7 +1278,7 @@
         // onend が発火すれば理想だが、Chrome(file://)では発火しないため
         // テキスト長から読み上げ時間を推定して待つ
         // 実測: 約160ms/文字 + 余裕500ms
-        const estimatedMs = Math.max(1200, text.length * 160 + 500);
+        const estimatedMs = Math.min(maxMs, Math.max(1200, text.length * 160 + 500));
         utt.onend = () => done('onend');
         // onerror は無視（interrupted が誤爆するため）
 
@@ -630,9 +1320,602 @@
 
   /* ── UI 更新 ── */
   function updateModeUI() {
-    opBtn.textContent = state.op === '＋' ? '＋' : state.op === '−' ? '−' : state.op === '差' ? '差' : state.op;
-    modeBadge.textContent = state.op === '+' ? '加法' : state.op === '−' ? '減法①' : '減法②';
-    // operatorTextはbuildScene内で更新される
+    opBtn.textContent = state.op === '+' ? '＋' : state.op === '−' ? '−' : '↔';
+    modeBadge.textContent = state.op === '+' ? '🍀 たしざん' : state.op === '−' ? '🌱 ひきざん' : '🔍 ちがい';
+    modeTabs.forEach(btn => {
+      const active = btn.dataset.mode === state.op;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    presetBasicBtn.textContent = '① きほん';
+    presetChallengeBtn.textContent = state.op === '+' ? '★ チャレンジ 10mm→1cm' : '② くりさがり';
+    presetChallengeBtn.classList.toggle('extension', state.op === '+');
+    animateBtn.textContent = state.isPractice ? '💡 うごきで ヒント' : (state.op === '差' ? '🔍 ちがいを みつける' : '▶ やってみる');
+    joinFirstToggle.checked = !state.directGroup;
+    updatePresetUI();
+  }
+
+  function updatePresetUI() {
+    const basicActive = state.currentPreset === 'basic' && !state.isPractice;
+    const challengeActive = state.currentPreset === 'challenge' && !state.isPractice;
+    presetBasicBtn.classList.toggle('active', basicActive);
+    presetChallengeBtn.classList.toggle('active', challengeActive);
+    presetBasicBtn.setAttribute('aria-pressed', basicActive ? 'true' : 'false');
+    presetChallengeBtn.setAttribute('aria-pressed', challengeActive ? 'true' : 'false');
+    practicePill.hidden = !state.isPractice;
+    practicePill.classList.toggle('review', !!state.currentProblemAdaptive);
+    if (state.isPractice) {
+      if (state.currentProblemAdaptive) {
+        const baseLen = (PROBLEM_BANKS.core[state.op] || []).length;
+        const reviewNo = Math.max(1, state.practiceRound - baseLen);
+        practicePill.textContent = `たしかめ ${reviewNo}/${Math.max(1,state.adaptiveReviewQueue.length)}`;
+      } else if (state.practiceTier === 'advanced') {
+        const label = state.op === '+' ? '★ チャレンジ' : 'くりさがり';
+        practicePill.textContent = `${label} ${state.practiceRound}/${getPracticeBank('advanced', state.op).length}`;
+      } else {
+        const baseLen = (PROBLEM_BANKS.core[state.op] || []).length;
+        practicePill.textContent = `れんしゅう ${Math.min(state.practiceRound,baseLen)}/${baseLen}`;
+      }
+    } else {
+      practicePill.textContent = 'れんしゅう';
+    }
+    practiceStatus.hidden = !state.isPractice || state.practiceTier === 'advanced';
+    if (!practiceStatus.hidden) {
+      practiceStatus.textContent = state.currentProblemAdaptive
+        ? 'もういちど たしかめちゅう'
+        : `じぶんでできた ${state.practiceStats.independent}こ`;
+    }
+  }
+
+  function needsConversion() {
+    const L = state.left, R = state.right;
+    if (state.op === '+') return L.mm + R.mm >= 10;
+    if (state.op === '−') return totMm(L) >= totMm(R) && L.mm < R.mm;
+    if (state.op === '差') {
+      const long = totMm(L) >= totMm(R) ? L : R;
+      const short = long === L ? R : L;
+      return long.mm < short.mm;
+    }
+    return false;
+  }
+
+  function updateEquivalence() {
+    // 練習中は最初から変換ルールを見せず、誤答またはヒント使用後だけ出す。
+    const show = needsConversion() && (!state.isPractice || state.currentProblemWrong > 0 || state.currentProblemHint);
+    equivChip.hidden = !show;
+    unitRule.classList.toggle('show-equivalence', show);
+  }
+
+  function updatePracticeUI() {
+    practiceStrip.hidden = !state.isPractice;
+    appEl.classList.toggle('practice-mode', state.isPractice);
+    if (!state.isPractice) {
+      practiceZeroNote.hidden = true;
+      practiceHintBtn.disabled = false;
+      return;
+    }
+    const solved = !!state.practiceSolved;
+    practiceCheckBtn.disabled = solved;
+    practiceHintBtn.disabled = solved || state.animating;
+    practiceCmInput.disabled = solved;
+    practiceMmInput.disabled = solved;
+    // 0の単位を表示しないルールは全問題で共通。条件表示にして答えの手掛かりにしない。
+    practiceZeroNote.hidden = false;
+  }
+
+  function resetPracticeInputs() {
+    practiceCmInput.value = '';
+    practiceMmInput.value = '';
+    practiceFeedback.textContent = '';
+    practiceFeedback.className = 'practice-feedback';
+    practiceCheckBtn.disabled = false;
+    practiceHintBtn.disabled = false;
+    practiceCmInput.disabled = false;
+    practiceMmInput.disabled = false;
+    state.practiceSolved = false;
+  }
+
+  function expectedPracticeAnswer() {
+    const lm = totMm(state.left), rm = totMm(state.right);
+    const total = state.op === '+' ? lm + rm : state.op === '差' ? Math.abs(lm - rm) : lm - rm;
+    const safe = Math.max(0, total);
+    return {cm:Math.floor(safe/10), mm:safe%10};
+  }
+
+
+  // 固定問題は、数字の置換ではなく「つまずきの種類」が変わるように順序設計する。
+  // たし算の core は教科書の本線として繰り上がりなし。10mm→1cm は advanced（発展）。
+  const PROBLEM_BANKS = {
+    core: {
+      '+': [
+        // ① 最小構成：両方の単位をそのままcmはcm、mmはmmで足す
+        {left:{cm:2,mm:3}, right:{cm:1,mm:4}, tag:'basic', focus:'まずは ■cmどうし・●mmどうし'},
+        // ② 数字の並びを変えてもルールは同じ
+        {left:{cm:1,mm:6}, right:{cm:3,mm:2}, tag:'order', focus:'かずが かわっても おなじ'},
+        // ③ 片方のmmが0。0も同じ単位として扱う
+        {left:{cm:3,mm:0}, right:{cm:2,mm:6}, tag:'zeroOne', focus:'●mm がないとき'},
+        // ④ cmがない長さも、mmのなかまとして見分ける
+        {left:{cm:0,mm:6}, right:{cm:3,mm:2}, tag:'mmOnly', focus:'●6mm は ●mm のなかま'},
+        // ⑤ cmが大きくなっても同じ処理
+        {left:{cm:6,mm:2}, right:{cm:1,mm:5}, tag:'large', focus:'かずが おおきくても おなじ'},
+        // ⑥ 発展直前の境界：9mmまではそのまま
+        {left:{cm:6,mm:4}, right:{cm:2,mm:5}, tag:'boundary9', focus:'さいごは ●9mm まで'},
+      ],
+      '−': [
+        // ① まずは変換なし
+        {left:{cm:6,mm:8}, right:{cm:2,mm:3}, tag:'basic', focus:'まずはそのまま ひく'},
+        // ② mmが同じ→mmの答えが0
+        {left:{cm:7,mm:6}, right:{cm:2,mm:6}, tag:'equalMm', focus:'●mm が おなじ'},
+        // ③ mmがない数を引く
+        {left:{cm:6,mm:5}, right:{cm:3,mm:0}, tag:'zeroSub', focus:'●mm が ない かずを ひく'},
+        // ④ mm差が大きくても変換不要
+        {left:{cm:5,mm:9}, right:{cm:3,mm:1}, tag:'mmGap', focus:'●mm の ちがいが おおきい'},
+        // ⑤ 初めてのくり下がり
+        {left:{cm:5,mm:2}, right:{cm:2,mm:7}, tag:'borrow', focus:'■1cm を ●10mm にかえる'},
+        // ⑥ mmがないところからのくり下がり
+        {left:{cm:7,mm:0}, right:{cm:2,mm:6}, tag:'borrowZero', focus:'●mm が ない ところから くりさがる'},
+      ],
+      '差': [
+        // ① 左が長い・変換なし
+        {left:{cm:6,mm:8}, right:{cm:3,mm:2}, tag:'leftLong', focus:'まずは ひだりが ながい'},
+        // ② cmが同じ→mmだけ見れば差が出る
+        {left:{cm:4,mm:7}, right:{cm:4,mm:2}, tag:'equalCm', focus:'■cm が おなじ'},
+        // ③ mmが同じ→cmだけ見れば差が出る
+        {left:{cm:7,mm:6}, right:{cm:2,mm:6}, tag:'equalMm', focus:'●mm が おなじ'},
+        // ④ 右が長くても「長い方−短い方」
+        {left:{cm:2,mm:3}, right:{cm:5,mm:7}, tag:'rightLong', focus:'みぎが ながくても、ながいほうから'},
+        // ⑤ 左が長い＋くり下がり
+        {left:{cm:6,mm:1}, right:{cm:3,mm:8}, tag:'borrowLeft', focus:'ひだりが ながくて くりさがり'},
+        // ⑥ 右が長い＋くり下がり
+        {left:{cm:3,mm:8}, right:{cm:6,mm:2}, tag:'borrowRight', focus:'みぎが ながくて くりさがり'},
+      ],
+    },
+    advanced: {
+      '+': [
+        {left:{cm:2,mm:6}, right:{cm:3,mm:4}, focus:'★ ちょうど10mm → 1cm'},
+        {left:{cm:3,mm:4}, right:{cm:1,mm:7}, focus:'★ 11mm → 1cm1mm'},
+        {left:{cm:4,mm:8}, right:{cm:2,mm:6}, focus:'★ 14mm → 1cm4mm'},
+        {left:{cm:2,mm:9}, right:{cm:4,mm:9}, focus:'★ 18mm → 1cm8mm'},
+      ],
+      '−': [],
+      '差': [],
+    }
+  };
+
+
+  // ひき算・ちがいは、まず変換なしを練習してから、くり下がりへ進む。
+  PROBLEM_BANKS.advanced['−'] = PROBLEM_BANKS.core['−'].slice(4);
+  PROBLEM_BANKS.core['−'] = PROBLEM_BANKS.core['−'].slice(0,4);
+  PROBLEM_BANKS.advanced['差'] = PROBLEM_BANKS.core['差'].slice(4);
+  PROBLEM_BANKS.core['差'] = PROBLEM_BANKS.core['差'].slice(0,4);
+
+  // つまずいた種類だけを最後に1〜3問追加する「たしかめ問題」。
+  // 全員に追加するのではなく、誤答・ヒント使用が一定以上のときだけ使う。
+  const REVIEW_PROBLEMS = {
+    '+': {
+      basic:{left:{cm:3,mm:2},right:{cm:2,mm:5},focus:'たしかめ：■cmどうし・●mmどうし'},
+      order:{left:{cm:4,mm:1},right:{cm:1,mm:7},focus:'たしかめ：かずが かわっても おなじ'},
+      zeroOne:{left:{cm:4,mm:0},right:{cm:1,mm:7},focus:'たしかめ：●mm がないとき'},
+      mmOnly:{left:{cm:0,mm:5},right:{cm:4,mm:3},focus:'たしかめ：●mm だけの ながさ'},
+      large:{left:{cm:7,mm:3},right:{cm:2,mm:4},focus:'たしかめ：かずが おおきくても おなじ'},
+      boundary9:{left:{cm:5,mm:3},right:{cm:2,mm:6},focus:'たしかめ：●9mm まではそのまま'},
+    },
+    '−': {
+      basic:{left:{cm:7,mm:9},right:{cm:3,mm:4},focus:'たしかめ：そのまま ひく'},
+      equalMm:{left:{cm:8,mm:5},right:{cm:3,mm:5},focus:'たしかめ：●mm が おなじ'},
+      zeroSub:{left:{cm:7,mm:4},right:{cm:2,mm:0},focus:'たしかめ：●mm が ない かずを ひく'},
+      mmGap:{left:{cm:6,mm:9},right:{cm:2,mm:2},focus:'たしかめ：●mm の ちがいが おおきい'},
+      borrow:{left:{cm:6,mm:3},right:{cm:2,mm:8},focus:'たしかめ：■1cm → ●10mm'},
+      borrowZero:{left:{cm:8,mm:0},right:{cm:3,mm:7},focus:'たしかめ：●mm が ない ところから くりさがる'},
+    },
+    '差': {
+      leftLong:{left:{cm:7,mm:5},right:{cm:3,mm:1},focus:'たしかめ：ひだりが ながい'},
+      equalCm:{left:{cm:5,mm:8},right:{cm:5,mm:3},focus:'たしかめ：■cm が おなじ'},
+      equalMm:{left:{cm:8,mm:4},right:{cm:3,mm:4},focus:'たしかめ：●mm が おなじ'},
+      rightLong:{left:{cm:3,mm:2},right:{cm:6,mm:8},focus:'たしかめ：みぎが ながい'},
+      borrowLeft:{left:{cm:7,mm:2},right:{cm:4,mm:9},focus:'たしかめ：ひだりが ながくて くりさがり'},
+      borrowRight:{left:{cm:4,mm:9},right:{cm:7,mm:3},focus:'たしかめ：みぎが ながくて くりさがり'},
+    }
+  };
+
+  // 誤答の「種類」に合わせた補修問題。数字ではなく、考え方の穴を狙って出す。
+  // たし算 core は教科書準拠のため、ここにも繰り上がり問題は入れない。
+  const DIAGNOSTIC_REVIEW_PROBLEMS = {
+    '+': {
+      unitSwap:{left:{cm:2,mm:5},right:{cm:3,mm:1},focus:'たしかめ：■cm と ●mm の いれる ばしょ',reviewPattern:'unitSwap'},
+      wrongOperation:{left:{cm:5,mm:2},right:{cm:2,mm:3},focus:'たしかめ：いまは「たしざん」',reviewPattern:'wrongOperation'},
+      zeroMm:{left:{cm:4,mm:0},right:{cm:2,mm:5},focus:'たしかめ：●mm が ない ときも おなじ',reviewPattern:'zeroMm'},
+      cmPart:{left:{cm:6,mm:2},right:{cm:2,mm:3},focus:'たしかめ：■cm のなかま',reviewPattern:'cmPart'},
+      mmPart:{left:{cm:2,mm:4},right:{cm:3,mm:5},focus:'たしかめ：●mm のなかま',reviewPattern:'mmPart'},
+      generic:{left:{cm:3,mm:2},right:{cm:2,mm:5},focus:'たしかめ：■cmどうし・●mmどうし',reviewPattern:'generic'},
+    },
+    '−': {
+      unitSwap:{left:{cm:7,mm:8},right:{cm:3,mm:2},focus:'たしかめ：■cm と ●mm の いれる ばしょ',reviewPattern:'unitSwap'},
+      wrongOperation:{left:{cm:6,mm:7},right:{cm:2,mm:3},focus:'たしかめ：いまは「ひきざん」',reviewPattern:'wrongOperation'},
+      zeroMm:{left:{cm:6,mm:4},right:{cm:2,mm:0},focus:'たしかめ：●mm が ない かずを ひく',reviewPattern:'zeroMm'},
+      equalMmZero:{left:{cm:7,mm:5},right:{cm:3,mm:5},focus:'たしかめ：おなじ●mmを ひくと のこらない',reviewPattern:'equalMmZero'},
+      borrowForgot:{left:{cm:6,mm:2},right:{cm:2,mm:7},focus:'たしかめ：■1cm → ●10mm のあと',reviewPattern:'borrowForgot'},
+      cmPart:{left:{cm:8,mm:7},right:{cm:3,mm:2},focus:'たしかめ：■cm の けいさん',reviewPattern:'cmPart'},
+      mmPart:{left:{cm:7,mm:9},right:{cm:2,mm:3},focus:'たしかめ：●mm の けいさん',reviewPattern:'mmPart'},
+      generic:{left:{cm:7,mm:9},right:{cm:3,mm:4},focus:'たしかめ：■cmどうし・●mmどうし',reviewPattern:'generic'},
+    },
+    '差': {
+      unitSwap:{left:{cm:6,mm:8},right:{cm:3,mm:3},focus:'たしかめ：■cm と ●mm の いれる ばしょ',reviewPattern:'unitSwap'},
+      wrongOperation:{left:{cm:6,mm:7},right:{cm:2,mm:3},focus:'たしかめ：「ちがい」は ながいほう−みじかいほう',reviewPattern:'wrongOperation'},
+      equalMmZero:{left:{cm:8,mm:4},right:{cm:3,mm:4},focus:'たしかめ：おなじ●mmなら のこらない',reviewPattern:'equalMmZero'},
+      borrowForgot:{left:{cm:7,mm:2},right:{cm:4,mm:9},focus:'たしかめ：ながいほうの■1cm → ●10mm',reviewPattern:'borrowForgot'},
+      cmPart:{left:{cm:7,mm:8},right:{cm:3,mm:3},focus:'たしかめ：■cm の ちがい',reviewPattern:'cmPart'},
+      mmPart:{left:{cm:7,mm:9},right:{cm:3,mm:4},focus:'たしかめ：●mm の ちがい',reviewPattern:'mmPart'},
+      generic:{left:{cm:7,mm:5},right:{cm:3,mm:1},focus:'たしかめ：ながいほうから みじかいほうを ひく',reviewPattern:'generic'},
+    }
+  };
+
+  const ERROR_PATTERN_LABELS = {
+    unitSwap:'■cm と ●mm の いれる ばしょ',
+    wrongOperation:'けいさんの しゅるい',
+    zeroMm:'●mm がないとき',
+    equalMmZero:'おなじ●mmを ひくと のこらない',
+    carryForgot:'●10mm → ■1cm',
+    borrowForgot:'■1cm → ●10mm のあとの■cm',
+    cmPart:'■cm のなかま',
+    mmPart:'●mm のなかま',
+    generic:'cmはcm、mmはmm'
+  };
+
+  function resetAdaptiveSession() {
+    state.adaptiveReviewQueue = [];
+    state.adaptivePrepared = false;
+    state.currentProblemAdaptive = false;
+    state.currentProblemTag = '';
+    state.currentProblemWrong = 0;
+    state.currentProblemHint = false;
+    state.practiceStats = {wrong:0,hints:0,independent:0,weaknesses:{},errorPatterns:{}};
+  }
+
+  function addWeakness(tag, weight=1) {
+    if (!tag) tag = 'basic';
+    const w = state.practiceStats.weaknesses;
+    w[tag] = (w[tag] || 0) + weight;
+  }
+
+  function addErrorPattern(pattern, weight=1) {
+    if (!pattern) pattern = 'generic';
+    const e = state.practiceStats.errorPatterns || (state.practiceStats.errorPatterns = {});
+    e[pattern] = (e[pattern] || 0) + weight;
+  }
+
+  function recordPracticeWrong(pattern='generic') {
+    if (!state.isPractice || state.practiceSolved) return;
+    state.currentProblemWrong += 1;
+    state.practiceStats.wrong += 1;
+    // 問題タイプより、実際に起きた誤答パターンを強めに記録する。
+    addWeakness(state.currentProblemTag, 1);
+    addErrorPattern(pattern, state.currentProblemWrong === 1 ? 3 : 2);
+  }
+
+  function recordPracticeHint() {
+    if (!state.isPractice || state.practiceSolved || state.currentProblemHint) return;
+    state.currentProblemHint = true;
+    state.practiceStats.hints += 1;
+    addWeakness(state.currentProblemTag, 1);
+  }
+
+  function prepareAdaptiveReviewQueue() {
+    if (state.adaptivePrepared || state.practiceTier !== 'core') return;
+    state.adaptivePrepared = true;
+    const stats = state.practiceStats;
+    let count = 0;
+    if (stats.wrong >= 2 || stats.hints >= 2) count = 1;
+    if (stats.wrong >= 4 || stats.hints >= 3 || stats.independent <= 3) count = 2;
+    if (stats.wrong >= 6 || stats.hints >= 4 || stats.independent <= 2) count = 3;
+    if (!count) return;
+
+    const selected = [];
+    const used = new Set();
+    const allowedCoreTags = new Set((PROBLEM_BANKS.core[state.op] || []).map(p=>p.tag));
+    const addCandidate = (p, key, tag='basic') => {
+      if (!p || used.has(key) || selected.length >= count) return;
+      used.add(key);
+      selected.push({...p, tag, adaptive:true, adaptiveKey:key});
+    };
+
+    // 1. 「何をどう間違えたか」を最優先。
+    const rankedPatterns = Object.entries(stats.errorPatterns || {})
+      .sort((a,b)=>b[1]-a[1])
+      .map(([pattern])=>pattern);
+    rankedPatterns.forEach(pattern => {
+      const p = DIAGNOSTIC_REVIEW_PROBLEMS[state.op]?.[pattern];
+      addCandidate(p, `pattern:${pattern}`, `diag_${pattern}`);
+    });
+
+    // 2. 誤答パターンだけで足りなければ、苦戦した問題タイプを補う。
+    const rankedTags = Object.entries(stats.weaknesses)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([tag])=>tag);
+    rankedTags.forEach(tag => {
+      if (!allowedCoreTags.has(tag)) return;
+      const p = REVIEW_PROBLEMS[state.op]?.[tag];
+      addCandidate(p, `tag:${tag}`, tag);
+    });
+
+    // 3. 最後の保険。今の基本範囲にある種類だけを最大3問まで。
+    Object.entries(REVIEW_PROBLEMS[state.op] || {}).forEach(([tag,p])=>{
+      if (!allowedCoreTags.has(tag)) return;
+      addCandidate(p, `tag:${tag}`, tag);
+    });
+
+    state.adaptiveReviewQueue = selected;
+  }
+
+  function getPracticeBank(tier=state.practiceTier, op=state.op) {
+    const bank = PROBLEM_BANKS[tier]?.[op];
+    if (bank && bank.length) {
+      if (tier === 'core' && op === state.op && state.adaptiveReviewQueue.length) {
+        return [...bank, ...state.adaptiveReviewQueue];
+      }
+      return bank;
+    }
+    return PROBLEM_BANKS.core[op] || PROBLEM_BANKS.core['+'];
+  }
+
+  function loadPracticeProblem(tier='core', resetIndex=false) {
+    stopCurrentAnimation();
+    clearUndo();
+    state.practiceTier = tier;
+    if (resetIndex) {
+      state.practiceIndex = 0;
+      if (tier === 'core') resetAdaptiveSession();
+    }
+    const bank = getPracticeBank(tier, state.op);
+    const idx = state.practiceIndex % bank.length;
+    const problem = bank[idx];
+    state.practiceIndex = idx + 1;
+    state.practiceRound = idx + 1;
+    state.left = {...problem.left};
+    state.right = {...problem.right};
+    state.practiceFocus = problem.focus || '';
+    state.currentProblemAdaptive = !!problem.adaptive;
+    state.currentProblemTag = problem.tag || 'basic';
+    state.currentProblemWrong = 0;
+    state.currentProblemHint = false;
+    state.currentPreset = tier === 'advanced' ? 'challenge' : 'basic';
+    state.isPractice = true;
+    state.practiceSolved = false;
+    state.manualScale = 1;
+    updateScaleDisplay();
+    renderAll();
+    resetPracticeInputs();
+    if (state.currentProblemAdaptive) {
+      const pattern = problem.reviewPattern || (problem.adaptiveKey || '').replace('pattern:','');
+      const label = ERROR_PATTERN_LABELS[pattern];
+      practiceFeedback.textContent = label ? `ここだけ もう1もん。${label}を たしかめよう。` : 'ここだけ もう1もん たしかめよう。';
+      practiceFeedback.className = 'practice-feedback hint';
+    }
+  }
+
+  function toCmMm(totalMm) {
+    const t = Math.max(0, Math.abs(totalMm));
+    return {cm:Math.floor(t/10), mm:t%10};
+  }
+
+  function classifyPracticeError(cm, mm, exp) {
+    const L = state.left, R = state.right;
+    const cmOK = cm === exp.cm, mmOK = mm === exp.mm;
+
+    if (cm === exp.mm && mm === exp.cm && !(exp.cm === exp.mm)) {
+      return {pattern:'unitSwap', message:'■cm と ●mm の いれる ばしょを みなおそう。'};
+    }
+
+    // いまの演算とは別の演算をした形を拾う。
+    const lm = totMm(L), rm = totMm(R);
+    const alt = state.op === '+' ? toCmMm(lm-rm) : toCmMm(lm+rm);
+    if (cm === alt.cm && mm === alt.mm) {
+      const word = state.op === '+' ? 'たしざん' : state.op === '−' ? 'ひきざん' : '「ちがい」';
+      return {pattern:'wrongOperation', message:`いまは ${word} だよ。けいさんを もういちど みよう。`};
+    }
+
+    if (state.op === '+' && L.mm + R.mm >= 10) {
+      const rem = (L.mm + R.mm) % 10;
+      const forgotCarryCm = L.cm + R.cm;
+      if (cm === forgotCarryCm && mm === rem) {
+        return {pattern:'carryForgot', message:'10mmからできた ■1cm を、cmのなかまに たすのを わすれていないかな？'};
+      }
+    }
+
+    if (state.op === '−' && totMm(L) >= totMm(R) && L.mm < R.mm) {
+      const borrowedMm = L.mm + 10 - R.mm;
+      const forgotBorrowCm = L.cm - R.cm;
+      if (cm === forgotBorrowCm && mm === borrowedMm) {
+        return {pattern:'borrowForgot', message:'■1cm を ●10mm に かえたから、cmは1 ちいさくして ひこう。'};
+      }
+    }
+
+    if (state.op === '差') {
+      const long = totMm(L) >= totMm(R) ? L : R;
+      const short = long === L ? R : L;
+      if (long.mm < short.mm) {
+        const borrowedMm = long.mm + 10 - short.mm;
+        const forgotBorrowCm = long.cm - short.cm;
+        if (cm === forgotBorrowCm && mm === borrowedMm) {
+          return {pattern:'borrowForgot', message:'ながいほうの ■1cm を ●10mm に かえたから、cmも1 ちいさくしよう。'};
+        }
+      }
+    }
+
+    // mmがない場合や同じmmは、低学年で起きやすい境界の誤りとして分ける。
+    if (exp.mm > 0 && mm === 0 && (L.mm === 0 || R.mm === 0)) {
+      return {pattern:'zeroMm', message:'●mm が ないほうが あっても、もうひとつの ●mm は そのままだよ。'};
+    }
+    if (exp.mm === 0 && mm !== 0 && L.mm === R.mm && state.op !== '+') {
+      return {pattern:'equalMmZero', message:'おなじ ●mm を ひくと、●mm は のこらないよ。'};
+    }
+
+    if (!cmOK && mmOK) return {pattern:'cmPart', message:'●mm は できているよ。■cm だけ もういちど みよう。'};
+    if (cmOK && !mmOK) return {pattern:'mmPart', message:'■cm は できているよ。●mm だけ もういちど みよう。'};
+    return {pattern:'generic', message:'■cm は ■cmどうし、●mm は ●mmどうし。もういちど みよう。'};
+  }
+
+  function checkPracticeAnswer() {
+    if (!state.isPractice) return;
+    if (state.animating) { showBlockToast(); return; }
+    const cmRaw = practiceCmInput.value.trim();
+    const mmRaw = practiceMmInput.value.trim();
+    if (cmRaw === '' && mmRaw === '') {
+      practiceFeedback.textContent = 'こたえを いれよう。ないほうは からっぽでOK。';
+      practiceFeedback.className = 'practice-feedback hint';
+      return;
+    }
+    const cm = cmRaw === '' ? 0 : Number(cmRaw);
+    const mm = mmRaw === '' ? 0 : Number(mmRaw);
+    if (!Number.isInteger(cm) || !Number.isInteger(mm) || cm < 0 || mm < 0 || mm > 9) {
+      practiceFeedback.textContent = 'cm と mm の かずを みなおそう。ないほうは からっぽでOK。';
+      practiceFeedback.className = 'practice-feedback hint';
+      return;
+    }
+    const exp = expectedPracticeAnswer();
+    const cmOK = cm === exp.cm;
+    const mmOK = mm === exp.mm;
+    if (!cmOK || !mmOK) {
+      const diag = classifyPracticeError(cm, mm, exp);
+      recordPracticeWrong(diag.pattern);
+      updateEquivalence();
+      practiceFeedback.textContent = diag.message;
+      practiceFeedback.className = 'practice-feedback hint';
+      return;
+    }
+
+    if (state.currentProblemWrong === 0 && !state.currentProblemHint) {
+      state.practiceStats.independent += 1;
+    }
+    const baseLenNow = (PROBLEM_BANKS.core[state.op] || []).length;
+    if (state.practiceTier === 'core' && !state.currentProblemAdaptive && state.practiceRound === baseLenNow) {
+      prepareAdaptiveReviewQueue();
+    }
+    state.practiceSolved = true;
+    practiceFeedback.textContent = `✓ せいかい！ ${lengthText(exp)}`;
+    practiceFeedback.className = 'practice-feedback ok';
+    practiceCheckBtn.disabled = true;
+    practiceHintBtn.disabled = true;
+    practiceCmInput.disabled = true;
+    practiceMmInput.disabled = true;
+    updateEquation();
+    footerPanel.classList.remove('result-hidden');
+    equation.style.opacity = '1';
+    resultText.style.opacity = '1';
+    playFanfare();
+    const kind = state.op === '+' ? 'add' : state.op === '−' ? 'subtract' : 'difference';
+    setTimeout(()=>showSuccess(kind), 220);
+  }
+
+  function updateHintLine() {
+    const L = state.left, R = state.right;
+    const hasCm = L.cm > 0 || R.cm > 0;
+    const hasMm = L.mm > 0 || R.mm > 0;
+    let text = '';
+
+    if (state.isPractice && state.practiceFocus) {
+      text = state.practiceFocus;
+    } else if (state.currentPreset === 'custom') {
+      text = 'じぶんで つくった ながさで たしかめよう';
+    } else if (state.op === '差') {
+      text = 'ながいほうから、みじかいほうを くらべよう';
+    } else if (hasCm && hasMm) {
+      text = '■cm は ■cm、●mm は ●mm と けいさんする';
+    } else if (hasCm) {
+      text = '■cm どうしを けいさんする';
+    } else if (hasMm) {
+      text = '●mm どうしを けいさんする';
+    }
+    hintLine.innerHTML = text ? `<span class="hint-badge focus-cue">${text}</span>` : '';
+  }
+
+  function guideLabel(step=0) {
+    const L = state.left, R = state.right;
+    const hasCm = L.cm > 0 || R.cm > 0;
+    const hasMm = L.mm > 0 || R.mm > 0;
+    if (state.op === '差') {
+      return step === 1 ? 'ながいほうを みる' : step === 2 ? 'おなじ ところを けす' : step === 3 ? 'のこりが「ちがい」' : '';
+    }
+    if (step === 1) return hasCm ? '■ cm どうし' : '';
+    if (step === 2) return hasMm ? '● mm どうし' : '';
+    if (step === 3) {
+      if (needsConversion()) return state.op === '+' ? '●10mm を ■1cm に' : '■1cm を ●10mm に';
+      return 'こたえを まとめる';
+    }
+    return '';
+  }
+
+  function setGuideStep(step=0) {
+    const label = guideLabel(step);
+    if (label) {
+      nowDoing.textContent = `いま：${label}`;
+      nowDoing.hidden = false;
+    } else {
+      nowDoing.hidden = true;
+      nowDoing.textContent = '';
+    }
+  }
+
+  function finishGuide() {
+    nowDoing.hidden = true;
+    nowDoing.textContent = '';
+  }
+
+  function setUnitFocus(kind='both') {
+    cmRule.classList.toggle('focus', kind === 'cm' || kind === 'both');
+    mmRule.classList.toggle('focus', kind === 'mm' || kind === 'both');
+    cmRule.classList.toggle('dim', kind === 'mm');
+    mmRule.classList.toggle('dim', kind === 'cm');
+  }
+
+  function lengthHtml(v, sign='') {
+    const parts = [];
+    if (v.cm > 0) parts.push(`<span class="cm">${v.cm}cm</span>`);
+    if (v.mm > 0) parts.push(`<span class="mm">${v.mm}mm</span>`);
+    if (!parts.length) return `${sign}<span class="zero-length">0</span>`;
+    return `${sign}${parts.join('')}`;
+  }
+
+  function lengthText(v) {
+    const parts = [];
+    if (v.cm > 0) parts.push(`${v.cm}cm`);
+    if (v.mm > 0) parts.push(`${v.mm}mm`);
+    return parts.length ? parts.join(' ') : '0';
+  }
+
+  function unitAddParts(a, b, total, unit, color) {
+    if (a === 0 && b === 0) return [{text:`${unit} は なし`,color}];
+    if (a === 0) return [{text:`${b}${unit}`,color},{text:' だけ',color:'#111827'}];
+    if (b === 0) return [{text:`${a}${unit}`,color},{text:' だけ',color:'#111827'}];
+    return [
+      {text:`${a}${unit} `,color},{text:'＋ ',color:'#111827'},
+      {text:`${b}${unit}`,color},{text:' ＝ ',color:'#111827'},
+      {text:`${total}${unit}`,color},
+    ];
+  }
+
+  function unitSubParts(a, b, total, unit, color) {
+    if (a === 0 && b === 0) return [{text:`${unit} は なし`,color}];
+    if (b === 0) return [{text:`${a}${unit}`,color},{text:' は そのまま',color:'#111827'}];
+    if (total === 0) return [
+      {text:`${a}${unit}`,color},{text:' － ',color:'#111827'},
+      {text:`${b}${unit}`,color},{text:' ＝ のこらない',color:'#111827'},
+    ];
+    return [
+      {text:`${a}${unit}`,color},{text:' － ',color:'#111827'},
+      {text:`${b}${unit}`,color},{text:' ＝ ',color:'#111827'},
+      {text:`${total}${unit}`,color},
+    ];
+  }
+
+  function updateQuestionEquation() {
+    const L = state.left, R = state.right;
+    if (state.op === '差') {
+      questionEquation.innerHTML = `${lengthHtml(L)} <span class="word">と</span> ${lengthHtml(R)} <span class="word">の ちがい</span> <span>＝</span> <span class="unknown">？</span>`;
+    } else {
+      const op = state.op === '+' ? '＋' : '−';
+      questionEquation.innerHTML = `${lengthHtml(L)} <span>${op}</span> ${lengthHtml(R)} <span>＝</span> <span class="unknown">？</span>`;
+    }
   }
   function setPreviewValues() {
     document.getElementById('leftCmVal').textContent  = state.left.cm;
@@ -641,30 +1924,28 @@
     document.getElementById('rightMmVal').textContent = state.right.mm;
   }
   function renderPreviewTexts() {
-    leftPreview.innerHTML  = `<span class="cm">${state.left.cm}cm</span><span class="mm">${state.left.mm}mm</span>`;
-    rightPreview.innerHTML = `<span class="cm">${state.right.cm}cm</span><span class="mm">${state.right.mm}mm</span>`;
+    leftPreview.innerHTML  = lengthHtml(state.left);
+    rightPreview.innerHTML = lengthHtml(state.right);
     setPreviewValues();
   }
   function updateEquation() {
     const L=state.left, R=state.right, op=state.op;
     const lm=totMm(L), rm=totMm(R);
-    const signed= op==='+'?lm+rm:lm-rm;
+    const signed= op==='+' ? lm+rm : op==='差' ? Math.abs(lm-rm) : lm-rm;
     const sign  = signed<0?'-':'';
     const abs   = Math.abs(signed);
-    const rCm   = Math.floor(abs/10), rMm = abs%10;
-    // 減法で答えのcmが0の場合は省略
-    const subResultHtml = rCm > 0
-      ? `${sign}<span class="cm">${rCm}cm</span><span class="mm">${rMm}mm</span>`
-      : `${sign}<span class="mm">${rMm}mm</span>`;
-    equation.innerHTML = op==='+'
-      ? `<span><span class="cm">${L.cm}cm</span><span class="mm">${L.mm}mm</span> + <span class="cm">${R.cm}cm</span><span class="mm">${R.mm}mm</span></span><span>=</span><span class="cm">${Math.floor((lm+rm)/10)}cm</span><span class="mm">${(lm+rm)%10}mm</span>`
-      : `<span><span class="cm">${L.cm}cm</span><span class="mm">${L.mm}mm</span> − <span class="cm">${R.cm}cm</span><span class="mm">${R.mm}mm</span></span><span>=</span><span>${subResultHtml}</span>`;
-    const subAnswerHtml = rCm > 0
-      ? `だから答えは <span class="cm">${sign}${rCm}cm</span><span class="mm">${rMm}mm</span>`
-      : `だから答えは <span class="mm">${sign}${rMm}mm</span>`;
-    resultText.innerHTML = op==='+'
-      ? `だから合わせて <span class="cm">${rCm}cm</span><span class="mm">${rMm}mm</span>`
-      : subAnswerHtml;
+    const result = {cm:Math.floor(abs/10), mm:abs%10};
+    const resultHtml = lengthHtml(result, sign);
+    if (op === '+') {
+      equation.innerHTML = `<span>${lengthHtml(L)} + ${lengthHtml(R)}</span><span>=</span><span>${resultHtml}</span>`;
+      resultText.innerHTML = `cmはcm、mmはmmで けいさん。だから ${resultHtml}`;
+    } else if (op === '差') {
+      equation.innerHTML = `<span>${lengthHtml(L)} と ${lengthHtml(R)} の ちがい</span><span>=</span><span>${resultHtml}</span>`;
+      resultText.innerHTML = `おなじところをけすと、ちがいは ${resultHtml}`;
+    } else {
+      equation.innerHTML = `<span>${lengthHtml(L)} − ${lengthHtml(R)}</span><span>=</span><span>${resultHtml}</span>`;
+      resultText.innerHTML = `cmはcm、mmはmmで けいさん。こたえは ${resultHtml}`;
+    }
   }
 
   /* ── Steppers ── */
@@ -674,13 +1955,13 @@
         <button class="btn small" data-side="${side}" data-unit="cm" data-delta="1">▲</button>
         <div class="value" id="${side}CmVal"></div>
         <button class="btn small" data-side="${side}" data-unit="cm" data-delta="-1">▼</button>
-        <div class="step-label">cm</div>
+        <div class="step-label">■ cm</div>
       </div>
       <div class="step-block">
         <button class="btn small" data-side="${side}" data-unit="mm" data-delta="1">▲</button>
         <div class="value" id="${side}MmVal"></div>
         <button class="btn small" data-side="${side}" data-unit="mm" data-delta="-1">▼</button>
-        <div class="step-label">mm</div>
+        <div class="step-label">● mm</div>
       </div>`;
   }
   // アニメ中ブロック用のトースト管理
@@ -701,7 +1982,7 @@
         'pointer-events:none','z-index:9999',
         'transition:opacity 300ms ease','opacity:0',
       ].join(';');
-      toast.textContent = 'アニメの途中では長さは変えられないよ！';
+      toast.textContent = 'うごいている あいだは、ながさを かえられないよ。';
       document.body.appendChild(toast);
     }
     if (_blockToastTimer) clearTimeout(_blockToastTimer);
@@ -712,11 +1993,72 @@
     }, 1800);
   }
 
+  function snapshotForUndo() {
+    return {
+      left:{...state.left}, right:{...state.right}, op:state.op,
+      currentPreset:state.currentPreset, practiceIndex:state.practiceIndex,
+      isPractice:state.isPractice, practiceRound:state.practiceRound, practiceSolved:state.practiceSolved, practiceTier:state.practiceTier, practiceFocus:state.practiceFocus,
+      adaptiveReviewQueue:state.adaptiveReviewQueue.map(p=>({...p,left:{...p.left},right:{...p.right}})), adaptivePrepared:state.adaptivePrepared,
+      currentProblemAdaptive:state.currentProblemAdaptive, currentProblemTag:state.currentProblemTag, currentProblemWrong:state.currentProblemWrong, currentProblemHint:state.currentProblemHint,
+      practiceStats:{...state.practiceStats,weaknesses:{...state.practiceStats.weaknesses},errorPatterns:{...(state.practiceStats.errorPatterns||{})}}
+    };
+  }
+
+  function updateUndoUI() {
+    undoValueBtn.disabled = undoStack.length === 0;
+  }
+
+  function clearUndo() {
+    undoStack.length = 0;
+    updateUndoUI();
+  }
+
+  function pushUndo() {
+    undoStack.push(snapshotForUndo());
+    if (undoStack.length > 12) undoStack.shift();
+    updateUndoUI();
+  }
+
+  function undoValueChange() {
+    if (state.animating || undoStack.length === 0) return;
+    const prev = undoStack.pop();
+    state.left = {...prev.left};
+    state.right = {...prev.right};
+    state.op = prev.op;
+    state.currentPreset = prev.currentPreset;
+    state.practiceIndex = prev.practiceIndex;
+    state.isPractice = prev.isPractice;
+    state.practiceRound = prev.practiceRound;
+    state.practiceSolved = prev.practiceSolved;
+    state.practiceTier = prev.practiceTier || 'core';
+    state.practiceFocus = prev.practiceFocus || '';
+    state.adaptiveReviewQueue = prev.adaptiveReviewQueue || [];
+    state.adaptivePrepared = !!prev.adaptivePrepared;
+    state.currentProblemAdaptive = !!prev.currentProblemAdaptive;
+    state.currentProblemTag = prev.currentProblemTag || '';
+    state.currentProblemWrong = prev.currentProblemWrong || 0;
+    state.currentProblemHint = !!prev.currentProblemHint;
+    state.practiceStats = prev.practiceStats || {wrong:0,hints:0,independent:0,weaknesses:{},errorPatterns:{}};
+    if (!state.practiceStats.errorPatterns) state.practiceStats.errorPatterns = {};
+    updateUndoUI();
+    renderAll();
+  }
+
   function changeValue(side, unit, delta) {
     if (state.animating) { showBlockToast(); return; }
     const s = state[side];
-    if (unit==='cm') s.cm = Math.max(0,Math.min(25,s.cm+delta));
-    if (unit==='mm') s.mm = Math.max(0,Math.min(9, s.mm+delta));
+    const before = unit === 'cm' ? s.cm : s.mm;
+    const after = unit === 'cm'
+      ? Math.max(0,Math.min(25,before+delta))
+      : Math.max(0,Math.min(9,before+delta));
+    if (after === before) return;
+    pushUndo();
+    if (unit==='cm') s.cm = after;
+    if (unit==='mm') s.mm = after;
+    state.currentPreset = 'custom';
+    state.isPractice = false;
+    state.practiceSolved = false;
+    state.currentProblemAdaptive = false;
     renderAll();
   }
 
@@ -785,11 +2127,16 @@
       fill:'none',stroke:color,'stroke-width':sw,'stroke-linecap':'round'}));
     g.appendChild(el('line',{x1:width,y1:28,x2:width,y2:56,
       stroke:color,'stroke-width':dw,'stroke-linecap':'round'}));
+    const marker = kind === 'cm'
+      ? el('rect',{x:width/2-4,y:64,width:8,height:8,rx:1.5,fill:color,stroke:'#fff','stroke-width':1.5,'data-role':'unit-marker'})
+      : el('circle',{cx:width/2,cy:68,r:3.2,fill:color,stroke:'#fff','stroke-width':1.5,'data-role':'unit-marker'});
+    g.appendChild(marker);
     const num = el('text',{x:width/2,y:numY,'text-anchor':anchor,
-      'font-size':kind==='cm'?21:20,'font-weight':'900',fill:color,
+      'font-size':kind==='cm'?21:16,'font-weight':'900',fill:color,
       'paint-order':'stroke',stroke:'rgba(255,255,255,.92)',
-      'stroke-width':5,'stroke-linejoin':'round'});
+      'stroke-width':kind==='cm'?5:3,'stroke-linejoin':'round'});
     num.textContent = label;
+    if (kind === 'mm') num.setAttribute('visibility','hidden');
     g.appendChild(num);
     return g;
   }
@@ -809,25 +2156,34 @@
     gResult.innerHTML = '';
 
     const stack = isStack();
+    const lTot = totMm(state.left);
+    const rTot = totMm(state.right);
+    const resTot = Math.abs(resMm());
     const RXcur = getRX();
     const RYcur = getRY();
     const CYcur = getCY();
     const scale = state.manualScale;
 
-    // SVGのviewBoxを更新
+    // 内容量に合わせて viewBox 幅を自動調整。2200固定で全体が縮みすぎる問題を解消する。
+    const sideWidth = Math.max(
+      980,
+      RXcur + rTot * PX + 90,
+      CX + resTot * PX + 130
+    );
+    const stackWidth = Math.max(
+      980,
+      LX + Math.max(lTot, rTot, resTot) * PX + (state.op === '差' ? 430 : 170)
+    );
+    const subWidth = getSubPanelX() + 320;
+    const vbW = state.op === '−' ? Math.max(stackWidth, subWidth) : (stack ? stackWidth : sideWidth);
     const vbH = (state.op === '−' || state.op === '差') ? VB_H_SUB : (stack ? VB_H_STACK : VB_H_SIDE);
-    svg.setAttribute('viewBox', `0 0 ${VB_W} ${vbH}`);
+    svg.setAttribute('viewBox', `0 0 ${vbW} ${vbH}`);
 
-    // sceneRoot にスケールをかける（原点基準）
+    // sceneRoot に手動スケールをかける
     sceneRoot.setAttribute('transform', scale !== 1 ? `scale(${scale})` : '');
 
-    // ラベルはすべて廃止
     const labelsG = document.getElementById('labels');
     labelsG.innerHTML = '';
-
-    const lTot = totMm(state.left);
-    const rTot = totMm(state.right);
-    const resTot = Math.abs(resMm());
 
     // トラック（下敷きバー）
     const makeTrack = (x, y, w) => {
@@ -837,8 +2193,38 @@
     };
     gTracks.appendChild(makeTrack(LX, TY, lTot*PX));
     gTracks.appendChild(makeTrack(RXcur, RYcur, rTot*PX));
-    if (state.op !== '−' && state.op !== '差') {
+    if (state.op !== '−' && state.op !== '差' && state.animating) {
       gTracks.appendChild(makeTrack(CX, CYcur, resTot*PX));
+
+      // 学習の中心：移動先を「cmのなかま」「mmのなかま」として薄く常時見せる
+      const cmGuideW = Math.max((state.left.cm + state.right.cm) * CMpx, 130);
+      const mmGuideW = Math.max((state.left.mm + state.right.mm) * PX, 160);
+      const guideTop = CYcur - 14;
+      const guideH = 112;
+      const cmGuide = el('rect',{
+        x:CX-8,y:guideTop,width:cmGuideW+8,height:guideH,rx:18,
+        fill:C.cm,'fill-opacity':'0.035',stroke:C.cm,'stroke-opacity':'0.28','stroke-width':'2','stroke-dasharray':'8 7'
+      });
+      const mmGuideX = CX + (state.left.cm + state.right.cm) * CMpx;
+      const mmGuide = el('rect',{
+        x:mmGuideX,y:guideTop,width:mmGuideW+8,height:guideH,rx:18,
+        fill:C.mm,'fill-opacity':'0.035',stroke:C.mm,'stroke-opacity':'0.28','stroke-width':'2','stroke-dasharray':'8 7'
+      });
+      gTracks.appendChild(cmGuide);
+      gTracks.appendChild(mmGuide);
+
+      const cmGuideText = el('text',{
+        x:CX + cmGuideW/2,y:CYcur+88,'text-anchor':'middle','font-size':'22','font-weight':'900',
+        fill:C.cm,'font-family':"system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif"
+      });
+      cmGuideText.textContent='■ cm の なかま';
+      const mmGuideText = el('text',{
+        x:mmGuideX + mmGuideW/2,y:CYcur+88,'text-anchor':'middle','font-size':'22','font-weight':'900',
+        fill:C.mm,'font-family':"system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif"
+      });
+      mmGuideText.textContent='● mm の なかま';
+      gTracks.appendChild(cmGuideText);
+      gTracks.appendChild(mmGuideText);
     }
 
     // 左の線の単位群
@@ -869,11 +2255,19 @@
   }
 
   function renderAll() {
+    document.querySelector('.success-card')?.remove();
     updateModeUI();
     renderPreviewTexts();
+    updateQuestionEquation();
+    updateHintLine();
+    updateEquivalence();
+    updatePracticeUI();
+    setGuideStep(0);
+    setUnitFocus('both');
     updateEquation();
     buildScene();
-    // フッターの答えは最初は非表示
+    // フッターは最初は学習ポイントだけ。答えが出たら展開する。
+    footerPanel.classList.add('result-hidden');
     equation.style.opacity='0';
     resultText.style.opacity='0';
   }
@@ -1012,7 +2406,7 @@
     /* ── 導入テキスト「上から下をひいていくよ。」 ── */
     {
       const introX = LX + (Math.max(L.cm,R.cm)*CMpx + Math.max(L.mm,R.mm)*PX) / 2;
-      const introT = svgText(introX, TY_TOP - 20, 30, '#111827', '上から下をひいて（けして）いくよ。');
+      const introT = svgText(introX, TY_TOP - 20, 30, '#111827', 'うえから したを ひいて（けして）いくよ。');
       overlay.appendChild(introT);
       await fadeIn(introT, 350); playPop();
       await speakAndWait('うえから したを ひいて（けして）いくよ。', 2500);
@@ -1022,10 +2416,12 @@
     }
 
     /* ── cm 同士を消す ── */
+    setGuideStep(diffContext ? 2 : 1);
+    setUnitFocus('cm');
     const cmCount = Math.min(topCmGs.length, botCmGs.length);
     if (cmCount > 0) {
       const cmHintX = LX + Math.min(topCmGs.length, botCmGs.length) * CMpx / 2;
-      const cmHint = svgText(cmHintX, TY_TOP - 20, 28, C.cm, 'cmとcmをつなげて、けそう。');
+      const cmHint = svgText(cmHintX, TY_TOP - 20, 28, C.cm, '■ cm と cm を けそう。');
       overlay.appendChild(cmHint);
       await fadeIn(cmHint, 300); playPop();
       await speakAndWait('せんちめーとると せんちめーとるを つなげて、けそう。', 2500);
@@ -1043,6 +2439,8 @@
     await sleep(300);
 
     /* ── mm 同士を消す（繰り下がり対応） ── */
+    setGuideStep(diffContext ? 2 : 2);
+    setUnitFocus('mm');
     // 下段mmの残りリストを可変で管理
     let botMmRemaining = [...botMmGs];
     let topMmRemaining = [...topMmGs];
@@ -1051,7 +2449,7 @@
 
     if (botMmRemaining.length > 0) {
       const mmHintX = LX + Math.max(topCmGs.length, botCmGs.length)*CMpx + Math.min(topMmGs.length, botMmGs.length)*PX/2;
-      const mmHint = svgText(mmHintX, TY_TOP - 20, 28, C.mm, 'mmとmmをつなげて、けそう。');
+      const mmHint = svgText(mmHintX, TY_TOP - 20, 28, C.mm, '● mm と mm を けそう。');
       overlay.appendChild(mmHint);
       await fadeIn(mmHint, 300); playPop();
       await speakAndWait('みりめーとると みりめーとるを つなげて、けそう。', 2500);
@@ -1066,13 +2464,14 @@
       if (topMmRemaining.length === 0) {
         // ── 繰り下がり発生 ──
         didBorrow = true;
+        if (!diffContext && !didBorrow) setGuideStep(3);
 
-        // 「ん？ひけないね。どうする？」
+        // つまずかせず、必要な変換をその場で明示する
         const questionX = LX + (Math.max(L.cm,R.cm)*CMpx + Math.max(L.mm,R.mm)*PX)/2;
-        const qText = svgText(questionX, TY_BOT + 100, 30, '#dc2626', 'ん？ひけないね。どうする？');
+        const qText = svgText(questionX, TY_BOT + 100, 30, '#b45309', 'mm が たりないね。1cm を 10mm に かえよう。');
         overlay.appendChild(qText);
         await fadeIn(qText, 350); playPop();
-        await speakAndWait('ん？ひけないね。どうする？', 2500);
+        await speakAndWait('みりめーとるが たりないね。いちせんちめーとるを じゅうみりめーとるに かえよう。', 3000);
         if(aborted()) return;
         await sleep(300);
 
@@ -1118,8 +2517,8 @@
         borrowedMmGroups.push(...newMms);
         topMmRemaining = [...newMms];
 
-        // 「1cmを10mmにかえる（くりさげる）と、まだひけるね」
-        const borrowText = svgText(questionX, TY_BOT + 145, 28, '#2563eb', '1cmを10mmにかえる（くりさげる）と、まだひけるね');
+        // 「1cmを10mmに かえると、まだ ひけるね」
+        const borrowText = svgText(questionX, TY_BOT + 145, 28, '#2563eb', '1cmを10mmに かえると、まだ ひけるね');
         overlay.appendChild(borrowText);
         await fadeIn(borrowText, 350); playPop();
         await speakAndWait('いちせんちめーとるを じゅうみりめーとるに かえる、くりさげると、まだ ひけるね', 4000);
@@ -1136,6 +2535,8 @@
     }
     if(aborted()) return;
     await sleep(400);
+    if (!diffContext) setGuideStep(3);
+    setUnitFocus('both');
 
     /* ── 残りcmを右にスライドして残りmmにくっつける ── */
     const remTopCm  = [...gUnits.querySelectorAll('g[data-side=left][data-kind=cm]')];
@@ -1189,13 +2590,13 @@
         // 「のこったのは○cm○mmだね。」テキストを表示
         const nokoriParts = resCmFinal > 0
           ? [
-              {text:'残ったのは ',color:'#111827'},
+              {text:'のこったのは ',color:'#111827'},
               {text:`${resCmFinal}cm`,color:C.cm},
               {text:`${resMmVal}mm`,color:C.mm},
               {text:'だね。',color:'#111827'},
             ]
           : [
-              {text:'残ったのは ',color:'#111827'},
+              {text:'のこったのは ',color:'#111827'},
               {text:`${resMmVal}mm`,color:C.mm},
               {text:'だね。',color:'#111827'},
             ];
@@ -1241,6 +2642,7 @@
       }
 
       // 「○cm○mmが、ちがいになるね。」最終テキスト
+      setGuideStep(3);
       const finalDiffParts = dCmVal > 0
         ? [
             {text:`${dCmVal}cm`,color:C.cm},
@@ -1262,7 +2664,7 @@
       await fadeIn(finalDiffForm, 400); playFanfare();
       await speakAndWait(finalDiffSpeech, 4000);
       if(aborted()) return;
-      for(let rep=0;rep<3;rep++){
+      for(let rep=0;rep<2;rep++){
         await new Promise(resolve=>{
           const a = finalDiffForm.animate(
             [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
@@ -1277,7 +2679,8 @@
       updateEquation();
       equation.style.transition='opacity 400ms ease';
       resultText.style.transition='opacity 400ms ease';
-      equation.style.opacity='1';
+      footerPanel.classList.remove('result-hidden');
+    equation.style.opacity='1';
       resultText.style.opacity='1';
       return;  // 差モードはここで終了（通常の式表示はスキップ）
     }
@@ -1310,7 +2713,7 @@
 
     /* ── テキスト表示（繰り下がりあり＝筆算、なし＝通常式） ── */
     // 画面右側に固定配置（筆算テキストは縦に長くなるため、右半分の空きスペースを使う）
-    const rightPanelX = 1400;  // 画面右側の中心X
+    const rightPanelX = getSubPanelX();  // 線の長さに応じて右パネル位置を自動調整
     const centerX = LX + (Math.max(L.cm,R.cm)*CMpx + Math.max(L.mm,R.mm)*PX)/2;
     const TXT_Y1  = TY_TOP + 80;  // 上段ラインのすぐ下から開始（右パネルのY起点）
 
@@ -1320,66 +2723,64 @@
       const TXT_Y3 = TXT_Y1 + 115;
       const TXT_Y4 = TXT_Y1 + 175;
 
-      // cm同士のひき算（0cmにならない場合のみ表示）
+      // cm同士のひき算（結果が0なら「のこらない」と表示）
       if (resCmFinal > 0 || L.cm > 0) {
-        const cmLabel = svgText(rightPanelX, TXT_Y1, 28, C.cm, 'cmからcmをひくと');
+        const cmLabel = svgText(rightPanelX, TXT_Y1, 28, C.cm, 'cm どうしで けいさん');
         overlay.appendChild(cmLabel);
         await fadeIn(cmLabel, 300); playPop(); await sleep(200);
         if(aborted()) return;
 
-        const cmParts = [
-          {text:`${L.cm}cm`,color:C.cm},{text:' － ',color:'#111827'},
-          {text:`${R.cm}cm`,color:C.cm},{text:' ＝ ',color:'#111827'},
-          {text: resCmFinal > 0 ? `${resCmFinal}cm` : '0cm',color:C.cm},
-        ];
+        const cmParts = unitSubParts(L.cm, R.cm, resCmFinal, 'cm', C.cm);
         const cmForm = svgTextParts(rightPanelX, TXT_Y2, 32, cmParts);
         overlay.appendChild(cmForm);
         await fadeIn(cmForm, 300); playPop();
-        await speakAndWait(`せんちめーとるから せんちめーとるをひくと、${L.cm}せんちめーとる ひく ${R.cm}せんちめーとる は ${resCmFinal}せんちめーとる`, 5000);
+        const cmSpeech = R.cm === 0
+          ? `${L.cm}せんちめーとる は そのまま`
+          : resCmFinal === 0
+            ? `おなじ せんちめーとるを ひくと、せんちめーとる は のこらないね`
+            : `${L.cm}せんちめーとる ひく ${R.cm}せんちめーとる は ${resCmFinal}せんちめーとる`;
+        await speakAndWait(cmSpeech, 5000);
         if(aborted()) return;
         await sleep(200);
       }
 
-      const mmLabel = svgText(rightPanelX, TXT_Y3, 28, C.mm, 'mmからmmをひくと');
+      const mmLabel = svgText(rightPanelX, TXT_Y3, 28, C.mm, 'mm どうしで けいさん');
       overlay.appendChild(mmLabel);
       await fadeIn(mmLabel, 300); playPop(); await sleep(200);
       if(aborted()) return;
 
-      const mmParts = [
-        {text:`${L.mm}mm`,color:C.mm},{text:' － ',color:'#111827'},
-        {text:`${R.mm}mm`,color:C.mm},{text:' ＝ ',color:'#111827'},
-        {text:`${resMmVal}mm`,color:C.mm},
-      ];
+      const mmParts = unitSubParts(L.mm, R.mm, resMmVal, 'mm', C.mm);
       const mmForm = svgTextParts(rightPanelX, TXT_Y4, 32, mmParts);
       overlay.appendChild(mmForm);
       await fadeIn(mmForm, 300); playPop();
-      await speakAndWait(`みりめーとるから みりめーとるをひくと、${L.mm}みりめーとる ひく ${R.mm}みりめーとる は ${resMmVal}みりめーとる`, 5000);
+      const mmSpeech = R.mm === 0
+        ? `${L.mm}みりめーとる は そのまま`
+        : resMmVal === 0
+          ? `おなじ みりめーとるを ひくと、みりめーとる は のこらないね`
+          : `${L.mm}みりめーとる ひく ${R.mm}みりめーとる は ${resMmVal}みりめーとる`;
+      await speakAndWait(mmSpeech, 5000);
       if(aborted()) return;
       await sleep(300);
 
-      // 答えまとめ（0cmは省略）
-      const ansParts = resCmFinal > 0
-        ? [
-            {text:'だから答えは ',color:'#111827'},
-            {text:`${resCmFinal}cm`,color:C.cm},
-            {text:`${resMmVal}mm`,color:C.mm},
-            {text:'！',color:'#111827'},
-          ]
-        : [
-            {text:'だから答えは ',color:'#111827'},
-            {text:`${resMmVal}mm`,color:C.mm},
-            {text:'！',color:'#111827'},
-          ];
-      const ansSpeech = resCmFinal > 0
-        ? `だから こたえは ${resCmFinal}せんちめーとる ${resMmVal}みりめーとる！`
-        : `だから こたえは ${resMmVal}みりめーとる！`;
+      // 答えまとめ（0の単位は省略）
+      const ansParts = [
+        {text:'だから こたえは ',color:'#111827'},
+        ...(resCmFinal > 0 ? [{text:`${resCmFinal}cm`,color:C.cm}] : []),
+        ...(resMmVal > 0 ? [{text:`${resMmVal}mm`,color:C.mm}] : []),
+        ...(resCmFinal === 0 && resMmVal === 0 ? [{text:'0',color:'#111827'}] : []),
+        {text:'！',color:'#111827'},
+      ];
+      const ansSpeechParts = [];
+      if (resCmFinal > 0) ansSpeechParts.push(`${resCmFinal}せんちめーとる`);
+      if (resMmVal > 0) ansSpeechParts.push(`${resMmVal}みりめーとる`);
+      const ansSpeech = `だから こたえは ${ansSpeechParts.length ? ansSpeechParts.join(' ') : '0'}！`;
       const ansForm = svgTextParts(rightPanelX, TXT_Y4+65, 36, ansParts);
       overlay.appendChild(ansForm);
       await fadeIn(ansForm, 400);
       playFanfare();
       await speakAndWait(ansSpeech, 4000);
       if(aborted()) return;
-      for(let rep=0;rep<3;rep++){
+      for(let rep=0;rep<2;rep++){
         await new Promise(resolve=>{
           const a = ansForm.animate(
             [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
@@ -1398,10 +2799,10 @@
       const ansMm = totalTopMm - R.mm;
       const ansCm = totalTopCm - R.cm;
 
-      const introText = svgText(rightPanelX, TXT_Y1, 28, '#111827', 'cmとmmをそろえて筆算で考えよう');
+      const introText = svgText(rightPanelX, TXT_Y1, 28, '#111827', 'cm と mm を たてに そろえて かんがえよう');
       overlay.appendChild(introText);
       await fadeIn(introText, 300); playPop();
-      await speakAndWait('せんちめーとると みりめーとるを そろえて ひっさんで かんがえよう', 3500);
+      await speakAndWait('せんちめーとるの れつと、みりめーとるの れつを そろえて かんがえよう', 3500);
       if(aborted()) return;
       await sleep(200);
 
@@ -1415,6 +2816,7 @@
     updateEquation();
     equation.style.transition='opacity 400ms ease';
     resultText.style.transition='opacity 400ms ease';
+    footerPanel.classList.remove('result-hidden');
     equation.style.opacity='1';
     resultText.style.opacity='1';
   }
@@ -1476,7 +2878,7 @@
       return ln;
     }
     // 斜線（cmに引く×線）
-    function strikeThrough(x, y, w=28, color='#dc2626', sw=4) {
+    function strikeThrough(x, y, w=28, color='#475569', sw=4) {
       // 左上→右下 の斜め線1本（ノートの斜線スタイル）
       const ln = el('line',{
         x1: x - w, y1: y - FS + 8,
@@ -1583,13 +2985,13 @@
     // ─── ⑧ 答えまとめ ───
     const finalParts = ansCm > 0
       ? [
-          {text:'だから答えは ',color:'#111827'},
+          {text:'だから こたえは ',color:'#111827'},
           {text:`${ansCm}cm`,color:C.cm},
           {text:`${ansMm}mm`,color:C.mm},
           {text:'！',color:'#111827'},
         ]
       : [
-          {text:'だから答えは ',color:'#111827'},
+          {text:'だから こたえは ',color:'#111827'},
           {text:`${ansMm}mm`,color:C.mm},
           {text:'！',color:'#111827'},
         ];
@@ -1603,7 +3005,7 @@
     await speakAndWait(finalSpeech, 4000);
     if(aborted()) return;
 
-    for(let rep=0;rep<3;rep++){
+    for(let rep=0;rep<2;rep++){
       await new Promise(resolve=>{
         const a = finalForm.animate(
           [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
@@ -1641,7 +3043,7 @@
       // 入れ替えアニメを見せてから実行
       renderAll();
       const overlay0 = getOverlay();
-      const swapMsg = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#dc2626', '下から上をひくよ。上下を入れかえるね！');
+      const swapMsg = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#b45309', 'したから うえは ひけないね。いれかえるよ！');
       overlay0.appendChild(swapMsg);
       await fadeIn(swapMsg, 320); playBuzz();
       await speakAndWait('したから うえを ひくよ。うえしたを いれかえるね！', 2800);
@@ -1685,6 +3087,7 @@
 
     const L = state.left, R = state.right;
     const overlay = getOverlay();
+    setGuideStep(1);
 
     function ensureDiffArrowDefs() {
       const defs = svg.querySelector('defs');
@@ -1699,7 +3102,7 @@
         orient: 'auto-start-reverse',
         markerUnits: 'strokeWidth'
       });
-      const path = el('path', { d: 'M 0 0 L 6 3 L 0 6 z', fill: '#dc2626' });
+      const path = el('path', { d: 'M 0 0 L 6 3 L 0 6 z', fill: 'context-stroke' });
       marker.appendChild(path);
       defs.appendChild(marker);
     }
@@ -1796,11 +3199,11 @@
       const topBandY = topY - 44;
       const botBandY = botY + 36;
 
-      const intro1 = makeText(centerX, topBandY - 10, '２つの線の長さのちがい（どれだけ、ながい。どれだけ、みじかい）をもとめるよ。', '#111827', 28);
+      const intro1 = makeText(centerX, topBandY - 10, '2つの せんを そろえると、はみだした ところが「ちがい」だよ。', '#111827', 28);
       overlay.appendChild(intro1);
       await showText(intro1, 320);
       playPop();
-      await speakAndWait('ふたつのせんの ながさの ちがいを もとめるよ。どれだけ ながい。どれだけ みじかい。', 5000);
+      await speakAndWait('ふたつの せんを そろえると、はみだした ところが ちがいだよ。', 3200);
       if (aborted()) return;
       await sleep(120);
 
@@ -1817,7 +3220,7 @@
 
       // 両端矢印：ちょうど diffLeftX〜diffRightX、線太く（sw:7）、矢印小さめ
       const diffArrow = makeOLine(diffLeftX, midY, diffLeftX, midY, {
-        stroke: '#dc2626', sw: 7, opacity: '0.0', startArrow: true, endArrow: true
+        stroke: '#0f766e', sw: 7, opacity: '0.0', startArrow: true, endArrow: true
       });
       await fadeIn(diffArrow, 10);
       await animateLineTo(diffArrow, { x2: diffRightX }, 420);
@@ -1825,7 +3228,7 @@
       if (aborted()) return;
 
       // 「ちがいはここだね」を矢印の右側に表示（最後まで残す）
-      const chiText = makeText(diffRightX + 220, midY + 12, 'ちがいはここだね', '#dc2626', 30);
+      const chiText = makeText(diffRightX + 190, midY + 12, 'ここが「ちがい」', '#0f766e', 30);
       overlay.appendChild(chiText);
       await showText(chiText, 280);
       playPop();
@@ -1833,66 +3236,34 @@
       if (aborted()) return;
       await sleep(240);
 
-      const intro3 = makeText(centerX, botBandY + 72, 'ちがいを求めるには、同じ部分をけしてしまえばいいね。', '#111827', 28);
+      const intro3 = makeText(centerX, botBandY + 72, 'おなじ ところを けして、のこりを けいさんしよう。', '#111827', 28);
       overlay.appendChild(intro3);
       await showText(intro3, 320);
       playPop();
-      await speakAndWait('ちがいを もとめるには、おなじ ぶぶんを けしてしまえば いいね。', 5000);
+      await speakAndWait('おなじ ところを けして、のこりを けいさんしよう。', 3000);
       if (aborted()) return;
       await sleep(160);
 
       const sameArrow = makeOLine(commonLeftX, shortY, commonLeftX, shortY, {
-        stroke: '#2563eb', sw: 5, opacity: '0.95', startArrow: true, endArrow: true
+        stroke: '#64748b', sw: 5, opacity: '0.95', startArrow: true, endArrow: true
       });
-      await animateLineTo(sameArrow, { x2: commonRightX }, 420);
+      await animateLineTo(sameArrow, { x2: commonRightX }, 360);
       playBlink();
       if (aborted()) return;
-      await sleep(220);
-
-      const intro4 = makeText(centerX, botBandY + 120, '長い方から、同じ部分を、ひくってことは、ひき算だね。', '#111827', 28);
-      overlay.appendChild(intro4);
-      await showText(intro4, 320);
-      playPop();
-      await speakAndWait('ながいほうから、おなじ ぶぶんを ひくってことは、ひきざんだね。', 4500);
-      if (aborted()) return;
-      await sleep(120);
-
-      const longArrow = makeOLine(longX1, longY, longX1, longY, {
-        stroke: '#ef4444', sw: 5, opacity: '0.95', startArrow: true, endArrow: true
-      });
-      await animateLineTo(longArrow, { x2: longX2 }, 420);
-      playBlink();
-      if (aborted()) return;
-      await sleep(180);
-
-      await animateLineTo(sameArrow, { y1: longY, y2: longY }, 280);
-      for (let i = 0; i < 3; i++) {
-        sameArrow.setAttribute('opacity', i % 2 === 0 ? '1' : '0.15');
-        playBlink();
-        await sleep(140);
+      for (let i = 0; i < 2; i++) {
+        sameArrow.setAttribute('opacity', i % 2 === 0 ? '1' : '0.25');
+        await sleep(120);
       }
       await fadeRemove(sameArrow, 160);
       if (aborted()) return;
 
-      await animateLineTo(longArrow, { x1: diffLeftX }, 360);
-      playBlink();
-      await sleep(220);
-
-      const intro5 = makeText(centerX, botBandY + 168, 'では、ひきざんをやってみよう', '#111827', 30);
-      overlay.appendChild(intro5);
-      await showText(intro5, 320);
-      playPop();
-      await speakAndWait('では、ひきざんを やってみよう。', 2500);
-      if (aborted()) return;
-      await sleep(260);
-
-      // intro1〜5, longArrow を削除し diffArrow, chiText, vShort, vLong は残す
-      [intro1, intro3, intro4, intro5, longArrow].forEach(e => {
+      // 導入はここで終了。あとは実際にcmはcm、mmはmmをひいて確かめる。
+      [intro1, intro3].forEach(e => {
         if (e && e.parentNode) e.remove();
       });
 
-      // 同じoverlayを渡す（diffArrow, chiTextが持ち越される）
       await animateSubtract(overlay, aborted, { diffArrow, chiText, diffLeftX, diffRightX, midY, diffCmVal, diffMmVal });
+      if (!aborted()) showSuccess('difference');
     } finally {
       cleanup();
     }
@@ -1920,18 +3291,18 @@
     if (state.op === '−') {
       // 減法①：右（下）の方が大きい場合はエラー表示して入れ替え確認
       if (totMm(state.right) > totMm(state.left)) {
-        const errMsg = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#dc2626', 'ひけないよ！大きい方から小さい方をひくよ。');
+        const errMsg = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#b45309', 'ながいほうから みじかいほうを ひこう。');
         overlay.appendChild(errMsg);
         await fadeIn(errMsg, 320); playBuzz();
         await speakAndWait('ひけないよ！おおきいほうから ちいさいほうをひくよ。', 3000);
         if (aborted()) { state.animating=false; animateBtn.disabled=false; animateBtn.style.opacity='1'; return; }
         await sleep(200);
 
-        // 「入れかえて実行？」ボタンを HTML 上に表示
+        // 「いれかえる？」ボタンを HTML 上に表示
         const swapResult = await new Promise(resolve => {
           const panel = document.createElement('div');
-          panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:3px solid #dc2626;border-radius:16px;padding:24px 32px;z-index:100;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.18);';
-          panel.innerHTML = '<div style="font-size:22px;font-weight:700;color:#111827;margin-bottom:18px;">入れかえて実行？</div>';
+          panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:3px solid #f59e0b;border-radius:16px;padding:24px 32px;z-index:100;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.18);';
+          panel.innerHTML = '<div style="font-size:22px;font-weight:700;color:#111827;margin-bottom:18px;">いれかえる？</div>';
           const yesBtn = document.createElement('button');
           yesBtn.textContent = 'はい';
           yesBtn.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:20px;font-weight:700;padding:10px 32px;margin:0 10px;cursor:pointer;';
@@ -1954,7 +3325,7 @@
         // 入れ替えアニメ
         clearOverlay();
         renderAll();
-        const swapMsg2 = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#2563eb', '数値を入れかえるよ！');
+        const swapMsg2 = svgText(LX + (totMm(state.right)*PX)/2, SUB_TY_TOP - 30, 30, '#2563eb', 'かずを いれかえるよ！');
         const ov2 = getOverlay();
         ov2.appendChild(swapMsg2);
         await fadeIn(swapMsg2, 280); playCoin();
@@ -1989,6 +3360,7 @@
       }
       const freshOverlay = getOverlay();
       await animateSubtract(freshOverlay, aborted);
+      if (state.animating) showSuccess('subtract');
       state.animating = false;
       animateBtn.disabled = false;
       animateBtn.style.opacity = '1';
@@ -2022,55 +3394,66 @@
     const leftGroups  = allGroups.filter(g=>g.dataset.side==='left');
     const rightGroups = allGroups.filter(g=>g.dataset.side==='right');
 
-    // 全グループにtransition設定
-    [...allGroups].forEach(g=>{
-      g.style.transition='transform 500ms cubic-bezier(.4,0,.2,1)';
-    });
+    // やさしい標準経路：最初から「同じ単位のなかま」へ直接集める。
+    // 設定で「まず2本をつなぐ」を選んだ時だけ、従来の長さをつなぐ導入を見せる。
+    if (!state.directGroup) {
+      [...allGroups].forEach(g=>{
+        g.style.transition='transform 500ms cubic-bezier(.4,0,.2,1)';
+      });
 
-    // 左の線を1セグメントずつまとめる場所へスライド
-    for (const g of leftGroups) {
-      g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
-      const srcX = Number(g.dataset.srcX);
-      const dstX = CX + (srcX - LX);
-      g.setAttribute('transform', `translate(${dstX},${CY})`);
-      playCoin();
-      await sleep(120);   // 次のセグメントまで少し間を置く
+      for (const g of leftGroups) {
+        g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
+        const srcX = Number(g.dataset.srcX);
+        const dstX = CX + (srcX - LX);
+        g.setAttribute('transform', `translate(${dstX},${CY})`);
+        playCoin();
+        await sleep(70);
+      }
+      await sleep(390);
+      if (aborted()) return;
+
+      const leftWidthPx = lTot * PX;
+      for (const g of rightGroups) {
+        g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
+        const srcX = Number(g.dataset.srcX);
+        const dstX = CX + leftWidthPx + (srcX - RXcur);
+        g.setAttribute('transform', `translate(${dstX},${CY})`);
+        playCoin();
+        await sleep(90);
+      }
+      await sleep(390);
+      if (aborted()) return;
+
+      const q = svgText(
+        CX + (lTot+rTot)*PX/2, CY + 130,
+        34, '#1e40af',
+        'つないだ ながさを、cm と mm に わけよう。'
+      );
+      overlay.appendChild(q);
+      await fadeIn(q, 300);
+      playPop();
+      await speakAndWait('つないだ ながさを、おなじ たんいの なかまに わけよう。', 2600);
+      await sleep(180);
+      if (aborted()) return;
+      q.style.transition='opacity 220ms ease';
+      q.setAttribute('opacity','0');
+      await sleep(230);
+      q.remove();
+    } else {
+      const directHint = svgText(
+        CX + Math.max(lTot,rTot)*PX/2, CY + 128,
+        32, '#0f766e',
+        'cmはcm、mmはmmへ あつめよう。'
+      );
+      overlay.appendChild(directHint);
+      await fadeIn(directHint, 240);
+      await speakAndWait('おなじ たんいの なかまへ あつめよう。', 1800);
+      if (aborted()) return;
+      directHint.style.transition='opacity 180ms ease';
+      directHint.setAttribute('opacity','0');
+      await sleep(190);
+      directHint.remove();
     }
-    await sleep(430);   // 最後のセグメントのtransitionが終わるまで待つ
-    if (aborted()) return;
-
-    // 右の線を1セグメントずつ、左の右端に続けてスライド
-    const leftWidthPx = lTot * PX;
-    for (const g of rightGroups) {
-      g.style.transition = 'transform 400ms cubic-bezier(.4,0,.2,1)';
-      const srcX = Number(g.dataset.srcX);
-      const dstX = CX + leftWidthPx + (srcX - RXcur);
-      g.setAttribute('transform', `translate(${dstX},${CY})`);
-      playCoin();
-      await sleep(120);
-    }
-    await sleep(430);
-    if (aborted()) return;
-
-    /* ===== 「どうやって計算する？」テキスト ===== */
-    const q = svgText(
-      CX + (lTot+rTot)*PX/2, CY + 130,
-      36, '#1e40af',
-      '長さをたすことはできそうだけど、どうやって計算する？'
-    );
-    overlay.appendChild(q);
-    await fadeIn(q, 400);
-    playPop();
-    await speakAndWait('ながさをたすことはできそうだけど、どうやってけいさんする？', 3500);
-    await sleep(400);
-    if (aborted()) return;
-
-    /* ===== PHASE 2: 円弧・区切り線を1単位ずつ正しい位置へ移動 ===== */
-    // まず「どうやって…」を消す
-    q.style.transition='opacity 300ms ease';
-    q.setAttribute('opacity','0');
-    await sleep(320);
-    q.remove();
 
     // 移動先の計算：cm左→cm右→mm左→mm右 の順で並べる
     // targetX を各グループに割り付け
@@ -2104,6 +3487,8 @@
     // 「cmとmmでまとめると」テキストはあとで出す
 
     // cm群を一単位ずつ移動（左cm→右cm）
+    setGuideStep(1);
+    setUnitFocus('cm');
     const cmGroups = [...leftCmGroups,...rightCmGroups];
     let cmTotal = 0;
     for (const g of cmGroups) {
@@ -2115,10 +3500,12 @@
       speakNumber(cmTotal);
       const _g = g;
       setTimeout(() => flashUnit(_g, C.cm), 320);
-      await sleep(600);
+      await sleep(360);
     }
 
     // mm群を一単位ずつ移動（左mm→右mm）
+    setGuideStep(2);
+    setUnitFocus('mm');
     const mmGroups = [...leftMmGroups,...rightMmGroups];
     let mmTotal = 0;
     for (const g of mmGroups) {
@@ -2130,7 +3517,7 @@
       speakNumber(mmTotal);
       const _g = g;
       setTimeout(() => flashUnit(_g, C.mm), 320);
-      await sleep(520);
+      await sleep(300);
     }
 
     await sleep(400);
@@ -2160,58 +3547,56 @@
 
     /* ===== PHASE 2後半: cmとcmでまとめると ===== */
     // 見出し
-    const cmLabel = svgText(cmCenterX, TXT_Y1, 30, C.cm, 'cmとcmでまとめると');
+    const cmLabel = svgText(cmCenterX, TXT_Y1, 30, C.cm, '■ cm どうしで けいさん');
     overlay.appendChild(cmLabel);
     await fadeIn(cmLabel, 350);
     playPop();
     await sleep(300);
 
     // cm式
-    const cmParts = [
-      {text:`${state.left.cm}cm `,color:C.cm},
-      {text:'＋ ',color:'#111827'},
-      {text:`${state.right.cm}cm`,color:C.cm},
-      {text:' ＝ ',color:'#111827'},
-      {text:`${totalCmCount}cm`,color:C.cm},
-    ];
+    const cmParts = unitAddParts(state.left.cm, state.right.cm, totalCmCount, 'cm', C.cm);
     const cmForm = svgTextParts(cmCenterX, TXT_Y2, 34, cmParts);
     overlay.appendChild(cmForm);
     await fadeIn(cmForm, 350);
     playPop();
-    await speakAndWait(`せんちめーとると せんちめーとるで まとめると、${state.left.cm}せんちめーとる と ${state.right.cm}せんちめーとる で ${totalCmCount}せんちめーとる`, 5000);
+    const cmAddSpeech = state.left.cm === 0 || state.right.cm === 0
+      ? `${totalCmCount > 0 ? totalCmCount + 'せんちめーとる' : 'せんちめーとるは なし'} だね`
+      : `${state.left.cm}せんちめーとる と ${state.right.cm}せんちめーとる で ${totalCmCount}せんちめーとる`;
+    await speakAndWait(cmAddSpeech, 5000);
     await sleep(200);
 
     /* ===== PHASE 3: mmとmmでまとめると（式はここでは11mmまで） ===== */
     // mm見出し（cm見出しと同じ高さ）
-    const mmLabel = svgText(mmCenterX, TXT_Y1, 30, C.mm, 'mmとmmでまとめると');
+    const mmLabel = svgText(mmCenterX, TXT_Y1, 30, C.mm, '● mm どうしで けいさん');
     overlay.appendChild(mmLabel);
     await fadeIn(mmLabel, 350);
     playPop();
     await sleep(300);
 
     // mm式（11mmまで。繰り上がりの＝以降はまだ出さない）
-    const mmBaseParts = [
-      {text:`${state.left.mm}mm `,color:C.mm},
-      {text:'＋ ',color:'#111827'},
-      {text:`${state.right.mm}mm`,color:C.mm},
-      {text:' ＝ ',color:'#111827'},
-      {text:`${rawMmTotal}mm`,color:C.mm},
-    ];
+    const mmBaseParts = unitAddParts(state.left.mm, state.right.mm, rawMmTotal, 'mm', C.mm);
     const mmForm = svgTextParts(mmCenterX, TXT_Y2, 34, mmBaseParts);
     overlay.appendChild(mmForm);
     await fadeIn(mmForm, 350);
     playPop();
-    await speakAndWait(`みりめーとると みりめーとるで まとめると、${state.left.mm}みりめーとる と ${state.right.mm}みりめーとる で ${rawMmTotal}みりめーとる`, 5000);
+    const mmAddSpeech = state.left.mm === 0 || state.right.mm === 0
+      ? `${rawMmTotal > 0 ? rawMmTotal + 'みりめーとる' : 'みりめーとるは なし'} だね`
+      : `${state.left.mm}みりめーとる と ${state.right.mm}みりめーとる で ${rawMmTotal}みりめーとる`;
+    await speakAndWait(mmAddSpeech, 5000);
     await sleep(200);
+
+    setGuideStep(3);
+    setUnitFocus('both');
 
     /* ===== PHASE 4: 繰り上がりアニメーション（didCarryのみ） ===== */
     if (didCarry) {
-      // 「あれ？合わせて Xcm YYmmでいいの？」
+      // 10mmのまとまりを見つけて、1cmへ変換することを明示
       const questionParts = [
-        {text:'あれ？合わせて ',color:'#111827'},
-        {text:`${totalCmCount}cm`,color:C.cm},
+        {text:'● mm が ',color:'#111827'},
         {text:`${rawMmTotal}mm`,color:C.mm},
-        {text:'でいいの？',color:'#111827'},
+        {text:'。10mm を ',color:'#111827'},
+        {text:'1cm',color:C.cm},
+        {text:' に かえよう！',color:'#111827'},
       ];
       const questionForm = svgTextParts(
         CX + (cmAreaW + mmAreaW) / 2, TXT_Y5, 32, questionParts
@@ -2219,7 +3604,7 @@
       overlay.appendChild(questionForm);
       await fadeIn(questionForm, 400);
       playPop();
-      await speakAndWait(`あれ？あわせて ${totalCmCount}せんちめーとる ${rawMmTotal}みりめーとる でいいの？`, 4000);
+      await speakAndWait(`みりめーとるが ${rawMmTotal}みりめーとる。じゅうみりめーとるを いちせんちめーとるに かえよう。`, 3400);
       await sleep(200);
 
       // 繰り上がりアニメ開始：先頭10個のmmグループを点滅
@@ -2298,11 +3683,11 @@
       // 「Xcm Ymm ＝ Acm Bmm だね！」と表示
       const finalCm = totalCmCount + carryC;
       const resultParts = [
-        {text:`${totalCmCount}cm`,color:C.cm},
-        {text:`${rawMmTotal}mm`,color:C.mm},
+        ...(totalCmCount > 0 ? [{text:`${totalCmCount}cm`,color:C.cm}] : []),
+        ...(rawMmTotal > 0 ? [{text:`${rawMmTotal}mm`,color:C.mm}] : []),
         {text:' ＝ ',color:'#111827'},
-        {text:`${finalCm}cm`,color:C.cm},
-        {text:`${remMm}mm`,color:C.mm},
+        ...(finalCm > 0 ? [{text:`${finalCm}cm`,color:C.cm}] : []),
+        ...(remMm > 0 ? [{text:`${remMm}mm`,color:C.mm}] : []),
         {text:'  だね！',color:'#111827'},
       ];
       const resultForm = svgTextParts(
@@ -2311,10 +3696,10 @@
       overlay.appendChild(resultForm);
       await fadeIn(resultForm, 400);
       playFanfare();
-      await speakAndWait(`${totalCmCount}せんちめーとる ${rawMmTotal}みりめーとる は、${finalCm}せんちめーとる ${remMm}みりめーとる だね！`, 5000);
+      await speakAndWait(`${totalCmCount > 0 ? totalCmCount + 'せんちめーとる ' : ''}${rawMmTotal > 0 ? rawMmTotal + 'みりめーとる' : ''} は、${finalCm > 0 ? finalCm + 'せんちめーとる ' : ''}${remMm > 0 ? remMm + 'みりめーとる' : ''} だね！`, 5000);
 
       // pulse強調
-      for(let rep=0;rep<3;rep++){
+      for(let rep=0;rep<2;rep++){
         await new Promise(resolve=>{
           const anim = resultForm.animate(
             [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
@@ -2332,6 +3717,7 @@
     updateEquation();
     equation.style.transition='opacity 400ms ease';
     resultText.style.transition='opacity 400ms ease';
+    footerPanel.classList.remove('result-hidden');
     equation.style.opacity='1';
     resultText.style.opacity='1';
     if (!didCarry) {
@@ -2343,18 +3729,393 @@
       await speakAndWait(`だから あわせて ${rCm}せんちめーとる ${rMm}みりめーとる！`, 3000);
     }
 
+    showSuccess('add');
     state.animating = false;
     animateBtn.disabled = false;
     animateBtn.style.opacity = '1';
   }
 
+  function setupMicroCheck(card, kind) {
+    const nextBtn = card.querySelector('.success-btn.next');
+    if (!nextBtn || state.isPractice || state.currentPreset === 'custom') return;
+
+    const L = state.left, R = state.right;
+    let questions = [];
+    let doneText = '✓ ばっちり！ cmはcm、mmはmmだね。';
+
+    if (kind === 'add' || kind === 'subtract') {
+      if (state.currentPreset === 'basic') {
+        questions = [
+          {
+            prompt:`■ ${L.cm}cm と いっしょに けいさんするのは？`,
+            options:[
+              {label:`■ ${R.cm}cm`, correct:true},
+              {label:`● ${R.mm}mm`, correct:false},
+            ]
+          },
+          {
+            prompt:`● ${L.mm}mm と いっしょに けいさんするのは？`,
+            options:[
+              {label:`■ ${R.cm}cm`, correct:false},
+              {label:`● ${R.mm}mm`, correct:true},
+            ]
+          },
+        ];
+      } else if (needsConversion()) {
+        questions = [{
+          prompt:'● 10mm と おなじ ながさは？',
+          options:[
+            {label:'■ 1cm', correct:true},
+            {label:'■ 10cm', correct:false},
+          ]
+        }];
+        doneText = '✓ そう！ 10mm ＝ 1cm だね。';
+      }
+    } else if (kind === 'difference') {
+      questions = [{
+        prompt:'「ちがい」は どこ？',
+        options:[
+          {label:'のこった ぶぶん', correct:true},
+          {label:'おなじ ぶぶん', correct:false},
+        ]
+      }];
+      doneText = '✓ そう！ のこった ぶぶんが「ちがい」。';
+    }
+
+    if (!questions.length) return;
+    const checkBox = card.querySelector('.success-check');
+    const lockNote = card.querySelector('.success-lock-note');
+    card.classList.add('needs-check');
+    const repeatBtn = card.querySelector('.success-btn.repeat');
+    const title = card.querySelector('.success-title');
+    const mainEl = card.querySelector('.success-main');
+    if (title) title.textContent = 'つぎへ すすむ まえに';
+    if (mainEl) mainEl.textContent = 'ここに こたえよう！';
+    nextBtn.disabled = true;
+    nextBtn.hidden = true;
+    nextBtn.classList.remove('ready');
+    if (repeatBtn) repeatBtn.hidden = true;
+    if (lockNote) lockNote.textContent = 'ここに こたえると、れんしゅうへ すすめるよ。';
+    let qi = 0;
+
+    function renderQuestion(note='') {
+      const q = questions[qi];
+      const wrongNote = kind === 'difference' ? 'おなじ ところを けした あとの、のこりを みよう。' : 'cmはcm、mmはmmを えらぼう。';
+      checkBox.innerHTML = `<div class="success-check-guide">かならず こたえよう</div><div class="success-check-row"><span class="check-prompt">${qi+1}/${questions.length}　${q.prompt}</span>` +
+        q.options.map((o,i)=>`<button class="check-choice" type="button" data-check-index="${i}">${o.label}</button>`).join('') +
+        `</div>` + (note ? `<span class="check-note">${note}</span>` : '');
+      [...checkBox.querySelectorAll('.check-choice')].forEach((btn,i)=>{
+        btn.addEventListener('click',()=>{
+          const opt = q.options[i];
+          if (!opt.correct) {
+            btn.classList.remove('wrong');
+            void btn.offsetWidth;
+            btn.classList.add('wrong');
+            const old = checkBox.querySelector('.check-note');
+            if (old) old.textContent = wrongNote;
+            else checkBox.insertAdjacentHTML('beforeend',`<span class="check-note">${wrongNote}</span>`);
+            return;
+          }
+          btn.classList.add('correct');
+          playPop();
+          setTimeout(()=>{
+            qi++;
+            if (qi < questions.length) {
+              renderQuestion();
+            } else {
+              checkBox.innerHTML = `<span class="check-note ok">${doneText}<br>れんしゅうへ すすもう！</span>`;
+              card.classList.remove('needs-check');
+              card.scrollTop = 0;
+              const title = card.querySelector('.success-title');
+              const mainEl = card.querySelector('.success-main');
+              if (title) title.textContent = 'できた！';
+              if (mainEl) mainEl.textContent = '';
+              nextBtn.disabled = false;
+              nextBtn.hidden = false;
+              nextBtn.classList.add('ready');
+              if (repeatBtn) repeatBtn.hidden = false;
+              if (lockNote) lockNote.textContent = '';
+            }
+          }, 280);
+        });
+      });
+    }
+
+    renderQuestion();
+  }
+
+  function showSuccess(kind) {
+    document.querySelector('.success-card')?.remove();
+    finishGuide();
+
+    // 練習中の「動きでヒント」は解答の代わりにしない。
+    // アニメを見終えたら問題へ戻し、必ず児童自身が答える。
+    if (state.isPractice && !state.practiceSolved) {
+      footerPanel.classList.add('result-hidden');
+      equation.style.opacity = '0';
+      resultText.style.opacity = '0';
+      buildScene();
+      practiceFeedback.textContent = 'ヒントを みたね。こんどは じぶんで こたえを いれよう。';
+      practiceFeedback.className = 'practice-feedback hint';
+      practiceHintBtn.disabled = false;
+      updateEquivalence();
+      const exp = expectedPracticeAnswer();
+      setTimeout(()=> (exp.cm === 0 ? practiceMmInput : practiceCmInput).focus(), 0);
+      return;
+    }
+    const card = document.createElement('div');
+    card.className = `success-card ${kind === 'add' ? 'top' : 'bottom'}`;
+    let main = '';
+    let sub = '';
+    if (kind === 'difference') {
+      main = 'のこった ぶぶんが「ちがい」だね！';
+      sub = 'おなじ ところを けすと、ちがいが みえる。';
+    } else if (kind === 'subtract') {
+      main = 'cm は cm、mm は mm どうしで ひけた！';
+      sub = needsConversion()
+        ? 'mm が たりない ときは、1cm を 10mm に かえられるね。'
+        : 'cmはcm、mmはmmを ひくと、こたえが でるね。';
+    } else {
+      main = 'cm は cm、mm は mm どうしで たせた！';
+      sub = needsConversion()
+        ? '10mm は 1cm に かえられるね。'
+        : 'cmはcm、mmはmmを たすと、こたえが でるね。';
+    }
+    const bankLen = state.isPractice ? getPracticeBank(state.practiceTier, state.op).length : 0;
+    const corePracticeComplete = state.isPractice && state.practiceTier === 'core' && state.practiceRound >= bankLen;
+    const coreAdditionComplete = state.op === '+' && corePracticeComplete;
+    const advancedStageComplete = state.isPractice && state.practiceTier === 'advanced' && state.practiceRound >= bankLen;
+    const advancedAdditionComplete = state.op === '+' && advancedStageComplete;
+    const baseCoreLen = (PROBLEM_BANKS.core[state.op] || []).length;
+    const enteringAdaptiveReview = state.isPractice && state.practiceTier === 'core' && state.practiceRound === baseCoreLen && state.adaptiveReviewQueue.length > 0;
+    let nextLabel;
+    if (state.op === '+') {
+      if (state.isPractice && state.practiceTier === 'core') nextLabel = coreAdditionComplete ? '★ チャレンジへ →' : 'つぎの もんへ →';
+      else if (state.isPractice && state.practiceTier === 'advanced') nextLabel = advancedAdditionComplete ? 'きほんへ もどる →' : 'つぎの もんへ →';
+      else if (state.currentPreset === 'basic') nextLabel = 'れんしゅうへ →';
+      else nextLabel = 'チャレンジへ →';
+    } else {
+      if (state.isPractice && state.practiceTier === 'core') nextLabel = corePracticeComplete ? 'くりさがりを みよう →' : 'つぎの もんへ →';
+      else if (state.isPractice && state.practiceTier === 'advanced') nextLabel = advancedStageComplete ? 'きほんへ もどる →' : 'つぎの もんへ →';
+      else if (state.currentPreset === 'basic') nextLabel = 'れんしゅうへ →';
+      else nextLabel = 'くりさがりを れんしゅう →';
+    }
+    let repeatLabel = state.isPractice ? '💡 うごきで ヒント' : '↺ もういちど';
+    let successTitle = 'できた！';
+    if (enteringAdaptiveReview) {
+      successTitle = 'あと すこし！';
+      main = `にがてな ところだけ ${state.adaptiveReviewQueue.length}もん たしかめよう。`;
+      sub = 'できている ところは とばすよ。';
+      repeatLabel = '💡 うごきで ヒント';
+    } else if (coreAdditionComplete) {
+      successTitle = 'きほん クリア！';
+      main = state.adaptiveReviewQueue.length
+        ? `たしかめ ${state.adaptiveReviewQueue.length}もんも できた！`
+        : 'たしざんを 6もん できた！';
+      sub = state.adaptiveReviewQueue.length
+        ? 'にがてな ところも たしかめられたよ。'
+        : 'きほんは クリア！ チャレンジは やってみたい ときだけ。';
+      repeatLabel = '↺ きほんを もういちど';
+    } else if (corePracticeComplete && state.op !== '+') {
+      successTitle = 'れんしゅう クリア！';
+      main = state.adaptiveReviewQueue.length
+        ? `たしかめ ${state.adaptiveReviewQueue.length}もんも できた！`
+        : 'きほんの もんが できた！';
+      sub = state.adaptiveReviewQueue.length
+        ? 'にがてな ところも たしかめられたよ。'
+        : 'きほんは クリア！';
+    } else if (advancedStageComplete && state.op !== '+') {
+      successTitle = 'くりさがり クリア！';
+      main = '1cm を 10mm に かえる もんも できた！';
+      sub = 'きほんから、くりさがりまで できたよ。';
+    } else if (advancedAdditionComplete) {
+      successTitle = '★ チャレンジ クリア！';
+      main = '10mm を 1cm に かえる もんも できた！';
+      sub = 'チャレンジも クリア！';
+    }
+
+    // 説明アニメを見ただけの段階では「できた！」と断定しない。
+    if (!state.isPractice && state.currentPreset !== 'custom') successTitle = 'うごきが みえたね';
+
+    card.innerHTML = `<div class="success-title">${successTitle}</div><div class="success-main">${main}</div><div class="success-sub">${sub}</div><div class="success-check" aria-live="polite"></div><div class="success-actions"><button class="success-btn repeat" type="button">${repeatLabel}</button><button class="success-btn next" type="button">${nextLabel}</button></div><div class="success-lock-note"></div>`;
+    const marks = ['★','●','◆','★','●','◆','★','●'];
+    marks.forEach((mark,i)=>{
+      const s=document.createElement('span');
+      s.className='success-spark';
+      s.textContent=mark;
+      s.style.left = `${12 + i*11}%`;
+      s.style.setProperty('--dx', `${(i-3.5)*16}px`);
+      s.style.setProperty('--dy', `${-38 - (i%3)*18}px`);
+      s.style.setProperty('--rot', `${(i%2?1:-1)*(60+i*18)}deg`);
+      s.style.animationDelay = `${i*35}ms`;
+      s.style.color = i%3===0 ? '#f59e0b' : i%3===1 ? '#3b82f6' : '#ec4899';
+      card.appendChild(s);
+    });
+    card.querySelector('.repeat').addEventListener('click', ()=>{
+      card.remove();
+      if (coreAdditionComplete) {
+        loadPracticeProblem('core', true);
+        return;
+      }
+      stopCurrentAnimation();
+      renderAll();
+      requestAnimationFrame(()=>animateCombine());
+    });
+    card.querySelector('.next').addEventListener('click', ()=>{
+      card.remove();
+      goNextProblem();
+    });
+    document.querySelector('.stage')?.appendChild(card);
+    setupMicroCheck(card, kind);
+  }
+
+  function goNextProblem() {
+    stopCurrentAnimation();
+    clearUndo();
+
+    // たし算：教科書の本線（繰り上がりなし）を十分に練習してから、発展へ。
+    if (state.op === '+') {
+      if (!state.isPractice && state.currentPreset === 'basic') {
+        loadPracticeProblem('core', true);
+        return;
+      }
+      if (state.isPractice && state.practiceTier === 'core') {
+        const bank = getPracticeBank('core', '+');
+        if (state.practiceRound < bank.length) loadPracticeProblem('core', false);
+        else applyPreset('challenge');
+        return;
+      }
+      if (!state.isPractice && state.currentPreset === 'challenge') {
+        loadPracticeProblem('advanced', true);
+        return;
+      }
+      if (state.isPractice && state.practiceTier === 'advanced') {
+        const bank = getPracticeBank('advanced', '+');
+        if (state.practiceRound < bank.length) loadPracticeProblem('advanced', false);
+        else applyPreset('basic');
+        return;
+      }
+    }
+
+    // ひき算・ちがい：基本を自力で固めてから、くり下がりへ。
+    if (!state.isPractice && state.currentPreset === 'basic') {
+      loadPracticeProblem('core', true);
+      return;
+    }
+    if (state.isPractice && state.practiceTier === 'core') {
+      const bank = getPracticeBank('core', state.op);
+      if (state.practiceRound < bank.length) loadPracticeProblem('core', false);
+      else applyPreset('challenge');
+      return;
+    }
+    if (!state.isPractice && state.currentPreset === 'challenge') {
+      loadPracticeProblem('advanced', true);
+      return;
+    }
+    if (state.isPractice && state.practiceTier === 'advanced') {
+      const bank = getPracticeBank('advanced', state.op);
+      if (state.practiceRound < bank.length) loadPracticeProblem('advanced', false);
+      else applyPreset('basic');
+      return;
+    }
+
+    applyPreset('basic');
+  }
+
   /* ── イベント ── */
-  opBtn.addEventListener('click', ()=>{
-    state.op = state.op==='+' ? '−' : state.op==='−' ? '差' : '+';
+  function stopCurrentAnimation() {
+    stopSpeech();
+    stopAllSound();
+    state.animating = false;
+    animateBtn.disabled = false;
+    animateBtn.style.opacity = '1';
+    clearOverlay();
+    document.querySelector('.success-card')?.remove();
+  }
+
+  function applyPreset(kind) {
+    stopCurrentAnimation();
+    clearUndo();
+    state.currentPreset = kind;
+    state.isPractice = false;
+    state.practiceRound = 0;
+    state.practiceSolved = false;
+    state.practiceTier = kind === 'challenge' ? 'advanced' : 'core';
+    state.practiceFocus = '';
+    resetAdaptiveSession();
+    if (kind === 'basic') state.practiceIndex = 0;
+    if (state.op === '+') {
+      if (kind === 'basic') {
+        state.left = {cm:3, mm:4};
+        state.right = {cm:2, mm:3};
+      } else {
+        state.left = {cm:3, mm:4};
+        state.right = {cm:2, mm:7};
+      }
+    } else if (state.op === '−') {
+      if (kind === 'basic') {
+        state.left = {cm:5, mm:8};
+        state.right = {cm:2, mm:3};
+      } else {
+        state.left = {cm:5, mm:2};
+        state.right = {cm:2, mm:7};
+      }
+    } else {
+      if (kind === 'basic') {
+        state.left = {cm:5, mm:8};
+        state.right = {cm:2, mm:3};
+      } else {
+        state.left = {cm:5, mm:2};
+        state.right = {cm:2, mm:7};
+      }
+    }
+    state.manualScale = 1;
+    updateScaleDisplay();
+    renderAll();
+  }
+
+  modeTabs.forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.mode === state.op) return;
+    stopCurrentAnimation();
+    state.op = btn.dataset.mode;
+    applyPreset('basic');
+  }));
+
+  presetBasicBtn.addEventListener('click', () => applyPreset('basic'));
+  presetChallengeBtn.addEventListener('click', () => applyPreset('challenge'));
+
+  animateBtn.addEventListener('click', () => {
+    if (state.isPractice && !state.practiceSolved) recordPracticeHint();
+    animateCombine();
+  });
+
+  valueEditBtn.addEventListener('click', () => {
+    const on = appEl.classList.toggle('edit-values');
+    valueEditBtn.classList.toggle('active', on);
+    valueEditBtn.textContent = on ? '✓ かずを かえているよ' : '✏ かずを かえる';
+  });
+
+  undoValueBtn.addEventListener('click', undoValueChange);
+
+  joinFirstToggle.addEventListener('change', () => {
+    stopCurrentAnimation();
+    state.directGroup = !joinFirstToggle.checked;
     renderAll();
   });
 
-  animateBtn.addEventListener('click', animateCombine);
+  practiceCheckBtn.addEventListener('click', checkPracticeAnswer);
+  practiceHintBtn.addEventListener('click', () => {
+    if (!state.isPractice || state.practiceSolved || state.animating) return;
+    recordPracticeHint();
+    updateEquivalence();
+    practiceHintBtn.disabled = true;
+    Promise.resolve(animateCombine()).finally(() => {
+      if (state.isPractice && !state.practiceSolved && !state.animating) practiceHintBtn.disabled = false;
+    });
+  });
+  [practiceCmInput, practiceMmInput].forEach(inp => inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') checkPracticeAnswer();
+  }));
 
   /* ── 拡大率ボタン ── */
   const scaleDisplay = document.getElementById('scaleDisplay');
@@ -2383,9 +4144,23 @@
     animateBtn.disabled = false;
     animateBtn.style.opacity = '1';
     state.left={cm:3,mm:4};
-    state.right={cm:2,mm:7};
+    state.right={cm:2,mm:3};
     state.op='+';
+    state.currentPreset='basic';
+    state.practiceIndex=0;
+    state.isPractice=false;
+    state.practiceRound=0;
+    state.practiceSolved=false;
+    state.practiceTier='core';
+    state.practiceFocus='';
+    state.directGroup=true;
+    resetAdaptiveSession();
+    clearUndo();
+    appEl.classList.remove('edit-values');
+    valueEditBtn.classList.remove('active');
+    valueEditBtn.textContent='✏ かずを かえる';
     clearOverlay();
+    document.querySelector('.success-card')?.remove();
     renderAll();
   });
 
@@ -2398,6 +4173,7 @@
   makeSteppers(leftSteppers,  'left');
   makeSteppers(rightSteppers, 'right');
   updateScaleDisplay();
+  updateUndoUI();
   renderAll();
 })();
 </script>
