@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TeacherBridge - 児童向け共通「先生支援」通信モジュール
  * 1授業限定の先生コードに接続し、進捗・支援状態・「先生に聞く」を双方向リアルタイム同期。
  * Firebase未接続でも教材本体の学習を止めない完全非破壊設計。
@@ -7,14 +7,14 @@
   'use strict';
 
   const FIREBASE_CONFIG = {
-    apiKey: AIzaSyDdqalOwQFkZnNvFCKzXqM4VeP4IBPhzXo,
-    authDomain: raid-boss-project.firebaseapp.com,
-    databaseURL: https://raid-boss-project-default-rtdb.asia-southeast1.firebasedatabase.app,
-    projectId: raid-boss-project,
-    storageBucket: raid-boss-project.firebasestorage.app,
-    messagingSenderId: 195656323635,
-    appId: 1:195656323635:web:ca2dd1251af61929080946,
-    measurementId: G-6VBWZVLKLK
+    apiKey: "AIzaSyDdqalOwQFkZnNvFCKzXqM4VeP4IBPhzXo",
+    authDomain: "raid-boss-project.firebaseapp.com",
+    databaseURL: "https://raid-boss-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "raid-boss-project",
+    storageBucket: "raid-boss-project.firebasestorage.app",
+    messagingSenderId: "195656323635",
+    appId: "1:195656323635:web:ca2dd1251af61929080946",
+    measurementId: "G-6VBWZVLKLK"
   };
 
   let db = null;
