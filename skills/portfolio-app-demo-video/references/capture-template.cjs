@@ -35,8 +35,8 @@ const URL    = 'https://yggdrasilw-spec.github.io/sonohoka/REPLACE_ME';  // ← 
   await page.waitForTimeout(2000);
   await shot('frame-00.png');
 
-  // frame-01: 何か操作する
-  // await page.click('#some-button').catch(() => {});
+  // frame-01: 何か操作する（ハング防止のため timeout と force: true を推奨）
+  // await page.click('#some-button', { timeout: 4000, force: true }).catch(() => {});
   // await page.waitForTimeout(1500);
   await shot('frame-01.png');
 

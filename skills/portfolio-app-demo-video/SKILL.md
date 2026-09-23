@@ -9,10 +9,24 @@ Use this skill when a portfolio card needs a compact introduction video. The out
 
 This is the project-specific canonical workflow. It incorporates the generic app-demo requirements for timing, captions, browser compatibility, poster selection, and card opt-in behavior. When both this skill and a generic demo-video skill are available, follow this skill for this repository.
 
+## ⚠️ CRITICAL EXECUTION RULES (DO NOT SKIP)
+
+1. **実ブラウザ（Google Chrome 実機バイナリ）を必ず指定すること**:
+   - Playwright 起動時は必ず `executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'` を指定する。
+   - Chrome DevTools MCP や Playwright 同梱ブラウザを探さない。
+2. **必ず公開済みの GitHub Pages URL（ネット経由）でアクセスすること**:
+   - ローカルサーバー（`python -m http.server` 等）や `file://` プロトコルは使用禁止（WebGL/モジュール読み込みや絶対パスが壊れるため）。
+   - ポートフォリオカードの `actions a.btn.primary` にある公開 URL（`https://yggdrasilw-spec.github.io/sonohoka/...`）に直接アクセスする。
+3. **UI 操作は短いタイムアウトと安全オプションを付けること**:
+   - ボタンクリック等の操作時は `.click({ timeout: 4000, force: true }).catch(() => {})` を使い、アニメーションや重なりによる 30 秒ハングを防ぐ。
+
 ## 0. Read runtime paths first
 
 Before writing any script, read [references/runtime-paths.md](references/runtime-paths.md).
 All Node packages (Playwright, Sharp) come from the Codex runtime — do NOT run `npm install` or search for global packages.
+- Playwright: `C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`
+- Chrome: `C:\Program Files\Google\Chrome\Application\chrome.exe`
+- ffmpeg: `C:\Users\user\AppData\Roaming\Python\Python314\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe`
 
 ## 1. Identify the exact app
 
