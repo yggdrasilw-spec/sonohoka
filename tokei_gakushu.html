@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>とけいの時間学習 v86 - 時こく・時間＋午前午後問題を予定画像と同期＋水そうTTS＋スケジュール問題画像＋前後Lv5＋全体読み上げ＋3年生＋秒</title>
+<title>とけいの時間学習 v89 - 時こく・時間＋55〜59分の短針矢印→局所拡大ガイド＋TTS読み整理＋午前午後予定画像＋スケジュール問題画像＋前後Lv5＋3年生＋秒</title>
 <style>
 :root{
   --bg:#efe5d6;
@@ -2886,6 +2886,29 @@ body.modal-open{overflow:hidden;}
   padding:1px 3px;
 }
 
+
+@keyframes guideHourZoomIn{
+  0%{transform:scale(.66);opacity:0}
+  72%{transform:scale(1.035);opacity:1}
+  100%{transform:scale(1);opacity:1}
+}
+.guide-popup-card.hour-tip-zoom{
+  max-width:min(94vw,430px);
+  padding:10px 12px 9px;
+  animation:guideHourZoomIn .38s ease-out both;
+}
+.guide-popup-card.hour-tip-zoom svg{
+  width:min(88vw,360px);
+  height:auto;
+  aspect-ratio:1 / 1;
+}
+.guide-popup-card.hour-tip-zoom .guide-popup-caption{
+  max-width:340px;
+  font-size:clamp(.68rem,1.35vw,.88rem);
+  font-weight:900;
+  line-height:1.45;
+}
+
 </style>
 <!-- v57 direction arrow geometry: tangent-derived arrowheads -->
 </head>
@@ -2929,7 +2952,7 @@ body.modal-open{overflow:hidden;}
   <div class="app-content">
     <div class="app-header">
       <div class="header-left">
-        <h1>🕐 とけいの じかん学習 <span style="font-size:.42em;color:#9a8775;vertical-align:middle;">v86</span></h1>
+        <h1>🕐 とけいの じかん学習 <span style="font-size:.42em;color:#9a8775;vertical-align:middle;">v89</span></h1>
       </div>
       <button class="header-menu-btn" id="learningMenuBtn" type="button" aria-label="学習メニューを開く">☰ <span>学習メニュー</span></button>
       <div class="mode-tabs">
@@ -6000,7 +6023,7 @@ body.modal-open{overflow:hidden;}
       lockedHour = null; lockedHourSnapshot=null;
     }
     /* 針の先端から文字盤の縁まで、ゆっくり伸びるアニメーションつきの矢印 */
-    function drawArrow(fromR, toR, deg, colorKey){
+    function drawArrow(fromR, toR, deg, colorKey, onDone){
       const p1 = polarPt(CX,CY,fromR,deg);
       const p2 = polarPt(CX,CY,toR,deg);
       const stroke = colorKey==='red' ? '#d81b3a' : '#2f6fa8';
@@ -6021,7 +6044,7 @@ body.modal-open{overflow:hidden;}
         lineEl.setAttribute('x2', cx2.toFixed(1));
         lineEl.setAttribute('y2', cy2.toFixed(1));
         if (t<1){ arrowAnimId = requestAnimationFrame(frame); }
-        else { arrowAnimId = null; }
+        else { arrowAnimId = null; if(onDone)onDone(); }
       }
       arrowAnimId = requestAnimationFrame(frame);
     }
@@ -6065,17 +6088,75 @@ body.modal-open{overflow:hidden;}
     }
 
     /* ---- ポップアップ（拡大表示／お手本の時計） ---- */
+    function openGuidePopup(svgHtml, caption, cardClass=''){
+      popupSvgHolder.innerHTML=svgHtml||'';
+      popupCaption.textContent=caption||'';
+      popup.classList.remove('hidden');
+      const card=popup.querySelector('.guide-popup-card');
+      if(card){
+        card.className='guide-popup-card';
+        if(cardClass)card.classList.add(...cardClass.split(/\s+/).filter(Boolean));
+      }
+    }
     function showMagnifier(centerDeg, caption){
       const p = polarPt(CX,CY,R_CLOCK-52,centerDeg);
       const half = 100;
       const vb = `${(p.x-half).toFixed(1)} ${(p.y-half).toFixed(1)} ${half*2} ${half*2}`;
-      popupSvgHolder.innerHTML = `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" style="background:#fffef9;border-radius:12px;">
+      openGuidePopup(`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" style="background:#fffef9;border-radius:12px;">
         <circle cx="250" cy="250" r="222" fill="#fffef9"/>
         ${readingTicksEl.innerHTML}
         ${readingHandsGroup.innerHTML}
+      </svg>`,caption||'');
+    }
+
+    /* 55〜59分専用：
+       短針の先端（r=100）から次の数字（r≈170）までだけを小さなviewBoxで切り出す。
+       従来の200×200切り出しより約3倍大きく見え、長針は表示しない。 */
+    function showHourTipMagnifier(hour12, minute, caption){
+      const floorDeg=(hour12%12)*30;
+      const nextDeg=floorDeg+30;
+      const handDeg=hourMinuteToAngleDeg(hour12,minute);
+
+      // 短針先端と次の数字の中間を中心に、110×110だけ切り出す。
+      const handTip=polarPt(CX,CY,HOUR_HAND_LEN,handDeg);
+      const nextNumPt=polarPt(CX,CY,R_CLOCK-40,nextDeg);
+      const center={
+        x:(handTip.x+nextNumPt.x)/2,
+        y:(handTip.y+nextNumPt.y)/2
+      };
+      const size=110;
+      const x=center.x-size/2, y=center.y-size/2;
+
+      // 短針の向きを外周へ延長して、「次の数字の線よりまだ手前」を見比べやすくする。
+      const extStart=polarPt(CX,CY,HOUR_HAND_LEN+2,handDeg);
+      const extEnd=polarPt(CX,CY,R_CLOCK-20,handDeg);
+      const nextTickIn=polarPt(CX,CY,R_CLOCK-24,nextDeg);
+      const nextTickOut=polarPt(CX,CY,R_CLOCK+2,nextDeg);
+
+      const svg=`<svg viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="background:#fffef9;border-radius:12px;">
+        <defs>
+          <filter id="hourTipLocalGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#ffd54a" flood-opacity=".95"/>
+          </filter>
+        </defs>
+        <circle cx="${CX}" cy="${CY}" r="222" fill="#fffef9"/>
+        ${readingTicksEl.innerHTML}
+        <g>${readingHourHandEl.innerHTML}</g>
+
+        <line x1="${extStart.x.toFixed(1)}" y1="${extStart.y.toFixed(1)}"
+              x2="${extEnd.x.toFixed(1)}" y2="${extEnd.y.toFixed(1)}"
+              stroke="#2f6fa8" stroke-width="2.8" stroke-dasharray="5 4" stroke-linecap="round"/>
+
+        <line x1="${nextTickIn.x.toFixed(1)}" y1="${nextTickIn.y.toFixed(1)}"
+              x2="${nextTickOut.x.toFixed(1)}" y2="${nextTickOut.y.toFixed(1)}"
+              stroke="#ff7b42" stroke-width="4.2" stroke-linecap="round"
+              filter="url(#hourTipLocalGlow)"/>
+
+        <circle cx="${handTip.x.toFixed(1)}" cy="${handTip.y.toFixed(1)}" r="5.2"
+                fill="#fff" stroke="#2f6fa8" stroke-width="2.8" filter="url(#hourTipLocalGlow)"/>
       </svg>`;
-      popupCaption.textContent = caption || '';
-      popup.classList.remove('hidden');
+
+      openGuidePopup(svg,caption||'','hour-tip-zoom');
     }
     function referenceClockSVG(hourNum){
       const hourDeg = (hourNum%12)*30;
@@ -6097,12 +6178,12 @@ body.modal-open{overflow:hidden;}
       </svg>`;
     }
     function showReferencePopup(hourNum, caption){
-      popupSvgHolder.innerHTML = referenceClockSVG(hourNum);
-      popupCaption.textContent = caption || '';
-      popup.classList.remove('hidden');
+      openGuidePopup(referenceClockSVG(hourNum),caption||'');
     }
     function hidePopup(){
       popup.classList.add('hidden');
+      const card=popup.querySelector('.guide-popup-card');
+      if(card)card.className='guide-popup-card';
       popupSvgHolder.innerHTML='';
     }
 
@@ -6164,12 +6245,28 @@ body.modal-open{overflow:hidden;}
         });
       } else if (isAmbiguous){
         steps.push(()=>{
-          setText(`うーん？ぴったり${nextNum}かな？`);
-          showMagnifier(floorDeg+15, '拡大して見てみよう');
+          hidePopup();
+          setText(`うーん？ぴったり${nextNum}かな？ 短い方の針の先をよく見よう。`);
         });
         steps.push(()=>{
           hidePopup();
-          setText(`${hour12}と${nextNum}のあいだをさしているね`);
+          arrowGroup.innerHTML='';
+          const thisStep=stepIndex;
+          setText(`短い方の針の先から、${nextNum}の近くまで矢印をのばして見てみよう。`);
+          drawArrow(HOUR_HAND_LEN+5,R_CLOCK-20,hourHandDeg,'blue',()=>{
+            // 手動で先へ進まれた場合、遅れてポップアップが出ないようにする。
+            if(stepIndex!==thisStep)return;
+            showHourTipMagnifier(
+              hour12,
+              minute,
+              `${nextNum}の線の、ほんの少し手前だね`
+            );
+          });
+        });
+        steps.push(()=>{
+          hidePopup();
+          arrowGroup.innerHTML='';
+          setText(`${nextNum}のすぐ近くまで来ているけれど、まだ${hour12}と${nextNum}のあいだだね。`);
           animateSectorOpen(hourHandDeg, floorDeg, floorDeg+30, ()=>{
             showDotsAnimated([floorDeg, floorDeg+30]);
           });
@@ -8234,6 +8331,7 @@ body.modal-open{overflow:hidden;}
       [/午後/g,'ごご'],
       [/水そう/g,'すいそう'],
       [/水槽/g,'すいそう'],
+      [/間に合/g,'まにあ'],
       [/時間/g,'じかん'],
 
       [/前後/g,'ぜんご'],
@@ -8280,6 +8378,9 @@ body.modal-open{overflow:hidden;}
       // 単独の「体」は「からだ」。全体・身体などの熟語は壊さない。
       t=t.replace(/(^|[^一-龥])体(?=(?:では|の|を|が|に|へ|で|は))/g,
                   (_,pre)=>pre+'からだ');
+
+      // 単独の「家」は「いえ」。家族・家庭などの熟語は壊さない。
+      t=t.replace(/家(?=(?:から|まで|を|に|へ|で|は|が|の|→|$|[、。！？]))/g,'いえ');
 
       // 「後」は全面置換しない。文脈が確定しているものだけ。
       // 概念を対にして尋ねる「前？後？」「前・後」は「まえ／あと」。
@@ -8442,6 +8543,12 @@ body.modal-open{overflow:hidden;}
       ['1時間後','いちじかんご'],
       ['水そうを見る','すいそうを見る'],
       ['水槽を見る','すいそうを見る'],
+      ['間に合う','まにあう'],
+      ['間に合います','まにあいます'],
+      ['間に合わない','まにあわない'],
+      ['家から水族館へ','いえから水族館へ'],
+      ['家に帰る','いえに帰る'],
+      ['家族で集合','家族で集合'],
       ['スケジュール','スケジュール'],
       ['スタート','スタート']
     ];
@@ -8604,7 +8711,8 @@ body.modal-open{overflow:hidden;}
       '#readingPracticeQuestion','#readingPracticeFeedback',
       '#ampmPracticeQuestion','#ampmPracticeFeedback',
       '#quizConceptBadge','#quizSentence','#quizFeedback',
-      '#baNarrationText','#baQuestionText','#baFeedback','#baLevelInfo','#baMastery',
+      // 練習レベル・進度（Lv○、ヒントなし連続○/○等）は読み上げない。
+      '#baNarrationText','#baQuestionText','#baFeedback',
       '#g3CalcStepTitle','#g3CalcStepText','#g3CalcNote',
       '#g3SixtyEq','#g3ConvertResult',
       '#g3Question','#g3Feedback','#g3PracticeClockBase','#g3PracticeClockSteps',
@@ -11851,7 +11959,7 @@ secResetBtn.addEventListener('click',()=>resetSecondsPlayer());
   // 秒教材は「おまけ」入口を残しつつ、問題一覧からも発見できるようにする。
   document.getElementById('schBonusSecMenuBtn')?.addEventListener('click',()=>{closeSchChallengeMenu();setTimeout(()=>document.getElementById('schBonusSecBtn')?.click(),0);});
 
-  console.log('✅ 時計学習ツール v86（午前午後問題を予定画像・実際の時刻に同期＋水そう=すいそうTTS＋既存修正維持） ready');
+  console.log('✅ 時計学習ツール v89（55〜59分：短針の先→矢印→次の数字付近を局所拡大。長針拡大はなし） ready');
 })();
 </script>
 

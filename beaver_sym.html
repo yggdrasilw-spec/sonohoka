@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <link rel="icon" href="data:,">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ビーバーの大工事 学習サポート + リアル・ダムシミュレーター v53</title>
+  <title>ビーバーの大工事 学習サポート + リアル・ダムシミュレーター v58</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body {
@@ -2329,8 +2329,10 @@
       color:#3e2723;
       box-shadow:0 4px 10px rgba(62,39,35,.16);
     }
-    .orientation-branch-svg { width:84px; height:58px; display:block; }
-    .orientation-branch-svg.branch-down { transform:rotate(180deg); }
+    .orientation-branch-svg { width:84px; height:58px; display:block; overflow:visible; }
+    /* 川底に置かれる枝と同じ読み方：片方は平らな切り口、もう片方だけが尖る。 */
+    .orientation-branch-svg.branch-down,
+    .orientation-branch-svg.branch-up { transform:none; }
     .orientation-choice-main { font-size:17px; font-weight:900; line-height:1.2; }
     .orientation-choice-sub { font-size:11px; font-weight:700; opacity:.76; line-height:1.2; }
     @media (max-width:900px) {
@@ -2542,6 +2544,9 @@
 
     /* ===== v52: 1画面1テーマ + 写真の注目・拡大 ===== */
     .v52-jaw-secondary { display:none !important; }
+    /* v59: あごの骨ページは2枚の実物写真を常時並べる。旧段階表示より優先。 */
+    #v52-jaw-separated-card, #v52-jaw-extra-points { display:block !important; }
+    #v52-jaw-photo-pair { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
     .v48-jaw-photo-pair.v52-primary-only { grid-template-columns:minmax(0,1fr); }
     .v52-disclosure-row { display:flex; justify-content:center; margin:8px 0 10px; }
     .v52-disclosure-btn {
@@ -2718,16 +2723,16 @@
     <div class="gate-card">
       <div class="gate-eyebrow">2年生 国語「ビーバーの大工事」</div>
       <h2>🦫 ビーバーは、どうやって大工事をするの？</h2>
-      <p class="gate-lead">教科書を読みながら、ビーバーの仕事を<strong>順番に動かして</strong>確かめよう。まずは「教科書コース」で基本をつかみ、もっと調べたい人は発展シミュレーターへ進めます。</p>
+      <p class="gate-lead">まずは<strong>発展シミュレーターの断面図</strong>で、ビーバーが川の中でどう材料を置き、ダムを作るのかを動かして見てみよう。教科書の仕事の順番を確かめたいときは、「教科書コース」でも整理できます。</p>
       <div class="gate-goal">
         <div><b>① ダムの作り方</b>木を切るところから、石・どろで固めるところまで。</div>
         <div><b>② ダムを作るわけ</b>池・巣・水中の入り口がどうつながるか。</div>
       </div>
       <div class="gate-actions">
-        <button class="gate-btn primary" onclick="openTextbookCourse()">📖 教科書コースをはじめる</button>
-        <button class="gate-btn secondary" onclick="enterRealisticMode()">🔬 もっとリアルに調べる（発展）</button>
+        <button class="gate-btn primary" onclick="enterRealisticMode()">🌊 まず断面図で見てみる（発展）</button>
+        <button class="gate-btn secondary" onclick="openTextbookCourse()">📖 教科書コースで順番を確かめる</button>
       </div>
-      <div class="gate-note">教科書コースは、本文に書かれた仕事の順序を分かりやすく見える形にしたものです。発展モードでは、実際の自然に近づけるため、川の条件による違い・洪水・季節・巣の種類なども扱います。</div>
+      <div class="gate-note">発展モードでは、川の断面を見ながら材料の置き方や水の変化を試せます。さらに、川の条件による違い・洪水・季節・巣の種類なども扱います。教科書コースは、本文に書かれた仕事の順序を短く確かめたいときに使えます。</div>
     </div>
   </div>
 
@@ -2845,7 +2850,7 @@
 
   <div id="scale-stage">
 
-  <div id="course-return-strip"><button class="return-btn" onclick="openTextbookCourse()">📖 教科書コースにもどる</button><span class="mode-note">いまは発展モード：自然の川では、教科書の基本を土台に材料や補修のしかたが変わります。</span></div>
+  <div id="course-return-strip"><button class="return-btn" onclick="openTextbookCourse()">📖 教科書コースを見る</button><span class="mode-note">いまは発展モード：断面図から、材料の置き方と水の変化を確かめられます。</span></div>
   <h1>🦫 ビーバーの大工事 学習サポート <span style="font-size:.58em;opacity:.72;">＋ 発展シミュレーター</span></h1>
 
   <div id="app-container">
@@ -2970,7 +2975,7 @@
     <div id="status-bar">
       <div id="status-mode1" style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
         <div class="metric-card">
-          <span class="metric-title">流れを弱める力:</span>
+          <span class="metric-title">すき間のふさがり:</span>
           <div class="progress-bar-bg">
             <div id="seal-progress" class="progress-bar-fill"></div>
           </div>
@@ -3107,20 +3112,12 @@
         <div id="orientation-choice-title" class="orient-label">とがったほうを どっちにする？</div>
         <div class="orientation-choice-row">
           <button id="orient-btn-up" class="orientation-choice-card" type="button" onclick="chooseOrientation(false)" aria-label="とがったほうを上にする">
-            <svg class="orientation-branch-svg branch-up" viewBox="0 0 120 82" aria-hidden="true">
-              <path d="M60 72 L44 24 Q60 9 76 24 Z" fill="#8d6e63" stroke="#4e342e" stroke-width="4"/>
-              <path d="M60 10 L48 27 L72 27 Z" fill="#5d4037"/>
-              <path d="M49 42 Q60 36 71 42" stroke="#bcaaa4" stroke-width="3" fill="none" opacity=".75"/>
-            </svg>
+            <canvas id="orientation-branch-up" class="orientation-branch-svg branch-up" width="168" height="116" aria-hidden="true"></canvas>
             <span class="orientation-choice-main">⬆️ 上にする</span>
             <span class="orientation-choice-sub">とがったほうが 上</span>
           </button>
           <button id="orient-btn-down" class="orientation-choice-card" type="button" onclick="chooseOrientation(true)" aria-label="とがったほうを下にする">
-            <svg class="orientation-branch-svg branch-down" viewBox="0 0 120 82" aria-hidden="true">
-              <path d="M60 72 L44 24 Q60 9 76 24 Z" fill="#8d6e63" stroke="#4e342e" stroke-width="4"/>
-              <path d="M60 10 L48 27 L72 27 Z" fill="#5d4037"/>
-              <path d="M49 42 Q60 36 71 42" stroke="#bcaaa4" stroke-width="3" fill="none" opacity=".75"/>
-            </svg>
+            <canvas id="orientation-branch-down" class="orientation-branch-svg branch-down" width="168" height="116" aria-hidden="true"></canvas>
             <span class="orientation-choice-main">⬇️ 下にする</span>
             <span class="orientation-choice-sub">とがったほうが 下</span>
           </button>
@@ -3281,8 +3278,8 @@
           <p class="body-lead">ビーバーの上あごと下あごを、ほんものの骨でたしかめよう。</p>
           <div class="v46-note">まずは<b>写真だけを見て</b>、上の歯がつく側と、下の歯がつく骨を見分けてみよう。つぎに横から見て、「どこでつながっているか」をさがす。</div>
           <div class="v47-jaw-photo-layout">
-            <div class="v48-jaw-photo-pair v52-primary-only" id="v52-jaw-photo-pair">
-              <figure class="v47-jaw-photo-card v52-jaw-secondary" id="v52-jaw-separated-card">
+            <div class="v48-jaw-photo-pair" id="v52-jaw-photo-pair">
+              <figure class="v47-jaw-photo-card" id="v52-jaw-separated-card">
                 <div class="v48-jaw-photo-title">① 頭の骨と 下あごを べつべつに見る</div>
                 <div class="v49-photo-frame">
                   <div class="v49-photo-loading">写真を 読みこんでいます…</div>
@@ -3318,10 +3315,7 @@
                 <figcaption>写真: <b>Castor canadensis skull 2 (40609605883).jpg</b> / James St. John / Wikimedia Commons / CC BY 2.0</figcaption>
               </figure>
             </div>
-            <div class="v52-disclosure-row" id="v52-jaw-more-row">
-  <button class="v52-disclosure-btn" type="button" onclick="toggleV52SkeletonMore()">＋ もう1まいの写真と ポイントを見る</button>
-</div>
-<aside class="v47-jaw-points v52-jaw-secondary" id="v52-jaw-extra-points">
+            <aside class="v47-jaw-points" id="v52-jaw-extra-points">
               <h3>写真で みつけたいこと</h3>
               <div class="v47-jaw-point"><span class="v47-jaw-num">1</span><span>上の前歯は、どの骨についているかな？</span></div>
               <div class="v47-jaw-point"><span class="v47-jaw-num">2</span><span>下の前歯がつく骨は、頭の骨と同じかな？ べつかな？</span></div>
@@ -3512,6 +3506,7 @@
 // v51: lateral skull redirect retry, whole-rudder photo, full-length chisel photo. v48/v49 features retained.
 // v52: progressive disclosure, rudder annotation + zoom viewer, reduced information density.
 // v54: rudder marker/focus coordinates corrected; arrow-key steering added.
+// v58: family mode now builds a visibly wide woody foundation before sealing; base wood footprint affects structural completion.
 // v56: rudder marker enlarged left/up while keeping a separate true rudder zoom target; v55 infographic retained.
 // v57: chisel comparison keeps SVG as a reference; beaver jaw motion is synchronized with the main jaw demo; two reference YouTube links added.
 // v58: added expandable oar reference photos plus the boats.com rowing video; kept the page low-density by hiding them until requested.
@@ -5271,20 +5266,42 @@ function clamp(v, min, max) {
 }
 
 function updateCellMaterialState(cell) {
-  const hasWood = Math.max(cell.log, cell.twig);
-  const fibrous = Math.min(1, cell.twig * 0.24 + cell.plant * 0.24);
-  const woodyMix = Math.min(1, cell.log * 0.44 + cell.twig * 0.24 + cell.plant * 0.08);
-  const fineSeal = Math.min(1, cell.mud * 0.24 + cell.twig * 0.10 + cell.plant * 0.18);
-  const ballast = Math.min(1, cell.stone * 0.12);
-  const interlock = Math.min(0.28,
-    Math.min(cell.log, cell.twig + cell.plant) * 0.14 +
-    Math.min(hasWood + fibrous, cell.mud) * 0.10 +
-    Math.min(cell.twig, cell.plant) * 0.05);
-  cell.baseResistance = Math.min(0.96, woodyMix + fineSeal + ballast + interlock);
-  cell.baseStability = Math.min(1, cell.log * 0.40 + cell.stone * 0.20 + cell.twig * 0.14 + cell.plant * 0.12 + cell.mud * 0.05 + interlock);
+  // v56: 「骨組みの強さ」と「水を通しにくくする力」を分離する。
+  // 太い木はダムを支える重要な骨組みだが、それ単独では大きなすき間が残る。
+  // 小枝・草がからみ、そこへ泥などの細粒分が捕まって初めて透水性が大きく下がる。
+  const framework = clamp(cell.log * 0.40 + cell.stone * 0.14, 0, 1);
+  const brush = clamp(cell.twig * 0.48 + cell.plant * 0.44, 0, 1);
+  const mudAmount = clamp(cell.mud * 0.70, 0, 1);
+  const trap = clamp(framework * 0.55 + brush * 0.85, 0, 1);
+  const trappedMud = mudAmount * (0.10 + 0.90 * trap);
+
+  // 木や石だけの遮水効果は小さい。細枝・草・泥が混ざるほど急にすき間が小さくなる。
+  const coarseObstruction = Math.min(0.16, cell.log * 0.065 + cell.stone * 0.035);
+  const brushObstruction = brush * (0.12 + 0.30 * framework);
+  const mixedSeal = Math.min(0.34,
+    Math.min(framework, brush) * 0.11 +
+    Math.min(brush, trappedMud) * 0.30 +
+    Math.min(framework, trappedMud) * 0.08
+  );
+  cell.baseResistance = clamp(
+    coarseObstruction + brushObstruction * 0.45 + trappedMud * 0.42 + mixedSeal,
+    0, 0.94
+  );
+
+  // 構造安定性は太い木・石が主役。ここは遮水率とは別に高くなってよい。
+  const structuralInterlock = Math.min(0.30,
+    Math.min(cell.log, cell.twig + cell.plant) * 0.13 +
+    Math.min(framework + brush, cell.mud) * 0.04 +
+    Math.min(cell.twig, cell.plant) * 0.04
+  );
+  cell.baseStability = clamp(
+    cell.log * 0.46 + cell.stone * 0.22 + cell.twig * 0.12 +
+    cell.plant * 0.10 + cell.mud * 0.03 + structuralInterlock,
+    0, 1
+  );
   cell.resistance = cell.baseResistance;
   cell.stability = cell.baseStability;
-  cell.porosity = clamp(1 - (cell.baseResistance * 0.88 + cell.baseStability * 0.08), 0.06, 1);
+  cell.porosity = clamp(1 - cell.baseResistance * 0.93, 0.06, 1);
   cell.sealed = cell.resistance > 0.78;
 }
 initGrid();
@@ -5542,6 +5559,7 @@ function handleMode2Click(clickX, clickY) {
 // Render realistic Wood Log / Trunk with multiple variants
 function drawLogSVG(x, y, scale, pointyDown, opacity = 1.0, angle = 0) {
   const p = (typeof x === 'object') ? x : { x, y, scale, pointyDown, opacity, angle };
+  const renderCtx = p.ctx || ctx;
   const kind = p.toolType || 'branch';
   const pieceScale = p.scale || 1;
   const widthScale = p.widthScale || 1;
@@ -5552,130 +5570,130 @@ function drawLogSVG(x, y, scale, pointyDown, opacity = 1.0, angle = 0) {
   const h = 110 * lengthScale * (kind === 'trunk' ? 1.2 : 1);
   const isPointy = kind !== 'trunk' && variant !== 'stubby';
 
-  ctx.save();
-  ctx.globalAlpha = p.opacity ?? opacity;
+  renderCtx.save();
+  renderCtx.globalAlpha = p.opacity ?? opacity;
   const drawX = p.renderX ?? p.x;
   const drawY = p.renderY ?? p.y;
   const drawScale = p.renderScale ?? pieceScale;
-  ctx.translate(drawX, drawY);
-  ctx.scale(drawScale, drawScale);
-  ctx.rotate((p.renderAngle ?? p.angle ?? angle ?? 0));
+  renderCtx.translate(drawX, drawY);
+  renderCtx.scale(drawScale, drawScale);
+  renderCtx.rotate((p.renderAngle ?? p.angle ?? angle ?? 0));
 
-  ctx.fillStyle = 'rgba(0,0,0,0.26)';
-  ctx.beginPath();
-  ctx.ellipse(0, h * 0.34, Math.max(16, w * 0.72), Math.max(6, w * 0.32), 0, 0, Math.PI * 2);
-  ctx.fill();
+  renderCtx.fillStyle = 'rgba(0,0,0,0.26)';
+  renderCtx.beginPath();
+  renderCtx.ellipse(0, h * 0.34, Math.max(16, w * 0.72), Math.max(6, w * 0.32), 0, 0, Math.PI * 2);
+  renderCtx.fill();
 
-  const grad = ctx.createLinearGradient(-w/2, 0, w/2, 0);
+  const grad = renderCtx.createLinearGradient(-w/2, 0, w/2, 0);
   grad.addColorStop(0, kind === 'trunk' ? '#8e6e49' : '#b9a37e');
   grad.addColorStop(0.28, '#e6d9bd');
   grad.addColorStop(0.72, '#d8c29b');
   grad.addColorStop(1, kind === 'trunk' ? '#886740' : '#a8916c');
-  ctx.fillStyle = grad;
+  renderCtx.fillStyle = grad;
 
   const shoulder = h / 2 - (isPointy ? 20 : 8);
-  ctx.beginPath();
+  renderCtx.beginPath();
   if (variant === 'curved') {
-    ctx.moveTo(-w/2, -h/2);
-    ctx.quadraticCurveTo(-w * 0.15, -h * 0.12, -w/2 + 2, shoulder);
+    renderCtx.moveTo(-w/2, -h/2);
+    renderCtx.quadraticCurveTo(-w * 0.15, -h * 0.12, -w/2 + 2, shoulder);
     if (isPointy) {
-      ctx.quadraticCurveTo(0, h/2 + 2, w/2 - 2, shoulder);
+      renderCtx.quadraticCurveTo(0, h/2 + 2, w/2 - 2, shoulder);
     } else {
-      ctx.quadraticCurveTo(0, h/2 - 2, w/2, shoulder);
-      ctx.quadraticCurveTo(w/2 + 3, h/2 + 4, 0, h/2 + 4);
-      ctx.quadraticCurveTo(-w/2 - 3, h/2 + 4, -w/2 + 2, shoulder);
+      renderCtx.quadraticCurveTo(0, h/2 - 2, w/2, shoulder);
+      renderCtx.quadraticCurveTo(w/2 + 3, h/2 + 4, 0, h/2 + 4);
+      renderCtx.quadraticCurveTo(-w/2 - 3, h/2 + 4, -w/2 + 2, shoulder);
     }
-    ctx.quadraticCurveTo(w * 0.2, -h * 0.2, w/2, -h/2);
+    renderCtx.quadraticCurveTo(w * 0.2, -h * 0.2, w/2, -h/2);
   } else {
-    ctx.moveTo(-w/2, -h/2);
-    ctx.lineTo(w/2, -h/2);
-    ctx.lineTo(w/2, shoulder);
+    renderCtx.moveTo(-w/2, -h/2);
+    renderCtx.lineTo(w/2, -h/2);
+    renderCtx.lineTo(w/2, shoulder);
     if (isPointy) {
-      ctx.lineTo(0, h/2);
-      ctx.lineTo(-w/2, shoulder);
+      renderCtx.lineTo(0, h/2);
+      renderCtx.lineTo(-w/2, shoulder);
     } else {
-      ctx.quadraticCurveTo(w/2 + 3, h/2 + 4, 0, h/2 + 4);
-      ctx.quadraticCurveTo(-w/2 - 3, h/2 + 4, -w/2, shoulder);
+      renderCtx.quadraticCurveTo(w/2 + 3, h/2 + 4, 0, h/2 + 4);
+      renderCtx.quadraticCurveTo(-w/2 - 3, h/2 + 4, -w/2, shoulder);
     }
   }
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#5c4a30';
-  ctx.lineWidth = kind === 'trunk' ? 2.4 : 2;
-  ctx.stroke();
+  renderCtx.closePath();
+  renderCtx.fill();
+  renderCtx.strokeStyle = '#5c4a30';
+  renderCtx.lineWidth = kind === 'trunk' ? 2.4 : 2;
+  renderCtx.stroke();
 
   const barkX = barkSide < 0 ? -w/2 : w/2 - Math.max(4, w * (0.16 + (p.barkPatch || 0.32) * 0.18));
   const barkW = Math.max(4, w * (0.16 + (p.barkPatch || 0.32) * 0.18));
-  ctx.fillStyle = kind === 'trunk' ? 'rgba(62,39,35,0.62)' : 'rgba(76,54,33,0.55)';
-  ctx.beginPath();
-  ctx.rect(barkX, -h/2, barkW, h - (isPointy ? 18 : 8));
-  ctx.fill();
+  renderCtx.fillStyle = kind === 'trunk' ? 'rgba(62,39,35,0.62)' : 'rgba(76,54,33,0.55)';
+  renderCtx.beginPath();
+  renderCtx.rect(barkX, -h/2, barkW, h - (isPointy ? 18 : 8));
+  renderCtx.fill();
 
-  ctx.fillStyle = '#f0e6cf';
-  ctx.beginPath();
-  ctx.ellipse(0, -h/2, w/2, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#b9a37e';
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
+  renderCtx.fillStyle = '#f0e6cf';
+  renderCtx.beginPath();
+  renderCtx.ellipse(0, -h/2, w/2, 6, 0, 0, Math.PI * 2);
+  renderCtx.fill();
+  renderCtx.strokeStyle = '#b9a37e';
+  renderCtx.lineWidth = 1.2;
+  renderCtx.stroke();
 
   if (!isPointy) {
-    ctx.beginPath();
-    ctx.ellipse(0, h/2 + 4, Math.max(8, w * 0.43), 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    renderCtx.beginPath();
+    renderCtx.ellipse(0, h/2 + 4, Math.max(8, w * 0.43), 5, 0, 0, Math.PI * 2);
+    renderCtx.fill();
+    renderCtx.stroke();
   } else {
-    ctx.fillStyle = '#f0e6cf';
-    ctx.beginPath();
-    ctx.moveTo(-w/2 + 2, shoulder);
-    ctx.lineTo(0, h/2);
-    ctx.lineTo(w/2 - 2, shoulder);
-    ctx.closePath();
-    ctx.fill();
+    renderCtx.fillStyle = '#f0e6cf';
+    renderCtx.beginPath();
+    renderCtx.moveTo(-w/2 + 2, shoulder);
+    renderCtx.lineTo(0, h/2);
+    renderCtx.lineTo(w/2 - 2, shoulder);
+    renderCtx.closePath();
+    renderCtx.fill();
   }
 
-  ctx.strokeStyle = 'rgba(120,98,64,0.34)';
-  ctx.lineWidth = 1.4;
+  renderCtx.strokeStyle = 'rgba(120,98,64,0.34)';
+  renderCtx.lineWidth = 1.4;
   for (let i = -h/2 + 15; i < h/2 - (isPointy ? 22 : 10); i += Math.max(14, h / 8)) {
-    ctx.beginPath();
-    ctx.moveTo(-w/2 + 3, i);
-    ctx.quadraticCurveTo(0, i + 4, w/2 - 3, i);
-    ctx.stroke();
+    renderCtx.beginPath();
+    renderCtx.moveTo(-w/2 + 3, i);
+    renderCtx.quadraticCurveTo(0, i + 4, w/2 - 3, i);
+    renderCtx.stroke();
   }
-  ctx.strokeStyle = 'rgba(120,98,64,0.22)';
-  ctx.lineWidth = 1;
+  renderCtx.strokeStyle = 'rgba(120,98,64,0.22)';
+  renderCtx.lineWidth = 1;
   for (let i = -w/2 + 5; i < w/2 - 3; i += Math.max(5, w/5)) {
-    ctx.beginPath();
-    ctx.moveTo(i, -h/2 + 8);
-    ctx.lineTo(i, h/2 - (isPointy ? 20 : 8));
-    ctx.stroke();
+    renderCtx.beginPath();
+    renderCtx.moveTo(i, -h/2 + 8);
+    renderCtx.lineTo(i, h/2 - (isPointy ? 20 : 8));
+    renderCtx.stroke();
   }
 
   if (variant === 'forked' || p.rootStub) {
-    ctx.strokeStyle = '#7d5f3f';
-    ctx.lineWidth = kind === 'trunk' ? 6 : 4.5;
-    ctx.lineCap = 'round';
+    renderCtx.strokeStyle = '#7d5f3f';
+    renderCtx.lineWidth = kind === 'trunk' ? 6 : 4.5;
+    renderCtx.lineCap = 'round';
     const stubY = -h * 0.12;
-    ctx.beginPath();
-    ctx.moveTo(-3, stubY);
-    ctx.lineTo(-w * 0.8, stubY - h * 0.16);
-    ctx.stroke();
+    renderCtx.beginPath();
+    renderCtx.moveTo(-3, stubY);
+    renderCtx.lineTo(-w * 0.8, stubY - h * 0.16);
+    renderCtx.stroke();
     if (variant === 'forked') {
-      ctx.beginPath();
-      ctx.moveTo(2, h * 0.06);
-      ctx.lineTo(w * 0.74, -h * 0.03);
-      ctx.stroke();
+      renderCtx.beginPath();
+      renderCtx.moveTo(2, h * 0.06);
+      renderCtx.lineTo(w * 0.74, -h * 0.03);
+      renderCtx.stroke();
     }
   }
 
   if (variant === 'split') {
-    ctx.strokeStyle = 'rgba(60,42,26,0.8)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-2, -h/2 + 3);
-    ctx.lineTo(0, -h/2 + 18);
-    ctx.lineTo(2, -h/2 + 34);
-    ctx.stroke();
+    renderCtx.strokeStyle = 'rgba(60,42,26,0.8)';
+    renderCtx.lineWidth = 2;
+    renderCtx.beginPath();
+    renderCtx.moveTo(-2, -h/2 + 3);
+    renderCtx.lineTo(0, -h/2 + 18);
+    renderCtx.lineTo(2, -h/2 + 34);
+    renderCtx.stroke();
   }
 
   if (p.withLeaves || variant === 'leafy') {
@@ -5685,18 +5703,18 @@ function drawLogSVG(x, y, scale, pointyDown, opacity = 1.0, angle = 0) {
       { x: -w * 0.38, y: -h * 0.28, r: 0.7 }
     ];
     leaves.forEach((leaf) => {
-      ctx.save();
-      ctx.translate(leaf.x, leaf.y);
-      ctx.rotate(leaf.r);
-      ctx.fillStyle = 'rgba(96,152,72,0.8)';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 8, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      renderCtx.save();
+      renderCtx.translate(leaf.x, leaf.y);
+      renderCtx.rotate(leaf.r);
+      renderCtx.fillStyle = 'rgba(96,152,72,0.8)';
+      renderCtx.beginPath();
+      renderCtx.ellipse(0, 0, 8, 3.5, 0, 0, Math.PI * 2);
+      renderCtx.fill();
+      renderCtx.restore();
     });
   }
 
-  ctx.restore();
+  renderCtx.restore();
 }
 
 function drawTwigSVG(x, y, scale, opacity = 1.0) {
@@ -6087,6 +6105,25 @@ function onCarrierArrived(tool) {
   }
 }
 
+// 向き選択の枝は、川底に置いた枝と同じ drawLogSVG() をそのまま使う。
+function renderOrientationBranchPreviews(){
+  const specs=[
+    {id:'orientation-branch-up', angle:Math.PI},
+    {id:'orientation-branch-down', angle:0}
+  ];
+  specs.forEach(spec=>{
+    const canvasEl=document.getElementById(spec.id);
+    if(!canvasEl) return;
+    const previewCtx=canvasEl.getContext('2d');
+    previewCtx.clearRect(0,0,canvasEl.width,canvasEl.height);
+    drawLogSVG({
+      ctx:previewCtx, x:canvasEl.width/2, y:canvasEl.height/2-1, scale:.78, opacity:1,
+      angle:spec.angle, toolType:'branch', variant:'peeled',
+      widthScale:1.05, lengthScale:1.08, barkSide:1, barkPatch:.34
+    });
+  });
+}
+
 // 向き選択ポップアップをビーバーの近くに表示する
 function showOrientationPopup() {
   const popup = document.getElementById('orientation-popup');
@@ -6100,6 +6137,7 @@ function showOrientationPopup() {
   popup.style.display = 'flex';
   popup.style.visibility = 'visible';
   popup.setAttribute('aria-hidden', 'false');
+  renderOrientationBranchPreviews();
   updateOrientationButtons();
 }
 
@@ -6286,6 +6324,8 @@ const FAMILY_LANE_X = [388, 424, 460, 496, 532];
 
 let familyModeActive = false;
 let familyLanes = []; // { el, offset, x, tasks:[], busy:false }
+let familyRepairRound = 0;
+const FAMILY_MAX_REPAIR_ROUNDS = 4;
 
 // ダム設置エリアを縦・横に隙間なく埋めるための設置計画を、レーン(＝列)ごとに作る。
 // 木質材は川底や既存の材料にかみ合う位置を中心に配置し、
@@ -6301,36 +6341,81 @@ function shuffleArray(arr) {
   return a;
 }
 
+function getFamilyTargetEnvelopeHalfWidth(y) {
+  // 完成時に目指す断面。下ほど広く、上ほど狭い台形〜三角形にする。
+  // v58: 基部は設置範囲のほぼ端まで使い、太い枝の骨組みそのものを横へ張り出す。
+  // 断面図の座標では y が大きいほど川底に近い。
+  const centerYTop = 286;
+  const bedY = 408;
+  const t = clamp((y - centerYTop) / Math.max(1, bedY - centerYTop), 0, 1);
+  return 31 + Math.pow(t, 0.86) * 57; // 上部約62px幅 → 基部約176px幅
+}
+
 function buildFamilyColumnPlan() {
-  const rowsBottomToTop = [397, 368, 338, 308, 278, 248];
-  if (buildRuleMode === 'TEXTBOOK') {
-    // 教科書モードでは、家族も「太い枝→小枝→石→泥」の順をくり返す。
-    return FAMILY_LANE_X.map((x) => {
-      const tasks=[];
-      rowsBottomToTop.forEach((y)=>{
-        tasks.push({tool:'branch',x,y});
-        tasks.push({tool:'twig',x:x+(Math.random()*8-4),y:y-3});
-        tasks.push({tool:'stone',x:x+(Math.random()*6-3),y:y+2});
-        tasks.push({tool:'mud',x:x+(Math.random()*8-4),y:y});
+  // v58: 「下が広い形」だけでなく、実際に基部へ太い枝を多く組む。
+  // まず2層の木質基礎を左右へ張り出し、その後に細枝・草・石・泥で隙間を詰めながら上へ積む。
+  const plans = Array.from({length:FAMILY_LANE_COUNT}, () => []);
+  const centerX = (DAM_ZONE_LEFT + DAM_ZONE_RIGHT) / 2;
+
+  // ---- 1. 木質の基礎工事 ----
+  // 最下段は川底いっぱいに近い幅、2段目も十分広い幅を確保する。
+  // 太い枝を互い違いの角度で重ね、単なる縦長の山にならないようにする。
+  const foundationRows = [
+    { y:402, half:84, lengthScaleMul:1.16 },
+    { y:386, half:70, lengthScaleMul:1.10 }
+  ];
+  foundationRows.forEach((row, foundationIndex) => {
+    for (let laneIndex=0; laneIndex<FAMILY_LANE_COUNT; laneIndex++) {
+      const u = FAMILY_LANE_COUNT === 1 ? 0 : (laneIndex / (FAMILY_LANE_COUNT - 1)) * 2 - 1;
+      const x = centerX + u * row.half;
+      const inwardSlope = (laneIndex < (FAMILY_LANE_COUNT-1)/2) ? 1 : -1;
+      const angle = inwardSlope * (foundationIndex === 0 ? 1.36 : 1.20) * (foundationIndex % 2 ? -1 : 1);
+      plans[laneIndex].push({
+        tool:'branch', x, y:row.y,
+        foundation:true,
+        angle,
+        lengthScaleMul:row.lengthScaleMul
       });
-      return tasks;
-    });
-  }
-  return FAMILY_LANE_X.map((x, laneIndex) => {
-    const tasks = [];
-    rowsBottomToTop.forEach((y, rowIndex) => {
-      const local = [];
-      local.push({ tool: rowIndex % 2 === 0 ? 'branch' : 'twig', x, y });
-      if (Math.random() < clamp(0.56 + riverEnvironment.vegetation * 0.14, 0.48, 0.82)) local.push({ tool: 'branch', x: x + (Math.random()*12-6), y: y - 2 });
-      if (Math.random() < clamp(0.66 + riverEnvironment.vegetation * 0.17, 0.55, 0.94)) local.push({ tool: 'twig', x: x + (Math.random()*12-6), y: y - 4 });
-      if (Math.random() < clamp(0.38 + riverEnvironment.vegetation * 0.24, 0.34, 0.82)) local.push({ tool: 'plant', x: x + (Math.random()*10-5), y: y - 3 });
-      local.push({ tool: 'mud', x, y: y + (Math.random()*6-3) });
-      if (rowIndex >= 3 && Math.random() < 0.24) local.push({ tool: 'stone', x, y: y + 6 });
-      if (rowIndex <= 1 && Math.random() < 0.18) local.push({ tool: 'stone', x: x + (Math.random()*8-4), y: y + 4 });
-      tasks.push(...shuffleArray(local));
-    });
-    return tasks;
+    }
   });
+
+  // 基礎の太い枝の間を軽く固定してから上を作る。
+  for (let laneIndex=0; laneIndex<FAMILY_LANE_COUNT; laneIndex++) {
+    const u = FAMILY_LANE_COUNT === 1 ? 0 : (laneIndex / (FAMILY_LANE_COUNT - 1)) * 2 - 1;
+    const x = centerX + u * 72;
+    plans[laneIndex].push({tool:'twig', x:x+(laneIndex%2?3:-3), y:394, foundation:true});
+    if (buildRuleMode === 'TEXTBOOK') {
+      plans[laneIndex].push({tool:'stone', x:x+(laneIndex%2?-3:3), y:404, foundation:true});
+    } else {
+      plans[laneIndex].push({tool:(laneIndex%2===0?'stone':'plant'), x:x+(laneIndex%2?-3:3), y:402, foundation:true});
+    }
+    plans[laneIndex].push({tool:'mud', x, y:398, foundation:true});
+  }
+
+  // ---- 2. 上部を段階的に狭くする ----
+  const rowsBottomToTop = [365, 339, 314, 292];
+  rowsBottomToTop.forEach((y, rowIndex) => {
+    const half = getFamilyTargetEnvelopeHalfWidth(y);
+    const usableHalf = Math.max(22, half - 6);
+    for (let laneIndex=0; laneIndex<FAMILY_LANE_COUNT; laneIndex++) {
+      const u = FAMILY_LANE_COUNT === 1 ? 0 : (laneIndex / (FAMILY_LANE_COUNT - 1)) * 2 - 1;
+      const x = centerX + u * usableHalf;
+      const tasks = plans[laneIndex];
+      tasks.push({tool:'branch', x, y, angle:(laneIndex%2===0?1:-1)*(1.00+rowIndex*0.05)});
+      if (buildRuleMode === 'TEXTBOOK') {
+        tasks.push({tool:'twig', x:x+(laneIndex%2?3:-3), y:y-3});
+        if (rowIndex === 0) tasks.push({tool:'stone', x:x+(laneIndex%2?-3:3), y:y+4});
+        tasks.push({tool:'mud', x, y:y+1});
+      } else {
+        const usePlant = riverEnvironment.vegetation > 0.28 && ((laneIndex + rowIndex) % 3 === 0);
+        tasks.push({tool:usePlant ? 'plant' : 'twig', x:x+(laneIndex%2?4:-4), y:y-4});
+        if (rowIndex === 0) tasks.push({tool:'stone', x:x+(laneIndex%2?-3:3), y:y+5});
+        else if (rowIndex < 3) tasks.push({tool:'twig', x:x+(laneIndex%2?-5:5), y:y-1});
+        tasks.push({tool:'mud', x:x+(Math.random()*4-2), y:y+1});
+      }
+    }
+  });
+  return plans;
 }
 
 function ensureFamilyBeaverEls() {
@@ -6668,22 +6753,81 @@ function getDamGrowthState() {
   }
   const crestY = found ? 230 + (topRow + 0.5) * (180 / GRID_ROWS) : 402;
   const structuralHeight = clamp(GROUND_LEFT_BASE_Y - crestY, 0, 180);
-  const growth = clamp(structuralHeight / 165 + stableCells / (GRID_ROWS*GRID_COLS) * 0.22, 0, 1);
+  const growth = clamp(structuralHeight / 150 + stableCells / (GRID_ROWS*GRID_COLS) * 0.20, 0, 1);
   refreshAllWoodContacts();
   const meanInterlock = placedLogs.length ? placedLogs.reduce((s,p)=>s+(p.interlockScore||0),0)/placedLogs.length : 0;
-  const contactGrowthBonus = clamp(meanInterlock / 2.2, 0, 0.18);
+  const contactGrowthBonus = clamp(meanInterlock / 2.2, 0, 0.16);
   const effectiveGrowth = clamp(growth + contactGrowthBonus, 0, 1);
-  const buildableTopY = clamp(378 - effectiveGrowth * 148, 228, 378);
-  const halfWidth = 48 + effectiveGrowth * 38;
+  const buildableTopY = clamp(378 - effectiveGrowth * 96, 282, 378);
+  const centerX = (DAM_ZONE_LEFT + DAM_ZONE_RIGHT) / 2;
+  const baseHalfWidth = 88; // v58: 基部は太い枝を左右へ張り出せる幅まで広げる
+  const crestHalfWidth = 29 + effectiveGrowth * 5;
   return {
     crestY,
     structuralHeight,
     growth: effectiveGrowth,
     buildableTopY,
-    left: 460 - halfWidth,
-    right: 460 + halfWidth,
+    centerX,
+    baseHalfWidth,
+    crestHalfWidth,
+    left: centerX - baseHalfWidth,
+    right: centerX + baseHalfWidth,
     occupancy: occupiedCells / (GRID_ROWS*GRID_COLS)
   };
+}
+
+function getDamEnvelopeAtY(y, growth = getDamGrowthState()) {
+  const bottomY = 414;
+  const t = clamp((y - growth.buildableTopY) / Math.max(20, bottomY - growth.buildableTopY), 0, 1);
+  // 上部を狭く、下部を広く。少し丸みをもたせて急な段差にはしない。
+  const halfWidth = growth.crestHalfWidth + (growth.baseHalfWidth - growth.crestHalfWidth) * Math.pow(t, 0.86);
+  return { left:growth.centerX-halfWidth, right:growth.centerX+halfWidth, halfWidth, t };
+}
+
+function getDamShapeMetrics() {
+  const cellW = 180 / GRID_COLS;
+  const cellH = 180 / GRID_ROWS;
+  const rowWidths = [];
+  let topActive = GRID_ROWS;
+  let lowerFootprint = 0;
+  let lowerWoodyFootprint = 0;
+  let lowerCount = 0;
+
+  for (let r=0; r<GRID_ROWS; r++) {
+    let minC=GRID_COLS, maxC=-1, count=0, woodyCount=0;
+    for (let c=0; c<GRID_COLS; c++) {
+      const cell=damGrid[r][c];
+      const structuralPresence = Math.max(cell.stability, cell.log*0.52 + cell.stone*0.30 + cell.twig*0.15 + cell.plant*0.10);
+      if (structuralPresence > 0.13) {
+        minC=Math.min(minC,c); maxC=Math.max(maxC,c); count++;
+      }
+      // v58: 「何かがある」だけでなく、基部に木質の骨組みが横へ広がっているかを別評価する。
+      if (cell.log > 0.16) woodyCount++;
+    }
+    const width = maxC>=minC ? (maxC-minC+1)*cellW : 0;
+    rowWidths[r]={width,count,woodyCount};
+    if (count>=2) topActive=Math.min(topActive,r);
+    if (r>=Math.floor(GRID_ROWS*0.68)) {
+      lowerFootprint += count/GRID_COLS;
+      lowerWoodyFootprint += woodyCount/GRID_COLS;
+      lowerCount++;
+    }
+  }
+
+  if (topActive===GRID_ROWS) return { stability:0, baseWidth:0, height:0, taper:0, baseRatio:0, footprint:0, woodyFootprint:0 };
+  const height = Math.max(cellH, (GRID_ROWS-topActive)*cellH);
+  const baseRows = rowWidths.slice(Math.max(topActive, GRID_ROWS-5));
+  const baseWidth = baseRows.length ? baseRows.reduce((sum,v)=>sum+v.width,0)/baseRows.length : 0;
+  const upperEnd = Math.min(GRID_ROWS, topActive+Math.max(2,Math.round((GRID_ROWS-topActive)*0.35)));
+  const upperRows = rowWidths.slice(topActive, upperEnd).filter(v=>v.width>0);
+  const upperWidth = upperRows.length ? upperRows.reduce((sum,v)=>sum+v.width,0)/upperRows.length : 0;
+  const baseRatio = baseWidth / Math.max(1,height);
+  const ratioScore = clamp((baseRatio - 0.72) / 0.72, 0, 1);
+  const taper = baseWidth > 0 ? clamp((baseWidth - upperWidth) / Math.max(32, baseWidth*0.58), 0, 1) : 0;
+  const footprint = lowerCount ? clamp(lowerFootprint/lowerCount/0.68,0,1) : 0;
+  const woodyFootprint = lowerCount ? clamp(lowerWoodyFootprint/lowerCount/0.46,0,1) : 0;
+  const stability = clamp(ratioScore*0.36 + taper*0.24 + footprint*0.18 + woodyFootprint*0.22, 0, 1);
+  return { stability, baseWidth, upperWidth, height, taper, baseRatio, footprint, woodyFootprint };
 }
 
 function canPlaceMaterialAt(x, y, tool, ctxInfo = getPlacementContext(x, y)) {
@@ -6695,11 +6839,20 @@ function canPlaceMaterialAt(x, y, tool, ctxInfo = getPlacementContext(x, y)) {
     if (y < 326) return { ok:false, reason:'大きな木は、低いところにたおして使おう。' };
     return { ok:true };
   }
+  // v58: 太い枝の基礎だけは、現在の山がまだ細くても先に左右へ張り出せる。
+  // これがないと、手動では『広い土台を作りたいのに、今の細い輪郭の中にしか置けない』状態になる。
+  if (tool === 'branch' && y >= 374) {
+    const centerX = (DAM_ZONE_LEFT + DAM_ZONE_RIGHT) / 2;
+    const foundationHalf = Math.max(42, getFamilyTargetEnvelopeHalfWidth(y) - 2);
+    if (x >= centerX-foundationHalf && x <= centerX+foundationHalf) return { ok:true };
+  }
   const supported = ctxInfo.nearWood || ctxInfo.nearStone || ctxInfo.nearPlant || ctxInfo.nearTwig || ctxInfo.nearBottom;
-  const topAllowance = supported ? 18 : 0;
-  const insideEnvelope = x >= g.left - (supported ? 12 : 0) && x <= g.right + (supported ? 12 : 0) && y >= g.buildableTopY - topAllowance;
+  const topAllowance = supported ? 12 : 0;
+  const env = getDamEnvelopeAtY(Math.max(y, g.buildableTopY), g);
+  const sideAllowance = supported ? 8 : 0;
+  const insideEnvelope = x >= env.left - sideAllowance && x <= env.right + sideAllowance && y >= g.buildableTopY - topAllowance;
   if (!insideEnvelope) {
-    return { ok:false, reason:'そこは、まだ材料がひっかかりにくいよ。黄色いところや、もうある材料の近くへ置こう。' };
+    return { ok:false, reason:'下を広く、上を少しせまくすると丈夫になるよ。黄色い形の中や、もうある材料の近くへ置こう。' };
   }
   if (tool === 'mud' && y < g.buildableTopY + 12 && !(ctxInfo.nearWood || ctxInfo.nearPlant || ctxInfo.nearTwig || ctxInfo.nearStone)) {
     return { ok:false, reason:'泥だけだと流れやすいよ。枝や草、石があるところにつめよう。' };
@@ -6715,18 +6868,22 @@ function getHydraulicSectionMetrics() {
     const y = 230 + (r+.5)*rowH;
     const depthFrac = clamp((y - waterSurfaceY) / Math.max(20, GROUND_LEFT_BASE_Y - waterSurfaceY), 0.08, 1);
     const pressureWeight = 0.55 + depthFrac * 0.75;
-    let mean=0, maxR=0, cov=0, stab=0, woody=0;
+    let mean=0, cov=0, stab=0, woody=0;
+    const rowResistance=[];
     for (let c=0;c<GRID_COLS;c++) {
       const cell=damGrid[r][c];
       mean += cell.resistance;
-      maxR=Math.max(maxR,cell.resistance);
+      rowResistance.push(cell.resistance);
       stab += cell.stability;
-      if (cell.resistance>0.10 || cell.log+cell.twig+cell.plant+cell.stone+cell.mud>0.14) cov++;
+      // 「材料がある」ではなく「実際にすき間がかなり小さい」セルだけを被覆として数える。
+      if (cell.resistance>0.20) cov++;
       if (cell.log+cell.twig>0.20) woody++;
     }
     mean/=GRID_COLS; stab/=GRID_COLS; cov/=GRID_COLS;
-    // 断面全体平均だけでなく、厚みの途中にある強い層も効かせる。
-    const rowBarrier=clamp(mean*0.70 + maxR*0.30,0,0.96);
+    rowResistance.sort((a,b)=>b-a);
+    const top3Mean=(rowResistance[0]+rowResistance[1]+rowResistance[2])/3;
+    // 一点だけ強い材料があっても壁とはみなさない。断面の広い範囲が埋まるほど効く。
+    const rowBarrier=clamp(mean*0.82 + top3Mean*0.18,0,0.96);
     barrierSum += rowBarrier*pressureWeight;
     coverageSum += cov*pressureWeight;
     stabilitySum += stab*pressureWeight;
@@ -7132,24 +7289,40 @@ function postPlacementPhysicalAdjustment() {
 }
 
 // 手動クリック時と同じ成立条件で、指定座標に材料を設置する(自動モード用)
-function familyAttemptPlacement(tool, x, y) {
+function familyAttemptPlacement(tool, x, y, options = {}) {
   const ctxInfo = getPlacementContext(x, y);
   let effect = 0.7;
+  const applyTaskPose = (piece) => {
+    if (!piece) return piece;
+    if (Number.isFinite(options.angle)) {
+      piece.angle = options.angle + (Math.random()-0.5)*0.10;
+      piece.renderAngle = piece.angle + (Math.random()-0.5)*0.08;
+    }
+    if (Number.isFinite(options.lengthScaleMul)) {
+      piece.lengthScale *= options.lengthScaleMul;
+    }
+    if (options.foundation) {
+      piece.foundationMember = true;
+      piece.effect *= 1.05;
+      piece.anchorStrength = (piece.anchorStrength || 0) + 0.08;
+    }
+    return piece;
+  };
 
   if (tool === 'trunk') {
     effect = (ctxInfo.nearBottom || ctxInfo.nearWood || ctxInfo.nearStone || ctxInfo.firstWood) ? 1.18 : 0.90;
     spawnMaterialAnim('trunk', true, x, y);
-    const piece = createWoodPiece('trunk', x, y, effect, ctxInfo);
+    const piece = applyTaskPose(createWoodPiece('trunk', x, y, effect, ctxInfo));
     placedLogs.push(piece);
-    markWoodPiece(piece, effect);
+    markWoodPiece(piece, piece.effect || effect);
     sfxPlaceLog();
   } else if (tool === 'branch') {
     effect = (ctxInfo.nearBottom || ctxInfo.nearWood || ctxInfo.nearStone) ? 1.0 : 0.62;
     spawnMaterialAnim('branch', true, x, y);
-    const piece = createWoodPiece('branch', x, y, effect, ctxInfo);
+    const piece = applyTaskPose(createWoodPiece('branch', x, y, effect, ctxInfo));
     piece.source = buildRuleMode === 'TEXTBOOK' ? 'student' : (piece.source || 'family');
     placedLogs.push(piece);
-    markWoodPiece(piece, effect);
+    markWoodPiece(piece, piece.effect || effect);
     sfxPlaceLog();
   } else if (tool === 'twig') {
     effect = ctxInfo.nearWood ? 1.0 : (ctxInfo.nearBottom ? 0.82 : 0.55);
@@ -7197,10 +7370,20 @@ function familyAttemptPlacement(tool, x, y) {
 // ランダムに位置をズラしながら設置を試み、成立条件(距離判定など)を満たす場所が
 // 見つかったらそこに置く。生き物が運んでいるような「ちょっとした不揃い感」を出すため。
 // ダメなら少しずつジッターを弱めて再挑戦し、最後は基準位置ぴったりで確実に置く。
-function familyJitteredPlacement(tool, baseX, baseY) {
+function familyJitteredPlacement(tool, baseX, baseY, options = {}) {
   const growth = getDamGrowthState();
-  baseX = clamp(baseX, growth.left, growth.right);
-  baseY = Math.max(baseY, growth.buildableTopY);
+  // 基礎工事だけは「現在すでに出来ている山の幅」に縛られない。
+  // 先に左右へ太い枝を張り出して、将来の広い裾野を作れるようにする。
+  if (options.foundation) {
+    const centerX = (DAM_ZONE_LEFT + DAM_ZONE_RIGHT) / 2;
+    const half = Math.max(38, getFamilyTargetEnvelopeHalfWidth(baseY) - 2);
+    baseX = clamp(baseX, centerX-half, centerX+half);
+    baseY = clamp(baseY, 374, 410);
+  } else {
+    baseY = Math.max(baseY, growth.buildableTopY);
+    const env = getDamEnvelopeAtY(baseY, growth);
+    baseX = clamp(baseX, env.left + 3, env.right - 3);
+  }
   // 材料ごとに許容できるジッター幅を変える(依存判定の距離しきい値より十分小さくする)
   const JITTER = { trunk: { x: 14, y: 8 }, branch: { x: 16, y: 9 }, twig: { x: 20, y: 16 }, plant: { x: 20, y: 14 }, stone: { x: 16, y: 14 }, mud: { x: 18, y: 15 } };
   const j = JITTER[tool] || { x: 14, y: 12 };
@@ -7210,10 +7393,10 @@ function familyJitteredPlacement(tool, baseX, baseY) {
     const shrink = 1 - i / ATTEMPTS; // 失敗するたびジッターを弱めて成功しやすくする
     const x = baseX + (Math.random() * 2 - 1) * j.x * shrink;
     const y = baseY + (Math.random() * 2 - 1) * j.y * shrink;
-    if (familyAttemptPlacement(tool, x, y)) return true;
+    if (familyAttemptPlacement(tool, x, y, options)) return true;
   }
   // 最終手段：基準位置ぴったりに置く(設計上ほぼ確実に成立する)
-  return familyAttemptPlacement(tool, baseX, baseY);
+  return familyAttemptPlacement(tool, baseX, baseY, options);
 }
 
 // 1匹のレーンが「泳いでくる→設置する→帰る」をタスクがなくなるまで繰り返す
@@ -7231,7 +7414,7 @@ async function runFamilyLane(idx) {
       break;
     }
 
-    familyJitteredPlacement(task.tool, task.x, task.y);
+    familyJitteredPlacement(task.tool, task.x, task.y, task);
     await sleep(260 + Math.random() * 180);
     await familySwimOut(lane);
     await sleep(90 + Math.random() * 150 + idx * 20);
@@ -7241,12 +7424,82 @@ async function runFamilyLane(idx) {
   checkFamilyAllDone();
 }
 
+function buildFamilyRepairPlan() {
+  // いま水が通りやすい場所を優先して、細枝・草・泥を追加する。
+  // 家族モードが「予定量を置いたら終了」ではなく、漏れを見て補修する挙動になる。
+  rebuildGridFromPlacedMaterials();
+  computeHydraulicState();
+  const g = getDamGrowthState();
+  const shape = getDamShapeMetrics();
+
+  // v58: 裾野の木質骨組みが不足しているなら、漏れ止めより先に太い枝で基礎を広げる。
+  if (shape.woodyFootprint < 0.58 || shape.baseWidth < 118) {
+    const centerX=(DAM_ZONE_LEFT + DAM_ZONE_RIGHT)/2;
+    const plans=Array.from({length:FAMILY_LANE_COUNT},()=>[]);
+    for (let i=0;i<FAMILY_LANE_COUNT;i++) {
+      const u=FAMILY_LANE_COUNT===1?0:(i/(FAMILY_LANE_COUNT-1))*2-1;
+      const x=centerX+u*82;
+      plans[i].push({tool:'branch',x,y:400,foundation:true,angle:(i%2===0?1:-1)*1.32,lengthScaleMul:1.14});
+      if (Math.abs(u)>0.45) plans[i].push({tool:'branch',x:centerX+u*70,y:386,foundation:true,angle:(i%2===0?-1:1)*1.18,lengthScaleMul:1.08});
+    }
+    return plans;
+  }
+
+  const candidates=[];
+  for (let r=0; r<GRID_ROWS; r++) {
+    const y=230+(r+0.5)*(180/GRID_ROWS);
+    if (y < g.buildableTopY-4 || y > 410) continue;
+    for (let c=0; c<GRID_COLS; c++) {
+      const x=370+(c+0.5)*(180/GRID_COLS);
+      const env=getDamEnvelopeAtY(y,g);
+      if (x<env.left || x>env.right) continue;
+      const cell=damGrid[r][c];
+      const structural = cell.log + cell.twig + cell.plant + cell.stone;
+      // 既に骨組みがあるのに抵抗が低い場所＝「埋めるべき隙間」を優先。
+      const score=(1-cell.resistance)*0.72 + cell.flow*0.22 + clamp(structural,0,1)*0.12 - cell.mud*0.08;
+      if (structural>0.16 || r>GRID_ROWS*0.62) candidates.push({x,y,score,cell});
+    }
+  }
+  candidates.sort((a,b)=>b.score-a.score);
+  const selected=[];
+  for (const c of candidates) {
+    if (selected.every(o=>Math.hypot(o.x-c.x,o.y-c.y)>22)) selected.push(c);
+    if (selected.length>=10) break;
+  }
+  const plans=Array.from({length:FAMILY_LANE_COUNT},()=>[]);
+  selected.forEach((spot,i)=>{
+    const lane=i%FAMILY_LANE_COUNT;
+    const needsBrush=(spot.cell.twig+spot.cell.plant)<0.7;
+    plans[lane].push({tool:needsBrush ? (riverEnvironment.vegetation>.35 && i%3===0 ? 'plant':'twig') : 'twig', x:spot.x, y:spot.y-2});
+    plans[lane].push({tool:'mud',x:spot.x,y:spot.y+2});
+  });
+  return plans;
+}
+
 function checkFamilyAllDone() {
   if (!familyModeActive) return;
   const allDone = familyLanes.every(l => !l.busy && l.tasks.length === 0);
-  if (allDone || isCompleted) {
-    endFamilyMode(!isCompleted);
+  if (isCompleted) {
+    endFamilyMode(false);
+    return;
   }
+  if (!allDone) return;
+
+  // v57: 初期計画でまだ漏れが残る場合は、家族が漏れ筋を見て自動補修する。
+  rebuildGridFromPlacedMaterials();
+  calculateSealAndWater();
+  if (!isCompleted && familyRepairRound < FAMILY_MAX_REPAIR_ROUNDS) {
+    const repairPlan = buildFamilyRepairPlan();
+    const taskCount = repairPlan.reduce((n,a)=>n+a.length,0);
+    if (taskCount > 0) {
+      familyRepairRound++;
+      familyLanes.forEach((lane,i)=>{ lane.tasks = repairPlan[i].slice(); });
+      speak(familyRepairRound === 1 ? 'まだ水が通るすき間があるね。家族で細かくうめていくよ。' : '水がもれるところを、もう少し補修するよ。');
+      familyLanes.forEach((lane,i)=>setTimeout(()=>runFamilyLane(i), i*180));
+      return;
+    }
+  }
+  endFamilyMode(!isCompleted);
 }
 
 function setManualToolsEnabled(enabled) {
@@ -7268,6 +7521,7 @@ function toggleFamilyMode() {
 function startFamilyMode() {
   ensureFamilyBeaverEls();
   familyModeActive = true;
+  familyRepairRound = 0;
 
   const plan = buildFamilyColumnPlan();
   familyLanes.forEach((lane, i) => { lane.tasks = plan[i].slice(); });
@@ -7278,7 +7532,7 @@ function startFamilyMode() {
   setManualToolsEnabled(false);
   hideOrientationPopup();
 
-  speak('家族のビーバーが手伝いに来たよ。みんなで材料を運ぶよ！');
+  speak('家族のビーバーが手伝いに来たよ。まず太い枝を川ぞこに広く組んで、丈夫な土台をつくるよ！');
 
   familyLanes.forEach((lane, i) => {
     setTimeout(() => runFamilyLane(i), i * 260);
@@ -7289,6 +7543,7 @@ function startFamilyMode() {
 // false の場合は「全て運び終わったので静かに終了する」ケースも兼ねる
 function endFamilyMode(stillWorking) {
   familyModeActive = false;
+  familyRepairRound = 0;
   familyLanes.forEach(lane => { lane.tasks = []; });
 
   const btn = document.getElementById('family-btn');
@@ -7307,6 +7562,7 @@ function endFamilyMode(stillWorking) {
 
 function resetFamilyMode() {
   familyModeActive = false;
+  familyRepairRound = 0;
   familyLanes.forEach(lane => {
     lane.tasks = [];
     lane.busy = false;
@@ -7440,8 +7696,49 @@ function answerChiselCompare(which){
 // Reuse the source model's geometry and animation in both lesson panels.
 const jawDemoState = { running:false };
 const chiselCompareState = { running:false };
+const GAPE_HIDDEN_ANNOTATION_TERMS = [
+  '解剖注釈', '咬筋', '張力方向', '大きさ未計算',
+  '切歯の埋設', '埋設部', '推定',
+  '下顎の前後滑走', '前後滑走',
+  '開口角度', 'モード別基準'
+];
+function simplifyGapeFrame(frame){
+  if(!frame) return;
+  try {
+    const doc=frame.contentDocument || frame.contentWindow?.document;
+    if(!doc) return;
+    const hideAdvanced=()=>{
+      const nodes=doc.querySelectorAll('text,tspan,label,button,li,p,small,span,div,td,th');
+      nodes.forEach(el=>{
+        if(el.dataset?.beaverSimpleHidden==='1') return;
+        // 親コンテナの textContent で判定すると、注釈を1つ含むだけで図全体を消してしまう。
+        // HTML側は「その要素自身の直書き文字」だけ、SVG text/tspan はその文字列だけを見る。
+        const rawText=el.namespaceURI==='http://www.w3.org/2000/svg'
+          ? (el.textContent||'')
+          : [...el.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent||'').join(' ');
+        const text=rawText.replace(/\s+/g,' ').trim();
+        if(!text || !GAPE_HIDDEN_ANNOTATION_TERMS.some(term=>text.includes(term))) return;
+        let target=el;
+        if(el.namespaceURI!=='http://www.w3.org/2000/svg'){
+          target=el.closest('label,li,tr,.control-row,.control,.annotation-row,.annotation,.legend-item,.legend') || el;
+        }
+        target.style.setProperty('display','none','important');
+        if(target.dataset) target.dataset.beaverSimpleHidden='1';
+      });
+    };
+    hideAdvanced();
+    if(!doc.documentElement.dataset.beaverSimpleObserver){
+      const observer=new MutationObserver(hideAdvanced);
+      observer.observe(doc.documentElement,{subtree:true,childList:true,characterData:true});
+      doc.documentElement.dataset.beaverSimpleObserver='1';
+    }
+  } catch(err) {
+    // 単体HTML確認時など、iframe先が無い/別originなら顎アニメ自体はそのまま使う。
+  }
+}
 function syncGapeFrame(id){
   const frame=document.getElementById(id);
+  simplifyGapeFrame(frame);
   const running=id==='jaw-demo-svg'?jawDemoState.running:chiselCompareState.running;
   frame?.contentWindow?.postMessage({type:'beaver-jaw-playback',playing:running},'*');
 }
@@ -7924,7 +8221,7 @@ canvas.addEventListener('click', (e) => {
     const piece = createWoodPiece('trunk', clickX, clickY, effect, ctxInfo);
     placedLogs.push(piece);
     getWoodContactMetrics(piece);
-    markWoodPiece(piece, effect);
+    markWoodPiece(piece, piece.effect || effect);
     sfxPlaceLog();
     speak(piece.starter
       ? '大きな木が、ダムのしっかりした土台になったよ。ここに枝や草、泥を足してみよう。'
@@ -7938,7 +8235,7 @@ canvas.addEventListener('click', (e) => {
     const piece = createWoodPiece('branch', clickX, clickY, effect, ctxInfo);
     placedLogs.push(piece);
     const contact = getWoodContactMetrics(piece);
-    markWoodPiece(piece, effect);
+    markWoodPiece(piece, piece.effect || effect);
     sfxPlaceLog();
     speak(effect > 0.9
       ? (contact.contactCount ? '太い枝が、ほかの木や川ぞこにひっかかったよ。これなら動きにくいね。' : '太い枝がしっかり置けたよ。')
@@ -8044,10 +8341,13 @@ function computeHydraulicState() {
       const geo = geomorphGrid[r][c];
       const woodyAnchor = clamp(cell.log * 0.42 + cell.twig * 0.14 + cell.stone * 0.08, 0, 1.2);
       cell.pressure = clamp((headSubmergence * (0.74 + r / GRID_ROWS * 0.18) + overtoppingBias * (r < 2 ? 0.7 : 0)) * (1 - z.downstream*0.08), 0, 1.35);
-      const upstreamFineSeal = z.upstream * clamp(cell.mud*0.13 + cell.plant*0.07 + cell.twig*0.045 + geo.deposition*0.12, 0, 0.24);
+      // 上流面の細粒分は、枝・草などに捕まっているほど効く。太い木そのものはここでは遮水材にしない。
+      const fineMatrix = clamp(cell.twig*0.16 + cell.plant*0.17 + cell.mud*0.28, 0, 1);
+      const upstreamFineSeal = z.upstream * clamp(fineMatrix * (0.08 + cell.baseResistance*0.42) + geo.deposition*0.12, 0, 0.20);
+      // 木材の組み合いと下流側の石は主に「壊れにくさ」へ効かせる。
       const coreInterlock = z.core * clamp(cell.log*0.075 + cell.twig*0.045 + cell.plant*0.018, 0, 0.18);
       const downstreamBrace = z.downstream * clamp(cell.log*0.065 + cell.stone*0.055 + cell.twig*0.018, 0, 0.16);
-      const rawOpen = clamp((1 - clamp(cell.baseResistance + upstreamFineSeal + coreInterlock*0.35,0,0.97)) * 0.82 + throat * 0.26 + continuity * 0.18, 0.035, 1.4);
+      const rawOpen = clamp((1 - clamp(cell.baseResistance + upstreamFineSeal,0,0.97)) * 0.86 + throat * 0.18 + continuity * 0.12, 0.035, 1.4);
       rowOpenSum += rawOpen;
 
       const flow = clamp(rawOpen * (0.55 + cell.pressure * 0.78) * getMainChannelFlowMultiplier(), 0.02, 1.75);
@@ -8056,9 +8356,10 @@ function computeHydraulicState() {
       const depositionGain = Math.max(0, 0.62 - flow) * suspendedSedimentLoad * (cell.mud * 0.10 + cell.twig * 0.05 + cell.plant * 0.08 + 0.035) * (0.4 + woodyAnchor * 0.35) * (1 + z.upstream*0.36);
       cell.scour = clamp(geo.scour + scourGain * 0.18, 0, 0.68);
       cell.deposition = clamp(geo.deposition + depositionGain * 0.22, 0, 0.42);
-      cell.resistance = clamp(cell.baseResistance + upstreamFineSeal + coreInterlock*0.42 - cell.scour * 0.24 + cell.deposition * 0.18, 0.02, 0.96);
+      cell.resistance = clamp(cell.baseResistance + upstreamFineSeal - cell.scour * 0.22 + cell.deposition * 0.20, 0.01, 0.96);
       cell.stability = clamp(cell.baseStability + coreInterlock*0.82 + downstreamBrace - cell.scour * 0.18 + cell.deposition * 0.09, 0.02, 1);
-      cell.porosity = clamp(1 - (cell.resistance * 0.9 + cell.stability * 0.06), 0.04, 1);
+      // 安定していても、すき間が大きければ水は通る。空隙率は遮水抵抗を中心に決める。
+      cell.porosity = clamp(1 - cell.resistance * 0.94, 0.04, 1);
       cell.sealed = cell.resistance > 0.78;
 
       totalFlow += cell.flow;
@@ -8253,27 +8554,37 @@ function calculateSealAndWater() {
   const section = getHydraulicSectionMetrics();
   const growth = getDamGrowthState();
   currentDamLayerMetrics = getDamLayerMetrics();
-  const leakPenalty = clamp(currentMeanFlow * 0.10 + currentScourIndex * 0.14, 0, 0.16);
-  const layerBalanceBonus = clamp((currentDamLayerMetrics.balance - 0.18) * 0.055, -0.010, 0.042);
+  const shape = getDamShapeMetrics();
+  const leakPenalty = clamp(currentMeanFlow * 0.068 + currentScourIndex * 0.13, 0, 0.13);
+  const layerBalanceBonus = clamp((currentDamLayerMetrics.balance - 0.24) * 0.040, -0.008, 0.026);
+  // 高く細い断面は、同じ材料量でも水圧に対して不安定。背が高くなるほど形状不足を効かせる。
+  const shapeNeed = clamp(growth.structuralHeight / 92, 0, 1);
+  const shapePenalty = (1 - shape.stability) * 0.050 * shapeNeed;
+  const shapeBonus = clamp((shape.stability - 0.45) * 0.020, 0, 0.012);
 
   // 水位より下にある「実際に水圧を受けている断面」を中心に評価する。
   // 空中の未建設セルを平均へ大量に入れない。水位が上がると新しい行が水に浸かり、
   // そこが未補修なら自然に抵抗率が下がるため、さらに上へ積み増す必要が生じる。
   currentSealedRatio = clamp(
-    section.barrier * 0.66 +
-    section.coverage * 0.14 +
-    section.stability * 0.10 +
-    section.deepAnchor * 0.10 + layerBalanceBonus - leakPenalty,
+    section.barrier * 0.78 +
+    section.coverage * 0.18 +
+    section.stability * 0.025 +
+    section.deepAnchor * 0.015 + layerBalanceBonus + shapeBonus - leakPenalty - shapePenalty,
     0, 0.96
   );
 
   const env = getEnvironmentDerived();
-  const accumulationFactor = Math.pow(currentSealedRatio, 1.22);
+  // v56: 水位は「木が置かれた量」ではなく「通り道のすき間が連続的に小さくなった度合い」で上げる。
+  // 初期の骨組み段階ではほぼ水位を上げず、細枝・草・泥で面として埋まってくると非線形に上昇する。
+  const gapClosure = clamp((currentSealedRatio - 0.08) / 0.68, 0, 1);
+  const coverageGate = clamp((section.coverage - 0.07) / 0.68, 0, 1);
+  const accumulationFactor = Math.pow(gapClosure, 1.55) * (0.16 + 0.84 * Math.pow(coverageGate, 0.86));
   const infiltrationLoss = groundwaterIndex * env.infiltrationFactor * 3.2;
   const avulsionDrop = avulsionState.capture * 20;
   const remnantBackwater = remnantSedimentIndex * 5;
+  const highFlowHead = Math.max(0, environmentalFlowMultiplier - 1) * 7.0 * accumulationFactor;
 
-  let potentialDepth = BASE_WATER_DEPTH + (MAX_UPSTREAM_DEPTH - BASE_WATER_DEPTH) * 0.90 * accumulationFactor * env.pondCapacity + currentMaxFlow * 3.2 - infiltrationLoss - avulsionDrop + remnantBackwater;
+  let potentialDepth = BASE_WATER_DEPTH + (MAX_UPSTREAM_DEPTH - BASE_WATER_DEPTH) * 0.90 * accumulationFactor * env.pondCapacity + highFlowHead - infiltrationLoss - avulsionDrop + remnantBackwater;
   potentialDepth = clamp(potentialDepth, BASE_WATER_DEPTH, MAX_UPSTREAM_DEPTH * 1.05);
   let potentialSurfaceY = GROUND_LEFT_BASE_Y - potentialDepth;
 
@@ -8296,7 +8607,7 @@ function calculateSealAndWater() {
   updateMetrics();
 
   const pondDepthGain = (GROUND_LEFT_BASE_Y - targetWaterSurfaceY) - BASE_WATER_DEPTH;
-  if (pondDepthGain >= 72 && currentSealedRatio >= 0.67 && section.stability >= 0.08 && !pondMilestoneReached) {
+  if (pondDepthGain >= 68 && currentSealedRatio >= 0.63 && section.stability >= 0.09 && shape.stability >= 0.40 && shape.woodyFootprint >= 0.30 && !pondMilestoneReached) {
     pondMilestoneReached = true;
     isCompleted = true;
     sfxDamComplete();
@@ -8325,7 +8636,9 @@ function updateMetrics() {
   else if (currentSealedRatio > 0.75) pathText = currentScourIndex > 0.08 ? '浸み出し＋越流＋洗掘' : '浸み出し＋越流';
   else if (currentSealedRatio > 0.5) pathText = currentScourIndex > 0.06 ? '細かなすき間・下・洗掘' : '細かなすき間・下・草の間';
   else if (currentSealedRatio > 0.22) pathText = '残ったすき間へ集中';
-  if (currentDamLayerMetrics.balance > 0.58 && currentSealedRatio > 0.48) pathText += '・断面安定';
+  const shape = getDamShapeMetrics();
+  if (shape.height > 45 && shape.stability < 0.34) pathText += '・下を広げる必要あり';
+  else if (currentDamLayerMetrics.balance > 0.58 && shape.stability > 0.52 && currentSealedRatio > 0.48) pathText += '・断面安定';
   document.getElementById('camera-mode-text').innerText = pathText;
 
   const flowLabel = environmentalFlowMultiplier > 1.30 ? 'かなり強い' : environmentalFlowMultiplier > 1.08 ? 'やや強い' : environmentalFlowMultiplier < 0.72 ? 'かなり弱い' : environmentalFlowMultiplier < 0.86 ? 'やや弱い' : '平常';
@@ -8775,17 +9088,24 @@ function renderSideView(alpha) {
   // --- DAM GROWTH ENVELOPE ---
   if (!isCompleted) {
     const g = getDamGrowthState();
-    const h = 420 - g.buildableTopY;
+    const topEnv = getDamEnvelopeAtY(g.buildableTopY, g);
+    const bottomEnv = getDamEnvelopeAtY(414, g);
     ctx.fillStyle = 'rgba(255, 224, 130, 0.055)';
-    ctx.fillRect(g.left, g.buildableTopY, g.right-g.left, h);
-    ctx.strokeStyle = 'rgba(255, 224, 130, 0.52)';
+    ctx.strokeStyle = 'rgba(255, 224, 130, 0.58)';
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 6]);
-    ctx.strokeRect(g.left, g.buildableTopY, g.right-g.left, h);
+    ctx.beginPath();
+    ctx.moveTo(topEnv.left, g.buildableTopY);
+    ctx.lineTo(topEnv.right, g.buildableTopY);
+    ctx.lineTo(bottomEnv.right, 414);
+    ctx.lineTo(bottomEnv.left, 414);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(255, 224, 130, 0.88)';
+    ctx.fillStyle = 'rgba(255, 224, 130, 0.90)';
     ctx.font = '12px bold sans-serif';
-    ctx.fillText(g.growth < .18 ? '【まず川底・足場の近くから】' : '【ダムが育ち、置ける範囲も拡大】', g.left + 4, Math.max(218, g.buildableTopY - 8));
+    ctx.fillText(g.growth < .18 ? '【まず太い枝で下を広く組む】' : '【太い枝の広い土台の上に積む】', bottomEnv.left + 2, Math.max(218, g.buildableTopY - 8));
   }
 
   // --- DRAW PLACED MATERIALS IN DAM CROSS-SECTION ---
@@ -10835,6 +11155,9 @@ function enterRealisticMode(){
   const c=document.getElementById('textbook-course'); c.classList.remove('open'); c.setAttribute('aria-hidden','true');
   document.body.classList.remove('course-open');
   if('speechSynthesis' in window) speechSynthesis.cancel();
+  // 表紙から発展へ入るときは、必ず最初に断面図を見せる。
+  cameraView = 'SIDE';
+  transitionProgress = 0;
   window.scrollTo({top:0,behavior:'smooth'});
   setTimeout(()=>{ if(typeof switchMode==='function') switchMode('MODE1'); },50);
 }
@@ -10931,9 +11254,10 @@ function showBodySubpage(tab,page,silent){
 
 function resetV52Disclosure(tab){
   if(tab==='skeleton'){
-    document.querySelectorAll('.v52-jaw-secondary').forEach(el=>el.style.removeProperty('display'));
-    document.getElementById('v52-jaw-photo-pair')?.classList.add('v52-primary-only');
-    const b=document.querySelector('#v52-jaw-more-row .v52-disclosure-btn'); if(b){b.classList.remove('open');b.textContent='＋ もう1まいの写真と ポイントを見る';}
+    // v59: 頭骨写真は常に2枚を同時表示。1枚だけに折りたたまない。
+    document.getElementById('v52-jaw-photo-pair')?.classList.remove('v52-primary-only');
+    document.getElementById('v52-jaw-separated-card')?.style.removeProperty('display');
+    document.getElementById('v52-jaw-extra-points')?.style.removeProperty('display');
   }
   if(tab==='jaw'){
     document.getElementById('v52-jaw-later-quiz')?.classList.remove('show');
@@ -10944,11 +11268,10 @@ function resetV52Disclosure(tab){
   }
 }
 function toggleV52SkeletonMore(){
-  const items=[...document.querySelectorAll('.v52-jaw-secondary')];
-  const open=items.some(el=>getComputedStyle(el).display==='none');
-  items.forEach(el=>el.style.setProperty('display',open?(el.tagName==='ASIDE'?'block':'block'):'none','important'));
-  document.getElementById('v52-jaw-photo-pair')?.classList.toggle('v52-primary-only',!open);
-  const b=document.querySelector('#v52-jaw-more-row .v52-disclosure-btn');if(b){b.classList.toggle('open',open);b.textContent=open?'－ とじる':'＋ もう1まいの写真と ポイントを見る';}
+  // v59 compatibility: 頭骨写真は常時2枚表示。1枚表示には戻さない。
+  document.getElementById('v52-jaw-photo-pair')?.classList.remove('v52-primary-only');
+  document.getElementById('v52-jaw-separated-card')?.style.removeProperty('display');
+  document.getElementById('v52-jaw-extra-points')?.style.removeProperty('display');
 }
 function toggleV52JawExtra(){
   const items=[...document.querySelectorAll('[data-body-panel="jaw"] .v52-jaw-extra')];
