@@ -42,7 +42,7 @@ const apps = [
     num: 62,
     slug: '62-ookii_kazu',
     url: 'https://yggdrasilw-spec.github.io/sonohoka/ookii_kazu_lab.html',
-    title: '62 大きい数ラボ 〜教科書92〜105ページ〜',
+    title: '62 大きい数ラボ 〜大きい数のしくみ〜',
     actions: [
       async (page) => {
         // frame 0: 初期画面

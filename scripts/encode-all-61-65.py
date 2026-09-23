@@ -25,9 +25,9 @@ tasks = [
         "frames": root / ".record_62-ookii_kazu",
         "output": root / "media" / "yggdrasilw_spec_github_io_sonohoka_ookii_kazu_lab_html-intro.mp4",
         "poster": root / "media" / "yggdrasilw_spec_github_io_sonohoka_ookii_kazu_lab_html-intro.png",
-        "title": "62 大きい数ラボ 〜教科書92〜105ページ〜",
+        "title": "62 大きい数ラボ 〜大きい数のしくみ〜",
         "captions": [
-            "教科書92〜105ページを段階的に探究する算数ラボ",
+            "1万をこえる大きい数を段階的に探究する算数ラボ",
             "位取り表で大きな数の位と読み方を直感理解",
             "1000のまとまりを数えて大きな数を構成",
             "数直線の目盛りを拡大して位置を確かめる",
