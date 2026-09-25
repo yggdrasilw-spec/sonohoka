@@ -1,13 +1,18 @@
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
+import {walkFrames} from './models/walk-cycle.mjs';
 const v=(x=0,y=0,z=0)=>new T.Vector3(x,y,z);
 const clamp=T.MathUtils.clamp;
+export function sampleWalk(distance,weight=1){
+ const frame=((distance/.78%1)+1)%1*64,i=Math.floor(frame),a=frame-i;
+ return walkFrames[i].map((x,c)=>T.MathUtils.lerp(x,walkFrames[i+1][c],a)*weight);
+}
 
 // Character coordinates: +Y up, +Z face/front, -X anatomical right.
 // The pole is an elbow/knee guide, NOT the joint's rotation axis.
-export function solveLimb(shoulder,target,pole,upper,lower){
+export function solveLimb(shoulder,target,pole,upper,lower,maxFlex=145){
  const delta=target.clone().sub(shoulder),raw=delta.length();
- const minReach=Math.sqrt(upper*upper+lower*lower+2*upper*lower*Math.cos(145*Math.PI/180));
+ const minReach=Math.sqrt(upper*upper+lower*lower+2*upper*lower*Math.cos(maxFlex*Math.PI/180));
  const distance=clamp(raw,minReach,upper+lower-.004);
  const axis=raw>1e-8?delta.divideScalar(raw):v(0,-1,0);
  const wrist=shoulder.clone().addScaledVector(axis,distance);
@@ -36,7 +41,7 @@ export async function createCharacter(parent,asset=null,model='child-makehuman.g
   }
  }});
  root.updateMatrixWorld(true);
- for(const [name,b] of Object.entries(bones))rest[name]={q:b.quaternion.clone(),p:b.position.clone()};
+ for(const [name,b] of Object.entries(bones)){b.quaternion.normalize();rest[name]={q:b.quaternion.clone(),p:b.position.clone()};}
  const pos=b=>root.worldToLocal(b.getWorldPosition(v()));
  const worldQ=b=>b.getWorldQuaternion(new T.Quaternion());
  function orient(b,q){b.quaternion.copy(worldQ(b.parent).invert().multiply(q));b.updateMatrixWorld(true);}
@@ -71,15 +76,21 @@ export async function createCharacter(parent,asset=null,model='child-makehuman.g
  }
  const diagnostics={};
  // fingers: {r: {index: [MCP, PIP, DIP], ...}, l: {...}}, angles in radians.
- function pose({right,left,rightGrip=0,leftGrip=0,sit=0,walk=0,palms={},fingers={},collider=null}){
+ function pose({right,left,rightGrip=0,leftGrip=0,sit=0,walk=0,walkDistance=0,walkWeight=0,armSwing=1,torsoLean=0,footTargets=null,palms={},fingers={},collider=null}){
+  const gait=sampleWalk(walkDistance,walkWeight);
   for(const [name,b] of Object.entries(bones)){b.quaternion.copy(rest[name].q);b.position.copy(rest[name].p);}
   // Lower the pelvis, keeping feet independently planted via knee IK.
   root.updateMatrixWorld(true);
   const pelvisTarget=pos(bones.pelvis).add(v(0,-sit*.42,0));
   bones.pelvis.position.copy(bones.pelvis.parent.worldToLocal(root.localToWorld(pelvisTarget)));
   root.updateMatrixWorld(true);
+  if(torsoLean){
+   const axis=v(1,0,0).applyQuaternion(worldQ(root));
+   orient(bones.spine_01,new T.Quaternion().setFromAxisAngle(axis,torsoLean).multiply(worldQ(bones.spine_01)));
+  }
   for(const [side,a] of Object.entries(arms)){
    const target=(side==='r'?right:left).clone();target.y-=sit*.42;
+   target.z+=gait[side==='r'?2:5]*.35*armSwing;
    const shoulder=pos(a.upper),result=solveLimb(shoulder,target,v(a.sign*.42,-.85,-.32),a.length1,a.length2);
    // Align the upper-arm roll to the bending plane BEFORE flexing the elbow.
    // This keeps elbow motion on its anatomical hinge rather than twisting the forearm.
@@ -120,11 +131,16 @@ export async function createCharacter(parent,asset=null,model='child-makehuman.g
    diagnostics[side]={shoulder:shoulder.toArray(),elbow:result.elbow.toArray(),wrist:result.wrist.toArray(),requested:target.toArray(),limited:result.limited};
   }
   for(const [side,l] of Object.entries(legs)){
-   const sign=side==='r'?-1:1,target=l.ankle.clone();target.z+=sit*.39+walk*sign;target.y+=Math.max(0,walk*sign)*.35;
-   const result=solveLimb(pos(l.upper),target,v(sign*.05,.05,1),l.length1,l.length2);
+   const sign=side==='r'?-1:1,target=l.ankle.clone(),index=side==='r'?0:3;
+   target.z+=sit*.39+walk*sign+gait[index]*.45;
+   target.y+=Math.max(0,walk*sign)*.35+gait[index+1]*.35;
+   if(footTargets?.[side])target.copy(footTargets[side]);
+   // Keep the knee bending forward; never flip its guide upward at a height threshold.
+   const result=solveLimb(pos(l.upper),target,v(sign*.05,0,1),l.length1,l.length2,145);
    const upperDir=result.elbow.clone().sub(pos(l.upper)).normalize(),lowerDir=result.wrist.clone().sub(result.elbow).normalize();
    orient(l.upper,worldQ(root).multiply(frame(upperDir,upperDir.clone().cross(lowerDir).normalize()).multiply(l.upperFrame.clone().invert()).multiply(l.upperQ)));
    aim(l.lower,l.foot,result.wrist);orient(l.foot,worldQ(root).multiply(l.q));
+   diagnostics['leg_'+side]={hip:pos(l.upper).toArray(),knee:result.elbow.toArray(),ankle:result.wrist.toArray(),requested:target.toArray(),limited:result.limited};
   }
   root.updateMatrixWorld(true);
  }

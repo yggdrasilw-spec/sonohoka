@@ -32,3 +32,13 @@ MPFB本体のプログラムはGPLで、生成した人物の素材とは別で�
 - 再生成用素材：配布元の pants03_ccby.zip を ../.tools/pants03 に展開。
 - 水着はCC0ではなくCC BY 4.0。上記の作者・作品・変更内容・ライセンス表記を保持すること。
 - 座位の確認画像：docs/swim-seated-preview.png。node scripts/export-swim-pose.mjs の後に Blender で scripts/preview-swim.py -- --seated を実行し、アプリと同じ骨格変形を描画。
+
+## 2026-09-24 更新
+8歳相当の年齢入力と頭部・頬・顎・目・口角の調整により、体型と顔つきを更新。身長は頭頂130cmを維持。歩行軌道はCMU 07_01 / Bruce Hahne BVH conversionを児童サイズへ調整して使用。原文利用条件は [MOTION-LICENSE.txt](MOTION-LICENSE.txt)。再生成手順と制約は [変更記録](../docs/character-update-2026-09-24.md)。
+
+The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217.
+
+## 2026-09-25 動作の追加
+CMU 15_06（手を伸ばす）、115_01（拾う）、141_09（またぐ）、113_15（座る）を追加。配布元は https://github.com/una-dinosauria/cmu-mocap 、原資料は https://mocap.cs.cmu.edu/search.php 。BVH変換はBruce Hahne。利用条件は上記MOTION-LICENSE.txtを参照。
+
+`scripts/build-interactions.mjs` で軌道を抽出し、`interaction-clips.mjs` に保存。児童の骨格と教材の物の寸法へ合わせた加工データであり、児童自身の収録ではない。浴槽専用の収録ではなく、またぎと着座を組み合わせている。指の握りは別途姿勢制御する。再現範囲は [変更記録](../docs/fields-and-motions-2026-09-25.md) を参照。
