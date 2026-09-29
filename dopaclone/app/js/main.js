@@ -110,14 +110,16 @@ function layoutActors() {
   else r = $(`#screen-${S.screen} .result-card`).getBoundingClientRect();
   const onCard = S.screen === 'result' || S.screen === 'final';
   const wideLandscape = innerWidth >= 760 && innerWidth > innerHeight;
+  const gameLandscapePlay = S.screen === 'play' && wideLandscape && !body.classList.contains('school-mode');
   const scale = S.screen === 'title'
     ? (wideLandscape ? clamp(r.height / 245, 0.95, 1.6) : clamp(r.height / 190, 0.7, 1.1))
     : onCard ? 0.6
+    : gameLandscapePlay ? clamp(r.height / 430, 0.82, 1.36)
     : S.screen === 'play' && wideLandscape ? clamp(r.height / 390, 0.9, 1.7)
     : clamp(r.height / 175, 0.5, 0.74);
   hero.S = scale;
-  const x = r.left + r.width / 2;
-  const y = onCard ? r.top + 6 : r.bottom - 12;
+  const x = gameLandscapePlay ? r.left + r.width * 0.54 : r.left + r.width / 2;
+  const y = onCard ? r.top + 6 : gameLandscapePlay ? r.bottom - 4 : r.bottom - 12;
   hero.place(x, y);
   hero.lift = 0; hero.rot = 0;
   crowd.forEach((c, i) => placeCrowd(c, i));
@@ -2690,6 +2692,7 @@ $('#tree').addEventListener('click', (e) => {
 $('#go-tree').addEventListener('click', () => openTree(S.newUnlocks, Object.keys(S.newStars)));
 $('#f-tree').addEventListener('click', () => openTree(S.newUnlocks, Object.keys(S.newStars)));
 $('#tree-back').addEventListener('click', () => { audio.play('blip', audio.now(), { m: 72, v: 0.08 }); toTitle(); });
+$('#play-back').addEventListener('click', () => { audio.unlock(); askToTitle(); });
 
 for (const [key, b] of Object.entries(padButtons)) {
   b.addEventListener('pointerdown', (e) => { e.preventDefault(); audio.unlock(); press(key, b); });
