@@ -10,7 +10,7 @@ import { Backdrop } from './bg.js';
 import * as store from './store.js';
 import { createGuide } from './guide.js';
 import { SKILLS, SKILL, LANES, DEPTH } from './skills.js';
-import { ORDER, emptyProgress, recordResult, stateOf, masteryRatio, starsOf, nextStar, schoolStarsOf, nextSchoolStar, STAR_MAX, pickCapsule, useCapsule, rustyOf, gradePlan, levelPlan, reviewPlan, problemFor, frontier, isUnlocked, relockTargets, relockSkill, TREE_LAYOUT } from './session.js';
+import { ORDER, emptyProgress, recordResult, stateOf, masteryRatio, starsOf, nextStar, schoolStarsOf, nextSchoolStar, STAR_MAX, pickCapsule, useCapsule, rustyOf, gradePlan, levelPlan, reviewPlan, problemFor, frontier, recommendedSkill, isUnlocked, relockTargets, relockSkill, TREE_LAYOUT } from './session.js';
 import * as growth from './growth.js';
 import * as qs from './quests.js';
 import * as tr from './trophies.js';
@@ -482,6 +482,7 @@ async function setupProblem() {
   setLearnerGradeMode((p.skill && SKILL[p.skill]?.grade) || S.plan.grade || S.uiGrade);
   S.step = 0; S.wrongInQ = false; S.shownWrong = null;
   $$('.pip').forEach((pp, i) => pp.classList.toggle('now', !extra && i === S.qi));
+  card.dataset.skill = p.skill || '';
   $('#qtitle').textContent = learnerText(p.title);
   $('#qno').textContent = extra ? `EX ${S.extra.solved + 1}` : learnerGrade() <= 2 ? `${S.qi + 1}もんめ` : `第${S.qi + 1}問`;
   renderSheet(p);
@@ -1541,7 +1542,9 @@ function refreshTitle() {
   const n = prog.review.length;
   $('#start-review').hidden = !n;
   $('#review-count').textContent = n;
-  $('#level-sub').textContent = prog.placed ? `つぎは「${learnerText(SKILL[frontier(prog)[0] || ORDER[ORDER.length - 1]].name)}」` : 'はじめは じつりょくチェック';
+  const recId = prog.placed ? recommendedSkill(prog) : null;
+  $('#start').dataset.recommendedSkill = recId || '';
+  $('#level-sub').textContent = recId ? `まず「${learnerText(SKILL[recId].name)}」から` : 'はじめは じつりょくチェック';
   const done = SKILLS.filter((x) => stateOf(prog, x.id) === 'mastered').length;
   $('#tree-badge').textContent = `${done}/${SKILLS.length}`;
   renderQuests();

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../app/js/problems.js';
 import { SKILL, SKILLS, MASTERY } from '../app/js/skills.js';
-import { ORDER, PLACEMENT, emptyProgress, recordResult, isUnlocked, isMastered, stateOf, gradePlan, levelPlan, placementPlan, frontier, problemFor, masterWithAncestors, dependents, relockTargets, relockSkill, TREE_LAYOUT, TREE_SUB, TREE_UPPER, TIMES_MAX, FIRST_MAX } from '../app/js/session.js';
+import { ORDER, PLACEMENT, emptyProgress, recordResult, isUnlocked, isMastered, stateOf, gradePlan, levelPlan, placementPlan, frontier, recommendedSkill, problemFor, masterWithAncestors, dependents, relockTargets, relockSkill, TREE_LAYOUT, TREE_SUB, TREE_UPPER, TIMES_MAX, FIRST_MAX } from '../app/js/session.js';
 
 test('orders respect prerequisites', () => {
   for (const order of [ORDER, PLACEMENT]) {
@@ -45,6 +45,19 @@ test('placement walks forward on clean answers and grants ancestors', () => {
   const p0 = plan.walk.p;
   plan.answer(false);
   assert.ok(plan.walk.p <= p0);
+});
+
+test('recommended skill is exactly the first problem of the level plan', () => {
+  const prog = emptyProgress();
+  prog.placed = true;
+  masterWithAncestors(prog, 'g1-compose10');
+  const rec = recommendedSkill(prog);
+  const plan = levelPlan(prog, 10, makeRng(1));
+  assert.equal(plan.recommended, rec);
+  assert.equal(plan.basic[0], rec);
+  assert.equal(SKILL[plan.basic[0]].name, SKILL[rec].name);
+  // Light review is still mixed in later, never before the promised first skill.
+  assert.ok(plan.basic.slice(1).some((id) => isMastered(prog, id)));
 });
 
 test('level plan mixes review and frontier, problems avoid recent repeats', () => {
@@ -203,7 +216,7 @@ test('time capsule: a first problem returns after 30 days, once, for mastered sk
   assert.equal(capsuleCompare({ t: 3000, m: 0 }, 4000, 0).what, 'none');
 });
 
-test('rust: one level, at most three oldest, polished by one first-try answer, review slots first (id040)', async () => {
+test('rust: one level, at most three oldest, polished by one first-try answer, review slots are preserved (id040)', async () => {
   const { rustyOf, RUST } = await import('../app/js/session.js');
   const prog = emptyProgress();
   const now = Date.UTC(2026, 9, 1);
@@ -222,10 +235,11 @@ test('rust: one level, at most three oldest, polished by one first-try answer, r
   const p2 = emptyProgress();
   masterWithAncestors(p2, 'g1-add-c', ago(30));
   assert.equal(rustyOf(p2, now).length, 3);
-  // Level plan: rusty skills take the review slots.
+  // Level plan: the promised recommendation is first; rusty review is spread later.
   prog.placed = true;
   const plan = levelPlan(prog, 10, makeRng(2), now);
-  assert.ok(rustyOf(prog, now).every((id) => plan.basic.slice(0, 3).includes(id)), plan.basic.join());
+  assert.equal(plan.basic[0], recommendedSkill(prog));
+  assert.ok(rustyOf(prog, now).every((id) => plan.basic.includes(id)), plan.basic.join());
 });
 
 test('school stars reward accuracy and retention without requiring fast answers', async () => {

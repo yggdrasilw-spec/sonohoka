@@ -278,21 +278,49 @@ export function gradePlan(grade, N, rng) {
 // Frontier = unlocked but not mastered; "warm" = mastered (light review).
 export function frontier(prog) { return ORDER.filter((id) => isUnlocked(prog, id) && !isMastered(prog, id)); }
 
+// One source of truth for the title recommendation and the first problem.
+// If there is unfinished learning, always recommend the earliest unlocked
+// non-mastered skill. Only fall back to the most recent mastered skill when
+// every currently available skill is already mastered.
+export function recommendedSkill(prog) {
+  const front = frontier(prog);
+  if (front.length) return front[0];
+  const warm = ORDER.filter((id) => isMastered(prog, id));
+  return warm[warm.length - 1] || ORDER[0];
+}
+
 export function levelPlan(prog, N, rng, now = Date.now()) {
   if (!prog.placed) return placementPlan(prog, N);
   const front = frontier(prog);
   const warm = ORDER.filter((id) => isMastered(prog, id));
-  // Rusty skills (id040) take the review slots first; the share does not change.
+  const recommended = recommendedSkill(prog);
+  // Rusty skills (id040) take review slots first, but never the first slot:
+  // the first problem must match what the title promised.
   const rusty = rustyOf(prog, now);
-  // Recent mastered skills first, then the frontier (least practised first).
   const warmPick = warm.slice(-6);
-  const nWarm = Math.min(warmPick.length, Math.max(1, Math.round(N * 0.3)));
-  const frontSorted = front.slice(0, 4);
+  const nWarm = Math.min(warmPick.length, Math.max(0, Math.round(N * 0.3)));
+  const frontSorted = [recommended, ...front.filter((id) => id !== recommended)].filter(Boolean).slice(0, 4);
   const basic = [];
-  for (let i = 0; i < nWarm; i++) basic.push(i < rusty.length ? rusty[i] : warmPick[Math.floor(rng() * warmPick.length)]);
-  for (let i = nWarm; i < N; i++) basic.push(frontSorted.length ? frontSorted[(i - nWarm) % frontSorted.length] : warm[Math.floor(rng() * warm.length)]);
+  let warmUsed = 0;
+  let frontUsed = 0;
+  for (let i = 0; i < N; i++) {
+    if (i === 0) { basic.push(recommended); frontUsed = 1; continue; }
+    // Spread review through the session instead of putting it before new work.
+    const reviewSlot = warmUsed < nWarm && ((i + 1) % 3 === 0 || !frontSorted.length);
+    if (reviewSlot && warmPick.length) {
+      basic.push(warmUsed < rusty.length ? rusty[warmUsed] : warmPick[Math.floor(rng() * warmPick.length)]);
+      warmUsed += 1;
+    } else if (frontSorted.length) {
+      basic.push(frontSorted[frontUsed % frontSorted.length]);
+      frontUsed += 1;
+    } else if (warm.length) {
+      basic.push(warm[Math.floor(rng() * warm.length)]);
+    } else {
+      basic.push(recommended);
+    }
+  }
   const hardest = front.length ? front.slice(-3) : warm.slice(-3);
-  return { mode: 'level', basic, extra: (k) => hardest[k % hardest.length] };
+  return { mode: 'level', recommended, basic, extra: (k) => hardest[k % Math.max(1, hardest.length)] || recommended };
 }
 
 // First session: walk along PLACEMENT, jumping ahead after clean answers and
