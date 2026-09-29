@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>わり算のくふう ～0をけした わり算とあまり～</title>
+<style>
+:root{--ink:#26342e;--paper:#f6fbf7;--green:#1f7a4d;--cell:46px;--tile:#f7c6d0;--tile-line:#b8506a;--rem:#ff9f1c;--dash:#3b4a43}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"BIZ UDPGothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;font-size:20px}
+header{background:var(--green);color:#fff;padding:12px 20px;font-weight:bold;font-size:24px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.tools button{font:inherit;font-size:16px;font-weight:bold;color:#fff;background:transparent;border:2px solid #fff;border-radius:20px;padding:4px 14px;cursor:pointer}
+.tools button[aria-pressed="true"],.tools #replay{background:#fff;color:#1f7a4d}
+.tools button[aria-pressed="false"]{opacity:.85}
+main{max-width:980px;margin:0 auto;padding:14px 16px 40px}
+.setup{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;font-size:17px}
+.setup button,.setup input{font:inherit}
+.preset{border:2px solid var(--green);background:#fff;color:var(--green);border-radius:20px;padding:4px 12px;cursor:pointer}
+.preset{margin:0 4px 6px 0;min-height:36px}
+.preset.on{background:var(--green);color:#fff}
+.setup input{width:3.2em;padding:2px 4px;border:2px solid #9bbfa9;border-radius:6px;text-align:center}
+.expr{font-size:40px;font-weight:bold;margin:6px 0}
+.expr small{font-size:22px;font-weight:normal;color:#5b6b63;margin-left:12px}
+.board{background:#fff;border:2px solid #cfe5d6;border-radius:14px;padding:14px;min-height:250px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px}
+.tile{width:54px;height:36px;background:var(--tile);border:2px solid var(--tile-line);border-radius:5px;display:flex;align-items:center;justify-content:center;font-style:italic;font-weight:bold;font-size:18px;box-shadow:0 3px 0 var(--tile-line)}
+.tile.one{font-size:24px}
+.grp{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:3px dashed var(--dash);border-radius:12px;max-width:100%}
+.grp.new{background:#eaf7ef}
+.rem{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:3px solid var(--rem);border-radius:12px;background:#fff4e0}
+.say{margin:12px 0;padding:12px 16px;background:#fff;border-left:8px solid var(--green);border-radius:8px;min-height:3.4em;line-height:1.6}
+.say b{color:#c2410c}
+.eqs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.eq{background:#fff;border:2px solid #cfe5d6;border-radius:12px;padding:10px 16px;font-size:26px;font-weight:bold;min-height:64px}
+.eq.hi{border-color:var(--rem);background:#fff4e0}
+.eq span{display:block;font-size:15px;font-weight:normal;color:#5b6b63}
+.nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+button{touch-action:manipulation}
+#warn{color:#b91c1c;font-size:15px}
+.nav button{font:inherit;font-weight:bold;border:none;border-radius:12px;padding:10px 22px;cursor:pointer;background:var(--green);color:#fff}
+.nav button.sub{background:#fff;color:var(--green);border:2px solid var(--green)}
+.nav button:disabled{opacity:.35;cursor:default}
+#ladderbox{display:none}
+.ladder{overflow-x:auto;display:grid;justify-content:center;align-items:center;gap:4px 12px;background:#fff;border:2px solid #cfe5d6;border-radius:12px;padding:14px 12px 8px}
+.lc{text-align:center;font-size:34px;font-weight:bold}
+.lc.op{font-size:22px;font-weight:normal;color:#5b6b63}
+.lc.q{color:#b45309}
+.lc.rm{color:#b45309}
+.ar{display:flex;flex-direction:column;align-items:center;font-size:16px;line-height:1.5;font-weight:bold}
+.ar .dn{color:#1f7a4d}.ar .up{color:#1d4ed8}
+.same{justify-self:center;font-size:18px;font-weight:bold;color:#b45309;border:2px solid #b45309;border-radius:20px;padding:0 10px}
+.cap{margin:6px 6px 4px;font-size:18px;line-height:1.6;grid-column:1/-1}
+.cap b{color:#b45309}
+#hisanbox{display:none}
+.hwrap{background:#fff;border:2px solid #cfe5d6;border-radius:12px;padding:14px 12px 10px}
+.hisan{display:grid;grid-auto-rows:var(--cell);justify-content:center;margin:6px auto}
+.hc{display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:bold;position:relative}
+.hc.par{font-size:46px;font-weight:normal}
+.hc.ov{border-top:3px solid var(--ink)}
+.hc.qd,.hc.fr{color:#b45309}
+.hc.pl{border-bottom:3px solid var(--ink)}
+.hc.zadd{color:#c2410c;animation:zin .5s both}
+.hc.cut,.hc.xs{color:#9aa39d}
+.hc.cut::after,.hc.xs::after{content:"";position:absolute;left:8%;right:8%;top:50%;border-top:4px solid #d33;transform:rotate(-38deg)}
+.hc.cut::after{animation:cutin .45s var(--d,.2s) both}
+@keyframes cutin{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes zin{from{opacity:0;transform:translateY(-10px) scale(.6)}to{opacity:1;transform:none}}
+.hcap{margin-top:8px;font-size:19px;line-height:1.6;text-align:center}
+.hcap b{color:#b45309}
+@media (prefers-reduced-motion:reduce){.hc.cut::after,.hc.zadd{animation:none}}
+dialog{border:3px solid var(--green);border-radius:14px;padding:16px 22px;width:min(640px,94vw);font:inherit;color:var(--ink);background:#fff}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog h2{margin:0 0 10px;font-size:24px;color:var(--green)}
+.gf{display:grid;gap:10px;font-size:18px}
+.gf input,.gf select,.setup select{font:inherit;width:3.4em;padding:2px 4px;border:2px solid #9bbfa9;border-radius:6px;text-align:center}
+.gf select,.setup select{width:auto}
+#gout{margin:12px 0;display:flex;flex-wrap:wrap;gap:8px;min-height:2em;font-size:17px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #1d4ed8;outline-offset:2px}
+@media (max-width:520px){:root{--cell:34px}.hc{font-size:26px}.hc.par{font-size:34px}.lc{font-size:24px}.expr{font-size:30px}.tile{width:44px}body{font-size:18px}}
+</style>
+</head>
+<body>
+<header>
+  <span>わり算の くふう　～ 0を けした わり算と あまり ～</span>
+  <div class="tools">
+    <button id="fxbtn" type="button" aria-pressed="true">こうかおん <span class="st">ON</span></button>
+    <button id="vobtn" type="button" aria-pressed="true">よみあげ <span class="st">ON</span></button>
+    <button id="replay" type="button">もういちど きく</button>
+  </div>
+</header>
+<main>
+  <div class="setup">
+    <span>もんだい：</span>
+    <span id="presets"></span><button class="preset" id="genbtn" type="button">問題を つくる</button>
+    <span>じぶんで：<select id="iu"><option value="100">100</option><option value="10">10</option></select>が<input id="ia" type="number" min="1" max="60" value="24">こ ÷ <span id="ul">100</span>が<input id="ib" type="number" min="1" max="9" value="7">こ</span> <span id="warn" role="status"></span>
+  </div>
+  <div class="setup" id="gens"></div>
+  <div class="expr" id="expr"></div>
+  <div class="board" id="board"></div>
+  <div class="say" id="say" aria-live="polite"></div>
+  <div class="eqs">
+    <div class="eq" id="eq1"></div>
+  </div>
+  <div id="ladderbox"></div>
+  <div id="hisanbox"></div>
+  <div class="nav">
+    <button class="sub" id="prev">◀ もどる</button>
+    <button id="next">つぎへ ▶</button>
+    <button class="sub" id="reset">さいしょから</button>
+    <button class="sub" id="nextq">つぎの もんだい ▶</button>
+  </div>
+</main>
+<dialog id="gen" aria-labelledby="gt">
+  <h2 id="gt">問題を つくる</h2>
+  <div class="gf">
+    <label>単位 <select id="gu"><option value="100">100</option><option value="10">10</option></select> （ブロック1こ分）</label>
+    <label>わる数 <input id="gbmin" type="number" min="1" max="9" value="2"> ～ <input id="gbmax" type="number" min="1" max="9" value="9"> （単位の何こ分）</label>
+    <label>しょう <input id="gqmin" type="number" min="1" max="9" value="2"> ～ <input id="gqmax" type="number" min="1" max="9" value="6"></label>
+    <label>あまり <select id="gr"><option value="yes">あり</option><option value="no">なし</option><option value="any">どちらでも</option></select></label>
+    <label>問題の数 <input id="gn" type="number" min="1" max="10" value="5"></label>
+  </div>
+  <div id="gout" aria-live="polite"></div>
+  <div class="nav"><button id="gmk" type="button">つくる</button><button class="sub" id="gcl" type="button">とじる</button></div>
+</dialog>
+<script>
+const PRESETS=[[24,7],[27,4],[35,6],[20,3],[24,6],[42,7]];
+const zeros=()=>U===100?2:1;
+function plan(){const q=Math.floor(A/B),r=A%B,P={q,r,restore:r?q+3:null};
+  P.h1=r?q+4:q+3;P.h2=P.h1+1;P.h3=r?P.h1+2:null;P.last=r?P.h1+2:P.h2;return P}
+const lastStep=()=>plan().last;
+let A=24,B=7,U=100,step=0,made=[];
+const $=id=>document.getElementById(id);
+
+/* ===== こうかおん(Web Audio) ===== */
+let fxOn=true,voOn=true,started=false,warmed=false,lastNarr='',AC=null,master=null,voice=null;
+try{fxOn=localStorage.getItem('wzk_fx')!=='0';voOn=localStorage.getItem('wzk_vo')!=='0'}catch(e){}
+const PENT=[523.25,587.33,659.25,783.99,880,1046.5,1174.66];
+function initAudio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=fxOn?.6:0;const cp=AC.createDynamicsCompressor();master.connect(cp);cp.connect(AC.destination)}catch(e){AC=null}}
+  if(AC&&AC.state==='suspended')AC.resume();
+}
+function tone(f,t0,dur,type,vol,glide){
+  if(!AC||!fxOn)return;const now=AC.currentTime+t0,o=AC.createOscillator(),g=AC.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(f,now);if(glide)o.frequency.exponentialRampToValueAtTime(glide,now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol||.15,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(master);o.start(now);o.stop(now+dur+.05);
+}
+const bell=(f,t,v)=>{tone(f,t,.8,'sine',v);tone(f*2.01,t,.4,'sine',v*.35)};
+const sparkle=t=>[1318.5,1568,1975.5,2637].forEach((f,i)=>tone(f,t+i*.06,.22,'sine',.09));
+const fanfare=t=>{[523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,t+i*.09,.4,'triangle',.13));bell(1568,t+.3,.1)};
+function sfxPop(){tone(700,0,.1,'sine',.14,1100)}
+function sfxStep(st,P,fwd,k){
+  if(!fxOn||!AC)return;
+  const q=P.q,r=P.r,z=zeros();
+  if(!fwd){tone(660,0,.14,'sine',.13);tone(494,.1,.16,'sine',.12);return}
+  const T=i=>Math.min(i*45,400)/1000;
+  for(let i=0;i<k;i++)tone(PENT[i%7]*(i>=7?2:1),T(i),.14,'triangle',.13);   // ブロックが動く: ドレミ…と上がる
+  const tb=k?T(k-1)+.75:0;                                                    // 囲みが出る瞬間
+  if(st>=1&&st<=q){bell(1046.5,tb,.15);bell(1318.5,tb+.09,.13)}
+  else if(st===q+1){if(r){bell(392,tb,.2);bell(523.25,tb+.12,.17)}else{bell(880,tb,.16);bell(1174.66,tb+.14,.15)}}
+  else if(st===q+2)sparkle(0);
+  else if(st===P.restore){bell(523.25,0,.17);bell(659.25,.12,.15)}
+  else if(st===P.h1){for(let i=0;i<2*z;i++)tone(1200,.25+i*.12,.1,'sawtooth',.05,400)}   // 0を けす: シュッ
+  else if(st===P.h2){[0,1,2,3].forEach(j=>tone(PENT[j],j*.12,.14,'triangle',.13));if(!r)fanfare(.6)}
+  else{for(let j=0;j<z;j++)tone(440,.15+.2*j,.2,'sine',.18,660);fanfare(.3+.2*z)}   // 0を つける
+}
+
+/* ===== よみあげ(ひらがな・カタカナに直して渡す) ===== */
+const KD=['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+function K(n){
+  if(n===0)return 'ぜろ';
+  const th=Math.floor(n/1000),h=Math.floor(n/100)%10,t=Math.floor(n/10)%10,o=n%10;let s='';
+  if(th)s+={1:'せん',3:'さんぜん',8:'はっせん'}[th]||KD[th]+'せん';
+  if(h)s+={1:'ひゃく',3:'さんびゃく',6:'ろっぴゃく',8:'はっぴゃく'}[h]||KD[h]+'ひゃく';
+  if(t)s+=(t===1?'':KD[t])+'じゅう';
+  return s+KD[o];
+}
+function cnt(n,suf){            // 1こ→いっこ, 6こ→ろっこ, 8かい→はっかい, 10こ→じゅっこ
+  let k=K(n);const o=n%10;
+  if(o===1)k=k.replace(/いち$/,'いっ');else if(o===6)k=k.replace(/ろく$/,'ろっ');
+  else if(o===8)k=k.replace(/はち$/,'はっ');else if(o===0&&n>=10)k=k.replace(/じゅう$/,'じゅっ');
+  return k+suf;
+}
+function pickVoice(){
+  try{const vs=speechSynthesis.getVoices();
+    voice=vs.find(v=>/^ja/i.test(v.lang)&&/Google|Kyoko|Haruka|Nanami|O-Ren|Otoya|Sayaka/i.test(v.name))||vs.find(v=>/^ja/i.test(v.lang))||null}catch(e){}
+}
+let spTok=0;
+function speakJa(text){
+  if(!voOn||!text||!('speechSynthesis' in window))return;
+  const my=++spTok;                       // 連打しても、最後の読み上げだけを行う
+  try{
+    speechSynthesis.cancel();
+    if(!voice)pickVoice();
+    const parts=text.match(/[^。！？]+[。！？]?/g)||[];      // 文ごとに分けて渡す(長文が途中で止まるのを防ぐ)
+    setTimeout(()=>{
+      if(my!==spTok)return;
+      try{speechSynthesis.resume()}catch(e){}
+      parts.forEach(t=>{const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';if(voice)u.voice=voice;u.rate=.9;u.pitch=1.05;speechSynthesis.speak(u)});
+    },90);
+  }catch(e){}
+}
+function warmup(){                // 最初のタップで音声エンジンと AudioContext を起こす(ウォームアップ)
+  started=true;initAudio();
+  if(warmed)return;warmed=true;
+  try{pickVoice();const u=new SpeechSynthesisUtterance('。');u.volume=0;u.lang='ja-JP';if(voice)u.voice=voice;speechSynthesis.speak(u)}catch(e){}
+}
+try{speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}catch(e){}
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,warmup,{passive:true}));
+
+function narr(st,P,n,m){
+  const q=P.q,r=P.r,u=K(U),z=zeros();
+  if(st===0)return `もんだい。${K(n)}、わる、${K(m)}。${K(n)}は、${u}が${cnt(A,'こ')}、あつまった かずです。`;
+  if(st<=q)return `${u}が${cnt(B,'こ')}で、${K(m)}。てんせんで かこみます。${cnt(st,'かいめ')}。`+(st===1?`${K(m)}が とれた かいすうが、しょうです。`:'');
+  if(st===q+1)return r===0?`ちょうど わりきれました。${K(m)}が、${cnt(q,'かい')}とれて、あまりは、ぜろです。`
+    :`もう ${K(m)}は とれません。のこった ${u}が${cnt(r,'こ')}で、${K(r*U)}。これが、あまりです。`;
+  if(st===q+2)return `こんどは、${u}を、ひとつと みてみよう。かたまりの かずだけを かぞえれば、${K(A)}、わる、${K(B)}の けいさんだね。しょうは、おなじ ${K(q)}です。`
+    +`わりざんの せいしつ。わられる かずと わる かずを、おなじ かずで わっても、おなじ かずを かけても、しょうは かわりません。`+(r===0?'あまりは、どちらも、ぜろだね。':'');
+  if(st===P.restore)return `あまりの ${K(r)}は、${u}が${cnt(r,'こ')}と いう ことだから、もとの かずに もどして、${K(r*U)}。でも、あまりは かわります。${u}で わった かずだから、もとに もどすには、${u}を かけます。`;
+  if(st===P.h1)return `ひっさんで かいて みよう。わられる かずと わる かずの、おなじ かずの ぜろを、けします。${cnt(z,'こ')}ずつ けします。`;
+  if(st===P.h2)return `のこった、${K(A)}、わる、${K(B)}を、ひっさんで けいさんします。しょうは、${K(q)}。あまりは、${K(r)}です。`+(r?'':`${K(n)}、わる、${K(m)}は、${K(q)}です。`);
+  return `けした ぜろと おなじ かずだけ、あまりに ぜろを つけます。あまりの ${K(r)}に、ぜろを ${cnt(z,'こ')}つけて、${K(r*U)}。${K(n)}、わる、${K(m)}は、${K(q)}、あまり、${K(r*U)}です。`;
+}
+function syncTools(){
+  $('fxbtn').setAttribute('aria-pressed',fxOn);$('fxbtn').querySelector('.st').textContent=fxOn?'ON':'OFF';
+  $('vobtn').setAttribute('aria-pressed',voOn);$('vobtn').querySelector('.st').textContent=voOn?'ON':'OFF';
+}
+
+
+let tiles=[],prevStep=0;
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function makeTiles(n){tiles=Array.from({length:n},()=>{const d=document.createElement('div');d.className='tile';return d})}
+function group(cls,list){const g=document.createElement('div');g.className=cls;list.forEach(t=>g.appendChild(t));return g}
+
+function chip(x,y,u,host){
+  const p=document.createElement('button');p.type='button';
+  p.className='preset'+(x===A&&y===B&&u===U?' on':'');
+  p.textContent=(x*u)+'÷'+(y*u);
+  p.onclick=()=>{setProblem(x,y,u);if($('gen').open)$('gen').close()};
+  host.appendChild(p);
+}
+function renderChips(){
+  $('presets').innerHTML='';PRESETS.forEach(([x,y])=>chip(x,y,100,$('presets')));
+  const g=$('gens');g.innerHTML='';
+  if(made.length){const l=document.createElement('span');l.textContent='つくった もんだい：';g.appendChild(l);made.forEach(([x,y,u])=>chip(x,y,u,g))}
+}
+function setProblem(a,b,u){
+  if(u)U=u;
+  const a0=a|0,b0=b|0;let msg='';
+  A=Math.max(1,Math.min(60,a0));B=Math.max(1,Math.min(9,b0));
+  if(a0>60||a0<1)msg+='わられる数は 1～60こに しました。';
+  if(b0>9||b0<1)msg+='わる数は 1～9こに しました。';
+  if(B>A){B=A;msg+='わる数が 大きすぎたので '+B+'こに しました。'}
+  $('warn').textContent=msg;
+  $('ia').value=A;$('ib').value=B;$('iu').value=U;$('ul').textContent=U;step=0;prevStep=0;makeTiles(A);
+  renderChips();
+  render();
+  if(started){sfxPop();speakJa(lastNarr)}
+}
+
+function hisanHTML(stage,P){
+  const z=zeros(),q=P.q,r=P.r,n=A*U,m=B*U,N=String(n),Dv=String(m),a=String(A),L=a.length,mL=Dv.length,c0=mL+2;
+  const dd=[...a].map(Number),cells=[],qd=[],rows=[];let cur=0,started=false;
+  for(let i=0;i<L;i++){                       // 0を消したあとの A÷B の筆算
+    cur=cur*10+dd[i];const d=Math.floor(cur/B);
+    if(d>0||started){started=true;qd.push([i,d]);const pr=d*B,rem=cur-pr,lc=i===L-1,rv=lc?rem:rem*10+dd[i+1];
+      rows.push({col:i,txt:String(pr),line:true});rows.push({col:lc?i:i+1,txt:String(rv)});cur=rem}
+  }
+  const put=(row,col,ch,cls,sty)=>cells.push(`<div class="hc ${cls||''}" style="grid-row:${row};grid-column:${col};${sty||''}">${ch}</div>`);
+  const cc=stage===1?'cut':'xs';let ci=0;
+  [...Dv].forEach((ch,j)=>{const x=j>=mL-z;put(2,1+j,ch,x?cc:'',x?`--d:${(.2+ci++*.12).toFixed(2)}s`:'')});
+  put(2,mL+1,')','par');
+  [...N].forEach((ch,j)=>{const x=j>=L;put(2,c0+j,ch,'ov'+(x?' '+cc:''),x?`--d:${(.2+ci++*.12).toFixed(2)}s`:'')});
+  if(stage>=2){
+    qd.forEach(([i,d])=>put(1,c0+i,d,'qd'));
+    rows.forEach((rw,ri)=>[...rw.txt].forEach((ch,j)=>put(3+ri,c0+rw.col-rw.txt.length+1+j,ch,(rw.line?'pl':'')+(ri===rows.length-1?' fr':''))));
+    if(stage>=3&&r)for(let j=0;j<z;j++)put(3+rows.length-1,c0+L+j,'0','zadd');
+  }
+  let cap='';
+  if(stage===1)cap='';
+  else if(stage===2)cap=r?'':`<b>${n}÷${m}＝${q}</b>`;
+  else cap=`<b>${n}÷${m}＝${q} あまり ${r*U}</b>`;
+  return `<div class="hwrap"><div class="hisan" role="img" aria-label="${n}わる${m}の ひっ算" style="grid-template-columns:repeat(${mL},var(--cell)) calc(var(--cell)*.65) repeat(${N.length},var(--cell))">${cells.join('')}</div>${cap?`<div class="hcap">${cap}</div>`:''}</div>`;
+}
+
+function render(fx){
+  const P=plan(),q=P.q,r=P.r,last=P.last,inH=step>=P.h1,z=zeros();
+  const n=A*U,m=B*U;
+  $('expr').innerHTML=n+' ÷ '+m+'<small>'+U+'が'+A+'こ ÷ '+U+'が'+B+'こ</small>';
+  const board=$('board');
+  const before=tiles.map(t=>t.isConnected&&t.offsetWidth?t.getBoundingClientRect():null);
+  tiles.forEach(t=>t.getAnimations().forEach(a=>a.cancel()));   // 連打で アニメーションが かさならないように
+  board.innerHTML='';
+  const fwd=step>prevStep;prevStep=step;
+  const simple=step===q+2;           // 100を「1こ」と見る
+  const groups=Math.min(step,q);
+  tiles.forEach(t=>{t.textContent=simple?'1':''+U;t.className='tile'+(simple?' one':'')});
+  let idx=0;const boxes=[];
+  for(let i=0;i<groups;i++){
+    const g=group('grp'+(i===step-1&&step<=q?' new':''),tiles.slice(idx,idx+B));idx+=B;
+    board.appendChild(g);
+    if(fwd&&i===step-1&&step<=q)boxes.push([g,'transparent']);
+  }
+  const looseN=A-groups*B;
+  if(step>=q+1){
+    if(looseN>0){const g=group('rem',tiles.slice(idx));board.appendChild(g);
+      if(fwd&&step===q+1)boxes.push([g,'transparent']);}
+  }else tiles.slice(idx).forEach(t=>board.appendChild(t));
+  board.style.display=inH?'none':'';
+  board.setAttribute('role','img');
+  board.setAttribute('aria-label',`${U}のブロック ${A}こ`+(groups?`。${m}ずつ ${groups}つの かたまり`:'')+(step>=q+1&&looseN>0?`。のこり ${looseN}こ`:''));
+  // ブロックが元の位置から動くアニメーション(FLIP)
+  let k=0;
+  if(!REDUCE){
+    tiles.forEach((t,i)=>{
+      const b=before[i];if(!b||!t.offsetWidth)return;
+      const a=t.getBoundingClientRect();
+      const dx=b.left-a.left,dy=b.top-a.top;
+      if(Math.abs(dx)+Math.abs(dy)<2)return;
+      t.animate([{transform:`translate(${dx}px,${dy}px)`,zIndex:5,position:'relative'},{transform:'none',zIndex:5,position:'relative'}],
+        {duration:750,delay:Math.min(k*45,400),easing:'ease-in-out',fill:'backwards'});
+      k++;
+    });
+    // 囲みの線は、ブロックが着いたあとに あらわれる
+    boxes.forEach(([g])=>g.animate([{borderColor:'transparent',backgroundColor:'transparent'},{}],
+      {duration:350,delay:k?Math.min((k-1)*45,400)+750:0,fill:'backwards'}));
+  }
+
+  if(fx)sfxStep(step,P,fwd,k);
+
+  // せつめい
+  let s='';
+  if(step===0)s=`<b>${n}</b>は、${U}が<b>${A}こ</b>あつまった数です。${U}のかたまりを ならべました。`;
+  else if(step<=q)s=`${U}が${B}こで <b>${m}</b>。てんせんで かこみます。<b>${step}回め</b>。`+(step===1?`（${m}が とれた回数が しょうです）`:'');
+  else if(step===q+1)s=r===0?`ちょうど わりきれました。${m}が <b>${q}回</b>とれて、あまりは 0 です。`:`もう ${m}は とれません。のこった ${U}が <b>${r}こ</b> ＝ <b>${r*U}</b>。これが あまりです。`;
+  else if(step===q+2)s=`こんどは <b>${U}を「1こ」</b>と見てみよう。かたまりの かずだけを 数えれば、<b>${A}÷${B}</b> の 計算だね。しょうは 同じ <b>${q}</b>！`+(r===0?'あまりは どちらも 0 だね。':'');
+  else if(step===P.restore)s=`あまりの <b>${r}</b>は、${U}が${r}こ という ことだから、もとの 数に もどして <b>${r*U}</b>。`;
+  else if(step===P.h1)s=`これまでの 計算を <b>筆算</b>で 書いてみよう。わられる数と わる数の <b>同じ数の 0</b>を けします（${z}こずつ）。`;
+  else if(step===P.h2)s=`のこった <b>${A}÷${B}</b> を 筆算で 計算します。しょうは <b>${q}</b>、あまりは <b>${r}</b>。`+(r?'':`<b>${n}÷${m}＝${q}</b> です。`);
+  else s=`けした 0と <b>同じ数だけ、あまりに 0を つける</b>。あまり <b>${r}</b> → <b>${r*U}</b>。`;
+  $('say').innerHTML=s;
+  lastNarr=narr(step,P,n,m);
+  if(fx)speakJa(lastNarr);
+
+  // しき
+  const ans=(qq,rr)=>rr?`${qq} あまり ${rr}`:`${qq}`;
+  let e1='';
+  if(step>=q+1)e1=`${n} ÷ ${m} = ${ans(q,r*U)}<span>けん算：${m}×${q}${r?'＋'+r*U:''}＝${m*q+r*U}</span>`;
+  $('eq1').innerHTML=e1;
+  $('eq1').classList.toggle('hi',step===last);
+  const showLadder=step>=q+2&&!inH;
+  document.querySelector('.eqs').style.display=(showLadder||inH||!e1)?'none':'';
+  $('ladderbox').style.display=showLadder?'block':'none';
+  if(showLadder){
+    const T=(t,c)=>`<div class="lc ${c||''}">${t}</div>`;
+    const ar=`<div class="ar"><span class="dn">↓ ÷${U}</span><span class="up">↑ ×${U}</span></div>`;
+    const full=!r||step===P.restore;
+    let r1=T(n,'num')+T('÷','op')+T(m,'num')+T('＝','op')+T(q,'q');
+    let r2=ar+T('')+ar+T('')+'<div class="same">同じ</div>';
+    let r3=T(A)+T('÷','op')+T(B)+T('＝','op')+T(q,'q');
+    if(r){
+      r1+=T('あまり','op')+T(full?r*U:'？','rm');
+      r2+=T('')+(full?ar:T(''));
+      r3+=T('あまり','op')+T(r,'rm');
+    }
+    let cap=`<b>わり算の せいしつ</b>：わられる数と わる数を 同じ数で わっても、同じ数を かけても、<b>商は 変わらない</b>。`;
+    if(full&&r)cap+=`<br>でも <b>あまりは 変わる</b>。÷${U}した 数だから、もとの 数に もどすには ×${U}。（けん算：${m}×${q}＋${r*U}＝${n}）`;
+    if(full&&!r)cap+=`<br>この問題は あまりが 0 なので、もどす ものは ありません。（けん算：${m}×${q}＝${n}）`;
+    $('ladderbox').innerHTML=`<div class="ladder" style="grid-template-columns:repeat(${r?7:5},auto)">${r1}${r2}${r3}<div class="cap">${cap}</div></div>`;
+  }
+
+  $('hisanbox').style.display=inH?'block':'none';
+  if(inH)$('hisanbox').innerHTML=hisanHTML(step===P.h1?1:step===P.h2?2:3,P);
+  $('nextq').className=step===last?'':'sub';
+  $('prev').disabled=step===0;
+$('next').disabled=step===last;
+}
+$('next').onclick=()=>{if(step<lastStep()){step++;render(true)}};
+$('prev').onclick=()=>{if(step>0){step--;render(true)}};
+$('reset').onclick=()=>{step=0;render(true)};
+['ia','ib'].forEach(id=>$(id).onchange=()=>setProblem(+$('ia').value,+$('ib').value));
+$('iu').onchange=()=>setProblem(+$('ia').value,+$('ib').value,+$('iu').value);
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const num=(id,lo,hi)=>Math.max(lo,Math.min(hi,parseInt($(id).value)||lo));
+function makeProblems(){
+  const u=+$('gu').value,mode=$('gr').value,cnt=num('gn',1,10);
+  let b1=num('gbmin',1,9),b2=num('gbmax',1,9),q1=num('gqmin',1,9),q2=num('gqmax',1,9);
+  if(b1>b2)[b1,b2]=[b2,b1];if(q1>q2)[q1,q2]=[q2,q1];
+  const out=[],seen=new Set();
+  for(let t=0;t<400&&out.length<cnt;t++){
+    const b=ri(b1,b2),q=ri(q1,q2);let r;
+    if(mode==='no')r=0;else if(mode==='yes'){if(b<2)continue;r=ri(1,b-1)}else r=ri(0,b-1);
+    const a=b*q+r;if(a>60||a<b||seen.has(a+'/'+b))continue;
+    seen.add(a+'/'+b);out.push([a,b,u]);
+  }
+  made=out;
+  const host=$('gout');host.innerHTML='';
+  if(!out.length){host.textContent='この条件では つくれません。しょうや わる数の はんいを ちいさくしてください。';return}
+  out.forEach(([x,y,uu])=>chip(x,y,uu,host));
+  if(out.length<cnt){const n=document.createElement('div');n.textContent='（条件に合う問題が '+out.length+'こ しか つくれませんでした）';host.appendChild(n)}
+  renderChips();
+}
+$('genbtn').onclick=()=>$('gen').showModal();
+$('gcl').onclick=()=>$('gen').close();
+$('gmk').onclick=makeProblems;
+$('fxbtn').onclick=()=>{fxOn=!fxOn;try{localStorage.setItem('wzk_fx',fxOn?'1':'0')}catch(e){}syncTools();initAudio();if(master)master.gain.value=fxOn?.6:0;if(fxOn)sfxPop()};
+$('vobtn').onclick=()=>{voOn=!voOn;try{localStorage.setItem('wzk_vo',voOn?'1':'0')}catch(e){}syncTools();if(!voOn){spTok++;try{speechSynthesis.cancel()}catch(e){}}else speakJa(lastNarr)};
+$('replay').onclick=()=>{const v=voOn;voOn=true;speakJa(lastNarr);voOn=v};
+function nextProblem(){
+  const list=made.length?made:PRESETS.map(([x,y])=>[x,y,100]);
+  const i=list.findIndex(([x,y,u])=>x===A&&y===B&&u===U),[x,y,u]=list[(i+1)%list.length];
+  setProblem(x,y,u);
+}
+$('nextq').onclick=()=>nextProblem();
+$('gen').addEventListener('click',e=>{const r=$('gen').getBoundingClientRect();     // 窓の外側(暗い所)を押したら閉じる
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('gen').close()});
+document.addEventListener('keydown',e=>{                                        // 矢印キー・PageUp/Down(プレゼンリモコン)で進む
+  if(document.querySelector('dialog[open]')||/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();if(!$('next').disabled)$('next').click()}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();if(!$('prev').disabled)$('prev').click()}
+});
+syncTools();
+setProblem(24,7);
+</script>
+</body>
+</html>
