@@ -3042,9 +3042,13 @@ body.modal-open{overflow:hidden;}
                 <g id="countLabelsGroup"></g>
                 <circle id="startMarker" cx="0" cy="0" r="7" fill="rgba(69,123,157,0.5)" stroke="#fff" stroke-width="2" visibility="hidden"/>
                 <circle id="endMarker" cx="0" cy="0" r="7" fill="#e63946" stroke="#fff" stroke-width="2" visibility="hidden"/>
+                <g id="mainStartHandsGroup" pointer-events="none" opacity="0" aria-hidden="true">
+                  <g id="mainStartMinuteHand" data-fill="rgba(69,123,157,0.42)" data-stroke="rgba(255,255,255,0.78)"></g>
+                  <g id="mainStartHourHand" data-fill="rgba(44,76,107,0.38)" data-stroke="rgba(255,255,255,0.78)"></g>
+                </g>
                 <g id="mainHandsGroup">
-                  <g id="mainMinuteHand" data-fill="#ff7b42" data-stroke="#ffffff"></g>
-                  <g id="mainHourHand" data-fill="#c9631f" data-stroke="#ffffff"></g>
+                  <g id="mainMinuteHand" data-fill="#457b9d" data-stroke="#ffffff"></g>
+                  <g id="mainHourHand" data-fill="#2c4c6b" data-stroke="#ffffff"></g>
                 </g>
                 <circle class="clock-center-outer" cx="250" cy="250" r="10" fill="#4a3728"/>
                 <circle class="clock-center-inner" cx="250" cy="250" r="5" fill="#fdfaf5"/>
@@ -4855,6 +4859,9 @@ body.modal-open{overflow:hidden;}
     const endHitHour = document.getElementById('endHitHour');
     const mainMinuteHand = document.getElementById('mainMinuteHand');
     const mainHourHand = document.getElementById('mainHourHand');
+    const mainStartHandsGroup = document.getElementById('mainStartHandsGroup');
+    const mainStartMinuteHand = document.getElementById('mainStartMinuteHand');
+    const mainStartHourHand = document.getElementById('mainStartHourHand');
 
     const startHandsGroup = document.getElementById('startHandsGroup');
     const endHandsGroup = document.getElementById('endHandsGroup');
@@ -5122,7 +5129,19 @@ body.modal-open{overflow:hidden;}
         h = Math.floor(ctE/60)%12; m = ctE%60;
         abs24 = (ctE%1440)/60;
       }
+      setHandPair(mainStartHourHand, mainStartMinuteHand, null, null, startHour12, startMinute, HOUR_HAND_LEN, MINUTE_HAND_LEN, HOUR_BASE_W, MINUTE_BASE_W);
+      mainStartHandsGroup.setAttribute('opacity', (isAnimating || elapsedForHands>0) ? '1' : '0');
       setHandPair(mainHourHand, mainMinuteHand, null, null, h, m, HOUR_HAND_LEN, MINUTE_HAND_LEN, HOUR_BASE_W, MINUTE_BASE_W);
+      const progress = totalMinutes>0 && elapsedForHands!==null && elapsedForHands!==undefined
+        ? Math.max(0,Math.min(1,elapsedForHands/totalMinutes)) : 0;
+      const mix=(from,to)=>Math.round(from+(to-from)*progress);
+      const movingBlue={r:69,g:123,b:157}, movingRed={r:230,g:57,b:70};
+      const minuteColor=`rgb(${mix(movingBlue.r,movingRed.r)},${mix(movingBlue.g,movingRed.g)},${mix(movingBlue.b,movingRed.b)})`;
+      const hourColor=`rgb(${mix(44,160)},${mix(76,40)},${mix(107,55)})`;
+      mainMinuteHand.dataset.fill=minuteColor;
+      mainHourHand.dataset.fill=hourColor;
+      buildHandShapeMarkup(mainHourHand, hourMinuteToAngleDeg(h,m), HOUR_HAND_LEN, HOUR_BASE_W/2);
+      buildHandShapeMarkup(mainMinuteHand, minuteToAngleDeg(m), MINUTE_HAND_LEN, MINUTE_BASE_W/2);
       Sky.update(abs24);
       mainTimeDisplay.textContent = formatCanonicalAmPm(Math.round(abs24*60));
     }
