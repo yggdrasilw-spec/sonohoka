@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>つなぎ言葉であそぼう</title>
+<style>
+:root{--bg:#eaf3e6;--paper:#fff;--ink:#24312a;--green:#2f7d4f;--green-d:#1f5c38;--leaf:#cfe6d0;--orange:#e8833a;--red:#c0392b;--ok:#dff3e3;--ng:#fbe3df;--line:#b9d3bd}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic","UD デジタル 教科書体 N-R","Hiragino Sans","Meiryo",sans-serif;font-size:20px;line-height:1.7}
+#app{max-width:860px;margin:0 auto;padding:16px 16px 40px}
+h1{font-size:30px;margin:8px 0 4px;color:var(--green-d)}
+.sub{margin:0 0 20px;color:#4b5f52;font-size:18px}
+.menu{display:grid;gap:12px}
+.mbtn{display:block;width:100%;text-align:left;background:var(--paper);border:3px solid var(--line);border-radius:16px;padding:14px 18px;font:inherit;color:inherit;cursor:pointer}
+.mbtn:hover,.mbtn:focus-visible{border-color:var(--green);outline:none}
+.mbtn b{display:block;font-size:22px;color:var(--green-d)}
+.mbtn span{font-size:17px;color:#4b5f52}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:18px}
+.bar{height:10px;background:var(--leaf);border-radius:6px;overflow:hidden;flex:1;margin:0 14px}
+.bar i{display:block;height:100%;background:var(--green);width:0;transition:width .3s}
+.link{background:none;border:0;font:inherit;color:var(--green-d);text-decoration:underline;cursor:pointer;padding:4px}
+.card{background:var(--paper);border:3px solid var(--line);border-radius:18px;padding:18px 20px;margin-bottom:16px}
+.q{font-size:21px;font-weight:bold;margin:0 0 10px;color:var(--green-d)}
+.box{border:3px solid var(--green);border-radius:10px;padding:12px 16px;font-size:24px;line-height:1.9;background:#fbfffb}
+.blank{display:inline-block;min-width:3.4em;border-bottom:3px solid var(--orange);text-align:center;color:var(--orange)}
+.hint{font-size:17px;color:#4b5f52;margin:10px 0 0}
+.opts{display:grid;gap:10px;margin-top:12px}
+.opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--paper);border:3px solid var(--line);border-radius:14px;padding:12px 14px;font:inherit;font-size:22px;color:inherit;cursor:pointer}
+.opt .ck{flex:none;width:28px;height:28px;margin-top:5px;border:3px solid var(--green);border-radius:7px;background:#fff;display:grid;place-items:center;font-size:20px;line-height:1;color:#fff}
+.opt.sel{border-color:var(--green);background:#f1f9f2}
+.opt.sel .ck{background:var(--green)}
+.opt.sel .ck::after{content:"✓"}
+.opt:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.opt.ok{background:var(--ok);border-color:var(--green)}
+.opt.ng{background:var(--ng);border-color:var(--red)}
+.opt .note{display:block;font-size:16px;color:#4b5f52;margin-top:2px}
+.opt .mk{font-weight:bold;margin-right:4px}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.btn{font:inherit;font-size:22px;font-weight:bold;background:var(--green);color:#fff;border:0;border-radius:14px;padding:12px 28px;cursor:pointer;min-height:52px}
+.btn:disabled{background:#9db8a5;cursor:not-allowed}
+.btn.sub2{background:#fff;color:var(--green-d);border:3px solid var(--green)}
+.btn:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.fb{border-radius:14px;padding:12px 16px;margin-top:14px;font-size:19px}
+.fb.good{background:var(--ok)}.fb.bad{background:#fff3e0}
+.fb h3{margin:0 0 4px;font-size:22px}
+.point{border:3px solid var(--orange);border-radius:12px;padding:10px 14px;margin-top:10px;background:#fffaf2;font-size:18px}
+.big{font-size:56px;font-weight:bold;color:var(--green-d);margin:0}
+#set{max-width:860px;margin:0 auto;padding:12px 16px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.tg{font:inherit;font-size:16px;font-weight:bold;border:3px solid var(--line);background:#fff;color:#7a8a80;border-radius:999px;padding:4px 14px;cursor:pointer;min-height:40px}
+.tg.on{border-color:var(--green);background:var(--leaf);color:var(--green-d)}
+.tg:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.btn.small{font-size:18px;padding:6px 16px;min-height:42px}
+@media(max-width:560px){body{font-size:18px}.box{font-size:21px}.opt{font-size:20px}}
+@media(prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div id="set"></div>
+<div id="app"></div>
+<script>
+// ===== データ =====
+const REL={
+  cause:{name:'りゆう → けっか（順接）',
+    exp:'前の文が、後ろの文の「理由・原因」になっているよ。前の文から思いつく内容につながるので、順接というよ。',
+    join:[{t:'ので',n:'前の内容が理由になるときに使うよ'},{t:'から',n:'前の内容が理由になるときに使うよ'},{t:'ため',n:'前の内容が原因になるときに使うよ'}],
+    sent:[{t:'そのため',n:'前の文が理由になるときに使うよ'},{t:'だから',n:'前の文が理由になるときに使うよ'},{t:'それで',n:'前の文が理由になるときに使うよ'}]},
+  contrast:{name:'はんたいの内容（逆接）',
+    exp:'前の文から思いつく内容と、反対のことが後ろの文に来ているよ。こういうつなぎ方を逆接というよ。',
+    join:[{t:'けれど',n:'反対の内容をつなぐ言葉だよ'},{t:'けれども',n:'反対の内容をつなぐ言葉だよ'},{t:'が',n:'反対の内容をつなぐ言葉だよ'},{t:'のに',n:'思ったことと反対になるときに使うよ'}],
+    sent:[{t:'しかし',n:'反対の内容が来るときに使うよ'},{t:'でも',n:'反対の内容が来るときに使うよ'},{t:'けれども',n:'反対の内容が来るときに使うよ'},{t:'ところが',n:'思いがけない反対の内容が来るときに使うよ'}]},
+  add:{name:'ならべる・つけたす',
+    exp:'同じようなことをならべたり、あとからつけたしたりしているよ。',
+    join:[{t:'し',n:'同じようなことをならべるときに使うよ'},{t:'うえに',n:'つけたすときに使うよ'},{t:'だけでなく',n:'つけたすときに使うよ'}],
+    sent:[{t:'そして',n:'ならべるときに使うよ'},{t:'それに',n:'つけたすときに使うよ'},{t:'そのうえ',n:'つけたすときに使うよ'},{t:'また',n:'ならべるときに使うよ'}]}
+};
+// [前の文, 後ろの文]（文末は「た」、句点なし）
+const ITEMS=[
+ ['cause','昨日は雨がふった','登山は中止になった'],
+ ['cause','朝ねぼうをした','学校におくれた'],
+ ['cause','夕べおそくまでおきていた','今日はとてもねむかった'],
+ ['cause','毎日れんしゅうした','さか上がりができるようになった'],
+ ['cause','風がとても強かった','せんたくものがとばされた'],
+ ['cause','しゅくだいをわすれた','先生に注意された'],
+ ['cause','給食をたくさん食べた','おなかがいっぱいになった'],
+ ['cause','大きな地しんがあった','電車が止まった'],
+ ['cause','水やりをわすれた','花がかれた'],
+ ['cause','道にまよった','やくそくの時間におくれた'],
+ ['contrast','朝から雨がふった','運動会は行われた'],
+ ['contrast','一生けんめい走った','一番にはなれなかった'],
+ ['contrast','昨日はたくさんねた','今日もねむかった'],
+ ['contrast','家を早く出た','学校に間に合わなかった'],
+ ['contrast','その店はねだんが高かった','とても人気があった'],
+ ['contrast','早くおきようと思った','ついねぼうしてしまった'],
+ ['contrast','何度もれんしゅうした','うまくできなかった'],
+ ['contrast','空はくもっていた','雨はふらなかった'],
+ ['contrast','この本はむずかしかった','とてもおもしろかった'],
+ ['contrast','弟はまだ小さかった','重い荷物を持ってくれた'],
+ ['add','この公園は広かった','遊具もたくさんあった'],
+ ['add','母は料理がじょうずだった','歌もじょうずだった'],
+ ['add','教室はあたたかかった','明るかった'],
+ ['add','今日の給食はおいしかった','量もちょうどよかった'],
+ ['add','兄はやさしかった','勉強も教えてくれた'],
+ ['add','公園で友だちと遊んだ','図書館で本もかりた'],
+ ['add','この町は海が近かった','山も近かった'],
+ ['add','夏休みは海に行った','お祭りにも行った']
+];
+const MODES={
+  join:{label:'2つの文を、1つにつなげよう',desc:'2つの文をつなぐ、正しい言い方をえらぶよ'},
+  split:{label:'1つの文を、2つにわけよう',desc:'同じ意味になる、2つの文をえらぶよ'},
+  fill:{label:'つなぎ言葉をえらぼう',desc:'（　）に入る言葉をえらぶよ'},
+  mix:{label:'ぜんぶまぜて10問',desc:'3つのタイプがまざって出るよ'}
+};
+const N=10;
+
+// ===== ユーティリティ =====
+const rnd=n=>Math.floor(Math.random()*n);
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const joinS=(a,c,b)=>a+c+'、'+b+'。';
+const splitS=(a,c,b)=>a+'。'+c+'、'+b+'。';
+
+// ===== 問題生成 =====
+function makeProblem(mode,it){
+  const [rel,s1,s2]=it;
+  const kind=mode==='split'?'sent':mode==='join'?'join':'sent';
+  const build=mode==='join'?joinS:splitS;
+  const nOk=1+rnd(2);
+  const oks=shuffle(REL[rel][kind]).slice(0,nOk).map(c=>({text:mode==='fill'?c.t:build(s1,c.t,s2),ok:true,note:'「'+c.t+'」：'+c.n}));
+  const wrongs=[];
+  if(rel==='cause'&&mode!=='fill'){
+    const c=shuffle(REL.cause[kind])[0];
+    wrongs.push({text:build(s2,c.t,s1),ok:false,note:'文の順番がぎゃくだよ。理由と結果が入れかわってしまうね'});
+  }
+  const others=shuffle(Object.keys(REL).filter(r=>r!==rel));
+  const pool=[];
+  others.forEach(r=>{const c=shuffle(REL[r][kind]).find(c=>!REL[rel][kind].some(x=>x.t===c.t));if(c)pool.push([c,r])});
+  others.forEach(r=>shuffle(REL[r][kind]).forEach(c=>{if(!REL[rel][kind].some(x=>x.t===c.t)&&!pool.some(p=>p[0].t===c.t))pool.push([c,r])}));
+  for(const [c,r] of pool){
+    if(wrongs.length>=4-nOk)break;
+    wrongs.push({text:mode==='fill'?c.t:build(s1,c.t,s2),ok:false,note:'「'+c.t+'」：'+c.n+'。この2つの文には合わないよ'});
+  }
+  let shown;
+  if(mode==='join')shown=`${s1}。<br>${s2}。`;
+  else if(mode==='split'){const c=shuffle(REL[rel].join)[0];shown=joinS(s1,c.t,s2)}
+  else shown=`${s1}。<br><span class="blank">　</span>、${s2}。`;
+  const say=mode==='join'?`${s1}。 ${s2}。`:mode==='split'?shown:`${s1}。 なにが入るかな。 ${s2}。`;
+  return{mode,rel,shown,say,opts:shuffle(oks.concat(wrongs)),nOk};
+}
+function makeRound(mode){
+  return shuffle(ITEMS).slice(0,N).map((it,i)=>{
+    const m=mode==='mix'?['join','split','fill'][i%3]:mode;
+    return makeProblem(m,it);
+  }).sort(()=>Math.random()-.5);
+}
+
+// ===== 効果音・読み上げ =====
+const PREF={se:true,voice:true};
+try{const s=JSON.parse(localStorage.getItem('setsuzoku_pref')||'null');if(s){PREF.se=s.se!==false;PREF.voice=s.voice!==false}}catch(e){}
+const savePref=()=>{try{localStorage.setItem('setsuzoku_pref',JSON.stringify(PREF))}catch(e){}};
+let AC=null;
+function ac(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}return AC}
+function tone(f,t0,d,type,v){
+  const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0;
+  o.type=type||'triangle';o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(v||.18,t+.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  o.connect(g);g.connect(c.destination);
+  o.start(t);o.stop(t+d+.05);
+}
+const SE={
+  tap(){tone(660,0,.08,'triangle',.12)},
+  next(){tone(784,0,.07,'triangle',.1);tone(988,.07,.1,'triangle',.1)},
+  ok(){[523.25,659.25,783.99,1046.5].forEach((f,i)=>{tone(f,i*.1,.35,'triangle',.2);tone(f*2,i*.1,.25,'sine',.05)})},
+  ng(){tone(392,0,.22,'sine',.18);tone(311.13,.2,.4,'sine',.18)},
+  fan(){[523.25,659.25,783.99,659.25,783.99,1046.5].forEach((f,i)=>tone(f,i*.13,.4,'triangle',.2));tone(1318.5,.85,.7,'triangle',.18)}
+};
+const se=n=>{if(PREF.se)try{SE[n]()}catch(e){}};
+// 読み上げ用：読みが揺れそうな語をひらがなにする
+const YOMI=[
+['1つ','ひとつ'],['2つ','ふたつ'],
+['行われた','おこなわれた'],['行った','いった'],['一生けんめい','いっしょうけんめい'],['一番','いちばん'],['一度','いちど'],
+['昨日','きのう'],['今日','きょう'],['毎日','まいにち'],['夕べ','ゆうべ'],['朝','あさ'],['雨','あめ'],['風','かぜ'],
+['登山','とざん'],['中止','ちゅうし'],['学校','がっこう'],['先生','せんせい'],['注意','ちゅうい'],['給食','きゅうしょく'],
+['食べた','たべた'],['地しん','じしん'],['大きな','おおきな'],['電車','でんしゃ'],['止まった','とまった'],['水','みず'],['花','はな'],
+['道','みち'],['時間','じかん'],['運動会','うんどうかい'],['走った','はしった'],['家','いえ'],['早く','はやく'],['出た','でた'],
+['間に合わなかった','まにあわなかった'],['店','みせ'],['高かった','たかかった'],['人気','にんき'],['思いつく','おもいつく'],['思った','おもった'],
+['何度も','なんども'],['空','そら'],['本','ほん'],['弟','おとうと'],['小さかった','ちいさかった'],['重い','おもい'],['荷物','にもつ'],['持って','もって'],
+['公園','こうえん'],['広かった','ひろかった'],['遊具','ゆうぐ'],['母','はは'],['料理','りょうり'],['歌','うた'],['教室','きょうしつ'],
+['明るかった','あかるかった'],['量','りょう'],['兄','あに'],['勉強','べんきょう'],['教えて','おしえて'],['友だち','ともだち'],['遊んだ','あそんだ'],
+['図書館','としょかん'],['町','まち'],['海','うみ'],['近かった','ちかかった'],['山','やま'],['夏休み','なつやすみ'],['お祭り','おまつり'],
+['強かった','つよかった'],['上がり','あがり'],['つなぎ方','つなぎかた'],
+['言葉','ことば'],['名人','めいじん'],['同じ','おなじ'],['意味','いみ'],['関係','かんけい'],['考えて','かんがえて'],['内容','ないよう'],
+['順接','じゅんせつ'],['逆接','ぎゃくせつ'],['反対','はんたい'],['理由','りゆう'],['原因','げんいん'],['後ろ','うしろ'],['来て','きて'],['入る','はいる'],
+['前','まえ'],['文','ぶん']
+].sort((a,b)=>b[0].length-a[0].length);
+const yomi=t=>{for(const [a,b] of YOMI)t=t.split(a).join(b);return t};
+const NK=['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう','じゅう'];
+let JV=null,TM=null;
+function pickVoice(){try{JV=speechSynthesis.getVoices().find(v=>/^ja/i.test(v.lang))||null}catch(e){}}
+if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=pickVoice;
+function stopSay(){clearTimeout(TM);try{speechSynthesis.cancel()}catch(e){}}
+function speak(text){
+  stopSay();
+  if(!PREF.voice||!('speechSynthesis' in window))return;
+  const u=new SpeechSynthesisUtterance(yomi(text));
+  u.lang='ja-JP';u.rate=.9;
+  if(!JV)pickVoice();
+  if(JV)u.voice=JV;
+  speechSynthesis.speak(u);
+}
+function speakLater(text,ms){stopSay();TM=setTimeout(()=>speak(text),ms)}
+function renderSet(){
+  const el=document.getElementById('set');
+  el.innerHTML=`<button class="tg ${PREF.se?'on':''}" id="tse" aria-pressed="${PREF.se}">🔊 こうかおん ${PREF.se?'ON':'OFF'}</button><button class="tg ${PREF.voice?'on':''}" id="tvo" aria-pressed="${PREF.voice}">🗣 よみあげ ${PREF.voice?'ON':'OFF'}</button>`;
+  document.getElementById('tse').onclick=()=>{PREF.se=!PREF.se;savePref();renderSet();if(PREF.se)SE.tap()};
+  document.getElementById('tvo').onclick=()=>{PREF.voice=!PREF.voice;savePref();renderSet();if(PREF.voice)speak('よみあげを オンに しました');else stopSay()};
+  const r=document.getElementById('rd');if(r)r.style.display=PREF.voice?'':'none';
+}
+
+// ===== 画面 =====
+const app=document.getElementById('app');
+let S={};
+function menu(){
+  stopSay();
+  app.innerHTML=`<h1>つなぎ言葉であそぼう</h1>
+  <p class="sub">文と文の関係を考えて、つなぎ言葉をえらぼう。ただしい答えは、1つとはかぎらないよ。</p>
+  <div class="menu">${Object.entries(MODES).map(([k,m])=>`<button class="mbtn" data-m="${k}"><b>${m.label}</b><span>${m.desc}</span></button>`).join('')}</div>`;
+  app.querySelectorAll('.mbtn').forEach(b=>b.onclick=()=>start(b.dataset.m));
+}
+function start(mode){se('next');S={mode,probs:makeRound(mode),i:0,score:0,sel:new Set(),done:false};show()}
+function show(){
+  const p=S.probs[S.i];
+  const q={join:'2つの文を、1つの文につなげよう。',split:'この文と同じ意味になるように、2つの文にわけよう。',fill:'（　）に入る つなぎ言葉は どれかな？'}[p.mode];
+  app.innerHTML=`<div class="top"><button class="link" id="home">← もどる</button><div class="bar"><i style="width:${S.i/N*100}%"></i></div><span>${S.i+1} / ${N}</span></div>
+  <div class="card"><p class="q">${q}</p><div class="box">${p.mode==='split'?esc(p.shown):p.shown}</div>
+  <p class="hint">ただしいものを <b>${p.nOk}こ</b> えらぼう　<button class="btn sub2 small" id="rd">🔈 もんだいを よむ</button></p>
+  <div class="opts" id="opts">${p.opts.map((o,k)=>`<button class="opt" data-k="${k}" aria-pressed="false"><span class="ck"></span><span class="tx">${esc(o.text)}</span></button>`).join('')}</div>
+  <div id="fb"></div>
+  <div class="row"><button class="btn" id="go" disabled>こたえあわせ</button></div></div>`;
+  document.getElementById('home').onclick=()=>{stopSay();menu()};
+  const L=['ひとつめ','ふたつめ','みっつめ','よっつめ'];
+  document.getElementById('rd').onclick=()=>speak(q+' '+p.say+' えらぶものは、'+p.opts.map((o,k)=>L[k]+'、'+o.text).join(' '));
+  renderSet();
+  speakLater(q+' '+p.say,350);
+  const go=document.getElementById('go');
+  document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+    if(S.done)return;
+    const k=+b.dataset.k;
+    se('tap');
+    S.sel.has(k)?S.sel.delete(k):S.sel.add(k);
+    b.classList.toggle('sel',S.sel.has(k));b.setAttribute('aria-pressed',S.sel.has(k));
+    go.disabled=S.sel.size===0;
+  });
+  go.onclick=check;
+}
+function check(){
+  const p=S.probs[S.i];S.done=true;
+  const right=p.opts.every((o,k)=>o.ok===S.sel.has(k));
+  if(right)S.score++;
+  se(right?'ok':'ng');
+  const oksTxt=p.opts.filter(o=>o.ok).map(o=>o.text).join('。 または、');
+  speakLater((right?'せいかい！ ':'おしい！ ただしいのは、'+oksTxt+'。 ')+REL[p.rel].exp,right?1000:700);
+  document.querySelectorAll('.opt').forEach((b,k)=>{
+    const o=p.opts[k];
+    b.classList.remove('sel');
+    if(o.ok)b.classList.add('ok');else if(S.sel.has(k))b.classList.add('ng');
+    b.querySelector('.ck').outerHTML=`<span class="mk">${o.ok?'○':(S.sel.has(k)?'×':'')}</span>`;
+    b.querySelector('.tx').insertAdjacentHTML('beforeend',`<span class="note">${esc(o.note)}</span>`);
+    b.disabled=true;
+  });
+  document.getElementById('fb').innerHTML=`<div class="fb ${right?'good':'bad'}"><h3>${right?'せいかい！':'おしい！'}</h3>${right?'':'○がついているのが ただしい答えだよ。'}</div>
+  <div class="point"><b>この2つの文の関係：${REL[p.rel].name}</b><br>${REL[p.rel].exp}</div>`;
+  const go=document.getElementById('go');
+  go.disabled=false;go.textContent=S.i+1<N?'つぎへ':'けっかを見る';
+  go.onclick=()=>{se('next');stopSay();S.i++;S.sel=new Set();S.done=false;S.i<N?show():result()};
+  go.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function result(){
+  const m=S.score===N?'ぜんぶせいかい！つなぎ言葉の名人だね！':S.score>=7?'よくできました！':'もう一度やって、文の関係を考えてみよう。';
+  app.innerHTML=`<div class="card" style="text-align:center"><h1>けっか</h1><p class="big">${S.score} / ${N}</p><p>${m}</p>
+  <div class="row" style="justify-content:center"><button class="btn" id="again">もう一度</button><button class="btn sub2" id="menu">メニューへ</button></div></div>`;
+  se(S.score>=7?'fan':'next');
+  speakLater(`${NK[N]}もんちゅう、${NK[S.score]}もん せいかい。 ${m}`,S.score>=7?1300:500);
+  document.getElementById('again').onclick=()=>start(S.mode);
+  document.getElementById('menu').onclick=menu;
+}
+renderSet();
+menu();
+</script>
+</body>
+</html>
