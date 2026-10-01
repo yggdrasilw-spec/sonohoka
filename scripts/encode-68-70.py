@@ -51,9 +51,6 @@ tasks = [
 ]
 
 for t in tasks:
-    if t["output"].exists() and t["poster"].exists():
-        print(f"Skipping App {t['num']} (already exists)")
-        continue
     print(f"Encoding App {t['num']}...")
     cmd = [
         "python",
