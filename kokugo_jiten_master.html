@@ -306,7 +306,7 @@
 
     .gojuon-grid {
       display: grid;
-      grid-template-columns: repeat(10, minmax(42px, 1fr));
+      grid-template-columns: repeat(11, minmax(38px, 1fr));
       gap: 6px;
       margin-bottom: 15px;
     }
@@ -342,6 +342,13 @@
     .cell.empty {
       background: #F7FAFC;
       color: #A0AEC0;
+    }
+
+    /* 「ん」列のヘッダー（空の行ラベル） */
+    .cell.header.empty {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none;
     }
 
     .highlight-box {
@@ -891,7 +898,7 @@
       <div style="font-weight:bold; margin-bottom:6px; color:#2D3748;">五十音表（あ段＝黄色）：</div>
       <div class="gojuon-grid" id="gojuonGrid"></div>
       <div class="small-note">
-        ※ 辞書を早く引くコツは「あ段（あ・か・さ・た・な・は・ま・や・ら・わ）」の順番がパッと頭に浮かぶことです！
+        ※ 表は右→左の順（あ行が右端・わ行が左寄り）。辞書を早く引くコツは「あ段（あ・か・さ・た・な・は・ま・や・ら・わ）」の順番がパッと頭に浮かぶことです！「ん」は五十音図の枠外に独立して配置されます。
       </div>
     </div>
   </div>
@@ -1665,16 +1672,17 @@ function switchTab(tabId, evt) {
 
 function renderGojuon(targetId) {
   const columns = [
-    ['あ','い','う','え','お'],
-    ['か','き','く','け','こ'],
-    ['さ','し','す','せ','そ'],
-    ['た','ち','つ','て','と'],
-    ['な','に','ぬ','ね','の'],
-    ['は','ひ','ふ','へ','ほ'],
-    ['ま','み','む','め','も'],
-    ['や','','ゆ','','よ'],
+    ['','','','','ん'],
+    ['わ','','','','を'],
     ['ら','り','る','れ','ろ'],
-    ['わ','','','','を']
+    ['や','','ゆ','','よ'],
+    ['ま','み','む','め','も'],
+    ['は','ひ','ふ','へ','ほ'],
+    ['な','に','ぬ','ね','の'],
+    ['た','ち','つ','て','と'],
+    ['さ','し','す','せ','そ'],
+    ['か','き','く','け','こ'],
+    ['あ','い','う','え','お']
   ];
 
   const grid = document.getElementById(targetId);
@@ -1682,16 +1690,22 @@ function renderGojuon(targetId) {
 
   grid.innerHTML = '';
 
-  const headers = ['あ','か','さ','た','な','は','ま','や','ら','わ'];
-  headers.forEach((char, index) => {
+  const headers = ['', 'わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'];
+  headers.forEach((char) => {
     const cell = document.createElement('div');
-    cell.className = 'cell header';
-    cell.innerText = `${char}行`;
+    if (char === '') {
+      cell.className = 'cell header empty';
+      cell.style.border = 'none';
+      cell.style.background = 'transparent';
+    } else {
+      cell.className = 'cell header';
+      cell.innerText = `${char}行`;
+    }
     grid.appendChild(cell);
   });
 
   for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 10; col++) {
+    for (let col = 0; col < 11; col++) {
       const char = columns[col][row];
       const cell = document.createElement('div');
       cell.className = 'cell' +
@@ -2070,21 +2084,36 @@ function highlightGojuonCells(targetId, charOrderMap) {
 }
 
 /* ---- ステップ0からuptoIndexまでを走査し、各語が「今どの順番グループに
-   いるか」を求める。column-compare／detail-compare／final-tiebreakの
-   バケツ内での位置（1始まり）を、そのつど最新の値で上書きしていく。
-   確定（resolved）した後もこの番号は残り、緑カードにも表示され続ける ---- */
+   いるか」を求める。確定（resolved）済みの単語数をオフセットとして考慮し、
+   確定した語は確定順（1始まり）で番号を固定する。
+   これにより、①②が確定した後の残りの比較でも③④…と正しく続き、
+   最終的に全単語が①②③④…の順番番号になる ---- */
 function computeOrderNumbers(steps, uptoIndex) {
   const map = {};
+  const resolvedIds = [];
+
   for (let i = 0; i <= uptoIndex; i++) {
     const s = steps[i];
+    const offset = resolvedIds.length;
+
     if (s.type === 'column-compare' || s.type === 'detail-compare') {
       s.buckets.forEach((b, idx) => {
-        b.entries.forEach(id => { map[id] = idx + 1; });
+        b.entries.forEach(id => { map[id] = offset + idx + 1; });
       });
     } else if (s.type === 'final-tiebreak') {
-      s.group.forEach((id, idx) => { map[id] = idx + 1; });
+      s.group.forEach((id, idx) => { map[id] = offset + idx + 1; });
+    } else if (s.type === 'resolved' && s.entry) {
+      if (!resolvedIds.includes(s.entry.id)) {
+        resolvedIds.push(s.entry.id);
+      }
     }
   }
+
+  // 確定済みの語は、確定した順番（1始まり）で番号を固定する
+  resolvedIds.forEach((id, idx) => {
+    map[id] = idx + 1;
+  });
+
   return map;
 }
 
@@ -2241,16 +2270,31 @@ function renderAlgoStep() {
   });
   wordsArea.innerHTML = '';
 
-  /* この段階で比べている「文字」→比較順（1,2,3…）のマップ。五十音表のハイライト・番号表示に使う */
+  /* この段階で比べている「文字」→比較順（1,2,3…）のマップ。五十音表のハイライト・番号表示に使う。
+     すでに確定した語数をオフセットとして加えることで、単語カード側の番号バッジと連動させる */
   const charOrderMap = {};
+  const currentOffset = resolvedSoFar.length;
   if (step.type === 'column-compare') {
-    step.buckets.forEach((b, idx) => { if (b.char && charOrderMap[b.char] === undefined) charOrderMap[b.char] = idx + 1; });
+    step.buckets.forEach((b, idx) => {
+      if (b.char && charOrderMap[b.char] === undefined) {
+        charOrderMap[b.char] = currentOffset + idx + 1;
+      }
+    });
   } else if (step.type === 'detail-compare') {
-    step.buckets.forEach((b, idx) => { if (b.base && charOrderMap[b.base] === undefined) charOrderMap[b.base] = idx + 1; });
+    step.buckets.forEach((b, idx) => {
+      if (b.base && charOrderMap[b.base] === undefined) {
+        charOrderMap[b.base] = currentOffset + idx + 1;
+      }
+    });
   }
 
   /* 各語が「今どの順番グループに属しているか」（確定後も番号を保持） */
   const entryOrderNumbers = computeOrderNumbers(algoTrace.steps, algoStepIndex);
+  if (isLastStep && algoTrace.finalOrder) {
+    algoTrace.finalOrder.forEach((e, idx) => {
+      entryOrderNumbers[e.id] = idx + 1;
+    });
+  }
 
   entries.forEach(entry => {
     const isResolved = resolvedSoFar.some(r => r.id === entry.id);
