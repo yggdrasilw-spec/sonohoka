@@ -37,19 +37,42 @@ body{font-family:'Noto Sans JP',sans-serif;}
 .gen-btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(74,158,255,.4);}
 .err-msg{color:#e74c3c;font-size:12px;font-weight:bold;text-align:center;margin-top:4px;display:none;}
 
-.mode-row{display:flex;align-items:center;gap:6px;margin-left:10px;padding-left:10px;
-  border-left:1px dashed #ccc;}
-.mode-row-label{font-size:12px;color:#888;font-weight:bold;}
-.gap-input{width:52px;padding:4px 6px;font-size:13px;font-weight:bold;text-align:center;
-  border:2px solid #ccc;border-radius:8px;font-family:'Noto Sans JP',sans-serif;}
-.gap-input:focus{border-color:#8e44ad;outline:none;}
-.seq-gap-row{display:flex;align-items:center;gap:5px;margin-left:8px;padding-left:8px;
-  border-left:1px dashed #ccc;}
-.mode-btn{padding:5px 14px;font-size:12px;font-weight:bold;border:2px solid #ccc;
-  border-radius:16px;background:#fff;cursor:pointer;transition:all .2s;
-  font-family:'Noto Sans JP',sans-serif;}
-.mode-btn.active{background:#8e44ad;color:#fff;border-color:#6c3483;}
-.mode-btn:hover:not(.active){background:#f3e8fb;border-color:#8e44ad;}
+.settings-open-btn{padding:7px 16px;font-size:14px;font-weight:bold;border:2px solid #cbd5e1;border-radius:20px;
+  background:#fff;color:#475569;cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+  font-family:'Noto Sans JP',sans-serif;box-shadow:0 2px 5px rgba(0,0,0,.06);transition:all .2s;margin-left:8px;}
+.settings-open-btn:hover{background:#f1f5f9;border-color:#94a3b8;color:#1e293b;transform:translateY(-1px);}
+
+/* 設定モーダル */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:9999;opacity:0;transition:opacity .2s ease;}
+.modal-overlay.open{display:flex;opacity:1;}
+.modal-card{background:#fff;border-radius:20px;box-shadow:0 12px 36px rgba(0,0,0,.22);width:90%;max-width:540px;
+  overflow:hidden;transform:scale(.92);transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+  display:flex;flex-direction:column;}
+.modal-overlay.open .modal-card{transform:scale(1);}
+.modal-header{background:linear-gradient(135deg,#4a9eff,#2d7dd2);color:#fff;padding:14px 20px;display:flex;
+  align-items:center;justify-content:space-between;}
+.modal-header h2{font-size:17px;font-weight:900;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.modal-close-btn{background:none;border:none;color:#fff;font-size:24px;line-height:1;cursor:pointer;
+  padding:2px 8px;border-radius:50%;transition:background .2s;display:flex;align-items:center;justify-content:center;}
+.modal-close-btn:hover{background:rgba(255,255,255,.2);}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:18px;max-height:80vh;overflow-y:auto;}
+.setting-section{display:flex;flex-direction:column;gap:8px;padding-bottom:14px;border-bottom:1px solid #edf2f7;}
+.setting-section:last-child{border-bottom:none;padding-bottom:0;}
+.setting-title{font-size:14px;font-weight:bold;color:#334155;display:flex;align-items:center;gap:6px;}
+.setting-desc{font-size:12px;color:#64748b;line-height:1.5;}
+.setting-options{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.setting-btn{padding:8px 16px;font-size:13px;font-weight:bold;border:2px solid #cbd5e1;
+  border-radius:12px;background:#fff;color:#475569;cursor:pointer;transition:all .18s;
+  font-family:'Noto Sans JP',sans-serif;display:inline-flex;align-items:center;gap:6px;}
+.setting-btn.active{background:#3b82f6;color:#fff;border-color:#2563eb;box-shadow:0 3px 8px rgba(59,130,246,.3);}
+.setting-btn:hover:not(.active){background:#f8fafc;border-color:#94a3b8;}
+
+.gap-setting-row{display:flex;align-items:center;gap:6px;margin-top:6px;padding:8px 12px;background:#f8fafc;border-radius:10px;}
+.gap-setting-label{font-size:12px;color:#64748b;font-weight:bold;}
+.gap-input{width:60px;padding:4px 8px;font-size:14px;font-weight:bold;text-align:center;
+  border:2px solid #cbd5e1;border-radius:8px;font-family:'Noto Sans JP',sans-serif;}
+.gap-input:focus{border-color:#3b82f6;outline:none;}
 
 /* ===== 数図表＋右パネルの可変レイアウト ===== */
 .main-area{display:flex;gap:12px;padding:12px 8px;width:100%;max-width:none;margin:0;
@@ -175,24 +198,60 @@ body{font-family:'Noto Sans JP',sans-serif;}
     <label>たす数：</label>
     <input type="number" id="inp-b" class="num-input" value="12" min="1" max="999">
     <button class="gen-btn" onclick="generateFromInput()">説明生成 ▶</button>
-    <div class="mode-row">
-      <span class="mode-row-label">図のひょうじ：</span>
-      <button class="mode-btn active" id="mode-btn-tile" onclick="setDisplayMode('tile')">🟨 タイル</button>
-      <button class="mode-btn" id="mode-btn-card" onclick="setDisplayMode('card')">🔢 カード</button>
-    </div>
-    <div class="mode-row">
-      <span class="mode-row-label">うごくタイミング：</span>
-      <button class="mode-btn active" id="timing-btn-sync" onclick="setTimingMode('sync')">同時</button>
-      <button class="mode-btn" id="timing-btn-tile-first" onclick="setTimingMode('tile-first')">図→筆算</button>
-      <button class="mode-btn" id="timing-btn-hissan-first" onclick="setTimingMode('hissan-first')">筆算→図</button>
-      <span class="seq-gap-row" id="seq-gap-row" style="display:none;">
-        <span class="mode-row-label">間：</span>
-        <input type="number" id="seq-gap-input" class="gap-input" value="0.4" min="0" max="5" step="0.1" onchange="setSeqGap(this.value)">
-        <span class="mode-row-label">秒</span>
-      </span>
-    </div>
+    <button class="settings-open-btn" onclick="openSettingsModal()" title="せっていをひらく">⚙ 設定</button>
   </div>
   <div id="err-msg" class="err-msg">1〜999の整数を入力してください</div>
+</div>
+
+<!-- 設定モーダルダイアログ -->
+<div id="settings-modal" class="modal-overlay" onclick="onModalOverlayClick(event)">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2>⚙ 設定</h2>
+      <button class="modal-close-btn" onclick="closeSettingsModal()" title="とじる">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- 補助計算の位置 -->
+      <div class="setting-section">
+        <div class="setting-title">✏️ くり上がりの位置（補助計算）</div>
+        <div class="setting-desc">繰り上がった「1」を書く位置と、ブロックの移動先・足す順序を選べます。</div>
+        <div class="setting-options">
+          <button class="setting-btn" id="carry-pos-top" onclick="setCarryPosMode('top')">
+            <span>上のマス（たす数の上）</span>
+          </button>
+          <button class="setting-btn" id="carry-pos-ans" onclick="setCarryPosMode('ans-sub')">
+            <span>直線の下（答えマスの右上・小さく）</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 図の表示 -->
+      <div class="setting-section">
+        <div class="setting-title">🟨 図のひょうじ</div>
+        <div class="setting-desc">数図の表示スタイルを選べます。</div>
+        <div class="setting-options">
+          <button class="setting-btn active" id="mode-btn-tile" onclick="setDisplayMode('tile')">🟨 タイル</button>
+          <button class="setting-btn" id="mode-btn-card" onclick="setDisplayMode('card')">🔢 カード</button>
+        </div>
+      </div>
+
+      <!-- 動くタイミング -->
+      <div class="setting-section">
+        <div class="setting-title">⏱️ うごくタイミング</div>
+        <div class="setting-desc">図と筆算のアニメーションの順序を設定します。</div>
+        <div class="setting-options">
+          <button class="setting-btn active" id="timing-btn-sync" onclick="setTimingMode('sync')">同時</button>
+          <button class="setting-btn" id="timing-btn-tile-first" onclick="setTimingMode('tile-first')">図 → 筆算</button>
+          <button class="setting-btn" id="timing-btn-hissan-first" onclick="setTimingMode('hissan-first')">筆算 → 図</button>
+        </div>
+        <div class="gap-setting-row" id="seq-gap-row" style="display:none;">
+          <span class="gap-setting-label">アニメーションの間（ま）：</span>
+          <input type="number" id="seq-gap-input" class="gap-input" value="0.4" min="0" max="5" step="0.1" onchange="setSeqGap(this.value)">
+          <span class="gap-setting-label">秒</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="main-area">
@@ -691,8 +750,24 @@ function drawHissan(svgEl,state){
 
   // くり上がり：数字「1」自体は showCarryJ/showCarryH が true の間ずっと表示するが、
   // ポップ（拡大縮小）アニメーションは carryJPop/carryHPop が true の最初の1ステップだけ再生する
-  if(S.showCarryJ) {const ct=mk('text',{x:HJX,y:HCARRY_Y,'font-size':19,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);ct.textContent='1';if(S.carryJPop)ct.setAttribute('class','pop-in');}
-  if(S.showCarryH&&(S.has3||S.has4)) {const ct=mk('text',{x:H2X,y:HCARRY_Y,'font-size':19,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);ct.textContent='1';if(S.carryHPop)ct.setAttribute('class','pop-in');}
+  if(S.showCarryJ) {
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+    const cx = isAnsSub ? (HJX + 11) : HJX;
+    const cy = isAnsSub ? (HLINE_Y + 13) : HCARRY_Y;
+    const fs = isAnsSub ? 13 : 19;
+    const ct = mk('text',{x:cx,y:cy,'font-size':fs,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+    ct.textContent='1';
+    if(S.carryJPop) ct.setAttribute('class','pop-in');
+  }
+  if(S.showCarryH&&(S.has3||S.has4)) {
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+    const cx = isAnsSub ? (H2X + 11) : H2X;
+    const cy = isAnsSub ? (HLINE_Y + 13) : HCARRY_Y;
+    const fs = isAnsSub ? 13 : 19;
+    const ct = mk('text',{x:cx,y:cy,'font-size':fs,'font-weight':'bold',fill:'#e74c3c','text-anchor':'middle','font-family':'Noto Sans JP,sans-serif'},svgEl);
+    ct.textContent='1';
+    if(S.carryHPop) ct.setAttribute('class','pop-in');
+  }
 
   // こたえ
   // くり上がり前：その位の答え欄に「2桁の生の合計」を2つの数字として並べて表示する
@@ -826,6 +901,20 @@ function aboveHdr(id){
   return{x:(r.left-tileRect.left+r.width/2)/(STAGE_SCALE*stableTilePanelFactor), y:(r.top-tileRect.top)/(STAGE_SCALE*stableTilePanelFactor)-8};
 }
 
+// 答えマスの「右上」座標（CARRY_POS_MODE === 'ans-sub' 用）
+// 1つ上の位の答えのグリッドの右上（ブロックが約20%上にはみ出す位置）
+function ansTopRight(place){
+  const svgId = (place==='sen') ? 'svg-sen-ans' : ((place==='hyaku') ? 'svg-hyaku-ans' : 'svg-juu-ans');
+  const svgEl = document.getElementById(svgId);
+  const tileRect = document.getElementById('tile-area').getBoundingClientRect();
+  const r = svgEl.getBoundingClientRect();
+  // 横はグリッド右端から少し内側、縦は答えマスの最上部（B行との境界線）付近に置くことで、
+  // ブロック（高さ79pxなど）の中心が境界線上〜やや上（約20%上にはみ出す）になる
+  const x = (r.right - tileRect.left - 18) / (STAGE_SCALE * stableTilePanelFactor);
+  const y = (r.top - tileRect.top + 10) / (STAGE_SCALE * stableTilePanelFactor);
+  return {x, y};
+}
+
 // ============================================================
 // アプリ状態
 // ============================================================
@@ -915,15 +1004,35 @@ function toggleVoice(){
     window.speechSynthesis.cancel();
   }
 }
+let CARRY_POS_MODE='top'; // 'top'：上のマス（たす数の上）／'ans-sub'：直線の下（答えマスの右上・小さく）
+try{
+  const savedCarryPos=localStorage.getItem('tashizan_carry_pos');
+  if(savedCarryPos==='top'||savedCarryPos==='ans-sub') CARRY_POS_MODE=savedCarryPos;
+}catch(e){}
+
 let DISPLAY_MODE='tile'; // 'tile'：実物タイル／'card'：数字カード
+try{
+  const savedDisp=localStorage.getItem('tashizan_display_mode');
+  if(savedDisp==='tile'||savedDisp==='card') DISPLAY_MODE=savedDisp;
+}catch(e){}
+
 // 'sync'：筆算と図解を同時に動かす（従来どおり）
 // 'tile-first'：図解が先に完了してから筆算を動かす
 // 'hissan-first'：筆算が先に完了してから図解を動かす
 let TIMING_MODE='sync';
+try{
+  const savedTiming=localStorage.getItem('tashizan_timing_mode');
+  if(savedTiming==='sync'||savedTiming==='tile-first'||savedTiming==='hissan-first') TIMING_MODE=savedTiming;
+}catch(e){}
+
 // 逐次モード（tile-first/hissan-first）で前半と後半の間に置く「一呼吸」の間（ミリ秒）。
 // 同時モードではこの間は入れない（見た目は現状のまま）。
 // 先生が画面上のボックスで0.1秒単位に調整できるようlet変数にしている（初期値0.4秒）。
 let SEQ_GAP_MS=400;
+try{
+  const savedGap=localStorage.getItem('tashizan_seq_gap');
+  if(savedGap){const g=parseFloat(savedGap);if(Number.isFinite(g)&&g>=0&&g<=5)SEQ_GAP_MS=Math.round(g*1000);}
+}catch(e){}
 
 function cloneState(s){return JSON.parse(JSON.stringify(s));}
 
@@ -1119,6 +1228,7 @@ function buildSteps(){
   // 一→十くり上がり
   if(hasCarryI){
     const p=prev();
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
     p.title='10の たばが できた！ じゅうに くり上げる';
     p.desc=`<span class="ic">いちのくらい</span>の <span class="ic">${iSum}</span>こ のうち、<br>`
       +`<span class="cc">10こ</span> が 10の たばに なります。<br>`
@@ -1127,10 +1237,13 @@ function buildSteps(){
     p.h.showAnsITemp=false;p.h.showAnsI=true;
     p.h.showCarryJ=true;p.h.hlIchi=true;p.h.hlColIchi=true;
     p.h.carryJPop=true; // この「くり上げる」ステップでだけポップ演出
-    p.hissanSplit={raw:iSum,colX:HIX,destX:HJX,destY:HCARRY_Y,idSuffix:'I'};
+    const destX = isAnsSub ? (HJX + 11) : HJX;
+    const destY = isAnsSub ? (HLINE_Y + 13) : HCARRY_Y;
+    const destFontSize = isAnsSub ? 13 : 19;
+    p.hissanSplit={raw:iSum,colX:HIX,destX,destY,destFontSize,idSuffix:'I'};
     p.t.ichiAns={count:iAns,alpha:1,hl:null};
     p.t.juuAns={count:1,alpha:1,hl:'#e74c3c'};
-    p.t.markJ={show:true,alpha:1}; // ヘッダー上のくり上がりは、まだ使われていないのでしっかり表示
+    p.t.markJ={show:true,alpha:1}; // くり上がりは、まだ使われていないのでしっかり表示
     p.anim='carry-i';
     list.push(p);
   }
@@ -1138,10 +1251,25 @@ function buildSteps(){
   // 十の位計算
   {
     const p=prev();
-    p.title=`じゅうのくらいの けいさん：${hasCarryI?'1＋':''}${aJ}＋${bJ}＝${jRaw}`;
-    p.desc=`<span class="jc">じゅうのくらい</span>を けいさんします。<br>`
-      +(hasCarryI?`くり上がった <span class="cc">1</span> と <span class="jc">${aJ} ＋ ${bJ}</span> で<br>`:'')
-      +`<span class="jc">${hasCarryI?'1＋':''}${aJ} ＋ ${bJ} ＝ ${jRaw}</span>`
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+    let titleStr, descMiddle;
+    if(hasCarryI){
+      if(isAnsSub){
+        titleStr = `じゅうのくらいの けいさん：${aJ}＋${bJ}＋1＝${jRaw}`;
+        descMiddle = `<span class="jc">${aJ} ＋ ${bJ}</span> に くり上がった <span class="cc">1</span> を たして<br>`
+          +`<span class="jc">${aJ} ＋ ${bJ} ＋ 1 ＝ ${jRaw}</span>`;
+      } else {
+        titleStr = `じゅうのくらいの けいさん：1＋${aJ}＋${bJ}＝${jRaw}`;
+        descMiddle = `くり上がった <span class="cc">1</span> と <span class="jc">${aJ} ＋ ${bJ}</span> で<br>`
+          +`<span class="jc">1＋${aJ} ＋ ${bJ} ＝ ${jRaw}</span>`;
+      }
+    } else {
+      titleStr = `じゅうのくらいの けいさん：${aJ}＋${bJ}＝${jRaw}`;
+      descMiddle = `<span class="jc">${aJ} ＋ ${bJ} ＝ ${jRaw}</span>`;
+    }
+    p.title = titleStr;
+    p.desc = `<span class="jc">じゅうのくらい</span>を けいさんします。<br>`
+      + descMiddle
       +(hasCarryJ?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
     p.h.hlIchi=false;p.h.hlJuu=true;p.h.hlColIchi=false;p.h.hlColJuu=true;
     if(hasCarryJ&&has3)p.h.showAnsJTemp=true; else p.h.showAnsJ=true;
@@ -1149,7 +1277,7 @@ function buildSteps(){
     p.t.juuA={count:aJ,alpha:.25,hl:null};
     p.t.juuB={count:bJ,alpha:.25,hl:null};
     p.t.juuAns={count:jRaw,alpha:1,hl:null};
-    if(hasCarryI)p.t.markJ={show:true,alpha:.35}; // 下の段に降りて使われたので、以後は半透明のまま残す
+    if(hasCarryI)p.t.markJ={show:true,alpha:.35}; // 使われたので以後は半透明のまま残す
     p.anim='juu-calc';
     list.push(p);
   }
@@ -1168,6 +1296,7 @@ function buildSteps(){
   // 十→百くり上がり（has3のとき）
   if(hasCarryJ&&has3){
     const p=prev();
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
     p.title='10の たばが できた！ ひゃくに くり上げる';
     p.desc=`<span class="jc">じゅうのくらい</span>の <span class="jc">${jRaw}</span>本 のうち、<br>`
       +`<span class="cc">10本</span> が ひゃくの タイルに なります。<br>`
@@ -1176,10 +1305,13 @@ function buildSteps(){
     p.h.showAnsJTemp=false;p.h.showAnsJ=true;
     p.h.showCarryH=true;p.h.hlJuu=true;p.h.showAnsJ=true;p.h.hlColJuu=true;
     p.h.carryHPop=true; // この「くり上げる」ステップでだけポップ演出
-    p.hissanSplit={raw:jRaw,colX:HJX,destX:H2X,destY:HCARRY_Y,idSuffix:'J'};
+    const destX = isAnsSub ? (H2X + 11) : H2X;
+    const destY = isAnsSub ? (HLINE_Y + 13) : HCARRY_Y;
+    const destFontSize = isAnsSub ? 13 : 19;
+    p.hissanSplit={raw:jRaw,colX:HJX,destX,destY,destFontSize,idSuffix:'J'};
     p.t.juuAns={count:jAns,alpha:1,hl:null};
     p.t.hyakuAns={count:1,alpha:1,hl:'#e74c3c'};
-    p.t.markH={show:true,alpha:1}; // ヘッダー上のくり上がりは、まだ使われていないのでしっかり表示
+    p.t.markH={show:true,alpha:1}; // くり上がりは、まだ使われていないのでしっかり表示
     p.anim='carry-j';
     list.push(p);
   }
@@ -1187,11 +1319,26 @@ function buildSteps(){
   // 百の位計算（has3のとき）
   if(has3){
     const p=prev();
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
     const totalH=hRaw;
-    p.title=`ひゃくのくらいの けいさん：${hasCarryJ?'1＋':''}${aH}＋${bH}＝${totalH}`;
-    p.desc=`<span class="hc">ひゃくのくらい</span>を けいさんします。<br>`
-      +(hasCarryJ?`くり上がった <span class="cc">1</span> と <span class="hc">${aH} ＋ ${bH}</span> で<br>`:'')
-      +`<span class="hc">${hasCarryJ?'1＋':''}${aH} ＋ ${bH} ＝ ${totalH}</span>`
+    let titleStr, descMiddle;
+    if(hasCarryJ){
+      if(isAnsSub){
+        titleStr = `ひゃくのくらいの けいさん：${aH}＋${bH}＋1＝${totalH}`;
+        descMiddle = `<span class="hc">${aH} ＋ ${bH}</span> に くり上がった <span class="cc">1</span> を たして<br>`
+          +`<span class="hc">${aH} ＋ ${bH} ＋ 1 ＝ ${totalH}</span>`;
+      } else {
+        titleStr = `ひゃくのくらいの けいさん：1＋${aH}＋${bH}＝${totalH}`;
+        descMiddle = `くり上がった <span class="cc">1</span> と <span class="hc">${aH} ＋ ${bH}</span> で<br>`
+          +`<span class="hc">1＋${aH} ＋ ${bH} ＝ ${totalH}</span>`;
+      }
+    } else {
+      titleStr = `ひゃくのくらいの けいさん：${aH}＋${bH}＝${totalH}`;
+      descMiddle = `<span class="hc">${aH} ＋ ${bH} ＝ ${totalH}</span>`;
+    }
+    p.title = titleStr;
+    p.desc = `<span class="hc">ひゃくのくらい</span>を けいさんします。<br>`
+      + descMiddle
       +(hasCarryH?`<br>10より おおきいので <span class="cc">くり上がり</span> があります。`:'');
     p.h.hlJuu=false;p.h.hlHyaku=true;p.h.hlColJuu=false;p.h.hlColHyaku=true;
     if(hasCarryH&&has4)p.h.showAnsHTemp=true; else p.h.showAnsH=true;
@@ -1305,25 +1452,26 @@ function paintTiles(ts){
 function drawHeaderMarks(ts){
   const layer=document.getElementById('mark-layer');
   layer.innerHTML='';
+  const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
   if(DISPLAY_MODE==='card'){
     if(ts.markJ&&ts.markJ.show){
-      const pos=aboveHdr('hdr-juu');
+      const pos=isAnsSub ? ansTopRight('juu') : aboveHdr('hdr-juu');
       drawCardSingle(mk('g',{},layer),pos.x,pos.y,'juu',1,ts.markJ.alpha,'#e74c3c');
     }
     if(ts.markH&&ts.markH.show){
-      const pos=aboveHdr('hdr-hyaku');
+      const pos=isAnsSub ? ansTopRight('hyaku') : aboveHdr('hdr-hyaku');
       drawCardSingle(mk('g',{},layer),pos.x,pos.y,'hyaku',1,ts.markH.alpha,'#e74c3c');
     }
   } else {
     if(ts.markJ&&ts.markJ.show){
-      const pos=aboveHdr('hdr-juu');
+      const pos=isAnsSub ? ansTopRight('juu') : aboveHdr('hdr-juu');
       const JH=10*U+9*U*.15,bx=pos.x-U/2,by=pos.y-JH/2;
       const g=mk('g',{opacity:ts.markJ.alpha},layer);
       for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},g);}
       mk('rect',{x:bx-1,y:by-1,width:U+2,height:JH+2,fill:'none',stroke:'#e74c3c','stroke-width':2,rx:1},g);
     }
     if(ts.markH&&ts.markH.show){
-      const pos=aboveHdr('hdr-hyaku');
+      const pos=isAnsSub ? ansTopRight('hyaku') : aboveHdr('hdr-hyaku');
       const HW=vbW('svg-hyaku-ans'),HH_SVG=vbH('svg-hyaku-ans');
       const su=U*Math.min((HW-8)/HYAKU_SIDE,(HH_SVG-8)/HYAKU_SIDE,1);
       drawHyakuScaled(mk('g',{},layer),pos.x,pos.y,su,ts.markH.alpha,'#e74c3c');
@@ -1371,7 +1519,8 @@ function runCalcCard(place,countA,countB,sumCount,hasCarryIn,onDone,layer){
   const Wb=vbW(svgB.id),Hb=parseInt(svgB.getAttribute('height'))||110;
   const Wans=vbW(svgAns.id),Hans=parseInt(svgAns.getAttribute('height'))||94;
 
-  const carryAbove=hasCarryIn?aboveHdr(PLACE_HDR[place]):null;
+  const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+  const carryAbove = hasCarryIn ? (isAnsSub ? ansTopRight(place) : aboveHdr(PLACE_HDR[place])) : null;
   const carrySrc=hasCarryIn?[{...carryAbove,scale:1}]:[];
   const posA=cardPositions(countA,place,Wa,Ha).map(p=>({...svgToLayer(svgA,p.cx,p.cy),scale:p.scale??1}));
   const posB=cardPositions(countB,place,Wb,Hb).map(p=>({...svgToLayer(svgB,p.cx,p.cy),scale:p.scale??1}));
@@ -1414,7 +1563,8 @@ function runCarryCard(place,totalCount,remainCount,onDone,layer){
   const pos10L=allPos.slice(0,10).map(p=>({...svgToLayer(svgAns,p.cx,p.cy),scale:p.scale??1}));
   const posR=allPos.slice(10);
 
-  const dest=aboveHdr(PLACE_HDR[upper]);
+  const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+  const dest = isAnsSub ? ansTopRight(upper) : aboveHdr(PLACE_HDR[upper]);
   const srcCx=pos10L.reduce((s,p)=>s+p.x,0)/pos10L.length;
   const srcCy=pos10L.reduce((s,p)=>s+p.y,0)/pos10L.length;
   const cfg=CARD_CFG[place];
@@ -1659,7 +1809,8 @@ function runAnim(animType,prevState,nextState,onDone){
     const pos10=posAll.slice(0,10);
     const posR=posAll.slice(10);
     const l10=pos10.map(p=>svgToLayer(svgAnsI,p.cx,p.cy));
-    const dest=aboveHdr('hdr-juu');
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+    const dest = isAnsSub ? ansTopRight('juu') : aboveHdr('hdr-juu');
     const srcCx=l10.reduce((s,p)=>s+p.x,0)/10;
     const srcCy=l10.reduce((s,p)=>s+p.y,0)/10;
 
@@ -1697,7 +1848,7 @@ function runAnim(animType,prevState,nextState,onDone){
             for(let i=0;i<10;i++){const sh=curH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6*(.2+t*.8),rx:.3,opacity:.4+.6*t},layer);}
             mk('rect',{x:bx-1,y:by-1,width:U+2,height:curH+2,fill:'none',stroke:'#e74c3c','stroke-width':2},layer);
           },()=>{
-            // phase3: 真上へ飛ぶ
+            // phase3: 目的地へ飛ぶ
             tween(380,t=>{
               layer.innerHTML='';
               const cx=srcCx+(dest.x-srcCx)*t;
@@ -1723,8 +1874,9 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgJB=document.getElementById('svg-juu-b');
     const svgJAns=document.getElementById('svg-juu-ans');
     const W=vbW('svg-juu-a'),H=vbH('svg-juu-a'),HA=vbH('svg-juu-ans'),stW=STICK_W;
-    // carry棒の出発位置（ヘッダー真上）
-    const carryAbove=aboveHdr('hdr-juu');
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+    // carry棒の出発位置
+    const carryAbove = isAnsSub ? ansTopRight('juu') : aboveHdr('hdr-juu');
     const carrySrc=hasCarryI?[carryAbove]:[];
     // A棒・B棒出発位置（renderSticksと同じグループ間隔の式を使う）
     const layA=stickLayout(aJ),sxA0=(W-layA.totW)/2;
@@ -1743,10 +1895,10 @@ function runAnim(animType,prevState,nextState,onDone){
       drawStick(g,p.x,p.y,U,1,isC?'#e74c3c':SC); // 移動するタイル自体は濃い色のまま
       return g;
     });
-    // くり上がり棒がヘッダー上から離れた瞬間に、残像（mark-layer）を半透明に切り替える
+    // くり上がり棒が出発した瞬間に、残像（mark-layer）を半透明に切り替える
     if(hasCarryI){
       const ml=document.getElementById('mark-layer');ml.innerHTML='';
-      const pos=aboveHdr('hdr-juu');
+      const pos = isAnsSub ? ansTopRight('juu') : aboveHdr('hdr-juu');
       const JH=10*U+9*U*.15,bx=pos.x-U/2,by=pos.y-JH/2;
       const g=mk('g',{opacity:.35},ml);
       for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bx,y:by+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},g);}
@@ -1775,7 +1927,8 @@ function runAnim(animType,prevState,nextState,onDone){
     const pos10=allPos.slice(0,10);
     const posR=allPos.slice(10);
     const src10=pos10.map(p=>svgToLayer(svgJAns,p.x,p.y));
-    const dest=aboveHdr('hdr-hyaku');
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+    const dest = isAnsSub ? ansTopRight('hyaku') : aboveHdr('hdr-hyaku');
     const srcCx=src10.reduce((s,p)=>s+p.x,0)/10;
     const srcCy=src10.reduce((s,p)=>s+p.y,0)/10;
 
@@ -1805,7 +1958,7 @@ function runAnim(animType,prevState,nextState,onDone){
           dash.setAttribute('width',bw);dash.setAttribute('height',bh);
           dash.setAttribute('opacity',1-t);
         },()=>{
-          // phase2: ひゃくタイルに変形しつつ真上へ飛ぶ
+          // phase2: ひゃくタイルに変形しつつ目的地へ飛ぶ
           layer.innerHTML='';
           const g2=mk('g',{},layer);
           drawHyakuScaled(g2,srcCx,srcCy,su*.001,1,'#e74c3c'); // 初期はごく小さく
@@ -1833,8 +1986,9 @@ function runAnim(animType,prevState,nextState,onDone){
     const svgHB=document.getElementById('svg-hyaku-b');
     const svgHAns=document.getElementById('svg-hyaku-ans');
     const W=vbW('svg-hyaku-a'),H=vbH('svg-hyaku-a'),HB=vbH('svg-hyaku-b'),HA=vbH('svg-hyaku-ans');
-    // carry百タイルの出発位置：ヘッダー真上
-    const carryAbove=aboveHdr('hdr-hyaku');
+    const isAnsSub = (CARRY_POS_MODE === 'ans-sub');
+    // carry百タイルの出発位置
+    const carryAbove = isAnsSub ? ansTopRight('hyaku') : aboveHdr('hdr-hyaku');
     const carrySrc=hasCarryJ?[carryAbove]:[];
     const srcA=Array.from({length:aH},(_,i)=>{
       const p=hyakuTilePos(i,aH,W,H,su);return svgToLayer(svgHA,p.cx,p.cy);});
@@ -1852,21 +2006,19 @@ function runAnim(animType,prevState,nextState,onDone){
       drawHyakuScaled(g,p.x,p.y,su,1,isC?'#e74c3c':SC); // 移動するタイル自体は濃い色のまま
       return g;
     });
-    // くり上がりタイルがヘッダー上から離れた瞬間に、残像（mark-layer）を半透明に切り替える。
-    // このとき mark-layer を全クリアすると、すでに表示中の十の位くり上がり残像も消えてしまうため、
-    // prevState の markJ が表示中であれば一緒に描き直す。
+    // くり上がりタイルが出発した瞬間に、残像（mark-layer）を半透明に切り替える。
     if(hasCarryJ){
       const ml=document.getElementById('mark-layer');ml.innerHTML='';
       // 十の位のくり上がり残像を先に再描画（消えないようにする）。棒と赤枠の両方を描く。
       if(prevState.markJ&&prevState.markJ.show){
-        const posJ=aboveHdr('hdr-juu');
+        const posJ = isAnsSub ? ansTopRight('juu') : aboveHdr('hdr-juu');
         const JH=10*U+9*U*.15,bxJ=posJ.x-U/2,byJ=posJ.y-JH/2;
         const gJ=mk('g',{opacity:prevState.markJ.alpha},ml);
         for(let i=0;i<10;i++){const sh=JH/10;mk('rect',{x:bxJ,y:byJ+i*sh,width:U,height:sh-.3,fill:FC,stroke:SC,'stroke-width':.6,rx:.3},gJ);}
         mk('rect',{x:bxJ-1,y:byJ-1,width:U+2,height:JH+2,fill:'none',stroke:'#e74c3c','stroke-width':2,rx:1},gJ);
       }
       // 次に百の位のくり上がり残像を描く
-      const pos=aboveHdr('hdr-hyaku');
+      const pos = isAnsSub ? ansTopRight('hyaku') : aboveHdr('hdr-hyaku');
       const HW=vbW('svg-hyaku-ans'),HH_SVG=vbH('svg-hyaku-ans');
       const su2=U*Math.min((HW-8)/HYAKU_SIDE,(HH_SVG-8)/HYAKU_SIDE,1);
       const g=mk('g',{},ml);
@@ -2422,6 +2574,55 @@ function goStep(dir){
   updateUI(dir<0);
 }
 
+// くり上がり位置（補助計算の位置）の切り替え
+function setCarryPosMode(mode){
+  if(animBusy||mode===CARRY_POS_MODE)return;
+  cancelAnim();
+  CARRY_POS_MODE=mode;
+  try{localStorage.setItem('tashizan_carry_pos',mode);}catch(e){}
+  syncSettingsUI();
+  document.getElementById('anim-layer').innerHTML='';
+  steps=buildSteps();
+  updateLayout();
+  updateUI(true);
+}
+
+// 設定モーダルの開閉
+function openSettingsModal(){
+  syncSettingsUI();
+  const modal=document.getElementById('settings-modal');
+  modal.style.display='flex';
+  requestAnimationFrame(()=>{modal.classList.add('open');});
+}
+
+function closeSettingsModal(){
+  const modal=document.getElementById('settings-modal');
+  modal.classList.remove('open');
+  setTimeout(()=>{modal.style.display='none';},250);
+}
+
+function onModalOverlayClick(e){
+  if(e.target===document.getElementById('settings-modal')){
+    closeSettingsModal();
+  }
+}
+
+// 設定UIの選択状態を現在の変数に同期する
+function syncSettingsUI(){
+  const isTop = (CARRY_POS_MODE === 'top');
+  document.getElementById('carry-pos-top').classList.toggle('active', isTop);
+  document.getElementById('carry-pos-ans').classList.toggle('active', !isTop);
+
+  document.getElementById('mode-btn-tile').classList.toggle('active', DISPLAY_MODE==='tile');
+  document.getElementById('mode-btn-card').classList.toggle('active', DISPLAY_MODE==='card');
+
+  document.getElementById('timing-btn-sync').classList.toggle('active', TIMING_MODE==='sync');
+  document.getElementById('timing-btn-tile-first').classList.toggle('active', TIMING_MODE==='tile-first');
+  document.getElementById('timing-btn-hissan-first').classList.toggle('active', TIMING_MODE==='hissan-first');
+  document.getElementById('seq-gap-row').style.display = (TIMING_MODE==='sync') ? 'none' : 'flex';
+  document.getElementById('seq-gap-input').value = (SEQ_GAP_MS / 1000).toFixed(1);
+}
+
 // タイル方式／カード方式の切り替え。
 // stepsのデータ自体（数値・状態）はモードに依存しないので作り直さなくてよく、
 // レイアウト幅の再計算と、現在のステップの再描画だけ行えばよい。
@@ -2429,8 +2630,8 @@ function setDisplayMode(mode){
   if(animBusy||mode===DISPLAY_MODE)return;
   cancelAnim();
   DISPLAY_MODE=mode;
-  document.getElementById('mode-btn-tile').classList.toggle('active',mode==='tile');
-  document.getElementById('mode-btn-card').classList.toggle('active',mode==='card');
+  try{localStorage.setItem('tashizan_display_mode',mode);}catch(e){}
+  syncSettingsUI();
   document.getElementById('anim-layer').innerHTML='';
   updateLayout();
   updateUI(true);
@@ -2442,11 +2643,8 @@ function setTimingMode(mode){
   if(animBusy||mode===TIMING_MODE)return;
   cancelAnim();
   TIMING_MODE=mode;
-  document.getElementById('timing-btn-sync').classList.toggle('active',mode==='sync');
-  document.getElementById('timing-btn-tile-first').classList.toggle('active',mode==='tile-first');
-  document.getElementById('timing-btn-hissan-first').classList.toggle('active',mode==='hissan-first');
-  // 「間」調整ボックスは逐次モード（同時以外）のときだけ表示する
-  document.getElementById('seq-gap-row').style.display=(mode==='sync')?'none':'flex';
+  try{localStorage.setItem('tashizan_timing_mode',mode);}catch(e){}
+  syncSettingsUI();
 }
 
 // 「間」調整ボックスの値（秒）が変更されたときに呼ばれる。0.1秒単位、0〜5秒の範囲にクランプする。
@@ -2456,6 +2654,7 @@ function setSeqGap(val){
   sec=Math.min(5,Math.max(0,Math.round(sec*10)/10));
   document.getElementById('seq-gap-input').value=sec;
   SEQ_GAP_MS=Math.round(sec*1000);
+  try{localStorage.setItem('tashizan_seq_gap',sec.toString());}catch(e){}
 }
 
 function setProblem(a,b){
@@ -2497,6 +2696,10 @@ document.getElementById('inp-b').addEventListener('keydown',e=>{if(e.key==='Ente
 document.addEventListener('keydown',e=>{
   const tag=(e.target&&e.target.tagName)||'';
   const inTextField=(tag==='INPUT'||tag==='TEXTAREA');
+  if(e.key==='Escape'){
+    closeSettingsModal();
+    return;
+  }
   if(e.key==='Enter'){
     if(inTextField)return; // 入力欄内のEnterは各入力欄のリスナーに任せる
     e.preventDefault();
@@ -2534,6 +2737,7 @@ function fitStage(){
 }
 
 // 初期化：stepsを先に作り、全ステップの説明・筆算状態を測ってから倍率を確定する。
+syncSettingsUI();
 steps=buildSteps();
 updateLayout();
 warmupTTS();
