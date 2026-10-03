@@ -1,0 +1,41 @@
+const fs=require('fs'),path=require('path');
+const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {serve,local,targets}=require('./portfolio-demo-inspect.cjs');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'.portfolio-work');
+const click=s=>p=>p.locator(s).first().click(),fill=(s,v)=>p=>p.locator(s).fill(v),select=(s,v)=>p=>p.locator(s).selectOption(v);
+const prepare={27:async p=>{if(await p.locator('#titleScreen').count()){await p.locator('#titleScreen').click({force:true});await p.locator('#titleScreen').waitFor({state:'detached',timeout:30000})}},20:click('#startup-stage'),32:async p=>{await p.locator('.tap-to-start').click();await p.locator('#introConfirmBtn').click()},42:click('#start-screen')};
+const plans={
+27:{captions:['入力方法を選んでしりとり','言葉を入力してつなげる','言葉の履歴と説明を確認'],actions:[click('#tabKbd'),fill('#kbdInput','りんご'),click('#btnOk'),p=>p.waitForTimeout(900)]},
+20:{captions:['コースを選んで足し算を練習','一問ずつ答えて力をつける','ヒントで考え方を確認'],actions:[click('[data-action="goLevel"][data-value="easy"]'),click('[data-action="startCourse"][data-value="20"]'),click('#agrid button'),click('#hint-btn')]},
+12:{captions:['文の中からカタカナ言葉を探す','言葉を選んで答え合わせ','解説で表記を確かめる'],actions:[click('[data-size="10"]'),click('#quizArea .word'),click('.checkBtn'),p=>p.waitForTimeout(400)]},
+21:{captions:['タイルを動かして位取りを学ぶ','位ごとに数を増やして比べる','数字カードでも確かめる'],actions:[click('.btn-calc'),click('.btn-calc'),click('#mode-toggle-btn'),click('#mode-toggle-btn')]},
+22:{captions:['3けたの数を絵で考える','数字を入れて数の表し方を練習','漢字の問題にも取り組める'],actions:[click('[onclick="inputDigit(2)"]'),click('[onclick="inputDigit(3)"]'),click('#tab2'),click('#tab3')]},
+23:{captions:['学びたい単位を選ぶ','問題を解いて単位の関係を考える','正解と位取り表で確かめる'],actions:[click('[onclick*="length2_short"]'),async p=>{const q=await p.locator('#problem-text').innerText();await p.locator('#input-mm').fill(String(Number(q.match(/(\d+)cm/)[1])*10))},click('[onclick="checkAnswer()"]'),p=>p.waitForTimeout(400)]},
+26:{captions:['10を何個集めた数か考える','ヒントの図を見て確かめる','図と式を順に確認'],actions:[click('#q1Hint'),click('#hintNext1'),click('#hintNext1'),click('#hintNext1')]},
+30:{captions:['1000の数をドットで確かめる','アニメーションを少しずつ進める','位取り表と数の変化を見る'],actions:[click('#stepBtn'),click('#stepBtn'),click('#stepBtn'),click('#playBtn')]},
+31:{captions:['何十・何百の計算を練習','ステップで考え方を確認','まとまりを図で見る'],actions:[click('label.switch'),click('#step-btn'),click('#step-btn'),click('#step-btn')]},
+32:{captions:['書き順を見て確かめる','一画ずつ形と順番を確認','なぞり練習にも切り替えられる'],actions:[click('#nextBtn'),click('#nextBtn'),p=>p.getByText('なぞりれんしゅう',{exact:false}).click(),p=>p.waitForTimeout(500)]},
+34:{captions:['長さと角度から三角形を作る','作図の手順をアニメーションで見る','どこが決まると形が決まるか考える'],actions:[click('#ami-set'),click('#ami-play'),p=>p.waitForTimeout(1100),p=>p.waitForTimeout(1100)]},
+35:{captions:['立体と式で体積の意味を学ぶ','底面の数え方を確かめる','積み重ねて体積を考える'],actions:[click('#btnNext'),click('#btnNext'),click('#btnNext'),click('#btnNext')]},
+36:{captions:['かさの計算を図で確かめる','単位をそろえて順に考える','繰り下がりを見える形で説明'],actions:[click('#btn-init'),click('#btn-next'),click('#btn-next'),click('#btn-next')]},
+37:{captions:['10倍すると数はどう変わる？','お金で変化を確かめる','同じまとまりを増やして比べる'],actions:[click('#buildBtn'),click('#nextBtn'),click('#nextBtn'),click('#nextBtn')]},
+38:{captions:['1つ分といくつ分を選ぶ','具体物を増やして倍を体験','図と式を見比べて考える'],actions:[click('#base-3'),click('#mult-4'),click('#run-btn'),p=>p.waitForTimeout(1100)]},
+41:{captions:['毎日のがんばりをスタンプに','できたらスタンプを押す','がんばりがカードに残る'],actions:[p=>p.getByText('きょうの ミッション できた！',{exact:false}).click(),click('#push-stamp-btn'),p=>p.waitForTimeout(600),p=>p.waitForTimeout(400)]},
+42:{captions:['引き算のコースを選ぶ','問題に答えて練習を続ける','幻獣と一緒に力をつける'],actions:[click('#ct'),click('#go-btn-all'),async p=>{const q=await p.locator('.peq').innerText();const n=q.match(/(\d+)\s*[ー−-]\s*(\d+)/);await p.locator('.abtn').filter({hasText:new RegExp('^'+(Number(n[1])-Number(n[2]))+'$')}).click()},p=>p.waitForTimeout(800)]},
+43:{captions:['先生用の問題配信ツール','問題の桁数や条件を設定','配信前の問題内容を準備'],actions:[click('[onclick="showPage(\'newProblem\')"]'),fill('#np_title','3年 かけ算の練習'),select('#np_topMax','3'),select('#np_qCount','10')]},
+46:{captions:['模擬店のレジと在庫を支援','先生が商品やお店を準備','写真や商品の設定を確認'],actions:[p=>p.locator('a').filter({hasText:'レジ'}).click(),click('[onclick="openStockModal()"]'),fill('#shop-name-input','学習用のおみせ'),click('[onclick="addProductSettingRow()"]')]},
+47:{captions:['クラスで算数レイドバトル','先生の画面で授業を準備','授業に合う条件を準備'],actions:[p=>p.locator('a').filter({hasText:'先生用画面を開く'}).first().click(),click('#panelToggleBtn'),fill('#bossHpInput','300'),fill('#timeLimitInput','300')]},
+48:{captions:['先生の画面でレースを準備','時間や協力の条件を選ぶ','児童と協力する学習に使える'],actions:[select('#duration','180'),fill('#targetStages','5'),select('#instructorCount','2'),p=>p.locator('#phase2Enabled').uncheck()]},
+49:{captions:['月のカレンダーで予定を確認','先生が行事や活動の名前を入力','日付と活動の段階を準備'],actions:[click('#add-event'),fill('#event-title','作品展'),p=>p.locator('.stage-label').fill('作品をつくる'),p=>p.locator('.stage-date').fill('2026-11-01')]},
+50:{captions:['包帯を伸ばして比べる','もとの長さと伸びた長さを見る','何倍かを図で考える'],actions:[async p=>{const b=await p.locator('#svgA g[style*="cursor"]').boundingBox();await p.mouse.move(b.x+b.width/2,b.y+b.height/2);await p.mouse.down();await p.mouse.move(b.x+b.width/2+230,b.y+b.height/2,{steps:25});await p.mouse.up()},async p=>{const b=await p.locator('#svgB g[style*="cursor"]').boundingBox();await p.mouse.move(b.x+b.width/2,b.y+b.height/2);await p.mouse.down();await p.mouse.move(b.x+b.width/2+230,b.y+b.height/2,{steps:25});await p.mouse.up()},click('[data-predict="B"]'),click('#startExperimentBtn')]},
+72:{captions:['つまずいた内容から学び直す','学年と内容を選ぶ','段階的なヒントで学ぶ'],actions:[select('#auto-grade','1'),click('#start-recommended'),p=>p.getByRole('button',{name:/ヒント|考え方|図で/}).first().click(),p=>p.waitForTimeout(500)]}
+};
+async function main(){const server=serve();await new Promise(r=>server.listen(8953,'127.0.0.1',r));const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});let failed=[];
+const ids=process.argv.slice(2).map(Number);for(const c of targets.filter(c=>!ids.length||ids.includes(c.id))){const dir=path.join(out,'demo-'+c.id);fs.mkdirSync(dir,{recursive:true});const context=await browser.newContext({viewport:{width:1280,height:640},recordVideo:{dir,size:{width:1280,height:640}}});const page=await context.newPage();page.setDefaultTimeout(5000);const began=Date.now();const segments=[];page.on('dialog',d=>d.dismiss());
+try{let url=local(c);await page.goto(url.startsWith('http')?url:'http://127.0.0.1:8953'+url,{waitUntil:'domcontentloaded',timeout:20000});await page.waitForTimeout(1200);if(prepare[c.id])await prepare[c.id](page);await page.waitForTimeout(400);
+for(let i=0;i<5;i++){if(i)await plans[c.id].actions[i-1](page);await page.waitForTimeout(400);segments.push((Date.now()-began)/1000);await page.screenshot({path:path.join(dir,`frame-0${i}.png`)});await page.waitForTimeout(i===4?2900:1100)}
+const ui=await page.evaluate(()=>({text:document.body.innerText.slice(0,5000),controls:[...document.querySelectorAll('button,input,select')].filter(e=>e.getBoundingClientRect().width&&e.getBoundingClientRect().height).map(e=>({id:e.id,text:e.innerText,cls:e.className}))}));fs.writeFileSync(path.join(dir,'final-ui.json'),JSON.stringify(ui,null,2));
+const video=page.video();await context.close();await video.saveAs(path.join(dir,'source.webm'));fs.writeFileSync(path.join(dir,'storyboard.json'),JSON.stringify({id:c.id,title:c.title.replace(/^(?:[①-㊿]|\d+)\s*/,''),captions:plans[c.id].captions,source:'source.webm',segments,durations:[1,1.6,1.8,2,3.1],url:c.url},null,2));console.log('CAPTURED',c.id);
+}catch(e){console.log('FAILED',c.id,e.message);failed.push(c.id);await page.screenshot({path:path.join(dir,'failure.png')}).catch(()=>{});fs.writeFileSync(path.join(dir,'failure-ui.json'),JSON.stringify(await page.evaluate(()=>({text:document.body.innerText,controls:[...document.querySelectorAll('button,input,select')].filter(e=>e.getBoundingClientRect().width&&e.getBoundingClientRect().height).map(e=>({id:e.id,text:e.innerText,cls:e.className,click:e.getAttribute('onclick')}))})),null,2));await context.close()}}
+await browser.close();server.close();console.log('FAILURES',failed);if(failed.length)process.exitCode=1}
+main().catch(e=>{console.error(e);process.exit(1)});

@@ -1,0 +1,3 @@
+const fs=require('fs'),path=require('path'),http=require('http');
+const root=path.resolve(__dirname,'..');
+http.createServer((req,res)=>{try{const name=decodeURIComponent(req.url.split('?')[0]);const file=path.resolve(root,'.'+(name==='/'?'/app_links_portfolio.html':name));if(!file.startsWith(root+path.sep))throw Error();const ext=path.extname(file);res.setHeader('Content-Type',({'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.mp4':'video/mp4'})[ext]||'application/octet-stream');res.end(fs.readFileSync(file))}catch{res.statusCode=404;res.end('Not found')}}).listen(8954,'127.0.0.1',()=>console.log('Portfolio preview: http://127.0.0.1:8954/app_links_portfolio.html'));

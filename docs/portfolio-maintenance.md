@@ -1,0 +1,32 @@
+# 学習アプリ作品集の更新
+
+入口は `app_links_portfolio.html`、表示は `css/portfolio.css`、検索・動画操作は `js/portfolio.js`。
+各カードは短い紹介文・使い方・対象を一覧で見せ、元の詳しい説明とタグを `details` に保持している。
+
+## 教材を追加・変更する
+
+- `id="app-N"` と `data-register-order="N"` は重複しない教材番号にする。
+- `data-grades` は学習の目安をカンマで区切る。`data-main-grade` は主な対象学年。
+- `data-category` は教科。`data-audience` は `student`（児童の学習）、`teacher`（先生用）、`common`（学年共通・生活支援）、`experiment`（技術・観察教材）。
+- `data-topics` は学習内容を明示する。本文の単語だけでは分類しない。キーと表示名は `js/portfolio.js` の `topics` を参照。
+- `data-usage` は `understand / practice / game / create / teacher / experiment` のいずれか。
+- `card-intro` は、似た教材との違いが分かる短い紹介文にする。詳細説明とリンクは既存の情報を保持する。
+- `data-video` は `media/` 内の実在するMP4名。既定のサムネイルは同名PNG。別の画像には `data-poster` を指定する。動画がないカードには `data-video` を付けない。
+
+検索は空白区切りのAND検索。全角・半角、かな表記、同義語を正規化する。教科・学年・使い方・使う人はAND、複数の学習内容はOR。学年別件数は現在の条件から再計算する。先生用と学年共通の教材は各学年からも見つかる。
+
+## 2026年10月4日の動画追加
+
+既存52本に、24本のH.264/AAC紹介動画とPNGサムネイルを追加した。新規動画は10秒以内、3つの短い日本語字幕つき。画面640pxと字幕専用80pxを分け、字幕が操作対象を覆わないようにしている。
+
+元のブラウザ録画は `.portfolio-work/demo-N/source.webm`。採用区間・字幕・参照URLは `scripts/portfolio-demos-added.json` に保存している。録画素材と検証画像はローカルに保持し、Gitの対象から除外した。
+
+先生用の問題管理・レジ・レイド・潜水艦とカレンダーの動画は、入力や設定の準備を紹介する。公開サービスでの配信・販売・ゲーム開始は行っていない。カレンダーのサンプル予定に参照先の画像がないため、月表示から先生用の行事入力へ進む流れを採用した。さんすうステップは専用ローカルプロファイルで実際の学習画面を収録した。提供形態は引き続きPC用ローカル版で、リンクは紹介・起動案内につながる。
+
+## 確認とプレビュー
+
+`node scripts/qa-portfolio.cjs --videos` で検索・分類・件数・条件解除・URL復元・並び順・タグ操作・ダイアログのフォーカス・動きの軽減・幅320/390px・全76件の動画情報と新規動画の再生を確認する。
+
+`node scripts/preview-portfolio.cjs` で `http://127.0.0.1:8954/app_links_portfolio.html` を開く。
+
+再収録は `node scripts/capture-portfolio-missing.cjs N`、書き出しは `python scripts/encode-portfolio-missing.py N`。ローカルの各アプリのチェックアウト、Playwright、Chrome、Pillow、FFmpegが必要。さんすうステップは録画専用サーバー（8952番）を起動しておく。実行環境のパスはスクリプトに明示している。
