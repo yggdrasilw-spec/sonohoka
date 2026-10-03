@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>長方形・正方形 ふくしゅう v4</title>
+<style>
+  :root{
+    --ink:#20314a; --sub:#586b86; --paper:#f7fbff; --panel:#ffffff;
+    --blue:#2f7df4; --blue2:#dfeeff; --green:#18a06b; --green2:#dcf7ec;
+    --orange:#f59e0b; --orange2:#fff2d5; --red:#e44747; --red2:#ffe6e6;
+    --violet:#805ad5; --violet2:#eee7ff; --line:#cbd8e6; --shadow:0 16px 40px rgba(32,49,74,.14);
+  }
+  *{box-sizing:border-box}
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#dce8f5;font-family:"Noto Sans JP","Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif;color:var(--ink)}
+  button,input{font:inherit}
+  button{cursor:pointer}
+  #viewport{position:fixed;inset:0;display:grid;place-items:center;overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);touch-action:manipulation}
+  #stageFrame{position:relative;overflow:hidden;flex:none}
+  #stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;background:linear-gradient(145deg,#f9fcff 0%,#eef7ff 56%,#fff8ed 100%);overflow:hidden;box-shadow:0 24px 70px rgba(20,45,74,.22)}
+  #stage::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(60,145,170,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(60,145,170,.07) 1px,transparent 1px);background-size:24px 24px}
+  .screen{position:absolute;inset:0;padding:26px 38px;display:none;z-index:1}
+  .screen.active{display:flex;flex-direction:column}
+  .topbar{height:60px;display:flex;align-items:center;gap:16px;flex:none}
+  .brand{font-weight:900;font-size:23px;letter-spacing:.02em;white-space:nowrap}
+  .modeTag{padding:8px 14px;border-radius:999px;background:#fff;border:2px solid var(--line);font-weight:800;font-size:16px}
+  .progressWrap{margin-left:auto;width:360px;display:flex;align-items:center;gap:12px}
+  .progressText{font-size:15px;font-weight:800;color:var(--sub);min-width:62px;text-align:right}
+  .progressTrack{height:11px;border-radius:999px;background:#dbe6f2;overflow:hidden;flex:1}
+  .progressBar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),#69a9ff);border-radius:inherit;transition:width .25s ease}
+  .home{align-items:center;justify-content:center;text-align:center;padding-top:46px!important}
+  .heroKicker{font-weight:900;color:var(--blue);font-size:22px;letter-spacing:.12em;margin-bottom:10px}
+  .heroTitle{font-size:58px;line-height:1.1;font-weight:1000;margin:0;text-shadow:0 3px 0 #fff}
+  .heroSub{font-size:24px;font-weight:800;color:var(--sub);margin:14px 0 28px}
+  .shapeHero{width:560px;height:130px;margin:0 auto 18px;display:flex;justify-content:center;gap:36px;align-items:center}
+  .modeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;width:1080px}
+  .modeCard{background:rgba(255,255,255,.93);border:3px solid #fff;border-radius:26px;box-shadow:var(--shadow);padding:22px 20px 20px;min-height:170px;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;text-align:left;position:relative;overflow:hidden}
+  .modeCard:hover,.modeCard:focus-visible{transform:translateY(-5px) scale(1.015);box-shadow:0 22px 50px rgba(32,49,74,.20);outline:none;border-color:#b8d4fa}
+  .modeCard .num{font-size:15px;font-weight:1000;color:var(--blue);letter-spacing:.09em}
+  .modeCard h2{font-size:28px;margin:7px 0 8px}
+  .modeCard p{font-size:17px;line-height:1.55;margin:0;color:var(--sub);font-weight:700}
+  .modeCard .pill{position:absolute;right:15px;top:15px;border-radius:999px;background:var(--blue2);color:#235fb8;padding:6px 10px;font-weight:900;font-size:13px}
+
+  #content{flex:1;min-height:0;display:grid;grid-template-columns:1.15fr .85fr;gap:22px;position:relative}
+  .card{background:rgba(255,255,255,.96);border:2px solid rgba(190,208,226,.85);border-radius:28px;box-shadow:var(--shadow);min-height:0}
+  .questionCard{padding:24px 30px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+  .qLabel{font-size:15px;font-weight:1000;color:var(--blue);letter-spacing:.13em;margin-bottom:8px}
+  .qText{font-size:34px;line-height:1.35;font-weight:1000;margin:0 0 12px}
+  .qText .blank{display:inline-block;min-width:120px;border-bottom:5px solid var(--blue);color:var(--blue);text-align:center;padding:0 6px}
+  .visual{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 0 2px}
+  .visual svg{max-width:100%;max-height:100%;overflow:visible}
+  .sideCard{padding:20px;display:flex;flex-direction:column;min-height:0;position:relative}
+  .teacherPrompt{height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px}
+  .teacherPrompt .listen{font-size:20px;color:var(--sub);font-weight:800}
+  .bigAnswer{font-size:36px;font-weight:1000;color:var(--green);line-height:1.35;animation:pop .26s cubic-bezier(.2,.9,.2,1.3)}
+  .explain{font-size:19px;line-height:1.55;color:var(--ink);font-weight:800;background:var(--green2);border:2px solid #b6ead7;border-radius:18px;padding:14px 18px;width:100%}
+  .options{display:grid;grid-template-columns:1fr;gap:10px;margin:auto 0}
+  .option{width:100%;min-height:66px;border:3px solid #d9e5f0;border-radius:18px;background:#fff;padding:10px 14px;font-size:22px;font-weight:900;color:var(--ink);transition:.12s ease;text-align:left;display:flex;align-items:center;gap:12px}
+  .option::before{content:attr(data-key);display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#edf4fb;color:var(--sub);font-size:15px;flex:none}
+  .option:hover,.option.focused{border-color:#80b6ff;background:#f4f9ff;transform:translateX(4px)}
+  .option.correct{border-color:#56c49a;background:var(--green2);color:#126b4b}
+  .option.wrong{border-color:#ef8d8d;background:var(--red2);color:#a62828;animation:shake .26s linear}
+  .option:disabled{cursor:default}
+  .feedback{min-height:74px;border-radius:18px;padding:12px 15px;font-size:17px;line-height:1.45;font-weight:850;margin-top:12px;background:#f3f7fb;color:var(--sub);border:2px solid #e0e8f1;display:flex;align-items:center}
+  .feedback.ok{background:var(--green2);border-color:#afe5d1;color:#126b4b}
+  .feedback.ng{background:var(--orange2);border-color:#ffd99a;color:#8c5a00}
+  .actions{height:70px;display:flex;align-items:center;gap:12px;padding-top:10px;flex:none}
+  .btn{border:none;border-radius:16px;padding:13px 20px;font-weight:1000;font-size:18px;min-height:52px;box-shadow:0 5px 0 rgba(30,48,75,.12);transition:transform .08s ease,filter .12s ease}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(30,48,75,.12)}
+  .btn.primary{background:var(--blue);color:#fff}
+  .btn.secondary{background:#fff;color:var(--ink);border:2px solid var(--line)}
+  .btn.voice{background:var(--violet2);color:#6241b0;border:2px solid #d7c9ff}
+  .btn.next{margin-left:auto;background:var(--green);color:#fff;min-width:150px}
+  .btn:disabled{opacity:.45;cursor:default;transform:none}
+  .kbd{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 6px;border-radius:7px;background:#edf2f7;border:1px solid #cad6e3;box-shadow:0 2px 0 #b9c5d3;font-size:13px;margin:0 3px;color:#52647d;font-weight:900}
+  .hintBubble{position:absolute;right:22px;bottom:18px;max-width:310px;background:#fff6d9;border:2px solid #f4d47a;border-radius:18px 18px 4px 18px;padding:12px 15px;font-size:16px;font-weight:850;color:#74520a;box-shadow:0 8px 22px rgba(108,78,14,.10)}
+  .hidden{display:none!important}
+  .recognizing{animation:pulse 1s infinite}
+  .voiceHeard{font-size:18px;font-weight:900;color:#6241b0;background:var(--violet2);border-radius:14px;padding:10px 13px;width:100%;margin-bottom:8px}
+
+  .selectionBoard,.definitionBoard{width:100%;height:100%;max-height:440px;overflow:visible}
+  .gridPaper{fill:url(#gridPattern)}
+  .candidateMain{fill:#fff;stroke:#5f6770;stroke-width:4.5;stroke-linejoin:round;vector-effect:non-scaling-stroke;transition:fill .16s ease,stroke .16s ease,stroke-width .16s ease,filter .16s ease}
+  .shapeChoiceSvg,.defChoiceSvg{cursor:pointer;outline:none}
+  .shapeChoiceSvg:hover .candidateMain,.defChoiceSvg:hover .candidateMain{stroke:#2f7df4;stroke-width:6}
+  .shapeChoiceSvg.selected .candidateMain,.defChoiceSvg.selected .candidateMain{stroke:#2f7df4;stroke-width:7;filter:drop-shadow(0 3px 3px rgba(47,125,244,.24))}
+  .selectionBoard.target-square .shapeChoiceSvg.correct .candidateMain{fill:#fff300;stroke:#555}
+  .selectionBoard.target-rect .shapeChoiceSvg.correct .candidateMain{fill:#f000f0;stroke:#555}
+  .selectionBoard.target-righttri .shapeChoiceSvg.correct .candidateMain{fill:#0bdce6;stroke:#555}
+  .shapeChoiceSvg.wrong .candidateMain,.defChoiceSvg.wrong .candidateMain{stroke:#e44747;stroke-width:7;filter:drop-shadow(0 3px 3px rgba(228,71,71,.18))}
+  .defChoiceSvg.correct .candidateMain{fill:#dcf7ec;stroke:#18a06b;stroke-width:6}
+  .shapeHit{fill:transparent;stroke:none;pointer-events:all}
+  .shapeLabel{font-size:19px;font-weight:1000;fill:#40536b;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+  .selectInfo{font-size:18px;font-weight:900;color:var(--sub);margin-bottom:10px}
+  .definitionBox{margin-top:10px;border:3px solid #72b993;background:#edfdf5;border-radius:16px;padding:10px 13px;font-size:17px;font-weight:1000;color:#126b4b;line-height:1.45}
+  .reasonList{display:grid;gap:7px;margin-top:8px}
+  .reasonChip{background:#fff7dc;border:2px solid #f0d27d;border-radius:12px;padding:7px 9px;font-size:14px;font-weight:900;line-height:1.35;color:#72540e}
+  .sideTour{stroke:#ef2b20;stroke-width:8;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:.16}
+  .vertexTour{fill:#ef2b20;stroke:#fff;stroke-width:3;opacity:.16}
+  .tour1{animation:tourPulse 4.8s ease-in-out infinite 0s}.tour2{animation:tourPulse 4.8s ease-in-out infinite .6s}.tour3{animation:tourPulse 4.8s ease-in-out infinite 1.2s}.tour4{animation:tourPulse 4.8s ease-in-out infinite 1.8s}.tour5{animation:tourPulse 4.8s ease-in-out infinite 2.4s}.tour6{animation:tourPulse 4.8s ease-in-out infinite 3s}.tour7{animation:tourPulse 4.8s ease-in-out infinite 3.6s}
+
+  .numberBox{display:flex;gap:14px;align-items:center;justify-content:center;margin:auto}
+  .numInput{width:180px;height:80px;border:4px solid #adcaf0;border-radius:18px;background:#fff;font-size:42px;font-weight:1000;text-align:center;color:var(--ink);outline:none}
+  .numInput:focus{border-color:var(--blue);box-shadow:0 0 0 5px rgba(47,125,244,.12)}
+  .unit{font-size:28px;font-weight:1000}
+  .keypad{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
+  .keypad button{height:48px;border:2px solid #d7e2ed;background:#fff;border-radius:13px;font-weight:1000;font-size:20px}
+
+  .summary{align-items:center;justify-content:center;text-align:center}
+  .summary h1{font-size:44px;margin:0 0 12px}
+  .scoreRing{width:190px;height:190px;border-radius:50%;background:conic-gradient(var(--green) calc(var(--score)*1%),#dfebf4 0);display:grid;place-items:center;margin:18px auto;position:relative}
+  .scoreRing::before{content:"";width:150px;height:150px;background:#fff;border-radius:50%;position:absolute}
+  .scoreText{position:relative;font-size:42px;font-weight:1000}
+  .summaryMsg{font-size:22px;font-weight:850;color:var(--sub);margin-bottom:18px}
+  .summaryButtons{display:flex;gap:14px;justify-content:center}
+
+  .miniLegend{position:absolute;left:18px;bottom:15px;font-size:13px;color:#6b7d95;font-weight:800;background:rgba(255,255,255,.78);padding:7px 10px;border-radius:10px}
+  .rightAngleMark{fill:none;stroke:#ef4444;stroke-width:7;stroke-linecap:butt;stroke-linejoin:miter}
+  .edge{stroke:#3f4d60;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .edgeThin{stroke:#52647a;stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .accentEdge{stroke:#2f7df4;stroke-width:10;fill:none;stroke-linecap:round}
+  .vertexDot{fill:#e44747;stroke:#fff;stroke-width:3}
+  .dimText{font-size:26px;font-weight:900;fill:#20314a}
+  .perimeterGlow{stroke:#e44747;stroke-width:9;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1000;stroke-dashoffset:1000}
+  .answerShown .perimeterGlow{animation:draw 1.2s ease forwards}
+  .sideTick{stroke:#2f7df4;stroke-width:5;stroke-linecap:round}
+  .oppositeA{stroke:#2f7df4;stroke-width:9}
+  .oppositeB{stroke:#f59e0b;stroke-width:9}
+  .cornerPulse{animation:corner 1.4s ease-in-out infinite}
+  @keyframes pop{0%{transform:scale(.86);opacity:0}100%{transform:scale(1);opacity:1}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  @keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18);transform:scale(1.03)}}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes corner{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes tourPulse{0%,12%,100%{opacity:.16}4%,8%{opacity:1;filter:drop-shadow(0 0 5px rgba(239,43,32,.28))}}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stageFrame"><main id="stage" aria-live="polite">
+  <section id="home" class="screen home active">
+    <div class="heroKicker">かたちの なまえだけでなく</div>
+    <h1 class="heroTitle">いみも こたえよう</h1>
+    <div class="heroSub">長方形・正方形・直角三角形の ふくしゅう</div>
+    <div class="shapeHero" id="shapeHero" aria-hidden="true"></div>
+    <div class="modeGrid">
+      <button class="modeCard" data-mode="teacher">
+        <span class="pill">先生向け</span><div class="num">MODE 1</div><h2>せんせいと いっしょ</h2>
+        <p>もんだい → みんなで答える → こたえを表示。元のスライドに近い進め方。</p>
+      </button>
+      <button class="modeCard" data-mode="quick">
+        <span class="pill">3〜5分</span><div class="num">MODE 2</div><h2>10もん チャレンジ</h2>
+        <p>選ぶ・数字を入れる・声で答える。毎回少し問題が変わる短時間復習。</p>
+      </button>
+      <button class="modeCard" data-mode="all">
+        <span class="pill">しっかり</span><div class="num">MODE 3</div><h2>ぜんぶ ふくしゅう</h2>
+        <p>定義から見分け、まわりの長さまで一通り確認。</p>
+      </button>
+    </div>
+    <div class="miniLegend"><span class="kbd">Esc</span> いつでも さいしょにもどる</div>
+  </section>
+
+  <section id="lesson" class="screen">
+    <div class="topbar">
+      <div class="brand">形のなまえと いみ</div><div id="modeTag" class="modeTag"></div>
+      <div class="progressWrap"><div id="progressText" class="progressText"></div><div class="progressTrack"><div id="progressBar" class="progressBar"></div></div></div>
+    </div>
+    <div id="content">
+      <article id="questionCard" class="card questionCard">
+        <div class="qLabel" id="qLabel">もんだい</div>
+        <h2 id="qText" class="qText"></h2>
+        <div id="visual" class="visual"></div>
+      </article>
+      <aside id="sideCard" class="card sideCard"></aside>
+    </div>
+    <div id="actions" class="actions"></div>
+  </section>
+
+  <section id="summary" class="screen summary">
+    <h1 id="summaryTitle">おわり！</h1>
+    <div id="scoreRing" class="scoreRing" style="--score:0"><div id="scoreText" class="scoreText"></div></div>
+    <div id="summaryMsg" class="summaryMsg"></div>
+    <div class="summaryButtons"><button class="btn secondary" id="homeBtn">さいしょへ</button><button class="btn primary" id="retryBtn">もういちど</button></div>
+  </section>
+</main></div></div>
+<script>
+window.addEventListener('error',function(e){
+  try{
+    var box=document.getElementById('runtimeError');
+    if(!box){
+      box=document.createElement('div'); box.id='runtimeError';
+      box.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;background:#fff4e5;border:2px solid #f59e0b;border-radius:12px;padding:10px 14px;font:700 14px sans-serif;color:#6b4600';
+      document.body.appendChild(box);
+    }
+    box.textContent='読み込み中にエラーが起きました。Chromeで開き直してください。 '+(e.message||'');
+  }catch(_){}
+});
+(() => {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const stage=$('#stage'), stageFrame=$('#stageFrame'), viewport=$('#viewport'), home=$('#home'), lesson=$('#lesson'), summary=$('#summary');
+  const qText=$('#qText'), visual=$('#visual'), sideCard=$('#sideCard'), actions=$('#actions');
+  const modeTag=$('#modeTag'), progressText=$('#progressText'), progressBar=$('#progressBar'), questionCard=$('#questionCard');
+  const W=1280,H=720;
+  function fit(){
+    // 16:9 の設計画面を、端末の表示領域に「contain」で最大表示する。
+    // スマホ縦持ちでは横幅いっぱいの16:9、横持ちでは高さ（または幅）いっぱいになる。
+    const vv=window.visualViewport;
+    const rect=viewport.getBoundingClientRect();
+    const vw=Math.max(1, Math.min(rect.width || innerWidth || W, vv ? vv.width : (innerWidth||W)));
+    const vh=Math.max(1, Math.min(rect.height || innerHeight || H, vv ? vv.height : (innerHeight||H)));
+    const scale=Math.max(0.05, Math.min(vw/W, vh/H));
+    const sw=Math.round(W*scale*100)/100;
+    const sh=Math.round(H*scale*100)/100;
+    stageFrame.style.width=sw+'px';
+    stageFrame.style.height=sh+'px';
+    stage.style.transform='scale('+scale+')';
+  }
+  addEventListener('resize',fit,{passive:true});
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize',fit,{passive:true});
+    visualViewport.addEventListener('scroll',fit,{passive:true});
+  }
+  addEventListener('orientationchange',()=>setTimeout(fit,120),{passive:true});
+  requestAnimationFrame(fit);
+  setTimeout(fit,150);
+  setTimeout(fit,700);
+
+  const norm = s => (s||'').toString().normalize('NFKC').toLowerCase().replace(/[\s、。,.!！?？・\-ー]/g,'').replace(/ちょう点/g,'頂点').replace(/ちょうてん/g,'頂点').replace(/三本|さんぼん/g,'3本').replace(/四本|よんほん|よんぼん/g,'4本');
+  const esc = s => String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+
+  function svgWrap(inner,w=520,h=300,view=`0 0 ${w} ${h}`){return `<svg viewBox="${view}" role="img" aria-label="図形">${inner}</svg>`}
+  function rightMark(x,y,dir='ru',size=28,cls='rightAngleMark'){
+    // 頂点そのものには重ねない。2本の辺に両端が触れ、辺と合わせると小さな正方形になる「カギ型」。
+    const paths={
+      ru:`M ${x} ${y-size} L ${x+size} ${y-size} L ${x+size} ${y}`,
+      rd:`M ${x+size} ${y} L ${x+size} ${y+size} L ${x} ${y+size}`,
+      ld:`M ${x-size} ${y} L ${x-size} ${y+size} L ${x} ${y+size}`,
+      lu:`M ${x-size} ${y} L ${x-size} ${y-size} L ${x} ${y-size}`
+    };
+    return `<path class="${cls}" d="${paths[dir]||paths.ru}"/>`;
+  }
+  function triSvg(opts={}){
+    const mark=opts.mark?rightMark(105,230,'ru',30):'';
+    return svgWrap(`<polygon points="105,230 105,65 390,230" class="edge" fill="#eaf4ff"/>${mark}`,500,300);
+  }
+  function quadSvg(){return svgWrap(`<polygon points="105,70 370,55 420,225 80,235" class="edge" fill="#eef6ff"/>`,500,300)}
+  function lineSvg(){return svgWrap(`<line x1="70" y1="92" x2="435" y2="92" class="edge"/><text x="252" y="62" text-anchor="middle" class="dimText">まっすぐ</text><path d="M70 215 C145 145 210 285 285 210 S390 150 435 210" class="edgeThin"/><text x="252" y="270" text-anchor="middle" style="font-size:22px;font-weight:900;fill:#7b8798">こういう線では ない</text>`,500,300)}
+  function sideSvg(){
+    // 元スライドと同じく、三角形と四角形の複数の辺を順に赤く示す。
+    return svgWrap(`<g transform="translate(16 10)"><polygon points="45,225 170,55 275,225" class="edgeThin" fill="#ededed"/>
+      <line x1="45" y1="225" x2="170" y2="55" class="sideTour tour1"/><line x1="170" y1="55" x2="275" y2="225" class="sideTour tour2"/><line x1="275" y1="225" x2="45" y2="225" class="sideTour tour3"/></g>
+      <g transform="translate(295 6)"><polygon points="35,225 190,55 335,95 375,220" class="edgeThin" fill="#ededed"/>
+      <line x1="35" y1="225" x2="190" y2="55" class="sideTour tour4"/><line x1="190" y1="55" x2="335" y2="95" class="sideTour tour5"/><line x1="335" y1="95" x2="375" y2="220" class="sideTour tour6"/><line x1="375" y1="220" x2="35" y2="225" class="sideTour tour7"/></g>`,720,300);
+  }
+  function vertexSvg(){
+    // 元スライドと同じく、三角形と四角形の頂点を順に赤く示す。
+    return svgWrap(`<g transform="translate(16 10)"><polygon points="45,225 170,55 275,225" class="edgeThin" fill="#ededed"/>
+      <circle cx="45" cy="225" r="13" class="vertexTour tour1"/><circle cx="170" cy="55" r="13" class="vertexTour tour2"/><circle cx="275" cy="225" r="13" class="vertexTour tour3"/></g>
+      <g transform="translate(295 6)"><polygon points="35,225 190,55 335,95 375,220" class="edgeThin" fill="#ededed"/>
+      <circle cx="35" cy="225" r="13" class="vertexTour tour4"/><circle cx="190" cy="55" r="13" class="vertexTour tour5"/><circle cx="335" cy="95" r="13" class="vertexTour tour6"/><circle cx="375" cy="220" r="13" class="vertexTour tour7"/></g>`,720,300);
+  }
+  function countSvg(){return svgWrap(`<g transform="translate(10 6)"><polygon points="70,220 180,65 300,220" class="edge" fill="#eef6ff"/><text x="184" y="273" text-anchor="middle" class="dimText">三角形</text></g><g transform="translate(280 2)"><rect x="70" y="70" width="180" height="150" rx="2" class="edge" fill="#fff7e8"/><text x="160" y="273" text-anchor="middle" class="dimText">四角形</text></g>`,600,310)}
+  function angleSvg(){return svgWrap(`<path d="M125 235 L125 72 M125 235 L390 235" class="edge"/>${rightMark(125,235,'ru',40)}<circle cx="125" cy="235" r="7" fill="#3f4d60"/>`,500,300)}
+  function rectSvg({marks=true,opposite=false}={}){
+    let extra='';
+    if(marks){extra += rightMark(110,55,'rd',26)+rightMark(410,55,'ld',26)+rightMark(410,260,'lu',26)+rightMark(110,260,'ru',26)}
+    if(opposite){extra += `<line x1="110" y1="55" x2="410" y2="55" class="oppositeA"/><line x1="110" y1="260" x2="410" y2="260" class="oppositeA"/><line x1="110" y1="55" x2="110" y2="260" class="oppositeB"/><line x1="410" y1="55" x2="410" y2="260" class="oppositeB"/>`}
+    return svgWrap(`<rect x="110" y="55" width="300" height="205" class="edge" fill="#edf7ff"/>${extra}`,520,315)
+  }
+  function squareSvg({marks=true,ticks=true,rotate=0}={}){
+    let extra='';
+    if(marks) extra=rightMark(155,60,'rd',25)+rightMark(365,60,'ld',25)+rightMark(365,270,'lu',25)+rightMark(155,270,'ru',25);
+    if(ticks) extra += `<line x1="252" y1="60" x2="268" y2="60" class="sideTick"/><line x1="252" y1="270" x2="268" y2="270" class="sideTick"/><line x1="155" y1="157" x2="155" y2="173" class="sideTick"/><line x1="365" y1="157" x2="365" y2="173" class="sideTick"/>`;
+    return svgWrap(`<g transform="rotate(${rotate} 260 165)"><rect x="155" y="60" width="210" height="210" class="edge" fill="#fff8d8"/>${extra}</g>`,520,330)
+  }
+  function rightTriSvg(){return svgWrap(`<polygon points="105,245 105,65 410,245" class="edge" fill="#e7fbfb"/>${rightMark(105,245,'ru',36)}<text x="245" y="286" text-anchor="middle" style="font-size:20px;font-weight:900;fill:#52647a">直角が 1つ ある</text>`,520,310)}
+  function perimeterRectSvg(w=6,h=3,reveal=false){
+    const px=98,py=73,pw=330,ph=170;
+    return svgWrap(`<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="edge" fill="#f2f8ff"/><text x="263" y="52" text-anchor="middle" class="dimText">${w} cm</text><text x="456" y="166" class="dimText">${h} cm</text><text x="263" y="286" text-anchor="middle" class="dimText">${w} cm</text><text x="50" y="166" class="dimText">${h} cm</text><rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="perimeterGlow"/>${reveal?`<text x="263" y="165" text-anchor="middle" style="font-size:24px;font-weight:1000;fill:#e44747">まわり ぜんぶ</text>`:''}`,520,310)}
+  function perimeterSquareSvg(s=3,reveal=false){
+    return svgWrap(`<rect x="155" y="55" width="210" height="210" class="edge" fill="#fff8d8"/><text x="260" y="40" text-anchor="middle" class="dimText">${s} cm</text><text x="385" y="170" class="dimText">${s} cm</text><text x="260" y="302" text-anchor="middle" class="dimText">${s} cm</text><text x="102" y="170" class="dimText">${s} cm</text><rect x="155" y="55" width="210" height="210" class="perimeterGlow"/>${reveal?`<text x="260" y="170" text-anchor="middle" style="font-size:24px;font-weight:1000;fill:#e44747">まわり ぜんぶ</text>`:''}`,520,320)}
+
+  const shapeSetBase=[
+    {groups:['righttri']}, {groups:['square']}, {groups:['square']}, {groups:['righttri']}, {groups:[]},
+    {groups:['rect']}, {groups:['square']}, {groups:['rect']}, {groups:['rect']}, {groups:['righttri']}, {groups:[]}
+  ];
+  function gridDefs(){return `<defs><pattern id="gridPattern" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#b8dde0" stroke-width="1.4"/></pattern></defs>`}
+  function selectionShapes(target,reveal=false,interactive=true){
+    const correct=i=>shapeSetBase[i].groups.includes(target);
+    const item=(i,body,hit)=>`<g class="shapeChoiceSvg ${reveal&&correct(i)?'correct':''}" data-shape-idx="${i}" role="${interactive?'button':'img'}" aria-label="図形 ${i+1}">${body}<rect class="shapeHit" ${hit}/></g>`;
+    const rtMarkTop=`<path class="rightAngleMark" d="M 615 87 L 640 112 L 665 87"/>`;
+    return `<svg class="selectionBoard target-${target}" viewBox="0 0 760 430" role="img" aria-label="方眼の上にならんだ図形">${gridDefs()}<rect x="2" y="2" width="756" height="426" rx="4" class="gridPaper" stroke="#b8dde0" stroke-width="1.5"/>
+      ${item(0,`<polygon class="candidateMain" points="62,105 62,28 132,28"/>${reveal&&target==='righttri'&&correct(0)?rightMark(62,28,'rd',20):''}`,`x="42" y="16" width="108" height="105"`)}
+      ${item(1,`<rect class="candidateMain" x="205" y="75" width="58" height="58"/>`,`x="188" y="58" width="92" height="92"`)}
+      ${item(2,`<polygon class="candidateMain" points="414,72 472,14 530,72 472,130"/>`,`x="397" y="4" width="150" height="143"`)}
+      ${item(3,`<polygon class="candidateMain" points="592,92 640,44 688,92"/>${reveal&&target==='righttri'&&correct(3)?rtMarkTop:''}`,`x="574" y="25" width="132" height="87"`)}
+      ${item(4,`<polygon class="candidateMain" points="60,205 154,205 82,281"/>`,`x="42" y="186" width="132" height="112"`)}
+      ${item(5,`<rect class="candidateMain" x="118" y="300" width="125" height="56"/>`,`x="100" y="282" width="162" height="92"`)}
+      ${item(6,`<rect class="candidateMain" x="407" y="224" width="128" height="128"/>`,`x="389" y="206" width="164" height="164"`)}
+      ${item(7,`<rect class="candidateMain" x="631" y="165" width="96" height="150"/>`,`x="612" y="147" width="130" height="184"`)}
+      ${item(8,`<g transform="rotate(45 95 366)"><rect class="candidateMain" x="49" y="330" width="92" height="72"/></g>`,`x="26" y="300" width="138" height="126"`)}
+      ${item(9,`<polygon class="candidateMain" points="300,401 300,320 433,401"/>${reveal&&target==='righttri'&&correct(9)?rightMark(300,401,'ru',22):''}`,`x="282" y="301" width="168" height="118"`)}
+      ${item(10,`<polygon class="candidateMain" points="536,401 641,333 730,350 730,401"/>`,`x="518" y="300" width="225" height="119"`)}
+    </svg>`;
+  }
+  function shapeGridSvgHTML(target,reveal=false){return selectionShapes(target,reveal,true)}
+  function shapeGridTeacher(target,reveal=false){return selectionShapes(target,reveal,false)}
+
+  const defSets={
+    triangle:{
+      definition:'三角形 ＝ 3本の直線で かこまれた形',
+      shapes:[
+        {ok:true, body:'<polygon class="candidateMain" points="75,135 125,45 185,135"/>', hit:'x="52" y="25" width="155" height="132"'},
+        {ok:true, body:'<polygon class="candidateMain" points="258,128 310,34 347,145"/>', hit:'x="236" y="18" width="132" height="148"'},
+        {ok:true, body:'<polygon class="candidateMain" points="425,132 535,58 566,141"/>', hit:'x="402" y="38" width="186" height="125"'},
+        {ok:false, reason:'線が つながっていない → かこまれていない', body:'<path class="candidateMain" fill="none" d="M75 315 L125 215 M145 225 L190 315 M190 315 L75 315"/>', hit:'x="52" y="195" width="160" height="142"'},
+        {ok:false, reason:'まがった線が ある → 3本の直線ではない', body:'<path class="candidateMain" d="M250 315 L305 215 Q372 253 360 315 Z"/>', hit:'x="230" y="195" width="158" height="142"'},
+        {ok:false, reason:'直線が 4本 ある → 3本ではない', body:'<polygon class="candidateMain" points="450,315 475,225 555,205 592,315"/>', hit:'x="428" y="188" width="186" height="150"'}
+      ]
+    },
+    quad:{
+      definition:'四角形 ＝ 4本の直線で かこまれた形',
+      shapes:[
+        {ok:true, body:'<polygon class="candidateMain" points="58,55 190,45 178,140 72,150"/>', hit:'x="42" y="28" width="168" height="140"'},
+        {ok:true, body:'<polygon class="candidateMain" points="248,55 355,35 385,135 270,150"/>', hit:'x="228" y="20" width="178" height="150"'},
+        {ok:true, body:'<polygon class="candidateMain" points="450,48 580,50 520,96 585,150"/>', hit:'x="430" y="28" width="178" height="144"'},
+        {ok:false, reason:'線が つながっていない → かこまれていない', body:'<path class="candidateMain" fill="none" d="M58 300 L58 215 L178 215 M178 235 L178 315 L58 315"/>', hit:'x="40" y="195" width="158" height="140"'},
+        {ok:false, reason:'まがった線が ある → 4本の直線ではない', body:'<path class="candidateMain" d="M245 315 L265 220 L365 220 Q405 270 365 315 Z"/>', hit:'x="225" y="198" width="182" height="140"'},
+        {ok:false, reason:'直線が 5本 ある → 4本ではない', body:'<polygon class="candidateMain" points="455,315 445,245 505,205 575,232 592,315"/>', hit:'x="425" y="188" width="188" height="150"'}
+      ]
+    }
+  };
+  function definitionGridSvg(target,reveal=false,interactive=true){
+    const set=defSets[target], labels=['ア','イ','ウ','エ','オ','カ'];
+    return `<svg class="definitionBoard" viewBox="0 0 640 360" role="img" aria-label="定義で見分ける図形">${gridDefs()}<rect x="2" y="2" width="636" height="356" rx="4" class="gridPaper" stroke="#b8dde0" stroke-width="1.5"/>${set.shapes.map((sh,i)=>`<g class="defChoiceSvg ${reveal&&sh.ok?'correct':''}" data-def-idx="${i}" role="${interactive?'button':'img'}"><text x="${[55,245,445,55,245,445][i]}" y="${[28,28,28,190,190,190][i]}" class="shapeLabel">${labels[i]}</text>${sh.body}<rect class="shapeHit" ${sh.hit}/></g>`).join('')}</svg>`;
+  }
+  function whyOpenTriangleSvg(){return svgWrap(`<path d="M105 240 L235 70 M270 85 L410 240 M410 240 L105 240" class="edge"/><path d="M238 72 L268 83" stroke="#e44747" stroke-width="4" stroke-dasharray="6 7"/><text x="255" y="48" text-anchor="middle" style="font-size:21px;font-weight:1000;fill:#e44747">ここが つながっていない</text>`,520,300)}
+  function whyCurvedQuadSvg(){return svgWrap(`<path d="M105 235 L120 70 L390 75 Q448 155 390 235 Z" class="edge" fill="#fff8e8"/><path d="M390 75 Q448 155 390 235" stroke="#e44747" stroke-width="9" fill="none"/><text x="430" y="155" style="font-size:21px;font-weight:1000;fill:#e44747">曲線</text>`,520,300)}
+
+  const Q=[
+    {id:'tri-name',kind:'mcq',q:'3本の 直線で かこまれた形を 何というでしょう？',answer:'三角形',options:['三角形','四角形','直線'],visual:triSvg(),hint:'「3本の直線」が手がかり。',explain:'三角形（さんかくけい）は、3本の直線でかこまれた形です。',voice:['三角形']},
+    {id:'quad-name',kind:'mcq',q:'4本の 直線で かこまれた形を 何というでしょう？',answer:'四角形',options:['四角形','三角形','正方形'],visual:quadSvg(),hint:'「4本の直線」が手がかり。',explain:'四角形（しかくけい）は、4本の直線でかこまれた形です。',voice:['四角形']},
+    {id:'line-name',kind:'mcq',q:'ものさしで 引いたような まっすぐな線を 何という？',answer:'直線',options:['直線','辺','曲線'],visual:lineSvg(),hint:'まっすぐ、どこも曲がっていない線。',explain:'このような、まっすぐな線を「直線（ちょくせん）」といいます。',voice:['直線']},
+    {id:'tri-def',kind:'mcq',q:'三角形とは、どんな形でしょう？',answer:'3本の直線でかこまれた形',options:['3本の直線でかこまれた形','4本の直線でかこまれた形','3つの点だけがある形'],visual:triSvg(),hint:'名前の「三」と、かこむ直線の本数をつなげよう。',explain:'三角形とは、3本の直線でかこまれた形です。',voiceRequired:['3本','直線','かこ']},
+    {id:'quad-def',kind:'mcq',q:'四角形とは、どんな形でしょう？',answer:'4本の直線でかこまれた形',options:['4本の直線でかこまれた形','4本の曲がった線でかこまれた形','4つの点がある形'],visual:quadSvg(),hint:'「4本」と「直線」が大事。',explain:'四角形とは、4本の直線でかこまれた形です。',voiceRequired:['4本','直線','かこ']},
+    {id:'side-name',kind:'mcq',q:'この 直線の ぶぶんを 何という？',answer:'辺',options:['辺','頂点','直角'],visual:sideSvg(),hint:'図形を作っている「線の部分」の名前。',explain:'図形を作っている直線の部分を「辺（へん）」といいます。',voice:['辺','へん']},
+    {id:'vertex-name',kind:'mcq',q:'この かどの はしっこの点を 何という？',answer:'頂点',options:['頂点','辺','直線'],visual:vertexSvg(),hint:'線ではなく「点」の名前。',explain:'かどの、はしっこの点を「頂点（ちょうてん）」といいます。',voice:['頂点','ちょうてん']},
+    {id:'counts',kind:'mcq',q:'三角形と四角形の「へん」と「ちょう点」の数は？',answer:'三角形は3つずつ、四角形は4つずつ',options:['三角形は3つずつ、四角形は4つずつ','三角形は4つずつ、四角形は3つずつ','どちらも4つずつ'],visual:countSvg(),hint:'図の線と、はしっこの点を1つずつ数えよう。',explain:'三角形は、へん3つ・ちょう点3つ。四角形は、へん4つ・ちょう点4つです。'},
+    {id:'def-find-triangle',kind:'defselect',target:'triangle',q:'三角形を 3つ 見つけよう。三角形っぽくても、定義に合わない形は はずします。',hint:'「3本」「直線」「かこまれた」の3つを全部たしかめよう。',explain:'三角形は、3本の直線でかこまれた形です。見た目ではなく定義にもどって決めます。'},
+    {id:'why-open-triangle',kind:'mcq',q:'この形は 三角形ではありません。なぜ？ 定義にもどって答えよう。',answer:'3本の直線でかこまれていないから',options:['3本の直線でかこまれていないから','向きがななめだから','大きさがちがうから'],visual:whyOpenTriangleSvg(),hint:'三角形の定義は「3本の直線でかこまれた形」。',explain:'線がつながっていないので、3本の直線で「かこまれた」形になっていません。',voiceRequired:['3本','直線','かこ']},
+    {id:'def-find-quad',kind:'defselect',target:'quad',q:'四角形を 3つ 見つけよう。四角形っぽくても、定義に合わない形は はずします。',hint:'「4本」「直線」「かこまれた」の3つを全部たしかめよう。',explain:'四角形は、4本の直線でかこまれた形です。へこんでいても、定義に合えば四角形です。'},
+    {id:'why-curved-quad',kind:'mcq',q:'この形は 四角形ではありません。なぜ？ 定義にもどって答えよう。',answer:'4本の直線でかこまれていないから',options:['4本の直線でかこまれていないから','たて長だから','かどが丸く見えるから'],visual:whyCurvedQuadSvg(),hint:'四角形の定義は「4本の直線でかこまれた形」。',explain:'1本が曲線なので、4本の「直線」でかこまれた形ではありません。',voiceRequired:['4本','直線','かこ']},
+    {id:'right-angle',kind:'mcq',q:'このような かどの形を 何というでしょう？',answer:'直角',options:['直角','頂点','辺'],visual:angleSvg(),hint:'カギ型の印があるかどです。',explain:'このようなかどの形を「直角（ちょっかく）」といいます。直角の印は、開いたカギ型で表します。',voice:['直角']},
+    {id:'rect-name',kind:'mcq',q:'すべての かどが 直角な 四角形を 何というでしょう？',answer:'長方形',options:['長方形','正方形','直角三角形'],visual:rectSvg(),hint:'「四角形」で、4つのかどを見ます。',explain:'すべてのかどが直角な四角形を「長方形（ちょうほうけい）」といいます。',voice:['長方形']},
+    {id:'rect-def',kind:'mcq',q:'長方形とは、どんな 四角形でしょう？',answer:'すべてのかどが直角な四角形',options:['すべてのかどが直角な四角形','すべてのへんの長さが同じ四角形','直角が1つだけある四角形'],visual:rectSvg(),hint:'長方形を決めるのは「かど」です。',explain:'長方形とは、すべてのかどが直角な四角形です。',voiceRequired:['すべて','かど','直角','四角形']},
+    {id:'opposite',kind:'mcq',q:'長方形の「＿＿＿＿ へん」の長さは 同じです。',answer:'むかい合う',options:['むかい合う','となり合う','ななめの'],visual:rectSvg({marks:false,opposite:true}),hint:'青どうし、オレンジどうしのように、正面にある辺。',explain:'長方形の「むかい合う」辺の長さは同じです。',voice:['むかい合う','向かい合う']},
+    {id:'equal',kind:'mcq',q:'長方形の むかい合う へんの長さは ＿＿＿＿ です。',answer:'同じ',options:['同じ','ちがう','いつも2倍'],visual:rectSvg({marks:false,opposite:true}),hint:'同じ色の辺どうしをくらべよう。',explain:'長方形のむかい合う辺の長さは「同じ（ひとしい）」です。',voice:['同じ','ひとしい','等しい']},
+    {id:'square-name',kind:'mcq',q:'すべての かどが直角で、すべての へんの長さが同じ 四角形を 何という？',answer:'正方形',options:['正方形','長方形','四角形'],visual:squareSvg(),hint:'「直角」と「4つの辺が同じ」の両方があります。',explain:'正方形（せいほうけい）は、すべてのかどが直角で、すべてのへんの長さが同じ四角形です。',voice:['正方形']},
+    {id:'square-def',kind:'mcq',q:'正方形とは、どんな 四角形でしょう？',answer:'すべてのかどが直角で、すべてのへんの長さが同じ四角形',options:['すべてのかどが直角で、すべてのへんの長さが同じ四角形','すべてのかどが直角な四角形','へんが4本なら何でも正方形'],visual:squareSvg(),hint:'条件は2つ。「かど」と「へんの長さ」。',explain:'正方形は、①すべてのかどが直角、②すべてのへんの長さが同じ、の2つが大事です。',voiceRequired:['かど','直角','へん','同じ','四角形']},
+    {id:'rt-name',kind:'mcq',q:'直角な かどのある 三角形を 何というでしょう？',answer:'直角三角形',options:['直角三角形','正三角形','四角形'],visual:rightTriSvg(),hint:'「直角」＋「三角形」。',explain:'直角なかどのある三角形を「直角三角形（ちょっかくさんかくけい）」といいます。',voice:['直角三角形']},
+    {id:'rt-def',kind:'mcq',q:'直角三角形とは、どんな 三角形でしょう？',answer:'直角なかどのある三角形',options:['直角なかどのある三角形','3つのかどが全部直角な三角形','4本の直線でかこまれた形'],visual:rightTriSvg(),hint:'直角は1つあればOK。',explain:'直角三角形とは、直角なかどのある三角形です。',voiceRequired:['直角','三角形']},
+    {id:'perim-rect',kind:'number',q:'長方形の まわりの長さは 何 cm でしょう？',source:{w:6,h:3},hint:'まわり全部の辺の長さを足します。',explain:'6＋6＋3＋3＝18。答えは18cmです。'},
+    {id:'perim-square',kind:'number',q:'正方形の まわりの長さは 何 cm でしょう？',source:{s:3},hint:'4本の辺を全部足します。',explain:'3＋3＋3＋3＝12。答えは12cmです。'},
+    {id:'find-square',kind:'shapes',target:'square',q:'正方形は どれでしょう？ 3つ えらぼう。',hint:'向きがななめでも、4つのかどが直角・4つの辺が同じなら正方形。',explain:'向きが変わっても正方形です。'},
+    {id:'find-rect',kind:'shapes',target:'rect',q:'長方形は どれでしょう？ 3つ えらぼう。',hint:'この問題では、元のスライドと同じく「長方形」として示された3つを選びます。',explain:'たて長・よこ長・ななめ向きでも、形の向きにだまされず見ます。'},
+    {id:'find-rt',kind:'shapes',target:'righttri',q:'直角三角形は どれでしょう？ 3つ えらぼう。',hint:'三角形の中に、直角のかどがあるかを探します。',explain:'直角なかどがある三角形が直角三角形です。'}
+  ];
+
+  const state={mode:null,questions:[],index:0,score:0,attempted:0,answerShown:false,optionFocus:0,shapeSelected:new Set(),shapeOrder:null,currentDynamic:null,lastMode:null};
+
+  function showScreen(el){[home,lesson,summary].forEach(x=>x.classList.remove('active'));el.classList.add('active')}
+  function start(mode){
+    state.mode=mode;state.lastMode=mode;state.index=0;state.score=0;state.attempted=0;state.answerShown=false;state.optionFocus=0;state.shapeSelected=new Set();state.currentDynamic=null;
+    if(mode==='teacher') state.questions=[...Q];
+    else if(mode==='quick'){
+      const core=Q.filter(q=>q.kind==='mcq');
+      const selected=shuffle(core).slice(0,7);
+      const def=shuffle(Q.filter(q=>q.kind==='defselect')).slice(0,1);
+      const nums=shuffle(Q.filter(q=>['perim-rect','perim-square'].includes(q.id))).slice(0,1);
+      const shape=shuffle(Q.filter(q=>q.kind==='shapes')).slice(0,1);
+      state.questions=shuffle([...selected,...def,...nums,...shape]).slice(0,10);
+    } else state.questions=[...Q];
+    showScreen(lesson);render();
+  }
+
+  function dynamicFor(q){
+    if(q.kind!=='number') return null;
+    if(state.mode==='teacher') return q.source;
+    if(q.id==='perim-rect'){
+      let w=2+Math.floor(Math.random()*7), h=2+Math.floor(Math.random()*5); if(w===h) w=Math.min(9,w+1); return {w,h};
+    }
+    return {s:2+Math.floor(Math.random()*7)};
+  }
+  function current(){return state.questions[state.index]}
+  function render(){
+    const q=current(); if(!q){finish();return}
+    state.answerShown=false;state.optionFocus=0;state.shapeSelected=new Set();state.currentDynamic=dynamicFor(q);
+    state.shapeOrder=q.kind==='shapes'?shapeSetBase.map((x,i)=>({...x,orig:i})):null;
+    questionCard.classList.remove('answerShown');
+    modeTag.textContent=state.mode==='teacher'?'せんせいと いっしょ':state.mode==='quick'?'10もん チャレンジ':'ぜんぶ ふくしゅう';
+    progressText.textContent=`${state.index+1} / ${state.questions.length}`;progressBar.style.width=`${((state.index+1)/state.questions.length)*100}%`;
+    qText.textContent=q.q;
+    renderVisual(q,false);
+    if(state.mode==='teacher') renderTeacher(q); else renderPractice(q);
+  }
+  function renderVisual(q,reveal){
+    if(q.kind==='number'){
+      const d=state.currentDynamic||q.source;
+      visual.innerHTML=q.id==='perim-rect'?perimeterRectSvg(d.w,d.h,reveal):perimeterSquareSvg(d.s,reveal);
+    } else if(q.kind==='shapes'){
+      visual.innerHTML=state.mode==='teacher'?shapeGridTeacher(q.target,reveal):shapeGridSvgHTML(q.target,reveal);
+    } else if(q.kind==='defselect'){
+      visual.innerHTML=definitionGridSvg(q.target,reveal,state.mode!=='teacher');
+    } else visual.innerHTML=q.visual;
+  }
+
+  function renderTeacher(q){
+    sideCard.innerHTML=`<div class="teacherPrompt"><div class="listen">まず、みんなで こたえよう。</div><div id="teacherAnswer" class="hidden"></div><div id="teacherExplain" class="hidden"></div></div>`;
+    actions.innerHTML=`<button class="btn secondary" id="prevBtn">← もどる</button><button class="btn primary" id="revealBtn">こたえを みる</button><button class="btn next" id="nextBtn" disabled>つぎへ →</button>`;
+    $('#prevBtn').disabled=state.index===0;$('#prevBtn').onclick=prev;$('#revealBtn').onclick=revealTeacher;$('#nextBtn').onclick=next;
+  }
+  function answerText(q){
+    if(q.kind==='number'){
+      const d=state.currentDynamic||q.source;
+      const ans=q.id==='perim-rect'?2*(d.w+d.h):4*d.s;
+      const formula=q.id==='perim-rect'?`${d.w}＋${d.w}＋${d.h}＋${d.h}＝${ans}`:`${d.s}＋${d.s}＋${d.s}＋${d.s}＝${ans}`;
+      return `${formula}<br>答え ${ans} cm`;
+    }
+    if(q.kind==='shapes') return `正しいものは 3つ。`;
+    if(q.kind==='defselect') return `定義に合う形は 3つ。`;
+    return q.answer;
+  }
+  function revealTeacher(){
+    const q=current();state.answerShown=true;questionCard.classList.add('answerShown');renderVisual(q,true);
+    const a=$('#teacherAnswer'),e=$('#teacherExplain');a.className='bigAnswer';a.innerHTML=answerText(q);e.className='explain';e.textContent=q.explain;
+    $('#revealBtn').disabled=true;$('#nextBtn').disabled=false;
+  }
+
+  function renderPractice(q){
+    if(q.kind==='mcq') renderMcq(q); else if(q.kind==='number') renderNumber(q); else if(q.kind==='defselect') renderDefSelect(q); else renderShapes(q);
+  }
+  function voiceAvailable(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition)}
+  function renderMcq(q){
+    const opts=shuffle(q.options);
+    sideCard.innerHTML=`<div class="options" id="options">${opts.map((o,i)=>`<button class="option" data-key="${i+1}" data-value="${esc(o)}">${esc(o)}</button>`).join('')}</div><div id="heard"></div><div id="feedback" class="feedback">えらんで こたえよう。${(q.voice||q.voiceRequired)?' 声でも答えられます。':''}</div>`;
+    const voiceBtn=(q.voice||q.voiceRequired)?`<button class="btn voice" id="voiceBtn" ${voiceAvailable()?'':'disabled'}>🎤 こえで こたえる</button>`:'';
+    actions.innerHTML=`<button class="btn secondary" id="readBtn">🔊 もんだいを よむ</button>${voiceBtn}<button class="btn next" id="nextBtn" disabled>つぎへ →</button>`;
+    [...document.querySelectorAll('.option')].forEach((b,i)=>{b.onclick=()=>checkMcq(q,b.dataset.value,b); if(i===0)b.classList.add('focused')});
+    $('#readBtn').onclick=()=>speak(q.q); if($('#voiceBtn')) $('#voiceBtn').onclick=()=>recognize(q); $('#nextBtn').onclick=next;
+  }
+  function checkMcq(q,val,btn=null){
+    if(state.answerShown) return;
+    const ok=norm(val)===norm(q.answer);state.attempted++;
+    const fb=$('#feedback');
+    if(ok){state.score++;state.answerShown=true;document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(norm(b.dataset.value)===norm(q.answer))b.classList.add('correct')});fb.className='feedback ok';fb.textContent='せいかい！ '+q.explain;$('#nextBtn').disabled=false;}
+    else {if(btn){btn.classList.add('wrong');btn.disabled=true}fb.className='feedback ng';fb.textContent='もういちど。ヒント：'+q.hint;}
+  }
+  function speak(text){
+    if(!('speechSynthesis' in window))return; speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text);u.lang='ja-JP';u.rate=.92;speechSynthesis.speak(u);
+  }
+  function recognize(q){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
+    const rec=new SR();rec.lang='ja-JP';rec.interimResults=false;rec.maxAlternatives=3;const b=$('#voiceBtn');b.classList.add('recognizing');b.textContent='🎤 きいています…';
+    rec.onresult=e=>{const heard=[...e.results[0]].map(a=>a.transcript);$('#heard').innerHTML=`<div class="voiceHeard">「${esc(heard[0])}」と きこえました</div>`;const ok=heard.some(t=>voiceMatch(q,t));if(ok)checkMcq(q,q.answer);else{$('#feedback').className='feedback ng';$('#feedback').textContent='もういちど。ヒント：'+q.hint;state.attempted++;}};
+    rec.onerror=()=>{$('#feedback').className='feedback ng';$('#feedback').textContent='声をうまく聞き取れませんでした。選んで答えてもOKです。'};
+    rec.onend=()=>{b.classList.remove('recognizing');b.textContent='🎤 こえで こたえる'};rec.start();
+  }
+  function voiceMatch(q,t){
+    const n=norm(t);
+    if(q.voice) return q.voice.some(a=>n.includes(norm(a)));
+    if(q.voiceRequired) return q.voiceRequired.every(a=>n.includes(norm(a)) || (a==='かこ'&&/囲/.test(t)) || (a==='へん'&&/辺/.test(t)) || (a==='かど'&&/角/.test(t)));
+    return false;
+  }
+  function renderNumber(q){
+    const d=state.currentDynamic||q.source;
+    const ans=q.id==='perim-rect'?2*(d.w+d.h):4*d.s;
+    sideCard.innerHTML=`<div class="numberBox"><input id="numInput" class="numInput" inputmode="numeric" maxlength="3" aria-label="答え"/><span class="unit">cm</span></div><div class="keypad">${[1,2,3,4,5,6,7,8,9,0].map(n=>`<button data-num="${n}">${n}</button>`).join('')}</div><div id="feedback" class="feedback">まわり ぜんぶの 長さを 考えよう。</div>`;
+    actions.innerHTML=`<button class="btn secondary" id="readBtn">🔊 もんだいを よむ</button><button class="btn primary" id="checkBtn">こたえあわせ</button><button class="btn next" id="nextBtn" disabled>つぎへ →</button>`;
+    const inp=$('#numInput');document.querySelectorAll('[data-num]').forEach(b=>b.onclick=()=>{if(inp.value.length<3)inp.value+=b.dataset.num});$('#readBtn').onclick=()=>speak(q.q);$('#checkBtn').onclick=()=>checkNumber(q,ans);$('#nextBtn').onclick=next;setTimeout(()=>inp.focus(),0);
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')checkNumber(q,ans)});
+  }
+  function checkNumber(q,ans){
+    if(state.answerShown)return;state.attempted++;const val=Number($('#numInput').value);const fb=$('#feedback');
+    if(val===ans){state.score++;state.answerShown=true;questionCard.classList.add('answerShown');renderVisual(q,true);fb.className='feedback ok';const d=state.currentDynamic;const formula=q.id==='perim-rect'?`${d.w}＋${d.w}＋${d.h}＋${d.h}＝${ans}`:`${d.s}＋${d.s}＋${d.s}＋${d.s}＝${ans}`;fb.textContent=`せいかい！ ${formula}。答え ${ans}cm。`;$('#checkBtn').disabled=true;$('#nextBtn').disabled=false;}
+    else {fb.className='feedback ng';fb.textContent='もういちど。ヒント：'+q.hint;}
+  }
+  function renderDefSelect(q){
+    const set=defSets[q.target];
+    sideCard.innerHTML=`<div class="selectInfo">定義に合う形を 3つ えらぼう。</div><div id="selectedCount" class="feedback">いま 0 / 3 えらんでいます。</div><div id="feedback" class="feedback">${q.hint}</div>`;
+    actions.innerHTML=`<button class="btn secondary" id="readBtn">🔊 もんだいを よむ</button><button class="btn primary" id="defCheck" disabled>定義で たしかめる</button><button class="btn next" id="nextBtn" disabled>つぎへ →</button>`;
+    document.querySelectorAll('.defChoiceSvg').forEach((b,i)=>b.onclick=()=>toggleDef(i,b));
+    $('#readBtn').onclick=()=>speak(q.q);$('#defCheck').onclick=()=>checkDef(q,set);$('#nextBtn').onclick=next;
+  }
+  function toggleDef(i,b){
+    if(state.answerShown)return;
+    if(state.shapeSelected.has(i)){state.shapeSelected.delete(i);b.classList.remove('selected')}else if(state.shapeSelected.size<3){state.shapeSelected.add(i);b.classList.add('selected')}
+    $('#selectedCount').textContent=`いま ${state.shapeSelected.size} / 3 えらんでいます。`;$('#defCheck').disabled=state.shapeSelected.size!==3;
+  }
+  function checkDef(q,set){
+    state.attempted++;let ok=true;
+    set.shapes.forEach((sh,i)=>{const sel=state.shapeSelected.has(i);if(sel!==sh.ok)ok=false;const g=document.querySelector(`[data-def-idx="${i}"]`);if(sh.ok)g.classList.add('correct');if(sel&&!sh.ok)g.classList.add('wrong')});
+    state.answerShown=true; if(ok)state.score++;
+    const fb=$('#feedback');fb.className='feedback '+(ok?'ok':'ng');
+    const reasons=set.shapes.map((sh,i)=>sh.ok?'':`<div class="reasonChip">${['ア','イ','ウ','エ','オ','カ'][i]}：${sh.reason}</div>`).filter(Boolean).join('');
+    fb.innerHTML=`<div style="width:100%"><b>${ok?'せいかい！':'定義で たしかめよう。'}</b><div class="definitionBox">${set.definition}</div><div class="reasonList">${reasons}</div></div>`;
+    $('#defCheck').disabled=true;$('#nextBtn').disabled=false;document.querySelectorAll('.defChoiceSvg').forEach(g=>g.style.pointerEvents='none');
+  }
+
+  function renderShapes(q){
+    sideCard.innerHTML=`<div class="selectInfo">図を 3つ えらんだら、こたえあわせ。</div><div id="selectedCount" class="feedback">いま 0 / 3 えらんでいます。</div><div id="feedback" class="feedback">${q.hint}</div>`;
+    actions.innerHTML=`<button class="btn primary" id="shapeCheck" disabled>こたえあわせ</button><button class="btn next" id="nextBtn" disabled>つぎへ →</button>`;
+    document.querySelectorAll('.shapeChoiceSvg').forEach((b,i)=>b.onclick=()=>toggleShape(i,b));$('#shapeCheck').onclick=()=>checkShapes(q);$('#nextBtn').onclick=next;
+  }
+  function toggleShape(i,b){
+    if(state.answerShown)return;if(state.shapeSelected.has(i)){state.shapeSelected.delete(i);b.classList.remove('selected')}else if(state.shapeSelected.size<3){state.shapeSelected.add(i);b.classList.add('selected')}
+    $('#selectedCount').textContent=`いま ${state.shapeSelected.size} / 3 えらんでいます。`;$('#shapeCheck').disabled=state.shapeSelected.size!==3;
+  }
+  function checkShapes(q){
+    state.attempted++;const arr=state.shapeOrder;let ok=true;for(let i=0;i<arr.length;i++){const should=arr[i].groups.includes(q.target);const sel=state.shapeSelected.has(i);if(should!==sel)ok=false;const b=document.querySelector(`[data-shape-idx="${i}"]`);if(should)b.classList.add('correct');if(sel&&!should)b.classList.add('wrong')}
+    const fb=$('#feedback');if(ok){state.score++;state.answerShown=true;fb.className='feedback ok';fb.textContent='せいかい！ '+q.explain;document.querySelectorAll('.shapeChoiceSvg').forEach(b=>b.disabled=true);$('#shapeCheck').disabled=true;$('#nextBtn').disabled=false;}
+    else {fb.className='feedback ng';fb.textContent='正しい形を緑で示しました。形の向きではなく、かどや辺を見よう。';state.answerShown=true;$('#shapeCheck').disabled=true;$('#nextBtn').disabled=false;}
+  }
+
+  function next(){if(state.index<state.questions.length-1){state.index++;render()}else finish()}
+  function prev(){if(state.index>0){state.index--;render()}}
+  function finish(){
+    showScreen(summary);const total=state.questions.length;
+    if(state.mode==='teacher'){$('#scoreRing').style.display='none';$('#summaryTitle').textContent='これで おわりです';$('#summaryMsg').textContent='形の名前だけでなく、「どんな形か」も言えたかな？';}
+    else {$('#scoreRing').style.display='grid';const pct=Math.round((state.score/total)*100);$('#scoreRing').style.setProperty('--score',pct);$('#scoreText').textContent=`${state.score}/${total}`;$('#summaryTitle').textContent='ふくしゅう おわり！';$('#summaryMsg').textContent=pct>=90?'定義も見分けも、よくできています。':pct>=70?'あと少し。まちがえた定義をもう一度見ると定着します。':'「かど」と「へん」を見ながら、もう一度やってみよう。';}
+  }
+  function goHome(){if('speechSynthesis' in window)speechSynthesis.cancel();showScreen(home)}
+
+  document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>start(b.dataset.mode));$('#homeBtn').onclick=goHome;$('#retryBtn').onclick=()=>start(state.lastMode||'quick');
+
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){goHome();return}
+    if(!lesson.classList.contains('active'))return;
+    const q=current();
+    if(state.mode==='teacher'){
+      if(e.key==='ArrowRight'||e.key===' '||e.key==='Enter'){e.preventDefault();state.answerShown?next():revealTeacher()}
+      if(e.key==='ArrowLeft'){e.preventDefault();prev()}
+      return;
+    }
+    if(q.kind==='mcq'){
+      const buttons=[...document.querySelectorAll('.option:not(:disabled)')];if(!buttons.length)return;
+      if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();state.optionFocus=(state.optionFocus+1)%buttons.length;buttons.forEach(b=>b.classList.remove('focused'));buttons[state.optionFocus]?.classList.add('focused')}
+      if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();state.optionFocus=(state.optionFocus-1+buttons.length)%buttons.length;buttons.forEach(b=>b.classList.remove('focused'));buttons[state.optionFocus]?.classList.add('focused')}
+      if(e.key==='Enter'&&!state.answerShown){e.preventDefault();const b=buttons[state.optionFocus]||buttons[0];if(b)b.click()}
+      if(e.key==='Enter'&&state.answerShown){e.preventDefault();next()}
+    } else if(state.answerShown&&e.key==='Enter'){next()}
+  });
+
+  try{
+    $('#shapeHero').innerHTML=`${squareSvg({marks:true,ticks:false,rotate:8})}${rectSvg({marks:true})}${rightTriSvg()}`
+      .replace(/<svg/g,'<svg style="width:170px;height:120px"')
+      .replace(/viewBox="0 0 520 330"/g,'viewBox="0 20 520 290"')
+      .replace(/viewBox="0 0 520 315"/g,'viewBox="0 20 520 290"')
+      .replace(/viewBox="0 0 520 310"/g,'viewBox="0 20 520 290"');
+  }catch(err){ console.error(err); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>はこの形の ふくしゅう</title>
+<style>
+  :root{
+    --bg:#0f1727;--panel:#182238;--panel2:#202d48;--ink:#f7fbff;--muted:#b9c7df;
+    --a:#3ac7ff;--b:#ffd43b;--c:#58e986;--pink:#ff4fc4;--orange:#ff9b31;
+    --ok:#55e38d;--ng:#ff718c;--shadow:0 18px 42px rgba(0,0,0,.28)
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050914;font-family:"BIZ UDPGothic","Yu Gothic",system-ui,sans-serif;color:var(--ink)}
+  button,input{font:inherit}
+  button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+  #stageWrap{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 65% 15%,#20365d 0,#0b1120 46%,#050914 100%)}
+  #app{width:min(100vw,calc(100vh * 16/9));height:min(100vh,calc(100vw * 9/16));aspect-ratio:16/9;position:relative;overflow:hidden;background:linear-gradient(135deg,#0e182b 0%,#111d31 55%,#0b1426 100%);box-shadow:0 0 70px rgba(0,0,0,.7)}
+  #app::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,rgba(255,255,255,.035),transparent 28%,transparent 72%,rgba(255,255,255,.025))}
+  .topbar{height:9.2%;display:flex;align-items:center;gap:18px;padding:0 2.6%;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(5,10,20,.34);backdrop-filter:blur(8px);position:relative;z-index:8}
+  .brand{font-size:clamp(15px,1.25vw,25px);font-weight:900;letter-spacing:.04em;white-space:nowrap}.brand b{color:var(--a)}
+  .progress{display:flex;gap:5px;flex:1;align-items:center}.dot{height:8px;flex:1;border-radius:99px;background:#31415f;transition:.3s}.dot.done{background:#5e789f}.dot.now{background:linear-gradient(90deg,var(--a),#8aeeff);box-shadow:0 0 18px rgba(58,199,255,.55)}
+  .topActions{display:flex;gap:8px}.iconBtn{border:1px solid rgba(255,255,255,.15);background:#22304c;color:white;border-radius:14px;padding:9px 12px;font-weight:800;cursor:pointer}.iconBtn[aria-pressed="true"]{background:#2f6072;border-color:#62dcff}
+  .screen{position:absolute;left:0;right:0;top:9.2%;bottom:0;padding:2.1% 2.6% 2.2%;display:none;animation:screenIn .28s ease}.screen.active{display:block}
+  @keyframes screenIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  h1,h2,p{margin:0}.title{font-size:clamp(28px,2.9vw,57px);line-height:1.14;font-weight:950;letter-spacing:.02em}.title .key{color:#9feaff;text-decoration:underline;text-decoration-thickness:.13em;text-underline-offset:.1em}.subtitle{margin-top:.9%;font-size:clamp(15px,1.25vw,25px);color:var(--muted);font-weight:700;line-height:1.48}
+  .hero{height:100%;display:grid;grid-template-columns:1.06fr .94fr;gap:2.4%;align-items:center}.heroCard{height:86%;border-radius:30px;background:linear-gradient(160deg,rgba(34,48,76,.92),rgba(20,31,53,.92));border:1px solid rgba(255,255,255,.1);padding:4.5%;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:center}.heroVisual{height:86%;border-radius:32px;background:radial-gradient(circle at 50% 45%,#2a4269 0,#15213a 58%,#0d1729 100%);border:1px solid rgba(255,255,255,.1);position:relative;box-shadow:var(--shadow)}
+  .modeRow{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:5.5%}.bigBtn{border:0;border-radius:20px;padding:18px 10px;font-weight:950;font-size:clamp(15px,1.25vw,25px);cursor:pointer;box-shadow:0 12px 22px rgba(0,0,0,.22);transition:.15s transform,.15s filter;line-height:1.25}.bigBtn:hover,.bigBtn:focus-visible{transform:translateY(-3px);filter:brightness(1.08)}.bigBtn.primary{background:linear-gradient(135deg,#3bc9ff,#4f8cff);color:#04111c}.bigBtn.secondary{background:linear-gradient(135deg,#ffd34a,#ff9b43);color:#221304}.bigBtn.explore{background:linear-gradient(135deg,#76edaa,#36c7a4);color:#061d16}
+  .modeSmall{display:block;font-size:.62em;opacity:.75;margin-top:4px}.miniTip{font-size:clamp(11px,.83vw,17px);color:#9fb0ca;font-weight:700;margin-top:2.4%}
+  .layout{height:100%;display:grid;grid-template-columns:1.12fr .88fr;gap:2.2%}.visualPanel,.lessonPanel{border-radius:28px;border:1px solid rgba(255,255,255,.1);box-shadow:var(--shadow)}.visualPanel{background:radial-gradient(circle at 50% 45%,#243d66 0,#15223b 58%,#0c1628 100%);position:relative;overflow:hidden}.lessonPanel{background:linear-gradient(165deg,#1f2c47,#141f35);padding:3.35%;display:flex;flex-direction:column;min-width:0}
+  .lessonPanel .question{font-size:clamp(23px,2.15vw,43px);font-weight:950;line-height:1.24;margin-top:1.2%}.lessonPanel .explain{font-size:clamp(15px,1.18vw,24px);line-height:1.52;color:#d5e2f6;font-weight:700;margin-top:3%}.accent{color:#8fe6ff}.yellow{color:#ffe062}.green{color:#7ff0a8}.pink{color:#ff8fd7}.orange{color:#ffb25a}
+  .pill{align-self:flex-start;padding:8px 14px;border-radius:999px;font-size:clamp(12px,.9vw,18px);font-weight:900;color:#06111a;background:#94e9ff;margin-bottom:1.2%}.pill.quiz{background:#ffd65b;color:#2a1b00}.pill.explore{background:#7ce9ae;color:#082016}
+  .controlRow{margin-top:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.nextBtn,.ghostBtn,.answerBtn,.exploreBtn{border:0;border-radius:17px;padding:13px 17px;font-size:clamp(14px,1.05vw,21px);font-weight:950;cursor:pointer}.nextBtn{margin-left:auto;background:linear-gradient(135deg,#41d8ff,#5c8dff);color:#07131f;min-width:155px}.ghostBtn{background:#2b3a58;color:#fff;border:1px solid rgba(255,255,255,.1)}.answerBtn{background:linear-gradient(135deg,#ffd453,#ffa851);color:#201300}.exploreBtn{background:linear-gradient(135deg,#78efa9,#3dc9a1);color:#072119;display:none}.exploreBtn.show{display:inline-block}.nextBtn:disabled,.answerBtn:disabled,.exploreBtn:disabled{opacity:.35;cursor:not-allowed}
+  .viewer{position:absolute;inset:0}.viewer svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}.viewer.locked svg{cursor:default}.viewer svg:active{cursor:grabbing}.viewer.locked svg:active{cursor:default}.viewerToolbar{position:absolute;left:18px;top:16px;display:flex;gap:8px;z-index:5}.viewerToolbar button{border:1px solid rgba(255,255,255,.14);background:rgba(18,29,50,.88);color:#fff;border-radius:13px;padding:8px 11px;font-weight:900;cursor:pointer}.viewerToolbar button:disabled{opacity:.28;cursor:not-allowed}.viewerHint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(4,9,17,.76);border:1px solid rgba(255,255,255,.11);border-radius:999px;padding:8px 16px;color:#cfe1f7;font-weight:800;font-size:clamp(11px,.83vw,16px);pointer-events:none;white-space:nowrap}
+  .compareWrap{position:absolute;inset:0;padding:3.1%;display:none;grid-template-columns:1fr 1fr;gap:2.2%}.compareWrap.show{display:grid}.compareCard{position:relative;border-radius:22px;background:rgba(8,16,30,.34);border:1px solid rgba(255,255,255,.11);overflow:hidden}.compareLabel{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:9;padding:7px 14px;border-radius:999px;background:rgba(5,10,18,.86);border:1px solid rgba(255,255,255,.13);font-weight:950;white-space:nowrap}.compareCard .viewerToolbar{transform:scale(.84);transform-origin:top left;left:8px;top:8px}.compareCard .viewerHint{font-size:12px;bottom:9px;padding:6px 10px}
+  .face2d{position:absolute;right:3.4%;bottom:4.2%;width:36%;aspect-ratio:1.35;background:#f8fbff;border-radius:18px;border:3px solid #f6ce46;box-shadow:0 8px 22px rgba(0,0,0,.28);display:none;z-index:7}.face2d.show{display:block}.face2d svg{width:100%;height:100%}.faceLabel{position:absolute;left:12px;top:8px;color:#12223a;font-weight:950;font-size:clamp(11px,.78vw,16px)}
+  .choices{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:4.2%}.choice{border:2px solid #3b4c6d;background:#243451;color:#fff;border-radius:18px;padding:16px 12px;font-size:clamp(17px,1.35vw,27px);font-weight:950;cursor:pointer;min-height:62px;transition:.15s}.choice:hover,.choice:focus-visible{transform:translateY(-2px);border-color:#6edfff}.choice.correct{background:#163d31;border-color:#5deb9b}.choice.wrong{background:#4a2431;border-color:#ff778f;animation:shake .22s ease}@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .feedback{margin-top:3%;min-height:70px;border-radius:18px;padding:13px 15px;display:none;font-size:clamp(14px,1.06vw,21px);font-weight:800;line-height:1.45}.feedback.show{display:block}.feedback.ok{background:#173e30;border:1px solid #55e38d}.feedback.ng{background:#472431;border:1px solid #ff718c}
+  .micRow{display:flex;gap:9px;margin-top:2.6%;align-items:center}.micBtn{border:1px solid #526585;background:#263753;color:white;border-radius:16px;padding:10px 13px;font-weight:900;cursor:pointer}.micBtn.listening{background:#66354b;border-color:#ff80ac;box-shadow:0 0 0 6px rgba(255,95,159,.12)}.heard{font-size:clamp(11px,.82vw,16px);color:#b9cae2;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .revealBox{margin-top:3.4%;border-radius:21px;border:2px dashed #4a6087;padding:16px;background:#16223a;min-height:108px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:clamp(18px,1.52vw,30px);font-weight:950;color:#ecf5ff;line-height:1.45}.revealBox.hiddenAnswer{color:#8290a6}.revealBox.pop{animation:pop .3s ease}@keyframes pop{50%{transform:scale(1.03)}}
+  .formula{display:inline-flex;gap:.3em;align-items:center;flex-wrap:wrap;justify-content:center}.formula b{padding:.12em .34em;border-radius:.36em;background:rgba(255,255,255,.08)}
+  .summaryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:5%}.sumCard{border-radius:22px;padding:18px 10px;text-align:center;background:#1a2943;border:1px solid rgba(255,255,255,.1)}.sumCard .num{font-size:clamp(38px,4vw,76px);font-weight:1000;line-height:1}.sumCard .lab{font-size:clamp(15px,1.25vw,24px);font-weight:950;margin-top:7px}.sumCard.face .num{color:#8fe6ff}.sumCard.edge .num{color:#ffe062}.sumCard.vert .num{color:#ff9bdc}
+  .score{font-size:clamp(15px,1.18vw,23px);font-weight:950;color:#ffe062;text-align:right}.teacherNote{position:absolute;right:16px;top:14px;z-index:10;border-radius:16px;background:rgba(255,213,93,.96);color:#241700;max-width:47%;padding:11px 14px;font-weight:850;line-height:1.4;font-size:clamp(11px,.78vw,15px);display:none;box-shadow:0 8px 24px rgba(0,0,0,.22)}.teacherNote.show{display:block}
+  .kbd{display:inline-grid;place-items:center;min-width:27px;height:27px;padding:0 7px;border-radius:7px;background:#101827;border:1px solid #52617a;color:#e9f4ff;font-size:.78em;box-shadow:inset 0 -2px 0 rgba(255,255,255,.08)}
+  .startCube{position:absolute;inset:6%}.startBadges{position:absolute;right:5%;bottom:5%;display:flex;gap:10px}.startBadges span{padding:9px 12px;border-radius:999px;background:rgba(6,12,22,.72);border:1px solid rgba(255,255,255,.12);font-weight:900;color:#dbeaff}
+  .tapPrompt{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:10px 16px;background:rgba(7,12,21,.78);border-radius:999px;font-weight:950;pointer-events:none;opacity:0;transition:.25s;z-index:8}.tapPrompt.show{opacity:1}
+  .discoverHud{position:absolute;left:50%;top:17px;transform:translateX(-50%);z-index:6;min-width:210px;max-width:62%;padding:9px 14px 10px;border-radius:17px;background:rgba(6,12,23,.9);border:1px solid rgba(255,255,255,.16);box-shadow:0 8px 24px rgba(0,0,0,.24);text-align:center;display:none;pointer-events:none}.discoverHud.show{display:block}.discoverHud.complete{background:rgba(18,68,48,.94);border-color:#62e99a}.discoverTitle{font-size:clamp(12px,.88vw,17px);font-weight:950;color:#f5fbff;line-height:1.25}.discoverCount{font-size:clamp(20px,1.65vw,32px);font-weight:1000;color:#ffe062;line-height:1.1;margin-top:2px}.discoverHud.complete .discoverCount{color:#86f3b0}.discoverDots{display:flex;justify-content:center;gap:4px;flex-wrap:wrap;margin-top:6px}.discoverDots i{width:8px;height:8px;border-radius:50%;background:#42516d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}.discoverDots i.on{background:#68e79c;box-shadow:0 0 10px rgba(104,231,156,.55)}
+  .finalWrap{height:100%;display:grid;grid-template-columns:1fr 1fr;gap:2.2%;align-items:center}.finalPanel{height:86%;border-radius:30px;background:linear-gradient(160deg,#1f2d49,#111c31);border:1px solid rgba(255,255,255,.1);padding:5%;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:center}.finalPanel h2{font-size:clamp(30px,3vw,58px);font-weight:1000}.finalPanel p{font-size:clamp(15px,1.18vw,23px);line-height:1.6;color:#ccdaee;font-weight:700;margin-top:3%}.restart{margin-top:6%;align-self:flex-start}
+  @media (max-aspect-ratio:4/3){.title{font-size:clamp(24px,4vw,48px)}.subtitle{font-size:clamp(13px,2vw,24px)}}
+</style>
+</head>
+<body>
+<div id="stageWrap"><main id="app" aria-live="polite">
+  <header class="topbar">
+    <div class="brand"><b>はこの形</b>の ふくしゅう</div>
+    <div class="progress" id="progress" aria-label="進みぐあい"></div>
+    <div class="topActions">
+      <button class="iconBtn" id="speakToggle" aria-pressed="false" title="問題を読み上げる">🔊 よみあげ</button>
+      <button class="iconBtn" id="teacherToggle" aria-pressed="false" title="先生用の話すポイント">先生メモ</button>
+    </div>
+  </header>
+
+  <section class="screen active" id="startScreen">
+    <div class="hero">
+      <div class="heroCard">
+        <div class="pill">2年生・短時間ふくしゅう</div>
+        <h1 class="title">はこの形を<br><span class="key">見て・考えて・たしかめる</span></h1>
+        <p class="subtitle">元のスライドの順で「どうして？」を考え、必要なところだけ3Dで回して確かめます。</p>
+        <div class="modeRow">
+          <button class="bigBtn primary" data-start="learn">先生と かくにん<span class="modeSmall">テンポよく 一問一答</span></button>
+          <button class="bigBtn secondary" data-start="quiz">じぶんで かくにん<span class="modeSmall">答えてから つぎへ</span></button>
+          <button class="bigBtn explore" data-start="explore">くるくる たんけん<span class="modeSmall">6・12・8を 自分で発見</span></button>
+        </div>
+        <p class="miniTip">回せる場面では、はこを つかんで動かせます。<span class="kbd">←</span><span class="kbd">→</span> でも進めます。</p>
+      </div>
+      <div class="heroVisual">
+        <div class="startCube"><div class="viewer" data-viewer="start"></div></div>
+        <div class="startBadges"><span>めん</span><span>へん</span><span>ちょう点</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="lessonScreen">
+    <div class="layout">
+      <div class="visualPanel">
+        <div class="viewer" data-viewer="lesson"></div>
+        <div class="compareWrap" id="compareWrap">
+          <div class="compareCard"><div class="compareLabel" id="compareLabelA">ふつうの はこ</div><div class="viewer" data-viewer="compareA"></div></div>
+          <div class="compareCard"><div class="compareLabel" id="compareLabelB">サイコロのような はこ</div><div class="viewer" data-viewer="compareB"></div></div>
+        </div>
+        <div class="teacherNote" id="teacherNote"></div>
+        <div class="face2d" id="face2d"><div class="faceLabel">1つの めん を見ると…</div><svg viewBox="0 0 260 190" aria-label="長方形と直角マーク"><rect x="35" y="45" width="185" height="105" rx="4" fill="#dceeff" stroke="#18375f" stroke-width="6"/><path d="M52 132 L52 113 L71 113" fill="none" stroke="#ff4b73" stroke-width="6" stroke-linecap="square"/><text x="128" y="177" text-anchor="middle" font-size="21" font-weight="900" fill="#18375f">4つの かどは 直角</text></svg></div>
+      </div>
+      <div class="lessonPanel">
+        <div class="pill" id="lessonPill">かくにん 1</div>
+        <div class="question" id="lessonQ"></div>
+        <div class="explain" id="lessonExplain"></div>
+        <div class="revealBox hiddenAnswer" id="revealBox">まず こたえてみよう</div>
+        <div class="controlRow">
+          <button class="ghostBtn" id="backBtn">← もどる</button>
+          <button class="answerBtn" id="revealBtn">こたえを みる</button>
+          <button class="exploreBtn" id="lessonExploreBtn">回して たしかめる</button>
+          <button class="nextBtn" id="nextBtn">つぎへ →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="quizScreen">
+    <div class="layout">
+      <div class="visualPanel">
+        <div class="viewer" data-viewer="quiz"></div>
+        <div class="tapPrompt" id="tapPrompt">はこの図を タップして答えよう</div>
+      </div>
+      <div class="lessonPanel">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div class="pill quiz" id="quizPill">じぶんで 1 / 14</div><div class="score" id="score"></div></div>
+        <div class="question" id="quizQ"></div>
+        <div class="choices" id="choices"></div>
+        <div class="micRow"><button class="micBtn" id="micBtn">🎤 こえで こたえる</button><div class="heard" id="heard">選んでも、声でも答えられます</div></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="controlRow">
+          <button class="ghostBtn" id="quizHome">はじめにもどる</button>
+          <button class="nextBtn" id="quizNext" disabled>つぎのもんだい →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="finalScreen">
+    <div class="finalWrap">
+      <div class="finalPanel">
+        <div class="pill">まとめ</div>
+        <h2>はこの形には…</h2>
+        <div class="summaryGrid">
+          <div class="sumCard face"><div class="num">6</div><div class="lab">めんが 6まい</div></div>
+          <div class="sumCard edge"><div class="num">12</div><div class="lab">へんが 12本</div></div>
+          <div class="sumCard vert"><div class="num">8</div><div class="lab">ちょう点が 8つ</div></div>
+        </div>
+        <p id="finalText">この はこでは、同じ形の面が2まいずつ。サイコロのような はこは、6まいとも正方形です。</p>
+        <button class="bigBtn secondary restart" id="restartBtn">もういちど やる</button>
+      </div>
+      <div class="heroVisual"><div class="viewer" data-viewer="final"></div></div>
+    </div>
+  </section>
+</main></div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const screens={start:$('#startScreen'),lesson:$('#lessonScreen'),quiz:$('#quizScreen'),final:$('#finalScreen')};
+let currentMode='start',activityMode='lesson',lessonIndex=0,quizIndex=0,answered=false,speakOn=false,teacherOn=false;
+let firstTry=0,mistakes=0,attemptsThis=0;
+
+const lessonSteps=[
+  {q:'こういうのを <span class="accent">「はこの形」</span> といいます。',exp:'ふつうの はこも、サイコロみたいな はこも、形に注目して見ていきます。',ans:'「はこの形」',shape:'cuboid',solid:true,teacher:'最初は説明しすぎない。「こういうのを何の形と言った？」と短く聞き、すぐ答えさせる。'},
+  {q:'この <span class="accent">たいらな ぶぶん</span>を、何といいますか？',exp:'今は名前だけ。形のくわしいきまりは、あとで見ます。',ans:'「めん（面）」と いいます。',shape:'cuboid',solid:true,highlight:'face',opaqueFaces:true,teacher:'「たいらな部分」を指しながら答えさせる。ここでは直角の話を混ぜず、まず「面」という名前だけを確認。'},
+  {q:'いま、見えている めんは <span class="accent">何まい</span>？',exp:'まだ はこは回しません。いま見えているところだけ数えよう。',ans:'いま見えているのは <b>3まい</b>。',shape:'cuboid',solid:true,opaqueFaces:true,lockRotation:true,rot:[-.38,.68],teacher:'ここは重要。「3まい」と言わせる。まだ「全部で何まい」とは聞かない。見えている数と全体の数を分ける。'},
+  {q:'じゃあ、めんは <span class="accent">ぜんぶで 3まい</span> かな？',exp:'見えていない うらや下にも、めんはあるかな。先に予想してから確かめよう。',ans:'3まいではないね。<br><b>ぜんぶで 6まい</b>。うらや下にも めんがあります。',shape:'cuboid',solid:true,opaqueFaces:true,lockRotation:true,rot:[-.38,.68],optionalExplore:{kind:'face',total:6,label:'めん'},teacher:'「3まい？」と一度揺さぶる。正解をすぐ言わず、「見えていないところは？」と問い返してから、必要なら「回して たしかめる」。'},
+  {q:'この はこの 6まいの面には、どんな <span class="accent">きまり</span> がある？',exp:'同じ色の面どうしを見比べよう。向かい合う面が同じ形です。',ans:'<b>この はこでは</b>、同じ形の長方形が <b>2まいずつ</b>。3くみで 6まい。',shape:'cuboid',solid:true,opposite:true,teacher:'一般の箱全部の話に広げず、「この はこでは」と言う。元スライドの「同じ形が2まいずつ」をそのまま生かす。'},
+  {q:'この はこの <span class="accent">1つの面</span>を取り出すと、どんな形？',exp:'面の名前を覚えたあとで、今度は面そのものの形を見る。',ans:'長方形。4つの かどは <b>直角</b>です。',shape:'cuboid',solid:true,highlight:'face',opaqueFaces:true,face2d:true,teacher:'「面」と「面の形」を別の問いにする。直角マークはここで初めて出す。'},
+  {q:'サイコロのような はこは、めんが <span class="accent">どうなっている</span>？',exp:'ふつうの はこと、サイコロのような はこを横に並べて比べよう。',ans:'サイコロのような はこは、<b>6まい ぜんぶ 正方形</b>。同じ形が6まいです。',compare:true,compareA:{shape:'cuboid',solid:true,opposite:true,toolbar:false},compareB:{shape:'cube',solid:true,allFacesSame:true,toolbar:false},teacher:'元スライドの比較を強める。「2まいずつ」とは言わず、サイコロは「同じ形が6まい」と言わせる。'},
+  {q:'はこの形を <span class="yellow">スカスカ</span> にしてみよう。',exp:'面をなくして、ストローと ねんど玉だけにすると、線と角の点がよく見えます。',ans:'ストローと ねんど玉でできた「スカスカの はこ」。',shape:'cuboid',wire:true,vertices:true,teacher:'ストロー・粘土玉で作った経験を思い出させる。「線はいくつ？」に急がず、まず見方を切り替える。'},
+  {q:'まず、この長さのストローは <span class="yellow">何本</span>？',exp:'黄色のストローだけ見よう。ほかの長さは、まだ数えません。',ans:'<span class="yellow"><b>4本</b></span>。',shape:'cuboid',wire:true,vertices:true,edgeGroups:true,edgeFocus:'x',teacher:'元スライド10ページのテンポ。「4本だね」で短く終える。'},
+  {q:'じゃあ、この長さのストローは <span class="accent">何本</span>？',exp:'今度は水色だけ。さっきと同じかな。',ans:'これも <span class="accent"><b>4本</b></span>。',shape:'cuboid',wire:true,vertices:true,edgeGroups:true,edgeFocus:'y',teacher:'元スライド11ページ。「これも？」と予想させ、4本を反復する。'},
+  {q:'さらに、この長さのストローは <span class="green">何本</span>？',exp:'最後は緑だけ。ここまでのきまりを使って予想しよう。',ans:'やっぱり <span class="green"><b>4本</b></span>。',shape:'cuboid',wire:true,vertices:true,edgeGroups:true,edgeFocus:'z',teacher:'元スライド12ページ。「やっぱり」と言えることが大事。3回の反復で構造に気づかせる。'},
+  {q:'ということは、ストローは <span class="yellow">合わせて何本</span>？',exp:'1本ずつ全部数える前に、4本ずつが3しゅるいというきまりを使おう。',ans:'<span class="formula"><b>4本</b>＋<b>4本</b>＋<b>4本</b>＝<b>12本</b></span>',shape:'cuboid',wire:true,vertices:false,edgeGroups:true,optionalExplore:{kind:'edge',total:12,label:'ストロー'},teacher:'ここでは総当たりで数えさせない。先に「4＋4＋4」で12を求める。そのあと希望すれば回して12本を確認する。'},
+  {q:'ねんど玉は、ぜんぶで <span class="pink">何こ</span> いる？',exp:'角の点を数えよう。見えていないところにもあることを思い出そう。',ans:'ねんど玉は <span class="pink"><b>8こ</b></span>。',shape:'cuboid',wire:true,vertices:true,highlight:'vertices',optionalExplore:{kind:'vertex',total:8,label:'ねんど玉'},teacher:'元スライド14ページ。まず8と答えさせ、必要なら探索で確かめる。探索そのものを主課題にはしない。'},
+  {q:'サイコロのような はこだと、ストローはどうなる？',exp:'ふつうの はこと並べて、「数」と「長さ」を分けて比べよう。',ans:'どちらも <b>12本</b>。でもサイコロのような はこは、<b>12本 ぜんぶ同じ長さ</b>。',compare:true,compareA:{shape:'cuboid',wire:true,vertices:false,edgeGroups:true,toolbar:false},compareB:{shape:'cube',wire:true,vertices:false,allEdgesSame:true,toolbar:false},teacher:'元スライド15〜16ページ。「4本、4本、4本？」→「12本。ただし全部同じ長さ」の違いを言葉にさせる。'},
+  {q:'サイコロのような はこの ねんど玉は <span class="pink">何こ</span>？',exp:'ストローの長さは変わったけれど、角の点の数はどうかな。',ans:'ふつうの はこと同じで <span class="pink"><b>8こ</b></span>。',compare:true,compareA:{shape:'cuboid',wire:true,vertices:true,toolbar:false},compareB:{shape:'cube',wire:true,vertices:true,allEdgesSame:true,toolbar:false},teacher:'元スライド17ページ。「ふつうのはこと同じ」という比較の言い方まで引き出す。'},
+  {q:'ストローのぶぶん、ねんど玉のぶぶんの <span class="orange">名前</span> は？',exp:'具体物で数えたあとに、算数の言葉へ戻します。',ans:'ストローのぶぶん → <b>へん</b><br>ねんど玉のぶぶん → <b>ちょう点</b>',shape:'cuboid',wire:true,vertices:true,labels:true,teacher:'元スライド18ページ。先に具体物で理解してから「辺」「頂点」という名前を付ける順番を崩さない。'},
+  {q:'さいごに、3つを <span class="green">まとめよう</span>。',exp:'名前と数をセットで、声に出して言おう。',ans:'めんが <b>6まい</b>　／　へんが <b>12本</b>　／　ちょう点が <b>8つ</b>',shape:'cuboid',wire:true,vertices:true,teacher:'元スライド19ページ。助数詞まで含めて「面が6まい、辺が12本、頂点が8つ」と言わせる。'}
+];
+
+const quizQuestions=[
+  {q:'はこの たいらな ぶぶんを 何といいますか？',choices:['めん','へん','ちょう点','かど'],answer:'めん',shape:'cuboid',solid:true,highlight:'face',opaqueFaces:true,accept:['めん','面'],hint:'「たいらな ぶぶん」の名前を思い出そう。',ex:'たいらな ぶぶんは「めん」です。'},
+  {q:'いま見えている めんは、何まい？',choices:['2まい','3まい','4まい','6まい'],answer:'3まい',shape:'cuboid',solid:true,opaqueFaces:true,lockRotation:true,rot:[-.38,.68],accept:['3','さん','3まい','さんまい'],hint:'まだ回さず、目で見えている面だけを数えよう。',ex:'今の向きでは、3まい見えています。'},
+  {q:'見えていないところも入れると、めんは ぜんぶで何まい？',choices:['3まい','4まい','5まい','6まい'],answer:'6まい',shape:'cuboid',solid:true,opaqueFaces:true,accept:['6','ろく','6まい','ろくまい'],hint:'うら・下にも面があります。',ex:'見えない面も入れて、ぜんぶで6まいです。'},
+  {q:'この はこでは、同じ形の面が 何まいずつ？',choices:['1まいずつ','2まいずつ','3まいずつ','6まいずつ'],answer:'2まいずつ',shape:'cuboid',solid:true,opposite:true,accept:['2','に','2まい','2まいずつ'],hint:'同じ色になっている向かい合う面を見よう。',ex:'この はこでは、同じ形の面が2まいずつあります。'},
+  {q:'サイコロのような はこの 6まいの面は？',choices:['ぜんぶ正方形','ぜんぶ三角形','3まいだけ正方形','形が全部ちがう'],answer:'ぜんぶ正方形',shape:'cube',solid:true,allFacesSame:true,accept:['ぜんぶ正方形','正方形','せいほうけい'],hint:'サイコロの1つの面の形を思い出そう。',ex:'6まい ぜんぶ正方形です。'},
+  {q:'黄色と同じ長さのストローは、何本？',choices:['2本','3本','4本','6本'],answer:'4本',shape:'cuboid',wire:true,vertices:true,edgeGroups:true,edgeFocus:'x',accept:['4','よん','4本','よんほん'],hint:'黄色だけを追いかけて数えよう。',ex:'この長さは4本です。'},
+  {q:'水色と同じ長さのストローは、何本？',choices:['2本','3本','4本','6本'],answer:'4本',shape:'cuboid',wire:true,vertices:true,edgeGroups:true,edgeFocus:'y',accept:['4','よん','4本','よんほん'],hint:'さっきと同じ数になるかな。',ex:'これも4本です。'},
+  {q:'緑と同じ長さのストローは、何本？',choices:['2本','3本','4本','6本'],answer:'4本',shape:'cuboid',wire:true,vertices:true,edgeGroups:true,edgeFocus:'z',accept:['4','よん','4本','よんほん'],hint:'3しゅるい目も、同じきまりです。',ex:'やっぱり4本です。'},
+  {q:'4本ずつが3しゅるい。ストローは合わせて何本？',choices:['8本','10本','12本','16本'],answer:'12本',shape:'cuboid',wire:true,vertices:false,edgeGroups:true,accept:['12','じゅうに','12本','じゅうにほん'],hint:'4＋4＋4を計算しよう。',ex:'4本＋4本＋4本で、12本です。'},
+  {q:'ねんど玉は、ぜんぶで何こ？',choices:['6こ','8こ','10こ','12こ'],answer:'8こ',shape:'cuboid',wire:true,vertices:true,highlight:'vertices',accept:['8','はち','8こ','はっこ'],hint:'見えない角の点も入れよう。',ex:'ねんど玉は8こです。'},
+  {q:'サイコロのような はこのストローは？',choices:['12本で、全部同じ長さ','12本で、3しゅるいの長さ','8本で、全部同じ長さ','6本だけ'],answer:'12本で、全部同じ長さ',shape:'cube',wire:true,allEdgesSame:true,accept:['12本全部同じ長さ','12本','じゅうにほん'],hint:'本数と、長さのきまりを両方考えよう。',ex:'12本あり、サイコロ型では全部同じ長さです。'},
+  {q:'サイコロのような はこの ねんど玉は？',choices:['4こ','6こ','8こ','12こ'],answer:'8こ',shape:'cube',wire:true,vertices:true,allEdgesSame:true,accept:['8','はち','8こ','はっこ'],hint:'ふつうの はこと同じ数です。',ex:'ねんど玉は8こです。'},
+  {q:'図の <span class="yellow">「へん」</span>を 1本タップしよう。',type:'tap',target:'edge',shape:'cuboid',wire:true,vertices:true,allowVoice:false,hint:'ストローのような「線」のぶぶんです。',ex:'ストローのような線のぶぶんが「へん」です。'},
+  {q:'図の <span class="pink">「ちょう点」</span>を 1つタップしよう。',type:'tap',target:'vertex',shape:'cuboid',wire:true,vertices:true,allowVoice:false,hint:'ねんど玉のような「角の点」です。',ex:'ねんど玉のような角の点が「ちょう点」です。'}
+];
+
+const exploreQuestions=[
+  {q:'めんを <span class="accent">6まい ぜんぶ</span> 見つけよう。',type:'hunt',target:'face',total:6,label:'めん',shape:'cuboid',solid:true,opaqueFaces:true,ex:'見えていない うらや下にも面があり、ぜんぶで6まい。'},
+  {q:'へんを <span class="yellow">12本 ぜんぶ</span> 見つけよう。',type:'hunt',target:'edge',total:12,label:'へん',shape:'cuboid',wire:true,vertices:false,edgeGroups:true,ex:'へんは12本。4本ずつが3しゅるいです。'},
+  {q:'ちょう点を <span class="pink">8つ ぜんぶ</span> 見つけよう。',type:'hunt',target:'vertex',total:8,label:'ちょう点',shape:'cuboid',wire:true,vertices:true,ex:'ちょう点は8つ。見えない角も、回すと見つかります。'}
+];
+
+function show(name){Object.entries(screens).forEach(([k,v])=>v.classList.toggle('active',k===name));currentMode=name;updateProgress()}
+function currentList(){return activityMode==='explore'?exploreQuestions:quizQuestions}
+function updateProgress(){const p=$('#progress');p.innerHTML='';let n=12,pos=-1;if(currentMode==='lesson'){n=lessonSteps.length;pos=lessonIndex}else if(currentMode==='quiz'){n=currentList().length;pos=quizIndex}else{n=12}for(let i=0;i<n;i++){const d=document.createElement('div');d.className='dot';if(pos>=0){if(i<pos)d.classList.add('done');if(i===pos)d.classList.add('now')}p.appendChild(d)}}
+
+class BoxViewer{
+ constructor(host,opts={}){this.host=host;this.opts={};this.rotX=-.38;this.rotY=.68;this.drag=false;this.last=null;this.auto=false;this.tapHandler=null;this.discovery=null;this.found=new Set();this.init();this.setOptions(opts)}
+ init(){this.host.innerHTML=`<div class="viewerToolbar"><button data-act="reset">↺ もどす</button><button data-act="auto">⟳ じどう</button></div><div class="discoverHud"><div class="discoverTitle"></div><div class="discoverCount"></div><div class="discoverDots"></div></div><svg viewBox="0 0 800 600" role="img" aria-label="回転できる はこの形"></svg><div class="viewerHint">はこを つかんで うごかそう</div>`;this.svg=this.host.querySelector('svg');this.hud=this.host.querySelector('.discoverHud');this.hint=this.host.querySelector('.viewerHint');this.toolbar=this.host.querySelector('.viewerToolbar');this.resetBtn=this.host.querySelector('[data-act="reset"]');this.autoBtn=this.host.querySelector('[data-act="auto"]');
+   this.resetBtn.onclick=()=>{if(this.opts.lockRotation)return;this.rotX=-.38;this.rotY=.68;this.draw()};
+   this.autoBtn.onclick=e=>{if(this.opts.lockRotation)return;this.auto=!this.auto;e.currentTarget.textContent=this.auto?'■ とめる':'⟳ じどう';if(this.auto)this.tick()};
+   this.svg.addEventListener('pointerdown',e=>{if(this.opts.lockRotation)return;this.drag=true;this.last=[e.clientX,e.clientY];this.svg.setPointerCapture(e.pointerId)});
+   this.svg.addEventListener('pointermove',e=>{if(!this.drag||this.opts.lockRotation)return;const dx=e.clientX-this.last[0],dy=e.clientY-this.last[1];this.rotY+=dx*.009;this.rotX+=dy*.008;this.rotX=Math.max(-1.28,Math.min(1.28,this.rotX));this.last=[e.clientX,e.clientY];this.draw()});
+   this.svg.addEventListener('pointerup',()=>this.drag=false);this.svg.addEventListener('pointercancel',()=>this.drag=false)
+ }
+ tick(){if(!this.auto||this.opts.lockRotation)return;if(this.host.offsetParent!==null){this.rotY+=.008;this.draw()}requestAnimationFrame(()=>this.tick())}
+ setOptions(o={}){const inferredSolid=(o.wire===true&&o.solid===undefined)?false:true;this.opts={shape:'cuboid',solid:inferredSolid,wire:false,vertices:false,highlight:null,edgeGroups:false,edgeFocus:null,opposite:false,allEdgesSame:false,allFacesSame:false,labels:false,interactiveTarget:null,opaqueFaces:false,lockRotation:false,toolbar:true,...o};if(Array.isArray(o.rot)){this.rotX=o.rot[0];this.rotY=o.rot[1]}this.auto=false;if(this.autoBtn)this.autoBtn.textContent='⟳ じどう';this.stopDiscovery(false);this.syncChrome();this.draw()}
+ syncChrome(){const locked=!!this.opts.lockRotation;this.host.classList.toggle('locked',locked);if(this.toolbar)this.toolbar.style.display=this.opts.toolbar===false?'none':'flex';if(this.resetBtn)this.resetBtn.disabled=locked;if(this.autoBtn)this.autoBtn.disabled=locked;if(this.hint)this.hint.textContent=locked?'いまは回さず、見えているところだけ見よう':'はこを つかんで うごかそう'}
+ startDiscovery(kind,total,label,onProgress,onComplete){this.opts.lockRotation=false;this.syncChrome();this.discovery={kind,total,label,onProgress,onComplete,complete:false};this.found=new Set();this.updateHud();this.draw()}
+ stopDiscovery(redraw=true){this.discovery=null;this.found=new Set();if(this.hud){this.hud.classList.remove('show','complete');this.hud.querySelector('.discoverTitle').textContent='';this.hud.querySelector('.discoverCount').textContent='';this.hud.querySelector('.discoverDots').innerHTML=''}if(redraw)this.draw()}
+ updateHud(message=''){if(!this.discovery||!this.hud)return;const d=this.discovery,n=this.found.size,left=Math.max(0,d.total-n);this.hud.classList.add('show');this.hud.classList.toggle('complete',n>=d.total);this.hud.querySelector('.discoverTitle').textContent=message||(n>=d.total?'ぜんぶ 見つけた！':`回して ${d.label}を さがそう`);this.hud.querySelector('.discoverCount').textContent=`${n} / ${d.total}${n<d.total?`　あと ${left}`:''}`;this.hud.querySelector('.discoverDots').innerHTML=Array.from({length:d.total},(_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}
+ dims(){return this.opts.shape==='cube'?[1.2,1.2,1.2]:[1.65,1.0,.92]}
+ verts(){const[x,y,z]=this.dims();return[[-x,-y,-z],[x,-y,-z],[x,y,-z],[-x,y,-z],[-x,-y,z],[x,-y,z],[x,y,z],[-x,y,z]]}
+ rotate(v){let[x,y,z]=v;let cy=Math.cos(this.rotY),sy=Math.sin(this.rotY);let x1=x*cy+z*sy,z1=-x*sy+z*cy;let cx=Math.cos(this.rotX),sx=Math.sin(this.rotX);let y1=y*cx-z1*sx,z2=y*sx+z1*cx;return[x1,y1,z2]}
+ project(v){const[x,y,z]=this.rotate(v),cam=6.2,k=cam/(cam-z);return[400+x*150*k,300-y*150*k,z,k]}
+ visibility(){const normals={'z-':[0,0,-1],'z+':[0,0,1],'x-':[-1,0,0],'x+':[1,0,0],'y+':[0,1,0],'y-':[0,-1,0]},face={};Object.entries(normals).forEach(([id,n])=>face[id]=this.rotate(n)[2]>.08);const edgeFaces=[['z-','y-'],['z-','y+'],['z+','y-'],['z+','y+'],['z-','x-'],['z-','x+'],['z+','x-'],['z+','x+'],['x-','y-'],['x+','y-'],['x+','y+'],['x-','y+']];const edge=edgeFaces.map(fs=>fs.some(f=>face[f]));const vertexFaces=[['x-','y-','z-'],['x+','y-','z-'],['x+','y+','z-'],['x-','y+','z-'],['x-','y-','z+'],['x+','y-','z+'],['x+','y+','z+'],['x-','y+','z+']];const vertex=vertexFaces.map(fs=>fs.some(f=>face[f]));return{face,edge,vertex}}
+ discoverTap(kind,id,visible){const d=this.discovery;if(!d||kind!==d.kind)return false;if(d.complete){this.updateHud('ぜんぶ 見つけた！');return true}if(!visible){this.updateHud('見える向きまで 回してみよう');return true}if(this.found.has(String(id))){this.updateHud('そこは もう 見つけたよ');return true}this.found.add(String(id));const now=this.found.size;this.draw();this.updateHud();if(d.onProgress)d.onProgress(now,d.total);if(now>=d.total&&!d.complete){d.complete=true;this.updateHud('ぜんぶ 見つけた！');if(d.onComplete)setTimeout(()=>d.onComplete(),220)}return true}
+ draw(){if(!this.svg)return;const V=this.verts(),P=V.map(v=>this.project(v));const faces=[[0,1,2,3,'z-'],[4,5,6,7,'z+'],[0,4,7,3,'x-'],[1,5,6,2,'x+'],[3,2,6,7,'y+'],[0,1,5,4,'y-']];const edges=[[0,1,'x'],[3,2,'x'],[4,5,'x'],[7,6,'x'],[0,3,'y'],[1,2,'y'],[4,7,'y'],[5,6,'y'],[0,4,'z'],[1,5,'z'],[2,6,'z'],[3,7,'z']];const vis=this.visibility();
+   const alpha=this.opts.opaqueFaces?.88:.27;const faceColors={x:`rgba(58,199,255,${alpha})`,y:`rgba(255,212,59,${this.opts.opaqueFaces?.86:.23})`,z:`rgba(88,233,134,${this.opts.opaqueFaces?.84:.22})`};const faceStroke={x:'#5fd7ff',y:'#ffe169',z:'#77f0a0'};
+   let html='<defs><filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+   if(this.opts.solid){let fs=faces.map(f=>({f,depth:f.slice(0,4).reduce((sum,i)=>sum+P[i][2],0)/4})).sort((a,b)=>a.depth-b.depth);fs.forEach(({f})=>{const id=f[4];if(!vis.face[id])return;const axis=id[0],pts=f.slice(0,4).map(i=>`${P[i][0]},${P[i][1]}`).join(' ');let fill=faceColors[axis],stroke=faceStroke[axis],sw=3,filter='';const found=this.discovery?.kind==='face'&&this.found.has(id);if(this.opts.highlight==='face'&&id==='z+'){fill='rgba(255,213,72,.82)';stroke='#fff0a1';sw=7;filter='filter="url(#glow)"'}if(this.opts.opposite){const oa=this.opts.opaqueFaces?.75:.52;const map={'x-':`rgba(58,199,255,${oa})`,'x+':`rgba(58,199,255,${oa})`,'y-':`rgba(255,212,59,${oa})`,'y+':`rgba(255,212,59,${oa})`,'z-':`rgba(88,233,134,${oa})`,'z+':`rgba(88,233,134,${oa})`};fill=map[id]}if(this.opts.allFacesSame){fill='rgba(255,79,196,.54)';stroke='#ff9ddd'}if(found){if(vis.face[id]){fill='rgba(86,232,145,.76)';stroke='#eafff1';sw=7;filter='filter="url(#glow)"'}else{fill='rgba(86,232,145,.10)';stroke='rgba(140,245,184,.28)';sw=2;filter=''}}const clickable=!(this.discovery?.kind==='face')||vis.face[id];html+=`<polygon data-kind="face" data-id="${id}" data-visible="${vis.face[id]?1:0}" points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${filter} pointer-events="${clickable?'all':'none'}"/>`;if(found&&vis.face[id]){const cx=f.slice(0,4).reduce((sum,i)=>sum+P[i][0],0)/4,cy=f.slice(0,4).reduce((sum,i)=>sum+P[i][1],0)/4;html+=`<circle cx="${cx}" cy="${cy}" r="17" fill="#39d77f" stroke="#fff" stroke-width="3" pointer-events="none"/><path d="M${cx-8} ${cy} l6 7 l13 -15" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`}})}
+   const baseGroup={x:'#ffe246',y:'#38e6f3',z:'#63f374'};const edgeColor=a=>this.opts.allEdgesSame?'#ff4fc4':this.opts.edgeGroups?baseGroup[a]:'#b4d8ff';edges.forEach(([a,b,axis],idx)=>{const avg=(P[a][2]+P[b][2])/2,hidden=avg<-.35;let c=edgeColor(axis),w=this.opts.wire?8:4,dash=hidden?'10 8':'none';let opacity=this.opts.solid&&!vis.edge[idx]?0:(this.opts.opaqueFaces&&hidden?0:(this.opts.solid&&hidden?.35:1));if(this.opts.edgeFocus){if(axis===this.opts.edgeFocus){w=13;opacity=1}else{w=5;opacity=.12}}const found=this.discovery?.kind==='edge'&&this.found.has(String(idx));if(found){c='#66ed9f';w=13;dash=hidden?'10 8':'none';opacity=1}const clickable=!(this.discovery?.kind==='edge')||vis.edge[idx];const targetHidden=this.discovery?.kind==='edge'&&!vis.edge[idx];if(targetHidden)opacity=.08;html+=`<line data-kind="edge" data-id="${idx}" data-visible="${vis.edge[idx]?1:0}" x1="${P[a][0]}" y1="${P[a][1]}" x2="${P[b][0]}" y2="${P[b][1]}" stroke="transparent" stroke-width="32" stroke-linecap="round" pointer-events="${clickable?'stroke':'none'}"/><line x1="${P[a][0]}" y1="${P[a][1]}" x2="${P[b][0]}" y2="${P[b][1]}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${dash}" opacity="${opacity}" ${found&&vis.edge[idx]?'filter="url(#glow)"':''} pointer-events="none"/>`});
+   if(this.opts.vertices){P.forEach((p,i)=>{let c=this.opts.highlight==='vertices'?'#ff9b31':'#ff4fc4',r=this.opts.highlight==='vertices'?14:11;const found=this.discovery?.kind==='vertex'&&this.found.has(String(i));if(found){c='#66ed9f';r=17}const clickable=!(this.discovery?.kind==='vertex')||vis.vertex[i];const vertexOpacity=this.discovery?.kind==='vertex'&&!vis.vertex[i]?.08:1;html+=`<circle data-kind="vertex" data-id="${i}" data-visible="${vis.vertex[i]?1:0}" cx="${p[0]}" cy="${p[1]}" r="28" fill="transparent" pointer-events="${clickable?'all':'none'}"/><circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${c}" stroke="#fff" stroke-width="${found?4:2}" opacity="${vertexOpacity}" ${found&&vis.vertex[i]?'filter="url(#glow)"':''} pointer-events="none"/>`})}
+   if(this.opts.labels){const e=edges[1],a=P[e[0]],b=P[e[1]];html+=`<g pointer-events="none"><rect x="${(a[0]+b[0])/2-48}" y="${(a[1]+b[1])/2-52}" width="96" height="38" rx="12" fill="#ffe062"/><text x="${(a[0]+b[0])/2}" y="${(a[1]+b[1])/2-26}" text-anchor="middle" font-size="24" font-weight="900" fill="#241700">へん</text><rect x="${P[6][0]+12}" y="${P[6][1]-50}" width="118" height="38" rx="12" fill="#ff9bdc"/><text x="${P[6][0]+71}" y="${P[6][1]-24}" text-anchor="middle" font-size="22" font-weight="900" fill="#2a0c21">ちょう点</text></g>`}
+   this.svg.innerHTML=html;this.svg.querySelectorAll('[data-kind]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();const kind=el.dataset.kind,id=el.dataset.id,visible=el.dataset.visible!=='0';if(this.discoverTap(kind,id,visible))return;if(this.tapHandler)this.tapHandler(kind,id,visible)}))
+ }
+}
+
+const viewers={
+ start:new BoxViewer(document.querySelector('[data-viewer="start"]'),{shape:'cuboid',solid:true,opaqueFaces:true}),
+ lesson:new BoxViewer(document.querySelector('[data-viewer="lesson"]')),
+ compareA:new BoxViewer(document.querySelector('[data-viewer="compareA"]'),{toolbar:false}),
+ compareB:new BoxViewer(document.querySelector('[data-viewer="compareB"]'),{toolbar:false}),
+ quiz:new BoxViewer(document.querySelector('[data-viewer="quiz"]')),
+ final:new BoxViewer(document.querySelector('[data-viewer="final"]'),{shape:'cube',solid:true,wire:true,vertices:true,allEdgesSame:true})
+};
+viewers.start.auto=true;viewers.start.tick();viewers.final.auto=true;viewers.final.tick();
+
+function plainText(html){const d=document.createElement('div');d.innerHTML=html;return d.textContent||''}
+function speak(text){if(!speakOn||!('speechSynthesis'in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(plainText(text));u.lang='ja-JP';u.rate=.92;u.pitch=1.04;window.speechSynthesis.speak(u)}
+$('#speakToggle').onclick=e=>{speakOn=!speakOn;e.currentTarget.setAttribute('aria-pressed',String(speakOn));if(speakOn){const t=currentMode==='lesson'?lessonSteps[lessonIndex].q:currentMode==='quiz'?currentList()[quizIndex].q:'はこの形の ふくしゅう';speak(t)}};
+$('#teacherToggle').onclick=e=>{teacherOn=!teacherOn;e.currentTarget.setAttribute('aria-pressed',String(teacherOn));$('#teacherNote').classList.toggle('show',teacherOn&&currentMode==='lesson')};
+
+function renderLesson(){
+ const s=lessonSteps[lessonIndex];show('lesson');$('#lessonPill').textContent=`かくにん ${lessonIndex+1} / ${lessonSteps.length}`;$('#lessonQ').innerHTML=s.q;$('#lessonExplain').innerHTML=s.exp;const r=$('#revealBox');r.className='revealBox hiddenAnswer';r.textContent='まず こたえてみよう';$('#teacherNote').textContent=s.teacher;$('#teacherNote').classList.toggle('show',teacherOn);$('#face2d').classList.toggle('show',!!s.face2d);
+ const main=document.querySelector('[data-viewer="lesson"]'),cmp=$('#compareWrap');if(s.compare){main.style.display='none';cmp.classList.add('show');$('#compareLabelA').textContent=s.compareLabelA||'ふつうの はこ';$('#compareLabelB').textContent=s.compareLabelB||'サイコロのような はこ';viewers.compareA.setOptions(s.compareA);viewers.compareB.setOptions(s.compareB)}else{cmp.classList.remove('show');main.style.display='block';viewers.lesson.setOptions(s)}
+ const eb=$('#lessonExploreBtn');eb.classList.toggle('show',!!s.optionalExplore);eb.disabled=false;eb.textContent=s.optionalExplore?'回して たしかめる':'回して たしかめる';
+ $('#backBtn').disabled=lessonIndex===0;$('#nextBtn').textContent=lessonIndex===lessonSteps.length-1?'まとめへ →':'つぎへ →';speak(s.q)
+}
+$('#revealBtn').onclick=()=>{const s=lessonSteps[lessonIndex],r=$('#revealBox');r.className='revealBox pop';r.innerHTML=s.ans;speak(s.ans)};
+$('#lessonExploreBtn').onclick=()=>{const s=lessonSteps[lessonIndex];if(!s.optionalExplore||s.compare)return;const e=s.optionalExplore,r=$('#revealBox'),btn=$('#lessonExploreBtn');viewers.lesson.setOptions({...s,lockRotation:false});viewers.lesson.startDiscovery(e.kind,e.total,e.label,(n,t)=>{r.className='revealBox';r.textContent=`見つけた ${e.label}　${n} / ${t}`},()=>{r.className='revealBox pop';r.innerHTML=`ぜんぶ 見つけた！<br>${s.ans}`;speak('ぜんぶ見つけた。'+plainText(s.ans))});btn.disabled=true;btn.textContent='回して さがそう'};
+$('#nextBtn').onclick=()=>{if(lessonIndex<lessonSteps.length-1){lessonIndex++;renderLesson()}else showFinal('lesson')};
+$('#backBtn').onclick=()=>{if(lessonIndex>0){lessonIndex--;renderLesson()}else show('start')};
+
+function renderQuiz(){
+ const list=currentList(),q=list[quizIndex];show('quiz');answered=false;attemptsThis=0;const exploring=activityMode==='explore';$('#quizPill').className='pill '+(exploring?'explore':'quiz');$('#quizPill').textContent=exploring?`たんけん ${quizIndex+1} / ${list.length}`:`じぶんで ${quizIndex+1} / ${list.length}`;$('#score').textContent=exploring?'見つけて たしかめよう':`1かいで できた ${firstTry}　／　まちがい ${mistakes}`;$('#quizQ').innerHTML=q.q;$('#feedback').className='feedback';$('#feedback').textContent='';$('#quizNext').disabled=true;$('#quizNext').textContent=quizIndex===list.length-1?'まとめを見る →':'つぎのもんだい →';
+ const choices=$('#choices');choices.innerHTML='';const isTap=q.type==='tap',isHunt=q.type==='hunt';choices.style.display=(isTap||isHunt)?'none':'grid';$('#tapPrompt').classList.toggle('show',isTap||isHunt);$('#tapPrompt').textContent=isHunt?'見つけたところをタップ。見えなければ回そう':'はこの図を タップして答えよう';$('.micRow').style.display=(!exploring&&q.allowVoice!==false&&!isTap&&!isHunt)?'flex':'none';$('#heard').textContent='選んでも、声でも答えられます';
+ if(q.choices)q.choices.forEach(c=>{const b=document.createElement('button');b.className='choice';b.textContent=c;b.onclick=()=>answerQuiz(c,b);choices.appendChild(b)});viewers.quiz.setOptions({...q,interactiveTarget:q.target});
+ if(isHunt){viewers.quiz.startDiscovery(q.target,q.total,q.label,(n,t)=>{$('#feedback').className='feedback show ok';$('#feedback').textContent=`見つけた ${q.label}　${n} / ${t}`},()=>finishCorrect(q.ex));viewers.quiz.tapHandler=null}else{viewers.quiz.tapHandler=(kind,id,visible)=>{if(!isTap||answered)return;if(kind===q.target&&visible)finishCorrect(q.ex);else if(kind===q.target&&!visible)showRetry('その場所が見える向きまで、はこを回してみよう。');else showRetry(kind==='face'?'そこは「めん」です。':kind==='edge'?'そこは「へん」です。':'そこは「ちょう点」です。')}}
+ speak(q.q)
+}
+function showRetry(msg){if(answered)return;attemptsThis++;mistakes++;const f=$('#feedback');f.className='feedback show ng';f.innerHTML=`もういちど。 ${msg}`;$('#score').textContent=`1かいで できた ${firstTry}　／　まちがい ${mistakes}`;speak('もういちど。'+msg)}
+function answerQuiz(value,btn){if(answered)return;const q=currentList()[quizIndex],ok=value===q.answer;if(ok){btn.classList.add('correct');finishCorrect(q.ex)}else{btn.classList.add('wrong');setTimeout(()=>btn.classList.remove('wrong'),420);showRetry(q.hint||'図やことばを、もう一度見てみよう。')}}
+function finishCorrect(msg){if(answered)return;answered=true;if(activityMode==='quiz'&&attemptsThis===0)firstTry++;if(activityMode==='quiz')$('#score').textContent=`1かいで できた ${firstTry}　／　まちがい ${mistakes}`;const f=$('#feedback');f.className='feedback show ok';f.innerHTML=`せいかい！ ${msg}`;$('#quizNext').disabled=false;speak('せいかい。'+msg)}
+$('#quizNext').onclick=()=>{if(!answered)return;const list=currentList();if(quizIndex<list.length-1){quizIndex++;renderQuiz()}else showFinal(activityMode)};
+$('#quizHome').onclick=()=>show('start');
+
+function normalizeVoice(t){return t.toLowerCase().replace(/[\s　。、，．!！?？]/g,'').replace(/六/g,'6').replace(/八/g,'8').replace(/十二/g,'12').replace(/四/g,'4').replace(/三/g,'3').replace(/二/g,'2').replace(/ろく/g,'6').replace(/はち/g,'8').replace(/じゅうに/g,'12').replace(/よん/g,'4').replace(/さん/g,'3').replace(/に/g,'2').replace(/せいほうけい/g,'正方形').replace(/ちょうてん/g,'ちょう点')}
+function voiceAnswer(text){if(currentMode!=='quiz'||activityMode!=='quiz'||answered)return;const q=quizQuestions[quizIndex];if(q.allowVoice===false||q.type)return;const n=normalizeVoice(text),accepted=(q.accept||[]).map(normalizeVoice);const ok=accepted.some(a=>n.includes(a));$('#heard').textContent=`きこえたことば：${text}`;if(ok)finishCorrect(q.ex);else showRetry(q.hint||`「${text}」と聞こえました。もう一度考えよう。`)}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null;if(SR){rec=new SR();rec.lang='ja-JP';rec.interimResults=false;rec.maxAlternatives=3;rec.onresult=e=>voiceAnswer(e.results[0][0].transcript);rec.onend=()=>$('#micBtn').classList.remove('listening');rec.onerror=()=>{$('#heard').textContent='マイクを使えませんでした。選んで答えられます。';$('#micBtn').classList.remove('listening')}}else{$('#micBtn').disabled=true;$('#micBtn').textContent='🎤 このブラウザでは音声入力なし'}
+$('#micBtn').onclick=()=>{if(!rec||answered)return;try{$('#micBtn').classList.add('listening');$('#heard').textContent='きいています…';rec.start()}catch(_){}}
+
+function showFinal(mode){show('final');let html='';if(mode==='quiz')html=`「1かいで できた」は <b class="yellow">${firstTry} / ${quizQuestions.length}</b>。まちがえたところも、正解するまでやり直しました。<br>最後に、<b>めんが6まい・へんが12本・ちょう点が8つ</b> と声に出そう。`;else if(mode==='explore')html='6まいの面、12本のへん、8つのちょう点を、はこを回しながら全部見つけました。<br>見えていないところにもあることを忘れないようにしよう。';else html='この はこでは、同じ形の面が2まいずつ。サイコロのような はこは、6まいとも正方形です。<br>ストローは4本ずつ×3しゅるいで12本、ねんど玉は8こでした。';$('#finalText').innerHTML=html;speak('まとめ。めんが6まい、へんが12本、ちょう点が8つです。')}
+$('#restartBtn').onclick=()=>{lessonIndex=0;quizIndex=0;firstTry=0;mistakes=0;show('start')};
+$$('[data-start]').forEach(b=>b.onclick=()=>{const m=b.dataset.start;if(m==='learn'){activityMode='lesson';lessonIndex=0;renderLesson()}else{activityMode=m==='explore'?'explore':'quiz';quizIndex=0;firstTry=0;mistakes=0;renderQuiz()}});
+
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){if(currentMode==='lesson')$('#nextBtn').click();else if(currentMode==='quiz'&&!$('#quizNext').disabled)$('#quizNext').click()}if(e.key==='ArrowLeft'&&currentMode==='lesson')$('#backBtn').click();if(e.key==='Enter'&&currentMode==='lesson')$('#revealBtn').click();if(e.key==='Escape')show('start')});
+updateProgress();
+})();
+</script>
+</body>
+</html>
