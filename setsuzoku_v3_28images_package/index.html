@@ -275,18 +275,29 @@ function wireSceneImage(root=document){
 }
 function hintText(p,level){
   const it=p.item;
+  if(p.rel==='add'){
+    if(level===1)return '前の文と後ろの文を、両方読もう。「'+it.s1+'」「'+it.s2+'」。どちらも、何について話しているかな？';
+    if(level===2)return '前の文では「'+it.s1+'」、後ろの文では「'+it.s2+'」。同じ話題について、どんなことを一つずつ挙げているかな？';
+    return it.clue+'よ。二つのことをならべたり、情報をもう一つつけ足したりしているね。';
+  }
   if(level===1)return `まず、前の文だけを見よう。「${it.s1}」。このあと、ふつうならどうなりそう？`;
   if(level===2)return `ふつうなら……「${it.expect}」と考えられそうだね。`;
   return `後ろの文は「${it.s2}」。前から考えたこととくらべると、${it.clue}よ。`;
 }
 function reasoningHTML(p,showName=true){
   const it=p.item,v=REL_VIEW[p.rel];
+  if(p.rel==='add')return `<div class="thinkbox"><h3>前と後ろを、両方読んで考えよう</h3>${sceneHTML(p,true)}
+    <div class="thinkstep"><span class="num">1</span><p><b>前の文：</b>「${esc(it.s1)}」</p></div>
+    <div class="thinkstep"><span class="num">2</span><p><b>後ろの文：</b>「${esc(it.s2)}」</p></div>
+    <div class="predict"><b>二つの文に共通する話題は？</b><br>${esc(it.clue)}。</div>
+    <div class="thinkstep"><span class="num">3</span><p>${esc(it.reaction)}</p></div>
+    ${showName?`<p><span class="relation-badge">つけたし</span><br><b>${esc(v.kid)}</b><br>${esc(REL.add.exp)}</p>`:''}</div>`;
   return `<div class="thinkbox">
     <h3>文のつながりを、じゅんに考えよう</h3>
     ${sceneHTML(p,true)}
     <div class="thinkstep"><span class="num">1</span><p><b>前の文：</b>「${esc(it.s1)}」</p></div>
     <div class="predict"><b>ふつうなら？</b><br>${esc(it.expect)}</div>
-    <div class="thinkstep"><span class="num">2</span><p><b>でも、実際の後ろの文：</b>「${esc(it.s2)}」</p></div>
+    <div class="thinkstep"><span class="num">2</span><p><b>後ろの文：</b>「${esc(it.s2)}」</p></div>
     <div class="thinkstep"><span class="num">3</span><p>${esc(it.clue)}。</p></div>
     <div class="reaction">${esc(it.reaction)}</div>
     ${showName?`<p style="margin:12px 0 0"><span class="relation-badge">${esc(v.badge)}</span><br><b>${esc(v.kid)}</b><br>${esc(REL[p.rel].exp)}</p>`:''}
@@ -352,11 +363,11 @@ function check(){
       b.disabled=true;
     });
     document.getElementById('fb').innerHTML=`<div class="fb bad"><h3>おしい！　まだ答えは見せないよ</h3>
-      <p>つなぎ言葉だけを見るのではなく、<b>前の文から何が起こりそうか</b>考えてみよう。</p></div>
+      <p>つなぎ言葉だけを見るのではなく、<b>${p.rel==='add'?'前と後ろの文で、何を一つずつ挙げているか':'前の文から何が起こりそうか'}</b>考えてみよう。</p></div>
       ${reasoningHTML(p,false)}
       <p class="retry-note">考え方を見たら、もう一度えらんでみよう。</p>`;
     wireSceneImage(document.getElementById('fb'));
-    speakLater('おしい。まだ答えは見せないよ。'+p.item.expect+'。でも、'+p.item.s2+'。もういちど考えてみよう。',600);
+    speakLater('おしい。まだ答えは見せないよ。'+(p.rel==='add'?p.item.s1+'。'+p.item.s2+'。'+p.item.clue:p.item.expect+'。後ろの文は、'+p.item.s2)+'。もういちど考えてみよう。',600);
     const go=document.getElementById('go');
     go.disabled=false;go.textContent='もう一度 えらぶ';
     document.getElementById('hintBtn').disabled=true;
@@ -395,9 +406,9 @@ function retryCurrent(){
     b.disabled=false;b.classList.remove('sel','ng','ok');b.setAttribute('aria-pressed','false');
   });
   document.getElementById('fb').innerHTML='';
-  document.getElementById('hintArea').innerHTML=`<div class="hintpanel"><p><b>もう一度：</b> 「${esc(p.item.s1)}」から、ふつうなら「${esc(p.item.expect)}」。でも後ろは「${esc(p.item.s2)}」。この関係に合う言葉をえらぼう。</p></div>`;
+  document.getElementById('hintArea').innerHTML=`<div class="hintpanel"><p><b>もう一度：</b> ${esc(hintText(p,3))}この関係に合う言葉をえらぼう。</p></div>`;
   const go=document.getElementById('go');go.disabled=true;go.textContent='こたえあわせ';go.onclick=check;
-  speak('もう一度えらぼう。'+p.item.s1+'。ふつうなら、'+p.item.expect+'。でも、'+p.item.s2+'。');
+  speak('もう一度えらぼう。'+hintText(p,3)+'。');
 }
 function result(){
   const m=S.score===N?'ぜんぶせいかい！つなぎ言葉の名人だね！':S.score>=7?'よくできました！':'もう一度やって、文の関係を考えてみよう。';

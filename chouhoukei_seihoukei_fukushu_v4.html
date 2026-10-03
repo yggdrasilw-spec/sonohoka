@@ -97,7 +97,7 @@
   .reasonChip{background:#fff7dc;border:2px solid #f0d27d;border-radius:12px;padding:7px 9px;font-size:14px;font-weight:900;line-height:1.35;color:#72540e}
   .sideTour{stroke:#ef2b20;stroke-width:8;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:.16}
   .vertexTour{fill:#ef2b20;stroke:#fff;stroke-width:3;opacity:.16}
-  .tour1{animation:tourPulse 4.8s ease-in-out infinite 0s}.tour2{animation:tourPulse 4.8s ease-in-out infinite .6s}.tour3{animation:tourPulse 4.8s ease-in-out infinite 1.2s}.tour4{animation:tourPulse 4.8s ease-in-out infinite 1.8s}.tour5{animation:tourPulse 4.8s ease-in-out infinite 2.4s}.tour6{animation:tourPulse 4.8s ease-in-out infinite 3s}.tour7{animation:tourPulse 4.8s ease-in-out infinite 3.6s}
+  .sideTour,.vertexTour{opacity:0;animation:none}.tourActive{opacity:1;animation:tourReveal .8s ease-out both}@keyframes tourReveal{from{opacity:0}to{opacity:1}}
 
   .numberBox{display:flex;gap:14px;align-items:center;justify-content:center;margin:auto}
   .numInput{width:180px;height:80px;border:4px solid #adcaf0;border-radius:18px;background:#fff;font-size:42px;font-weight:1000;text-align:center;color:var(--ink);outline:none}
@@ -290,14 +290,14 @@ window.addEventListener('error',function(e){
   function selectionShapes(target,reveal=false,interactive=true){
     const correct=i=>shapeSetBase[i].groups.includes(target);
     const item=(i,body,hit)=>`<g class="shapeChoiceSvg ${reveal&&correct(i)?'correct':''}" data-shape-idx="${i}" role="${interactive?'button':'img'}" aria-label="図形 ${i+1}">${body}<rect class="shapeHit" ${hit}/></g>`;
-    const rtMarkTop=`<path class="rightAngleMark" d="M 615 87 L 640 112 L 665 87"/>`;
+    const rtMarkTop=`<path class="rightAngleMark" d="M 622 62 L 640 80 L 658 62"/>`;
     return `<svg class="selectionBoard target-${target}" viewBox="0 0 760 430" role="img" aria-label="方眼の上にならんだ図形">${gridDefs()}<rect x="2" y="2" width="756" height="426" rx="4" class="gridPaper" stroke="#b8dde0" stroke-width="1.5"/>
       ${item(0,`<polygon class="candidateMain" points="62,105 62,28 132,28"/>${reveal&&target==='righttri'&&correct(0)?rightMark(62,28,'rd',20):''}`,`x="42" y="16" width="108" height="105"`)}
       ${item(1,`<rect class="candidateMain" x="205" y="75" width="58" height="58"/>`,`x="188" y="58" width="92" height="92"`)}
       ${item(2,`<polygon class="candidateMain" points="414,72 472,14 530,72 472,130"/>`,`x="397" y="4" width="150" height="143"`)}
       ${item(3,`<polygon class="candidateMain" points="592,92 640,44 688,92"/>${reveal&&target==='righttri'&&correct(3)?rtMarkTop:''}`,`x="574" y="25" width="132" height="87"`)}
       ${item(4,`<polygon class="candidateMain" points="60,205 154,205 82,281"/>`,`x="42" y="186" width="132" height="112"`)}
-      ${item(5,`<rect class="candidateMain" x="118" y="300" width="125" height="56"/>`,`x="100" y="282" width="162" height="92"`)}
+      ${item(5,`<rect class="candidateMain" x="192" y="215" width="125" height="56"/>`,`x="176" y="199" width="157" height="88"`)}
       ${item(6,`<rect class="candidateMain" x="407" y="224" width="128" height="128"/>`,`x="389" y="206" width="164" height="164"`)}
       ${item(7,`<rect class="candidateMain" x="631" y="165" width="96" height="150"/>`,`x="612" y="147" width="130" height="184"`)}
       ${item(8,`<g transform="rotate(45 95 366)"><rect class="candidateMain" x="49" y="330" width="92" height="72"/></g>`,`x="26" y="300" width="138" height="126"`)}
@@ -395,6 +395,7 @@ window.addEventListener('error',function(e){
   }
   function current(){return state.questions[state.index]}
   function render(){
+    clearTimeout(tourTimer); state.touring=false;
     const q=current(); if(!q){finish();return}
     state.answerShown=false;state.optionFocus=0;state.shapeSelected=new Set();state.currentDynamic=dynamicFor(q);
     state.shapeOrder=q.kind==='shapes'?shapeSetBase.map((x,i)=>({...x,orig:i})):null;
@@ -404,6 +405,21 @@ window.addEventListener('error',function(e){
     qText.textContent=q.q;
     renderVisual(q,false);
     if(state.mode==='teacher') renderTeacher(q); else renderPractice(q);
+    if(['side-name','vertex-name'].includes(q.id)) startTour();
+  }
+  let tourTimer;
+  function startTour(){
+    state.touring=true;
+    const marks=[...visual.querySelectorAll('.sideTour,.vertexTour')];
+    const buttons=[...sideCard.querySelectorAll('button'),...actions.querySelectorAll('button')].filter(b=>!b.disabled);
+    buttons.forEach(b=>b.disabled=true);
+    const feedback=$('#feedback');if(feedback)feedback.textContent='1つずつ 見てから こたえよう。';
+    let i=0;
+    function step(){
+      if(i<marks.length){marks[i++].classList.add('tourActive');tourTimer=setTimeout(step,800);}
+      else{state.touring=false;buttons.forEach(b=>b.disabled=false);if(feedback)feedback.textContent='えらんで こたえよう。';}
+    }
+    step();
   }
   function renderVisual(q,reveal){
     if(q.kind==='number'){
@@ -433,6 +449,7 @@ window.addEventListener('error',function(e){
     return q.answer;
   }
   function revealTeacher(){
+    if(state.touring)return;
     const q=current();state.answerShown=true;questionCard.classList.add('answerShown');renderVisual(q,true);
     const a=$('#teacherAnswer'),e=$('#teacherExplain');a.className='bigAnswer';a.innerHTML=answerText(q);e.className='explain';e.textContent=q.explain;
     $('#revealBtn').disabled=true;$('#nextBtn').disabled=false;
@@ -451,7 +468,7 @@ window.addEventListener('error',function(e){
     $('#readBtn').onclick=()=>speak(q.q); if($('#voiceBtn')) $('#voiceBtn').onclick=()=>recognize(q); $('#nextBtn').onclick=next;
   }
   function checkMcq(q,val,btn=null){
-    if(state.answerShown) return;
+    if(state.answerShown || state.touring) return;
     const ok=norm(val)===norm(q.answer);state.attempted++;
     const fb=$('#feedback');
     if(ok){state.score++;state.answerShown=true;document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(norm(b.dataset.value)===norm(q.answer))b.classList.add('correct')});fb.className='feedback ok';fb.textContent='せいかい！ '+q.explain;$('#nextBtn').disabled=false;}
@@ -530,7 +547,7 @@ window.addEventListener('error',function(e){
     if(state.mode==='teacher'){$('#scoreRing').style.display='none';$('#summaryTitle').textContent='これで おわりです';$('#summaryMsg').textContent='形の名前だけでなく、「どんな形か」も言えたかな？';}
     else {$('#scoreRing').style.display='grid';const pct=Math.round((state.score/total)*100);$('#scoreRing').style.setProperty('--score',pct);$('#scoreText').textContent=`${state.score}/${total}`;$('#summaryTitle').textContent='ふくしゅう おわり！';$('#summaryMsg').textContent=pct>=90?'定義も見分けも、よくできています。':pct>=70?'あと少し。まちがえた定義をもう一度見ると定着します。':'「かど」と「へん」を見ながら、もう一度やってみよう。';}
   }
-  function goHome(){if('speechSynthesis' in window)speechSynthesis.cancel();showScreen(home)}
+  function goHome(){clearTimeout(tourTimer);state.touring=false;if('speechSynthesis' in window)speechSynthesis.cancel();showScreen(home)}
 
   document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>start(b.dataset.mode));$('#homeBtn').onclick=goHome;$('#retryBtn').onclick=()=>start(state.lastMode||'quick');
 
