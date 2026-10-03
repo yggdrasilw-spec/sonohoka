@@ -2,7 +2,7 @@
 
 ■ 内容
 - index.html : 実行用HTML
-- data/questions.json : 問題データ（全51問）
+- data/questions.json : 問題データ（全66問）
 - img/questions/ : 問題画面用画像（答えの単位を表示しない）
 - img/explanations/ : 答え合わせ用画像（正しい量＋1単位の基準）
 - img/unit_refs/ : 1mm / 1cm / 1m / 1km / 1mL / 1dL / 1L / 1g / 1kg の量感カード
@@ -12,9 +12,14 @@
 ■ 問題数
 - ながさ: 18問
 - かさ: 11問
-- おもさ: 12問
+- おもさ: 15問（g・kg・t）
 - きょり: 10問
-- 合計: 51問
+- 時間（2年）: 6問（分・時間）
+- 面積（4年）: 6問（cm²・m²・a・ha・km²）
+- 合計: 66問
+- 効果音: 選択・正解・不正解・次へ。音ON/OFFの設定はブラウザに保存。
+- img/generated/ : 時間・重さ・面積・ランニングの追加イラスト。数字や単位を入れず、問題の答えが絵から見えない構成。
+- img/generated/prompts.json : built-in image_genで使用した生成プロンプト。
 
 ■ 1mmの基準
 「少し使った普通のHBえんぴつの、芯の先部分の太さ」を基準にしています。

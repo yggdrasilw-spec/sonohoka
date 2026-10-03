@@ -154,7 +154,7 @@
       </button>
       <button class="modeCard" data-mode="all">
         <span class="pill">しっかり</span><div class="num">MODE 3</div><h2>ぜんぶ ふくしゅう</h2>
-        <p>定義から見分け、まわりの長さまで一通り確認。</p>
+        <p>もともとの意味から見分け、まわりの長さまで一通り確認。</p>
       </button>
     </div>
     <div class="miniLegend"><span class="kbd">Esc</span> いつでも さいしょにもどる</div>
@@ -290,21 +290,23 @@ window.addEventListener('error',function(e){
   function selectionShapes(target,reveal=false,interactive=true){
     const correct=i=>shapeSetBase[i].groups.includes(target);
     const item=(i,body,hit)=>`<g class="shapeChoiceSvg ${reveal&&correct(i)?'correct':''}" data-shape-idx="${i}" role="${interactive?'button':'img'}" aria-label="図形 ${i+1}">${body}<rect class="shapeHit" ${hit}/></g>`;
-    const rtMarkTop=`<path class="rightAngleMark" d="M 622 62 L 640 80 L 658 62"/>`;
-    return `<svg class="selectionBoard target-${target}" viewBox="0 0 760 430" role="img" aria-label="方眼の上にならんだ図形">${gridDefs()}<rect x="2" y="2" width="756" height="426" rx="4" class="gridPaper" stroke="#b8dde0" stroke-width="1.5"/>
-      ${item(0,`<polygon class="candidateMain" points="62,105 62,28 132,28"/>${reveal&&target==='righttri'&&correct(0)?rightMark(62,28,'rd',20):''}`,`x="42" y="16" width="108" height="105"`)}
-      ${item(1,`<rect class="candidateMain" x="205" y="75" width="58" height="58"/>`,`x="188" y="58" width="92" height="92"`)}
-      ${item(2,`<polygon class="candidateMain" points="414,72 472,14 530,72 472,130"/>`,`x="397" y="4" width="150" height="143"`)}
-      ${item(3,`<polygon class="candidateMain" points="592,92 640,44 688,92"/>${reveal&&target==='righttri'&&correct(3)?rtMarkTop:''}`,`x="574" y="25" width="132" height="87"`)}
-      ${item(4,`<polygon class="candidateMain" points="60,205 154,205 82,281"/>`,`x="42" y="186" width="132" height="112"`)}
-      ${item(5,`<rect class="candidateMain" x="192" y="215" width="125" height="56"/>`,`x="176" y="199" width="157" height="88"`)}
-      ${item(6,`<rect class="candidateMain" x="407" y="224" width="128" height="128"/>`,`x="389" y="206" width="164" height="164"`)}
-      ${item(7,`<rect class="candidateMain" x="631" y="165" width="96" height="150"/>`,`x="612" y="147" width="130" height="184"`)}
-      ${item(8,`<g transform="rotate(45 95 366)"><rect class="candidateMain" x="49" y="330" width="92" height="72"/></g>`,`x="26" y="300" width="138" height="126"`)}
-      ${item(9,`<polygon class="candidateMain" points="300,401 300,320 433,401"/>${reveal&&target==='righttri'&&correct(9)?rightMark(300,401,'ru',22):''}`,`x="282" y="301" width="168" height="118"`)}
-      ${item(10,`<polygon class="candidateMain" points="536,401 641,333 730,350 730,401"/>`,`x="518" y="300" width="225" height="119"`)}
+    // Horizontal and vertical sides follow the grid; rotated sides join grid intersections.
+    const rtMarkTop='<path class="rightAngleMark" d="M 620 60 L 640 80 L 660 60"/>';
+    return `<svg class="selectionBoard target-${target}" viewBox="0 0 760 440" role="img" aria-label="方眼の上にならんだ図形">${gridDefs()}<rect x="0" y="0" width="760" height="440" class="gridPaper" stroke="#b8dde0" stroke-width="1.5"/>
+      ${item(0,`<polygon class="candidateMain" points="60,120 60,40 140,40"/>${reveal&&target==='righttri'?rightMark(60,40,'rd',20):''}`,`x="40" y="20" width="120" height="120"`)}
+      ${item(1,'<rect class="candidateMain" x="220" y="60" width="80" height="80"/>','x="200" y="40" width="120" height="120"')}
+      ${item(2,'<polygon class="candidateMain" points="420,80 480,20 540,80 480,140"/>','x="400" y="0" width="160" height="160"')}
+      ${item(3,`<polygon class="candidateMain" points="580,100 640,40 700,100"/>${reveal&&target==='righttri'?rtMarkTop:''}`,'x="560" y="20" width="160" height="100"')}
+      ${item(4,'<polygon class="candidateMain" points="60,200 160,200 80,280"/>','x="40" y="180" width="140" height="120"')}
+      ${item(5,'<rect class="candidateMain" x="220" y="220" width="140" height="60"/>','x="200" y="200" width="180" height="100"')}
+      ${item(6,'<rect class="candidateMain" x="420" y="200" width="120" height="120"/>','x="400" y="180" width="160" height="160"')}
+      ${item(7,'<rect class="candidateMain" x="640" y="160" width="80" height="140"/>','x="620" y="140" width="120" height="180"')}
+      ${item(8,'<polygon class="candidateMain" points="40,360 100,300 140,340 80,400"/>','x="20" y="300" width="140" height="120"')}
+      ${item(9,`<polygon class="candidateMain" points="260,420 260,340 400,420"/>${reveal&&target==='righttri'?rightMark(260,420,'ru',20):''}`,'x="240" y="320" width="170" height="115"')}
+      ${item(10,'<polygon class="candidateMain" points="520,420 640,340 720,360 720,420"/>','x="500" y="325" width="240" height="110"')}
     </svg>`;
   }
+
   function shapeGridSvgHTML(target,reveal=false){return selectionShapes(target,reveal,true)}
   function shapeGridTeacher(target,reveal=false){return selectionShapes(target,reveal,false)}
 
@@ -334,7 +336,7 @@ window.addEventListener('error',function(e){
   };
   function definitionGridSvg(target,reveal=false,interactive=true){
     const set=defSets[target], labels=['ア','イ','ウ','エ','オ','カ'];
-    return `<svg class="definitionBoard" viewBox="0 0 640 360" role="img" aria-label="定義で見分ける図形">${gridDefs()}<rect x="2" y="2" width="636" height="356" rx="4" class="gridPaper" stroke="#b8dde0" stroke-width="1.5"/>${set.shapes.map((sh,i)=>`<g class="defChoiceSvg ${reveal&&sh.ok?'correct':''}" data-def-idx="${i}" role="${interactive?'button':'img'}"><text x="${[55,245,445,55,245,445][i]}" y="${[28,28,28,190,190,190][i]}" class="shapeLabel">${labels[i]}</text>${sh.body}<rect class="shapeHit" ${sh.hit}/></g>`).join('')}</svg>`;
+    return `<svg class="definitionBoard" viewBox="0 0 640 360" role="img" aria-label="もともとの意味で見分ける図形">${gridDefs()}<rect x="2" y="2" width="636" height="356" rx="4" class="gridPaper" stroke="#b8dde0" stroke-width="1.5"/>${set.shapes.map((sh,i)=>`<g class="defChoiceSvg ${reveal&&sh.ok?'correct':''}" data-def-idx="${i}" role="${interactive?'button':'img'}"><text x="${[55,245,445,55,245,445][i]}" y="${[28,28,28,190,190,190][i]}" class="shapeLabel">${labels[i]}</text>${sh.body}<rect class="shapeHit" ${sh.hit}/></g>`).join('')}</svg>`;
   }
   function whyOpenTriangleSvg(){return svgWrap(`<path d="M105 240 L235 70 M270 85 L410 240 M410 240 L105 240" class="edge"/><path d="M238 72 L268 83" stroke="#e44747" stroke-width="4" stroke-dasharray="6 7"/><text x="255" y="48" text-anchor="middle" style="font-size:21px;font-weight:1000;fill:#e44747">ここが つながっていない</text>`,520,300)}
   function whyCurvedQuadSvg(){return svgWrap(`<path d="M105 235 L120 70 L390 75 Q448 155 390 235 Z" class="edge" fill="#fff8e8"/><path d="M390 75 Q448 155 390 235" stroke="#e44747" stroke-width="9" fill="none"/><text x="430" y="155" style="font-size:21px;font-weight:1000;fill:#e44747">曲線</text>`,520,300)}
@@ -348,10 +350,10 @@ window.addEventListener('error',function(e){
     {id:'side-name',kind:'mcq',q:'この 直線の ぶぶんを 何という？',answer:'辺',options:['辺','頂点','直角'],visual:sideSvg(),hint:'図形を作っている「線の部分」の名前。',explain:'図形を作っている直線の部分を「辺（へん）」といいます。',voice:['辺','へん']},
     {id:'vertex-name',kind:'mcq',q:'この かどの はしっこの点を 何という？',answer:'頂点',options:['頂点','辺','直線'],visual:vertexSvg(),hint:'線ではなく「点」の名前。',explain:'かどの、はしっこの点を「頂点（ちょうてん）」といいます。',voice:['頂点','ちょうてん']},
     {id:'counts',kind:'mcq',q:'三角形と四角形の「へん」と「ちょう点」の数は？',answer:'三角形は3つずつ、四角形は4つずつ',options:['三角形は3つずつ、四角形は4つずつ','三角形は4つずつ、四角形は3つずつ','どちらも4つずつ'],visual:countSvg(),hint:'図の線と、はしっこの点を1つずつ数えよう。',explain:'三角形は、へん3つ・ちょう点3つ。四角形は、へん4つ・ちょう点4つです。'},
-    {id:'def-find-triangle',kind:'defselect',target:'triangle',q:'三角形を 3つ 見つけよう。三角形っぽくても、定義に合わない形は はずします。',hint:'「3本」「直線」「かこまれた」の3つを全部たしかめよう。',explain:'三角形は、3本の直線でかこまれた形です。見た目ではなく定義にもどって決めます。'},
-    {id:'why-open-triangle',kind:'mcq',q:'この形は 三角形ではありません。なぜ？ 定義にもどって答えよう。',answer:'3本の直線でかこまれていないから',options:['3本の直線でかこまれていないから','向きがななめだから','大きさがちがうから'],visual:whyOpenTriangleSvg(),hint:'三角形の定義は「3本の直線でかこまれた形」。',explain:'線がつながっていないので、3本の直線で「かこまれた」形になっていません。',voiceRequired:['3本','直線','かこ']},
-    {id:'def-find-quad',kind:'defselect',target:'quad',q:'四角形を 3つ 見つけよう。四角形っぽくても、定義に合わない形は はずします。',hint:'「4本」「直線」「かこまれた」の3つを全部たしかめよう。',explain:'四角形は、4本の直線でかこまれた形です。へこんでいても、定義に合えば四角形です。'},
-    {id:'why-curved-quad',kind:'mcq',q:'この形は 四角形ではありません。なぜ？ 定義にもどって答えよう。',answer:'4本の直線でかこまれていないから',options:['4本の直線でかこまれていないから','たて長だから','かどが丸く見えるから'],visual:whyCurvedQuadSvg(),hint:'四角形の定義は「4本の直線でかこまれた形」。',explain:'1本が曲線なので、4本の「直線」でかこまれた形ではありません。',voiceRequired:['4本','直線','かこ']},
+    {id:'def-find-triangle',kind:'defselect',target:'triangle',q:'三角形を 3つ 見つけよう。三角形っぽくても、もともとの意味に合わない形は はずします。',hint:'「3本」「直線」「かこまれた」の3つを全部たしかめよう。',explain:'三角形は、3本の直線でかこまれた形です。見た目ではなくもともとの意味にもどって決めます。'},
+    {id:'why-open-triangle',kind:'mcq',q:'この形は 三角形ではありません。なぜ？ もともとの意味にもどって答えよう。',answer:'3本の直線でかこまれていないから',options:['3本の直線でかこまれていないから','向きがななめだから','大きさがちがうから'],visual:whyOpenTriangleSvg(),hint:'三角形のもともとの意味は「3本の直線でかこまれた形」。',explain:'線がつながっていないので、3本の直線で「かこまれた」形になっていません。',voiceRequired:['3本','直線','かこ']},
+    {id:'def-find-quad',kind:'defselect',target:'quad',q:'四角形を 3つ 見つけよう。四角形っぽくても、もともとの意味に合わない形は はずします。',hint:'「4本」「直線」「かこまれた」の3つを全部たしかめよう。',explain:'四角形は、4本の直線でかこまれた形です。へこんでいても、もともとの意味に合えば四角形です。'},
+    {id:'why-curved-quad',kind:'mcq',q:'この形は 四角形ではありません。なぜ？ もともとの意味にもどって答えよう。',answer:'4本の直線でかこまれていないから',options:['4本の直線でかこまれていないから','たて長だから','かどが丸く見えるから'],visual:whyCurvedQuadSvg(),hint:'四角形のもともとの意味は「4本の直線でかこまれた形」。',explain:'1本が曲線なので、4本の「直線」でかこまれた形ではありません。',voiceRequired:['4本','直線','かこ']},
     {id:'right-angle',kind:'mcq',q:'このような かどの形を 何というでしょう？',answer:'直角',options:['直角','頂点','辺'],visual:angleSvg(),hint:'カギ型の印があるかどです。',explain:'このようなかどの形を「直角（ちょっかく）」といいます。直角の印は、開いたカギ型で表します。',voice:['直角']},
     {id:'rect-name',kind:'mcq',q:'すべての かどが 直角な 四角形を 何というでしょう？',answer:'長方形',options:['長方形','正方形','直角三角形'],visual:rectSvg(),hint:'「四角形」で、4つのかどを見ます。',explain:'すべてのかどが直角な四角形を「長方形（ちょうほうけい）」といいます。',voice:['長方形']},
     {id:'rect-def',kind:'mcq',q:'長方形とは、どんな 四角形でしょう？',answer:'すべてのかどが直角な四角形',options:['すべてのかどが直角な四角形','すべてのへんの長さが同じ四角形','直角が1つだけある四角形'],visual:rectSvg(),hint:'長方形を決めるのは「かど」です。',explain:'長方形とは、すべてのかどが直角な四角形です。',voiceRequired:['すべて','かど','直角','四角形']},
@@ -422,6 +424,7 @@ window.addEventListener('error',function(e){
     step();
   }
   function renderVisual(q,reveal){
+    if(reveal&&['side-name','vertex-name'].includes(q.id))return;
     if(q.kind==='number'){
       const d=state.currentDynamic||q.source;
       visual.innerHTML=q.id==='perim-rect'?perimeterRectSvg(d.w,d.h,reveal):perimeterSquareSvg(d.s,reveal);
@@ -445,12 +448,13 @@ window.addEventListener('error',function(e){
       return `${formula}<br>答え ${ans} cm`;
     }
     if(q.kind==='shapes') return `正しいものは 3つ。`;
-    if(q.kind==='defselect') return `定義に合う形は 3つ。`;
+    if(q.kind==='defselect') return `もともとの意味に合う形は 3つ。`;
     return q.answer;
   }
   function revealTeacher(){
     if(state.touring)return;
     const q=current();state.answerShown=true;questionCard.classList.add('answerShown');renderVisual(q,true);
+    visual.querySelectorAll('.sideTour,.vertexTour').forEach(el=>el.classList.add('tourActive'));
     const a=$('#teacherAnswer'),e=$('#teacherExplain');a.className='bigAnswer';a.innerHTML=answerText(q);e.className='explain';e.textContent=q.explain;
     $('#revealBtn').disabled=true;$('#nextBtn').disabled=false;
   }
@@ -505,8 +509,8 @@ window.addEventListener('error',function(e){
   }
   function renderDefSelect(q){
     const set=defSets[q.target];
-    sideCard.innerHTML=`<div class="selectInfo">定義に合う形を 3つ えらぼう。</div><div id="selectedCount" class="feedback">いま 0 / 3 えらんでいます。</div><div id="feedback" class="feedback">${q.hint}</div>`;
-    actions.innerHTML=`<button class="btn secondary" id="readBtn">🔊 もんだいを よむ</button><button class="btn primary" id="defCheck" disabled>定義で たしかめる</button><button class="btn next" id="nextBtn" disabled>つぎへ →</button>`;
+    sideCard.innerHTML=`<div class="selectInfo">もともとの意味に合う形を 3つ えらぼう。</div><div id="selectedCount" class="feedback">いま 0 / 3 えらんでいます。</div><div id="feedback" class="feedback">${q.hint}</div>`;
+    actions.innerHTML=`<button class="btn secondary" id="readBtn">🔊 もんだいを よむ</button><button class="btn primary" id="defCheck" disabled>もともとの意味で たしかめる</button><button class="btn next" id="nextBtn" disabled>つぎへ →</button>`;
     document.querySelectorAll('.defChoiceSvg').forEach((b,i)=>b.onclick=()=>toggleDef(i,b));
     $('#readBtn').onclick=()=>speak(q.q);$('#defCheck').onclick=()=>checkDef(q,set);$('#nextBtn').onclick=next;
   }
@@ -521,7 +525,7 @@ window.addEventListener('error',function(e){
     state.answerShown=true; if(ok)state.score++;
     const fb=$('#feedback');fb.className='feedback '+(ok?'ok':'ng');
     const reasons=set.shapes.map((sh,i)=>sh.ok?'':`<div class="reasonChip">${['ア','イ','ウ','エ','オ','カ'][i]}：${sh.reason}</div>`).filter(Boolean).join('');
-    fb.innerHTML=`<div style="width:100%"><b>${ok?'せいかい！':'定義で たしかめよう。'}</b><div class="definitionBox">${set.definition}</div><div class="reasonList">${reasons}</div></div>`;
+    fb.innerHTML=`<div style="width:100%"><b>${ok?'せいかい！':'もともとの意味で たしかめよう。'}</b><div class="definitionBox">${set.definition}</div><div class="reasonList">${reasons}</div></div>`;
     $('#defCheck').disabled=true;$('#nextBtn').disabled=false;document.querySelectorAll('.defChoiceSvg').forEach(g=>g.style.pointerEvents='none');
   }
 
@@ -545,7 +549,7 @@ window.addEventListener('error',function(e){
   function finish(){
     showScreen(summary);const total=state.questions.length;
     if(state.mode==='teacher'){$('#scoreRing').style.display='none';$('#summaryTitle').textContent='これで おわりです';$('#summaryMsg').textContent='形の名前だけでなく、「どんな形か」も言えたかな？';}
-    else {$('#scoreRing').style.display='grid';const pct=Math.round((state.score/total)*100);$('#scoreRing').style.setProperty('--score',pct);$('#scoreText').textContent=`${state.score}/${total}`;$('#summaryTitle').textContent='ふくしゅう おわり！';$('#summaryMsg').textContent=pct>=90?'定義も見分けも、よくできています。':pct>=70?'あと少し。まちがえた定義をもう一度見ると定着します。':'「かど」と「へん」を見ながら、もう一度やってみよう。';}
+    else {$('#scoreRing').style.display='grid';const pct=Math.round((state.score/total)*100);$('#scoreRing').style.setProperty('--score',pct);$('#scoreText').textContent=`${state.score}/${total}`;$('#summaryTitle').textContent='ふくしゅう おわり！';$('#summaryMsg').textContent=pct>=90?'もともとの意味も見分けも、よくできています。':pct>=70?'あと少し。まちがえたもともとの意味をもう一度見ると定着します。':'「かど」と「へん」を見ながら、もう一度やってみよう。';}
   }
   function goHome(){clearTimeout(tourTimer);state.touring=false;if('speechSynthesis' in window)speechSynthesis.cancel();showScreen(home)}
 
