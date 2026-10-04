@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <title>はこの形の ふくしゅう</title>
+<link rel="stylesheet" href="hako-net.css">
+<script src="hako-net-geometry.js"></script>
 <style>
   :root{
     --bg:#0f1727;--panel:#182238;--panel2:#202d48;--ink:#f7fbff;--muted:#b9c7df;
@@ -70,6 +72,7 @@
           <button class="bigBtn primary" data-start="learn">先生と かくにん<span class="modeSmall">テンポよく 一問一答</span></button>
           <button class="bigBtn secondary" data-start="quiz">じぶんで かくにん<span class="modeSmall">答えてから つぎへ</span></button>
           <button class="bigBtn explore" data-start="explore">くるくる たんけん<span class="modeSmall">6・12・8を 自分で発見</span></button>
+          <button class="bigBtn net" data-open-nets>展開図を 作ろう<span class="modeSmall">6まいをつないで はこにする</span></button>
         </div>
         <p class="miniTip">回せる場面では、はこを つかんで動かせます。<span class="kbd">←</span><span class="kbd">→</span> でも進めます。</p>
       </div>
@@ -84,6 +87,7 @@
     <div class="layout">
       <div class="visualPanel">
         <div class="viewer" data-viewer="lesson"></div>
+        <div class="faceGallery" id="lessonFaceGallery"></div>
         <div class="compareWrap" id="compareWrap">
           <div class="compareCard"><div class="compareLabel" id="compareLabelA">ふつうの はこ</div><div class="viewer" data-viewer="compareA"></div></div>
           <div class="compareCard"><div class="compareLabel" id="compareLabelB">サイコロのような はこ</div><div class="viewer" data-viewer="compareB"></div></div>
@@ -248,7 +252,7 @@ $('#teacherToggle').onclick=e=>{teacherOn=!teacherOn;e.currentTarget.setAttribut
 
 function renderLesson(){
  const s=lessonSteps[lessonIndex];show('lesson');$('#lessonPill').textContent=`かくにん ${lessonIndex+1} / ${lessonSteps.length}`;$('#lessonQ').innerHTML=s.q;$('#lessonExplain').innerHTML=s.exp;const r=$('#revealBox');r.className='revealBox hiddenAnswer';r.textContent='まず こたえてみよう';$('#teacherNote').textContent=s.teacher;$('#teacherNote').classList.toggle('show',teacherOn);$('#face2d').classList.toggle('show',!!s.face2d);
- const main=document.querySelector('[data-viewer="lesson"]'),cmp=$('#compareWrap');if(s.compare){main.style.display='none';cmp.classList.add('show');$('#compareLabelA').textContent=s.compareLabelA||'ふつうの はこ';$('#compareLabelB').textContent=s.compareLabelB||'サイコロのような はこ';viewers.compareA.setOptions(s.compareA);viewers.compareB.setOptions(s.compareB)}else{cmp.classList.remove('show');main.style.display='block';viewers.lesson.setOptions(s)}
+ const main=document.querySelector('[data-viewer="lesson"]'),cmp=$('#compareWrap'),gallery=$('#lessonFaceGallery');gallery.classList.toggle('show',!!s.opposite&&!s.compare);if(s.opposite&&!s.compare)gallery.innerHTML=window.HakoNets.galleryHtml([3.3,2,1.84]);if(s.compare){main.style.display='none';cmp.classList.add('show');$('#compareLabelA').textContent=s.compareLabelA||'ふつうの はこ';$('#compareLabelB').textContent=s.compareLabelB||'サイコロのような はこ';viewers.compareA.setOptions(s.compareA);viewers.compareB.setOptions(s.compareB)}else{cmp.classList.remove('show');main.style.display=s.opposite?'none':'block';viewers.lesson.setOptions(s)}
  const eb=$('#lessonExploreBtn');eb.classList.toggle('show',!!s.optionalExplore);eb.disabled=false;eb.textContent=s.optionalExplore?'回して たしかめる':'回して たしかめる';
  $('#backBtn').disabled=lessonIndex===0;$('#nextBtn').textContent=lessonIndex===lessonSteps.length-1?'まとめへ →':'つぎへ →';speak(s.q)
 }
@@ -283,5 +287,6 @@ document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){if(currentMode=
 updateProgress();
 })();
 </script>
+<script src="hako-net.js"></script>
 </body>
 </html>
