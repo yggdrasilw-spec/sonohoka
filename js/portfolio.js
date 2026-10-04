@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
-  const topics = {add:'足し算',subtract:'引き算',multiply:'かけ算・九九',divide:'わり算',written:'筆算',place:'位取り・大きな数',units:'長さ・かさ・単位',shape:'図形・しきつめ',clock:'時計・時間',ratio:'倍・割合',number:'数感覚・数の性質',words:'国語・作文・辞書',characters:'漢字・書き順・かな',games:'ゲーム・対戦',classroom:'学級・生活',ai:'AI・画像認識',voice:'音声つき'};
+  const topics = {add:'足し算',subtract:'引き算',multiply:'かけ算・九九',divide:'わり算',written:'筆算',place:'位取り・大きな数',units:'長さ・かさ・単位',shape:'図形・しきつめ',clock:'時計・時間',ratio:'倍・割合',number:'数感覚・数の性質',words:'国語・作文・辞書',characters:'漢字・書き順・かな',english:'英語・フォニックス',games:'ゲーム・対戦',classroom:'学級・生活',ai:'AI・画像認識',voice:'音声つき'};
   const usages = {understand:'意味・仕組みを学ぶ',practice:'問題を練習する',game:'ゲームで学ぶ',create:'書く・作品を作る',teacher:'学級・生活を支援する',experiment:'技術・観察を体験する'};
   const normalize = text => String(text).normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/([1-6])年生/g,'$1年').replace(/\s+/g,' ').trim();
   const aliases = [['足し算','たしざん','足しざん','たし算','加算'],['引き算','ひきざん','引きざん','ひき算','減算'],['かけ算','かけざん','掛け算','九九','乗算'],['わり算','わりざん','割り算','割算','除算'],['筆算','ひっさん'],['時計','とけい','時刻'],['漢字','かんじ'],['書き順','かきじゅん','筆順'],['図形','ずけい'],['しきつめ','敷き詰め','敷詰め','敷きつめ','タイリング'],['そろばん','算盤'],['長さ','ながさ'],['単位','たんい'],['位取り','くらいどり'],['ひらがな','平仮名'],['かたかな','片仮名']].map(a=>a.map(normalize));
@@ -66,13 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const card=item.card,link=card.querySelector('.actions a.primary'),file=card.dataset.video;
     const media=document.createElement(file?'button':'div');media.className='card-media'+(file?' has-video':'');if(file){media.type='button';media.setAttribute('aria-label',item.title+'の紹介動画を見る');media.setAttribute('aria-haspopup','dialog')}
     const img=document.createElement('img');img.loading='lazy';img.decoding='async';img.alt=item.title+'の画面';img.src='media/'+(card.dataset.poster||(file?file.replace(/\.(mp4|webm)$/i,'.png'):''));img.addEventListener('error',()=>{img.remove();const fallback=document.createElement('span');fallback.className='media-fallback';fallback.textContent=item.title;media.prepend(fallback)});media.append(img);card.prepend(media);
+    card.querySelectorAll('.actions a').forEach(a=>{a.setAttribute('aria-label',item.title+'：'+a.textContent.trim()+'（新しいタブ）');a.title='新しいタブで開きます'});
     if(!file)return;
     const video=document.createElement('video');video.muted=true;video.loop=true;video.playsInline=true;video.preload='none';video.setAttribute('aria-hidden','true');media.append(video);
     const stop=()=>{video.pause();media.classList.remove('is-hover')};
     media.addEventListener('mouseenter',()=>{if(motion.matches||!matchMedia('(hover:hover)').matches)return;if(!video.getAttribute('src'))video.src='media/'+file;video.play().then(()=>{if(media.matches(':hover')&&!modal.open)media.classList.add('is-hover');else stop()}).catch(stop)});
     media.addEventListener('mouseleave',stop);video.addEventListener('error',stop);
     media.addEventListener('click',()=>{items.forEach(i=>{i.card.querySelector('video')?.pause();i.card.querySelector('.card-media')?.classList.remove('is-hover')});opener=media;$('mediaTitle').textContent=item.title+' — 紹介動画';$('modalAppLink').href=link.href;$('modalAppLink').textContent=link.textContent.trim()+' ↗';$('videoError').hidden=true;modalVideo.src='media/'+file;modalVideo.muted=true;document.body.classList.add('modal-open');modal.showModal();modal.querySelector('.media-modal-close').focus();modalVideo.play().catch(()=>{})});
-    card.querySelectorAll('.actions a').forEach(a=>{a.setAttribute('aria-label',item.title+'：'+a.textContent.trim()+'（新しいタブ）');a.title='新しいタブで開きます'});
   });
   motion.addEventListener('change',()=>{if(motion.matches)items.forEach(i=>{i.card.querySelector('video')?.pause();i.card.querySelector('.card-media')?.classList.remove('is-hover')})});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){modalVideo.pause();items.forEach(i=>i.card.querySelector('video')?.pause())}});
