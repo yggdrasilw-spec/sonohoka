@@ -1,0 +1,198 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const { chromium } = require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root = path.resolve(__dirname, '..');
+const out = path.join(root, '.kuku-work');
+fs.mkdirSync(out, { recursive: true });
+const server = http.createServer((req,res) => {
+  const file = path.resolve(root, '.'+decodeURIComponent(req.url.split('?')[0]));
+  if (!file.startsWith(root+path.sep)) {res.writeHead(403).end(); return;}
+  try {
+    const data=fs.readFileSync(file);
+    res.setHeader('Content-Type',({'.html':'text/html; charset=utf-8','.css':'text/css','.js':'application/javascript','.jpg':'image/jpeg','.png':'image/png','.webm':'video/webm'})[path.extname(file)]||'application/octet-stream');
+    res.end(data);
+  } catch {res.writeHead(404).end();}
+});
+async function main() {
+  await new Promise(r=>server.listen(8963,'127.0.0.1',r));
+  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+  try {
+    const context=await browser.newContext({viewport:{width:1280,height:900}});
+    const page=await context.newPage();
+    const errors=[],missing=[];
+    page.on('pageerror',e=>errors.push(e.message));
+    page.on('response',r=>{if(r.status()>=400)missing.push(r.url());});
+    const click=a=>page.locator(`[data-action="${a}"]`).first().click();
+    const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('kuku-small-steps-v1')));
+    const url='http://127.0.0.1:8963/kuku_step.html';
+    await page.goto(url);
+    assert((await page.locator('h1').innerText()).includes('ぱっと見て'));
+    assert(!(await page.locator('.brand').innerText()).includes('九九'),'do not disclose the secret before the interview');
+    await click('home');
+    await page.screenshot({path:path.join(out,'home-desktop.png'),fullPage:true});
+    await click('intro');
+    assert.equal(await page.locator('.object').count(),6);
+    assert(!(await page.locator('#app').innerText()).includes('48'));
+    for(let i=0;i<6;i++) {
+      await click('challenge-hide');
+      assert(await page.locator('.hidden-card').isVisible());
+      await click('challenge-rate');
+      await click('challenge-next');
+    }
+    assert(await page.locator('.video-empty').isVisible());
+    assert(await page.locator('[data-action="intro-next"]').isHidden(),'no fabricated school video');
+    await click('teacher');
+    // Synthetic video is a test-only solid-color recording, never a child-facing demonstration.
+    const bytes=await page.evaluate(async()=>{
+      const canvas=document.createElement('canvas');canvas.width=320;canvas.height=180;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#176958';ctx.fillRect(0,0,320,180);
+      const stream=canvas.captureStream(10),rec=new MediaRecorder(stream,{mimeType:'video/webm'}),chunks=[];
+      let n=0;const draw=setInterval(()=>{ctx.fillStyle=(++n%2)?'#176958':'#176959';ctx.fillRect(0,0,320,180);},70);
+      const blob=await new Promise(resolve=>{rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=()=>resolve(new Blob(chunks,{type:'video/webm'}));rec.start();setTimeout(()=>rec.stop(),900);});
+      clearInterval(draw);stream.getTracks().forEach(t=>t.stop());return Array.from(new Uint8Array(await blob.arrayBuffer()));
+    });
+    await page.locator('#videoFile').setInputFiles({name:'QA-video.webm',mimeType:'video/webm',buffer:Buffer.from(bytes)});
+    await page.locator('#videoSaveStatus').filter({hasText:'保存しました'}).waitFor();
+    await page.locator('#teacher .close').click();
+    await page.locator('#schoolVideo').waitFor();
+    await page.locator('#schoolVideo').evaluate(v=>v.play());
+    await page.locator('#interviewQuestion').waitFor({state:'visible'});
+    await click('video-wrong');
+    assert(await page.locator('#videoNext').isHidden());
+    await click('video-answer');await click('intro-next');
+    for(let i=2;i<=5;i++)await click('intro-next');
+    for(let n=1;n<=9;n++){
+      const names=['','いち','に','さん','し','ご','ろく','しち','はち','く'];
+      if([4,7,9].includes(n)){
+        await click('number:'+({4:'よん',7:'なな',9:'きゅう'})[n]);
+        assert(await page.locator('#numberNext').isHidden());
+      }
+      await click('number:'+names[n]);await click('number-next');
+    }
+    for(const n of [4,7,9]){await click('careful:'+({4:'し',7:'しち',9:'く'})[n]);await click('careful-next');}
+    await click('intro-next');await click('start-five');
+    assert.equal(await page.locator('.chant-row').count(),9);
+    assert(await page.locator('[data-action="random"]').isDisabled());
+    assert((await page.locator('.chant-rows').innerText()).includes('ごく しじゅうご'));
+    await page.screenshot({path:path.join(out,'five-desktop.png'),fullPage:true});
+    for(const direction of ['forward','reverse']){
+      for(let level=1;level<=4;level++){
+        if(level===2){
+          assert(!(await page.locator('.chant-rows').innerText()).includes('しじゅうご'));
+          await click('reveal-row:9');
+          assert(await page.locator('[data-action="drill-pass"]').isDisabled());
+          await click('hide-row:9');
+          assert(!(await page.locator('.chant-rows').innerText()).includes('しじゅうご'));
+          assert(await page.locator('[data-action="drill-pass"]').isEnabled());
+          await click('reveal-row:9');
+          await click('drill-hide');
+        }
+        if(level===3)assert.equal(await page.locator('.row-reading').count(),0);
+        if(level===4){
+          assert.equal(await page.locator('.chant-row').count(),0);
+          await click('drill-model');assert(await page.locator('[data-action="drill-pass"]').isDisabled());await click('drill-hide');
+        }
+        await click('drill-pass');
+      }
+    }
+    assert.equal((await state()).dan[5].forward,4);
+    assert.equal((await state()).dan[5].reverse,4);
+    assert(await page.locator('[data-action="random-show"]').isVisible());
+    const firstQ=await page.locator('#randomProblem .equation').textContent();
+    const firstB=Number(firstQ.match(/×\s*(\d+)/)[1]);
+    await click('random-show');await page.locator('#answer').fill('99');await page.locator('#answerForm button').click();
+    assert(await page.locator('#randomRate').isHidden());
+    await click('random-hint');
+    await page.locator('#answer').fill(String(5*firstB));await page.locator('#answerForm button').click();await click('random-rate:yes');
+    const savedQueue=(await state()).dan[5].session.queue;
+    const nextB=savedQueue[0];
+    await click('random-show');await page.locator('#answer').fill(String(5*nextB));await page.locator('#answerForm button').click();await click('random-rate:yes');
+    const beforeReload=(await state()).dan[5].session;
+    assert.equal(beforeReload.solved.length,1);
+    await page.reload();await click('resume');
+    assert.deepEqual((await state()).dan[5].session,beforeReload,'resume retains solved questions and retry order');
+    assert((await page.locator('.tag').innerText()).includes('1 / 9'));
+    let count=0;
+    while(await page.locator('[data-action="random-show"]').count()){
+      const text=await page.locator('#randomProblem .equation').textContent();const b=Number(text.match(/×\s*(\d+)/)[1]);
+      await click('random-show');await page.locator('#answer').fill(String(5*b));await page.locator('#answerForm button').click();await click('random-rate:yes');
+      assert(++count<=12,'retry must terminate');
+    }
+    assert.equal(count,8,'solved questions stay solved and hinted problem repeats after reload');
+    assert.equal((await state()).dan[5].mastered.length,9);
+    assert((await page.locator('#app').innerText()).includes('魔法の完成'));
+    await page.reload();await click('resume');
+    assert(await page.locator('[data-action="random-show"]').isVisible(),'resume completed dan in random mode');
+    await click('home');await click('intro'); // saved lesson resumes at the end
+    assert((await page.locator('h1').innerText()).includes('見て、隠して'));
+    await click('teacher');await click('teacher-video');
+    await page.locator('#schoolVideo').waitFor();
+    assert.equal(await page.locator('#videoName').innerText(),'QA-video.webm','video persisted');
+    await click('home');await click('application');
+    const scenePairs=[[8,6],[3,5],[4,4],[2,9],[4,7],[9,6]];
+    for(const [a,b] of scenePairs){
+      assert.equal(await page.locator('.object').count(),b);
+      await page.locator('#sceneAnswer').fill(String(a));await page.locator('#applicationForm button').click();await click('application-next');
+      await page.locator('#sceneAnswer').fill(String(b));await page.locator('#applicationForm button').click();await click('application-next');
+      await click('application-formula:1');assert(await page.locator('#applicationNext').isHidden());
+      await click('application-formula:0');await click('application-next');
+      await page.locator('#sceneAnswer').fill(String(a*b));await page.locator('#applicationForm button').click();await click('application-next');
+    }
+    // Every dan's numeric equations, unlock sequence, and all nine random facts.
+    for(const a of [2,3,4,6,7,8,9,1]){
+      await click('map');await click('dan:'+a);
+      const text=await page.locator('.chant-rows').innerText();
+      for(let b=1;b<=9;b++)assert(text.includes(`${a} × ${b} ＝ ${a*b}`));
+      for(let i=0;i<8;i++)await click('drill-pass');
+      for(let i=0;i<9;i++){
+        const text=await page.locator('#randomProblem .equation').textContent(),b=Number(text.match(/×\s*(\d+)/)[1]);
+        await click('random-show');await page.locator('#answer').fill(String(a*b));await page.locator('#answerForm button').click();await click('random-rate:yes');
+      }
+      assert.equal((await state()).dan[a].mastered.length,9);
+    }
+    await click('home');await click('resume');
+    const speedB=Number((await page.locator('#randomProblem .equation').textContent()).match(/×\s*(\d+)/)[1]);
+    await click('random-show');await page.locator('#answer').fill(String(speedB));await page.locator('#answerForm button').click();await click('random-rate:yes');
+    await click('teacher');await page.locator('#fastSeconds').selectOption('5');await page.locator('#teacher .close').click();
+    await page.locator('.tag').filter({hasText:'0 / 9'}).waitFor();
+    assert.equal((await state()).dan[1].session.queue.length,9,'new speed setting restarts an unfinished random session');
+    assert(Object.values((await state()).dan).every(d=>d.mastered.length===0),'mastery records follow the new speed setting');
+    for(const width of [768,390,320]){
+      await page.setViewportSize({width,height:900});await click('home');
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'home overflow '+width);
+      await page.screenshot({path:path.join(out,`home-${width}.png`),fullPage:true});
+      await click('map');await click('dan:5');await click('home');await click('map');await click('dan:3');
+      // Completed dan resumes in random; return to a visible nine-line recitation.
+      await click('home');await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('kuku-small-steps-v1'));s.dan[5].forward=0;s.dan[5].reverse=0;localStorage.setItem('kuku-small-steps-v1',JSON.stringify(s));});await page.reload();await click('map');await click('dan:5');
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'chant overflow '+width);
+      await page.screenshot({path:path.join(out,`five-${width}.png`),fullPage:true});
+      if(width===390){
+        await click('drill-pass');
+        await page.locator('[data-action="reveal-row:9"]').scrollIntoViewIfNeeded();
+        const y=await page.evaluate(()=>scrollY);
+        await click('reveal-row:9');
+        assert(Math.abs(await page.evaluate(()=>scrollY)-y)<80,'single answer reveal must keep scroll position');
+        assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'hide-row:9');
+        await click('hide-row:9');
+        assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'reveal-row:9');
+      }
+    }
+    await click('home');await click('teacher');await click('remove-video');
+    await page.locator('.video-empty').waitFor();
+    assert(await page.locator('.video-empty').isVisible());
+    await click('teacher');await click('reset-ask');await click('reset-confirm');
+    assert.equal((await state()).intro,0);assert.equal(Object.keys((await state()).dan).length,0);
+    await page.reload();await click('teacher');await click('teacher-video');assert(await page.locator('.video-empty').isVisible(),'video deleted from indexedDB');
+    assert.deepEqual(errors,[]);assert.deepEqual(missing,[]);
+    // Storage-disabled environments must still render and allow local practice.
+    const blocked=await browser.newContext();const p2=await blocked.newPage();
+    await p2.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new Error('blocked');}});Object.defineProperty(window,'indexedDB',{get(){throw new Error('blocked');}});});
+    await p2.goto(url);await p2.locator('#homeButton').click();await p2.locator('[data-action="map"]').click();await p2.locator('[data-action="dan:5"]').click();assert.equal(await p2.locator('.chant-row').count(),9);
+    await blocked.close();
+    console.log('PASS: 10-stage introduction, local video playback/persistence/deletion, 4/7/9 readings, all 9 dans and 81 facts, hint retry, forward/reverse gates, saved progress, six four-step applications, desktop/mobile layouts, blocked-storage fallback.');
+    await context.close();
+  } finally {await browser.close();server.close();}
+}
+main().catch(e=>{console.error(e);server.close();process.exitCode=1;});
