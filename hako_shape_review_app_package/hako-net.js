@@ -45,6 +45,22 @@
  $('#netPreset').onchange=e=>{const d=({cuboid:[6,4,3],cube:[4,4,4],flat:[7,2,5]})[e.target.value];if(!d)return;['Width','Height','Depth'].forEach((name,i)=>$('#net'+name).value=d[i]);const oldMode=mode;resize();mode=oldMode;render()};
  $('#netClose').onclick=()=>dialog.close();dialog.addEventListener('close',stop);dialog.addEventListener('keydown',e=>e.stopPropagation());
  function open(){if(!fs.length)separated();mode='box';render();message('まず、はこの形と6まいの面を見てみよう。');dialog.showModal()}
- window.HakoNets={open,galleryHtml,getState:()=>({dims:[...dims],faces:fs.map(f=>({...f})),mode,progress}),check:()=>G.check(fs,dims)};
+ function loadCubeNet(points){
+  if(!points.length||points.length>7)return;stop();dims=[1,1,1];
+  ['Width','Height','Depth'].forEach(name=>{$('#net'+name).value=1;$('#net'+name+'Value').textContent='1 cm'});
+  $('#netPreset').value='cube';const defaults=G.faces(dims);fs=points.map((p,i)=>({...defaults[i%6],id:i<6?defaults[i].id:'extra',name:i<6?defaults[i].name:'7まいめ',x:p[0],y:p[1]}));
+  mode='net';selected='front';history=[];progress=0;$('#netFold').value=0;render();
+  message('土堂の問題のつなぎ方です。折って、予想をたしかめよう。');dialog.showModal();
+ }
+ function loadFaceSet(source){
+  stop();const unit=Math.min(...source.flatMap(f=>[f.w,f.h]));
+  const lengths=[...new Set(source.flatMap(f=>[f.w/unit,f.h/unit]))].sort((a,b)=>b-a);
+  dims=lengths.length===1?[1,1,1]:lengths;
+  ['Width','Height','Depth'].forEach((name,i)=>{$('#net'+name).step='any';$('#net'+name).value=dims[i];$('#net'+name+'Value').textContent=Number(dims[i].toFixed(2))+' cm'});
+  $('#netPreset').value=lengths.length===1?'cube':'custom';
+  const used=new Set();fs=G.example(dims).map(f=>{const i=source.findIndex((s,j)=>!used.has(j)&&((s.w/unit===f.w&&s.h/unit===f.h)||(s.h/unit===f.w&&s.w/unit===f.h)));used.add(i);return{...f,color:source[i].color}});
+  mode='net';selected='front';history=[];progress=0;$('#netFold').value=0;render();message('同じ長さの辺どうしを合わせたよ。折って はこになるか見よう。');dialog.showModal();
+ }
+ window.HakoNets={open,loadCubeNet,loadFaceSet,galleryHtml,getState:()=>({dims:[...dims],faces:fs.map(f=>({...f})),mode,progress}),check:()=>G.check(fs,dims)};
  document.querySelectorAll('[data-open-nets]').forEach(b=>b.onclick=open);
 })();
