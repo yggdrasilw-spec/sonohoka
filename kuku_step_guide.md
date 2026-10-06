@@ -56,6 +56,10 @@
 
 「よん・なな・きゅう」は通常の数字の読み方として正しいことを伝えたうえで、この九九の練習では「し・しち・く」にそろえています。九九の唱え方には地域や教材による別の形もあります。
 
+2026年10月6日に全81式を[童謡童話王国の１〜９の段](https://www.douwa-douyou.jp/contents/html/timestable/timestable_0.shtml)と[九九の覚え方の一覧](https://yarinaosinosansu.nomaki.jp/kuku2/index.html)で照合しました。「ごっく」「ろっく」「はっく」「さざん」「さぶろく」「さんぱ」「はっぱ」などの変化を確認しています。８×３と８×４は複数の唱え方があり、この教材では「はっさん にじゅうし」「はっし さんじゅうに」に統一しました。５×９の「ごく」を「ごっく」、８×９の「はちく」を「はっく」に修正しています。
+
+表示はひらがなのまま、九九の読み上げ用文字列だけをカタカナに変換します。５×８は「ゴハ、シジュウ」、４×８は「シハ、サンジュウニ」のように渡し、「は」の助詞扱いを避けます。式の「ご、かける、さん、は、じゅうご」は助詞を含むため変換しません。自動検証では全81式の表示と音声APIへの入力、および５の段の順・逆の連続読み上げを確認します。合成音声の実際の発音やアクセントは端末の日本語音声エンジンに依存します。
+
 ## 寺子屋画像の生成記録
 
 組み込みの `image_gen` ツールで生成しました。保存先は `img/kuku/terakoya.png` です。画像は歴史写真ではなくイメージとして表示しています。
@@ -65,5 +69,9 @@
 > Use case: historical-scene. Asset type: illustration for a Japanese second-grade multiplication learning web app. Primary request: 江戸時代の寺子屋で子どもたちが先生と一緒に学んでいる、親しみやすい教育用のイメージ画像。 Scene: modest Edo-period Japanese wooden learning room with tatami, shoji screens, small low individual desks, brushes and paper, a wooden soroban. Subjects: a teacher in simple kimono and children in simple period clothing learning attentively, some quietly reciting together. Style: warm hand-painted children's picture-book illustration, soft ink contours and gentle watercolor, natural daylight, cream paper texture. Composition: wide landscape 3:2 showing the classroom clearly, simple and readable at tablet size. Constraints: historically plausible clothes and objects; no modern school uniforms, blackboard, electric lights or modern furniture; no legible text, no numerals, no logos, no watermarks. This is an imagined historical scene, not a historical photograph.
 
 ## 動作確認
+
+「先生の準備」の「九九の唱え方を選ぶ」で、３×２（さんに／さに）、３×３（く／きゅう）、３×６（さぶろく／さんろく）、４×８（しは／しわ）、８×３（はっさん／はちさん）、８×４（はっし／はちし）を個別に選べます。選択は表示・音声・ヒント・先生用一覧に反映し、ブラウザに保存します。学習記録はそのまま残します。読み方設定のない以前の保存データも読み込めます。
+
+`node scripts/qa-kuku-step.cjs --readings-only` で、全81式の表示・音声入力、順逆の連続読み上げ、６つの読み方設定の切り替え・保存・復元を独立して検証できます。
 
 `node scripts/qa-kuku-step.cjs` で、導入10段階、動画の選択・再生・保存・削除、数字の読み方、全９段81問、順・逆の進行条件、ヒント問題の再出題、進捗保存、６場面の４ステップ、320〜1280pxの表示、ストレージ利用不可時の自習を確認できます。動画検証に使う単色動画はテスト中だけ生成し、アプリの教材には同梱しません。

@@ -5,6 +5,18 @@ const http = require('node:http');
 const { chromium } = require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(__dirname, '..');
 const out = path.join(root, '.kuku-work');
+// 全81式を資料と照合した期待値。アプリの数値読み生成を使わず、唱え全体を検証する。
+const readings = [
+  'いんいちがいち いんにがに いんさんがさん いんしがし いんごがご いんろくがろく いんしちがしち いんはちがはち いんくがく',
+  'にいちがに ににんがし にさんがろく にしがはち にごじゅう にろくじゅうに にしちじゅうし にはちじゅうろく にくじゅうはち',
+  'さんいちがさん さんにがろく さざんがく さんしじゅうに さんごじゅうご さぶろくじゅうはち さんしちにじゅういち さんぱにじゅうし さんくにじゅうしち',
+  'しいちがし しにがはち しさんじゅうに ししじゅうろく しごにじゅう しろくにじゅうし ししちにじゅうはち しはさんじゅうに しくさんじゅうろく',
+  'ごいちがご ごにじゅう ごさんじゅうご ごしにじゅう ごごにじゅうご ごろくさんじゅう ごしちさんじゅうご ごはしじゅう ごっくしじゅうご',
+  'ろくいちがろく ろくにじゅうに ろくさんじゅうはち ろくしにじゅうし ろくごさんじゅう ろくろくさんじゅうろく ろくしちしじゅうに ろくはしじゅうはち ろっくごじゅうし',
+  'しちいちがしち しちにじゅうし しちさんにじゅういち しちしにじゅうはち しちごさんじゅうご しちろくしじゅうに しちしちしじゅうく しちはごじゅうろく しちくろくじゅうさん',
+  'はちいちがはち はちにじゅうろく はっさんにじゅうし はっしさんじゅうに はちごしじゅう はちろくしじゅうはち はちしちごじゅうろく はっぱろくじゅうし はっくしちじゅうに',
+  'くいちがく くにじゅうはち くさんにじゅうしち くしさんじゅうろく くごしじゅうご くろくごじゅうし くしちろくじゅうさん くはしちじゅうに くくはちじゅういち'
+].map(row=>row.split(' '));
 fs.mkdirSync(out, { recursive: true });
 const server = http.createServer((req,res) => {
   const file = path.resolve(root, '.'+decodeURIComponent(req.url.split('?')[0]));
@@ -27,6 +39,7 @@ async function main() {
     const click=a=>page.locator(`[data-action="${a}"]`).first().click();
     const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('kuku-small-steps-v1')));
     const url='http://127.0.0.1:8963/kuku_step.html';
+    if(!process.argv.includes('--readings-only')) {
     await page.goto(url);
     assert((await page.locator('h1').innerText()).includes('ぱっと見て'));
     assert(!(await page.locator('.brand').innerText()).includes('九九'),'do not disclose the secret before the interview');
@@ -75,7 +88,7 @@ async function main() {
     await click('intro-next');await click('start-five');
     assert.equal(await page.locator('.chant-row').count(),9);
     assert(await page.locator('[data-action="random"]').isDisabled());
-    assert((await page.locator('.chant-rows').innerText()).includes('ごく しじゅうご'));
+    assert((await page.locator('.chant-rows').innerText()).includes('ごっく しじゅうご'));
     await page.screenshot({path:path.join(out,'five-desktop.png'),fullPage:true});
     for(const direction of ['forward','reverse']){
       for(let level=1;level<=4;level++){
@@ -186,12 +199,71 @@ async function main() {
     assert.equal((await state()).intro,0);assert.equal(Object.keys((await state()).dan).length,0);
     await page.reload();await click('teacher');await click('teacher-video');assert(await page.locator('.video-empty').isVisible(),'video deleted from indexedDB');
     assert.deepEqual(errors,[]);assert.deepEqual(missing,[]);
+    }
+    // 実際の画面と読み上げAPI入力を全81式で確認。音声エンジンの発音そのものは端末依存。
+    const speechPage=await context.newPage();
+    await speechPage.addInitScript(()=>{
+      window.spoken=[];
+      Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices(){return [];},speak(u){window.spoken.push({text:u.text,lang:u.lang});setTimeout(()=>u.onend?.(),0);}}});
+    });
+    for(let a=1;a<=9;a++){
+      await speechPage.goto(url+'?practice='+a);
+      await speechPage.evaluate(()=>localStorage.removeItem('kuku-small-steps-v1'));
+      await speechPage.reload();
+      for(let b=1;b<=9;b++){
+        const row=speechPage.locator(`.chant-row[data-b="${b}"]`);
+        assert.equal((await row.locator('.row-reading').innerText()).replace(/\s/g,''),readings[a-1][b-1],`display ${a}×${b}`);
+        await row.locator('[data-action^="speak-row:"]').click();
+        const spoken=await speechPage.evaluate(()=>window.spoken.at(-1));
+        const expected=readings[a-1][b-1].replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));
+        assert.equal(spoken.text.replace(/、/g,''),expected,`speech ${a}×${b}`);
+        assert.equal(spoken.lang,'ja-JP');
+      }
+    }
+    await speechPage.goto(url+'?practice=5');
+    for(const direction of ['forward','reverse']){
+      if(direction==='reverse'){
+        await speechPage.evaluate(()=>{const s=JSON.parse(localStorage.getItem('kuku-small-steps-v1'));s.dan[5]={forward:4,reverse:0,mastered:[],randomDone:false};localStorage.setItem('kuku-small-steps-v1',JSON.stringify(s));});
+        await speechPage.reload();
+      }
+      await speechPage.evaluate(()=>window.spoken=[]);
+      await speechPage.locator('[data-action="drill-listen"]').click();
+      await speechPage.waitForFunction(()=>window.spoken.length===9);
+      const actual=await speechPage.evaluate(()=>window.spoken.map(u=>u.text.replace(/、/g,'')));
+      const expected=readings[4].map(t=>t.replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60)));
+      assert.deepEqual(actual,direction==='forward'?expected:expected.reverse(),direction+' continuous speech');
+    }
+    const alternatives={'3x2':'さにがろく','3x3':'さざんがきゅう','3x6':'さんろくじゅうはち','4x8':'しわさんじゅうに','8x3':'はちさんにじゅうし','8x4':'はちしさんじゅうに'};
+    for(const [id,expected] of Object.entries(alternatives)){
+      const [a,b]=id.split('x').map(Number);
+      await speechPage.goto(url+'?practice='+a);
+      await speechPage.locator('[data-action="teacher"]').click();
+      await speechPage.locator(`[data-reading="${id}"]`).selectOption('1');
+      assert((await speechPage.locator('.teacher-readings').textContent()).replace(/\s/g,'').includes(expected),'teacher list '+id);
+      await speechPage.locator('#teacher .close').click();
+      const row=speechPage.locator(`.chant-row[data-b="${b}"]`);
+      await speechPage.waitForFunction(({b,expected})=>document.querySelector(`.chant-row[data-b="${b}"] .row-reading`)?.textContent.replace(/\s/g,'')===expected,{b,expected});
+      assert.equal((await row.locator('.row-reading').innerText()).replace(/\s/g,''),expected);
+      await row.locator('[data-action^="speak-row:"]').click();
+      assert.equal(await speechPage.evaluate(()=>window.spoken.at(-1).text.replace(/、/g,'')),expected.replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60)));
+      await speechPage.reload();
+      assert.equal((await row.locator('.row-reading').innerText()).replace(/\s/g,''),expected,'saved '+id);
+      await speechPage.locator('[data-action="teacher"]').click();
+      assert.equal(await speechPage.locator(`[data-reading="${id}"]`).inputValue(),'1');
+      await speechPage.locator(`[data-reading="${id}"]`).selectOption('0');
+      await speechPage.locator('#teacher .close').click();
+      await speechPage.waitForFunction(({b,expected})=>document.querySelector(`.chant-row[data-b="${b}"] .row-reading`)?.textContent.replace(/\s/g,'')===expected,{b,expected:readings[a-1][b-1]});
+      assert.equal((await row.locator('.row-reading').innerText()).replace(/\s/g,''),readings[a-1][b-1]);
+    }
+    assert.deepEqual(await speechPage.evaluate(()=>JSON.parse(localStorage.getItem('kuku-small-steps-v1')).dan[5]),{forward:4,reverse:0,mastered:[],randomDone:false,session:null},'reading choices retain progress');
+    await speechPage.close();
+    console.log('PASS: all 81 displayed readings and katakana speech inputs, forward/reverse continuous speech, six alternative settings and persistence.');
     // Storage-disabled environments must still render and allow local practice.
     const blocked=await browser.newContext();const p2=await blocked.newPage();
     await p2.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new Error('blocked');}});Object.defineProperty(window,'indexedDB',{get(){throw new Error('blocked');}});});
     await p2.goto(url);await p2.locator('#homeButton').click();await p2.locator('[data-action="map"]').click();await p2.locator('[data-action="dan:5"]').click();assert.equal(await p2.locator('.chant-row').count(),9);
     await blocked.close();
-    console.log('PASS: 10-stage introduction, local video playback/persistence/deletion, 4/7/9 readings, all 9 dans and 81 facts, hint retry, forward/reverse gates, saved progress, six four-step applications, desktop/mobile layouts, blocked-storage fallback.');
+    if(!process.argv.includes('--readings-only'))console.log('PASS: 10-stage introduction, local video playback/persistence/deletion, 4/7/9 readings, all 9 dans and 81 facts, hint retry, forward/reverse gates, saved progress, six four-step applications, desktop/mobile layouts, blocked-storage fallback.');
     await context.close();
   } finally {await browser.close();server.close();}
 }

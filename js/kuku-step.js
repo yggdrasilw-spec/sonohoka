@@ -5,24 +5,41 @@
   const key = 'kuku-small-steps-v1';
   const order = [5,2,3,4,6,7,8,9,1];
   const numberNames = ['','いち','に','さん','し','ご','ろく','しち','はち','く'];
+  // 全81式の照合記録・出典は kuku_step_guide.md。８×３・８×４は促音のある形を初期値にする。
   const prefixes = [[],
     ['いんいち','いんに','いんさん','いんし','いんご','いんろく','いんしち','いんはち','いんく'],
     ['にいち','ににん','にさん','にし','にご','にろく','にしち','にはち','にく'],
     ['さんいち','さんに','さざん','さんし','さんご','さぶろく','さんしち','さんぱ','さんく'],
     ['しいち','しに','しさん','しし','しご','しろく','ししち','しは','しく'],
-    ['ごいち','ごに','ごさん','ごし','ごご','ごろく','ごしち','ごは','ごく'],
+    ['ごいち','ごに','ごさん','ごし','ごご','ごろく','ごしち','ごは','ごっく'],
     ['ろくいち','ろくに','ろくさん','ろくし','ろくご','ろくろく','ろくしち','ろくは','ろっく'],
     ['しちいち','しちに','しちさん','しちし','しちご','しちろく','しちしち','しちは','しちく'],
-    ['はちいち','はちに','はちさん','はちし','はちご','はちろく','はちしち','はっぱ','はちく'],
+    ['はちいち','はちに','はっさん','はっし','はちご','はちろく','はちしち','はっぱ','はっく'],
     ['くいち','くに','くさん','くし','くご','くろく','くしち','くは','くく']];
   function numRead(n) {
     const unit=['','いち','に','さん','し','ご','ろく','しち','はち','く'];
     return n<10?unit[n]:(Math.floor(n/10)===1?'じゅう':unit[Math.floor(n/10)]+'じゅう')+unit[n%10];
   }
+  // 別の唱え方は東京書籍FAQと九九の覚え方の一覧で確認（kuku_step_guide.md参照）。
+  const readingOptions={
+    '3x2':[['さんにが','ろく'],['さにが','ろく']],
+    '3x3':[['さざんが','く'],['さざんが','きゅう']],
+    '3x6':[['さぶろく','じゅうはち'],['さんろく','じゅうはち']],
+    '4x8':[['しは','さんじゅうに'],['しわ','さんじゅうに']],
+    '8x3':[['はっさん','にじゅうし'],['はちさん','にじゅうし']],
+    '8x4':[['はっし','さんじゅうに'],['はちし','さんじゅうに']]
+  };
   function fact(a,b) {
-    return {a,b,value:a*b,start:prefixes[a][b-1]+(a*b<10?'が':''),answer:numRead(a*b)};
+    const selected=readingOptions[a+'x'+b]?.[state.readings[a+'x'+b]||0];
+    return {a,b,value:a*b,start:selected?.[0]??prefixes[a][b-1]+(a*b<10?'が':''),answer:selected?.[1]??numRead(a*b)};
   }
-  function blankState(){return {intro:0,number:0,careful:0,challenge:0,dan:{},lastDan:5,fastSeconds:3};}
+  // 表示はひらがな。音声にはカタカナを渡し「ごは」などの「は」を助詞扱いさせない。
+  // 式を読む際の助詞「は」は変換しないので、九九専用の入口で変換する。
+  function speakChant(f,onEnd){
+    const text=(f.start+'、'+f.answer).replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));
+    speak(text,onEnd);
+  }
+  function blankState(){return {intro:0,number:0,careful:0,challenge:0,dan:{},lastDan:5,fastSeconds:3,readings:{}};}
   let saveOK=true;
   function load(){
     try {
@@ -32,6 +49,10 @@
       for(const [k,max] of [['intro',9],['number',9],['careful',3],['challenge',6]])st[k]=Math.max(0,Math.min(max,Number.isInteger(raw[k])?raw[k]:0));
       if(order.includes(raw.lastDan))st.lastDan=raw.lastDan;
       if([3,5,10].includes(raw.fastSeconds))st.fastSeconds=raw.fastSeconds;
+      for(const [id,options] of Object.entries(readingOptions)){
+        const selected=raw.readings?.[id];
+        if(Number.isInteger(selected)&&selected>=0&&selected<options.length)st.readings[id]=selected;
+      }
       for(const a of order){const d=raw.dan?.[a];if(!d||typeof d!=='object')continue;
         st.dan[a]={forward:Math.min(4,Math.max(0,Number.isInteger(d.forward)?d.forward:0)),reverse:Math.min(4,Math.max(0,Number.isInteger(d.reverse)?d.reverse:0)),mastered:Array.isArray(d.mastered)?[...new Set(d.mastered.filter(n=>Number.isInteger(n)&&n>=1&&n<=9))]:[],randomDone:d.randomDone===true,session:validSession(d.session)};
       }
@@ -49,7 +70,7 @@
   let numberIndex=Math.min(state.number,8),carefulIndex=Math.min(state.careful,2);
   let dan=state.lastDan,mode='forward',level=1,drillRevealed=new Set(),modelShown=false;
   let practiceTimer=null,speechRun=0,random=null,videoURL=null,videoName='',videoReady=false,videoSeen=false,videoDB=null;
-  let routeVersion=0,speedChanged=false;
+  let routeVersion=0,speedChanged=false,readingsChanged=false;
   const sources=`<div class="sources"><p>教材・出典</p><p>練習の４段階と順・逆・ばらの流れは、提供された「５のだんおぼえよう」の35枚のスライドをもとにしています。三輪車５台・ライオン４ひき・タコ６ぴきの問題と３点の絵は、提供された「いっしゅんで こたえられる？」から使用しています。</p><p><a href="https://www.city.hannan.lg.jp/kakuka/syogai/syogai_s/bunkazai_shokai/bunkazai_arekore/1494826741043.html" target="_blank" rel="noopener">阪南市：寺子屋と読み・書き・そろばん</a> ／ <a href="https://crd.ndl.go.jp/reference/entry/index.php?id=1000088019&page=ref_view" target="_blank" rel="noopener">国立教育政策研究所教育図書館：昔の九九の読み方</a> ／ <a href="https://faq.tokyo-shoseki.co.jp/fa/customer/web/knowledge8282.html" target="_blank" rel="noopener">東京書籍：九九の唱え方には複数の形があります</a></p><p>寺子屋の絵はAIで生成したイメージです。うさぎ・車・テントの図はこの教材用の図です。</p></div>`;
   function save(){try{localStorage.setItem(key,JSON.stringify(state));saveOK=true;}catch{saveOK=false;}}
   function progress(a=dan){return state.dan[a]||(state.dan[a]={forward:0,reverse:0,mastered:[],randomDone:false});}
@@ -122,7 +143,7 @@
     app.querySelector(`[data-b="${b}"] [data-action="${show?'hide-row':'reveal-row'}:${b}"]`)?.focus({preventScroll:true});
   }
   function listenDrill(){modelShown=true;drill();const seq=Array.from({length:9},(_,i)=>mode==='forward'?i+1:9-i),run=++speechRun;let i=0;
-    const next=()=>{if(run!==speechRun||view!=='drill')return;app.querySelectorAll('.chant-row').forEach(el=>el.classList.remove('active'));if(i>=9)return;const f=fact(dan,seq[i++]),row=app.querySelector(`[data-b="${f.b}"]`);row?.classList.add('active');row?.scrollIntoView({block:'nearest'});speak(f.start+'、'+f.answer,()=>{if(run===speechRun)practiceTimer=setTimeout(next,650);});};next();
+    const next=()=>{if(run!==speechRun||view!=='drill')return;app.querySelectorAll('.chant-row').forEach(el=>el.classList.remove('active'));if(i>=9)return;const f=fact(dan,seq[i++]),row=app.querySelector(`[data-b="${f.b}"]`);row?.classList.add('active');row?.scrollIntoView({block:'nearest'});speakChant(f,()=>{if(run===speechRun)practiceTimer=setTimeout(next,650);});};next();
   }
   function drillPass(){if(level>1&&(modelShown||drillRevealed.size))return;const p=progress();p[mode]=Math.max(p[mode],level);save();const completedLevel=level;
     if(level<4){level++;drillRevealed.clear();modelShown=false;drill();tell(`レベル${completedLevel}をたしかめた！ 少し隠して、もう一度。`);}
@@ -165,6 +186,17 @@
   }
   function teacher(){speedChanged=false;
     $('#teacherContent').innerHTML=`<p>導入は授業で、自習画面は児童の端末で使う構成です。</p><h3>学校の動画を準備する</h3><ol class="teacher-list"><li>この学校の３年生以上の児童、または先生に、同じ場面問題を見せる。</li><li>「全部でいくつ？」にすぐ答える様子を撮る。例：三輪車５台のタイヤ15こ、タコ６ぴきの足48本。</li><li>続けて「なんで、こんなにできるの？」「どうやってやったの？」とインタビューする。</li><li>「九九を使っています」という説明を、本人の言葉で聞く。必要なら「何を使って考えた？」とたずねる。</li><li>実演とインタビューが入った１本の動画を、下で選ぶ。導入の２画面目で見せる。</li></ol><label class="file-label">学校で撮った動画を選ぶ<input id="videoFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label><p id="videoSaveStatus" class="save-note" role="status">動画は選んだ端末・ブラウザにだけ保存します。外部にアップロードしません。未登録なら導入２で待ちます。</p><div class="actions">${btn('動画を見る画面へ','teacher-video','quiet')}${btn('この端末の動画を外す','remove-video','quiet',!videoURL)}</div><h3 class="teacher-heading">児童の進め方</h3><p>まず５のだん。９つをまとめて唱えます。レベル１〜４を順で終えてから逆へ、逆も終えてから個別ランダムへ進みます。終了済みのレベルはいつでも練習し直せます。</p><p>「言えた」は本人や先生の確認です。録音や音声認識はしません。ランダムは、数字の正解・ヒントを使わなかったこと・唱え方を思い出せたという確認・回答時間を組み合わせて記録します。</p><label>「すぐ」の目安 <select id="fastSeconds"><option value="3">３秒</option><option value="5">５秒</option><option value="10">10秒</option></select></label><p class="save-note">目安を変えると「すぐ思い出せた記録」をいったん消し、新しい目安で練習します。順・逆の記録は残ります。音声は端末の日本語読み上げを使います。音声がない場合も画面で練習できます。</p><p>「よん・なな・きゅう」も通常の数字の読み方として正しいことを伝えたうえで、九九の唱えでは「し・しち・く」にそろえます。九九には地域や教材による別の唱え方もあります。</p><details><summary>この教材の唱え方を一覧で確認</summary><div class="teacher-readings">${order.map(a=>`<h3>${a}のだん</h3><p>${Array.from({length:9},(_,i)=>{const f=fact(a,i+1);return `${a}×${i+1}=${f.value}：${f.start} ${f.answer}`;}).join('<br>')}</p>`).join('')}</div></details><h3 class="teacher-heading">記録の管理</h3><p>このブラウザの記録です。共有端末では、一人ごとにブラウザのプロフィールを分けるか、下から記録を消してください。</p><div class="actions">${btn('学習記録を消す','reset-ask','danger')}</div><div id="resetConfirm" hidden><p>このブラウザの練習記録を消します。</p>${btn('記録を消して最初から','reset-confirm','danger')}</div><details><summary>教材と出典</summary>${sources}</details>`;
+    const settings=document.createElement('section');
+    settings.className='reading-settings';
+    settings.innerHTML=`<h3>九九の唱え方を選ぶ</h3><p>学校やおうちで使う唱え方に合わせて選べます。画面と音声の両方に反映し、このブラウザに保存します。</p>${Object.entries(readingOptions).map(([id,options])=>`<label>${id.replace('x',' × ')} ＝ ${id.split('x').reduce((a,b)=>a*Number(b),1)}<select data-reading="${id}" aria-label="${id.replace('x','×')}の唱え方">${options.map(([start,answer],i)=>`<option value="${i}">${start} ${answer}</option>`).join('')}</select></label>`).join('')}`;
+    $('#teacherContent').prepend(settings);
+    settings.querySelectorAll('select').forEach(select=>{
+      select.value=state.readings[select.dataset.reading]||0;
+      select.addEventListener('change',()=>{
+        stop();state.readings[select.dataset.reading]=Number(select.value);readingsChanged=true;save();
+        $('.teacher-readings').innerHTML=order.map(a=>`<h3>${a}のだん</h3><p>${Array.from({length:9},(_,i)=>{const f=fact(a,i+1);return `${a}×${i+1}=${f.value}：${f.start} ${f.answer}`;}).join('<br>')}</p>`).join('');
+      });
+    });
     $('#fastSeconds').value=state.fastSeconds;$('#fastSeconds').addEventListener('change',e=>{state.fastSeconds=Number(e.target.value);for(const a of order){progress(a).mastered=[];progress(a).session=null;}speedChanged=true;save();});$('#videoFile').addEventListener('change',e=>chooseVideo(e.target.files[0]));$('#teacher').showModal();
   }
   document.addEventListener('click',async e=>{
@@ -184,7 +216,7 @@
     else if(action==='video-answer'){if(!videoSeen)return;tell('ひみつは「九九」だったんだね！');$('#videoNext').hidden=false;}
     else if(action==='video-wrong')tell('インタビューを、もう一度聞いてみよう。',false);
     else if(action==='speak-expression')speak('ご、かける、さん、は、じゅうご');
-    else if(action==='speak-chant')speak('ごさん、じゅうご');
+    else if(action==='speak-chant')speakChant(fact(5,3));
     else if(action==='number'){if(arg===numberNames[numberIndex+1]){tell(`${numberIndex+1}は「${arg}」。声に出そう！`);$('#numberNext').hidden=false;app.querySelectorAll('.choices button').forEach(b=>b.disabled=true);}else tell('この九九の練習では「'+numberNames[numberIndex+1]+'」を使うよ。もう一度選ぼう。',false);}
     else if(action==='number-next'){state.number=Math.max(state.number,numberIndex+1);save();if(numberIndex<8){numberIndex++;intro();}else introNext();}
     else if(action==='careful'){if(arg===numberNames[[4,7,9][carefulIndex]]){tell('その通り！ 声に出して覚えよう。');$('#carefulNext').hidden=false;app.querySelectorAll('.choices button').forEach(b=>b.disabled=true);}else tell('九九では「'+numberNames[[4,7,9][carefulIndex]]+'」。上の３つを見てみよう。',false);}
@@ -198,7 +230,7 @@
     else if(action==='drill-model'){modelShown=true;drill();}
     else if(action==='drill-hide'||action==='drill-retry'){modelShown=false;drillRevealed.clear();drill();if(action==='drill-retry')tell('何度でもだいじょうぶ。もう一度、自分の声で唱えよう。');}
     else if(action==='drill-listen')listenDrill();
-    else if(action==='speak-row'){stop();const f=fact(dan,Number(arg));app.querySelector(`[data-b="${f.b}"]`)?.classList.add('active');speak(f.start+'、'+f.answer,()=>app.querySelector(`[data-b="${f.b}"]`)?.classList.remove('active'));}
+    else if(action==='speak-row'){stop();const f=fact(dan,Number(arg));app.querySelector(`[data-b="${f.b}"]`)?.classList.add('active');speakChant(f,()=>app.querySelector(`[data-b="${f.b}"]`)?.classList.remove('active'));}
     else if(action==='drill-pass')drillPass();
     else if(action==='stop')stop();
     else if(action==='random')startRandom();
@@ -214,7 +246,7 @@
     else if(action==='reset-confirm'){state=blankState();save();introIndex=0;numberIndex=0;carefulIndex=0;challengeIndex=0;challengeRated=false;challengeHidden=false;$('#teacher').close();home();}
   });
   $('#homeButton').addEventListener('click',home);
-  $('#teacher').addEventListener('close',()=>{if(speedChanged){speedChanged=false;if(view==='random'){startRandom();return;}if(view==='finish'){randomFinish();return;}if(view==='map'){map();return;}}if(view==='home')home();});
+  $('#teacher').addEventListener('close',()=>{if(readingsChanged){readingsChanged=false;if(view==='drill')drill(false);if(view==='random'&&random?.hint){const f=fact(dan,random.queue[0]);$('#randomHint').textContent=f.start+' '+f.answer;}}if(speedChanged){speedChanged=false;if(view==='random'){startRandom();return;}if(view==='finish'){randomFinish();return;}if(view==='map'){map();return;}}if(view==='home')home();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
   window.addEventListener('pagehide',stop);
   const requestedDan=Number(new URLSearchParams(location.search).get('practice'));
