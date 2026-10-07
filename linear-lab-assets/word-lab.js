@@ -93,7 +93,8 @@ function wordPicture(p,known){
     const cap=Math.max(p.b,wordY(p,p.max),1),w=520*Math.max(0,y)/cap;
     body=`<rect x="75" y="48" width="520" height="40" rx="9" fill="#edf2f7"/><rect x="75" y="48" width="${w}" height="40" rx="9" fill="#c6e2ff" stroke="#1769e0" stroke-width="2"/><text x="75" y="30">${p.yLabel}</text><text x="75" y="125" fill="#1769e0">${known?'今の':'記録した'}量：${wordN(y)}${p.yUnit}</text><text x="400" y="125">x＝${wordN(x)}${p.xUnit}</text>`;
   }
-  return `<svg id="wordPicture" viewBox="0 0 680 160" role="img" aria-label="${label}">${body}</svg>`;
+  const scene={1:['shopping-notebooks.webp','ノートと袋を別々に買う場面'],2:['bicycle-rental.webp','自転車を借りる生徒と貸出係'],9:['catch-up.webp','先を歩く青い服のAと、後ろから同じ向きに走る灰色の服のB'],19:['shopping-notebooks.webp','本と包装を別々に買う場面']}[p.id];
+  return `<div id="wordPicture" class="${scene?'withStoryAsset':''}">${scene?`<figure class="wordStoryAsset"><img src="linear-lab-assets/${scene[0]}" alt="${scene[1]}。${p.id===9?'出発時の':'場面の'}イメージ。数量は隣の図で確認できます。" width="210" height="140"><figcaption>${p.id===9?'出発時の':'場面の'}イメージ</figcaption></figure>`:''}<svg id="wordQuantity" viewBox="0 0 680 160" role="img" aria-label="${label}">${body}</svg></div>`;
 }
 function wordGraph(p,known){
   const niceStep=span=>{const raw=span/5,base=10**Math.floor(Math.log10(raw));return [1,2,5,10].find(v=>v*base>=raw)*base;};

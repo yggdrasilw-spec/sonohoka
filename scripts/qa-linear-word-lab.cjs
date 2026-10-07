@@ -2,8 +2,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+let qaBrowser;
 (async()=>{
- const browser=await chromium.launch({headless:true,channel:'msedge'});
+ const browser=qaBrowser=await chromium.launch({headless:true,channel:'msedge'});
  const page=await browser.newPage({viewport:{width:1600,height:900}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(pathToFileURL(require('node:path').resolve('ichiji_kansu_lab_v11.html')).href);
@@ -26,6 +27,11 @@ const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runt
    await page.locator('[data-word-answer="0"]').click();
   }
   assert.equal(await page.locator('#wordNext').isEnabled(),true);
+  if([0,1,8,18].includes(i)){
+   assert.equal(await page.locator('.wordStoryAsset img').count(),1);
+   await page.locator('.wordStoryAsset img').evaluate(img=>img.decode());
+   assert.equal(await page.locator('#wordQuantity').count(),1);
+  }else assert.equal(await page.locator('.wordStoryAsset img').count(),0);
   const xs=await page.locator('.wordTable [data-word-x]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.wordX)));
   const x=xs.at(-1);await page.locator(`.wordTable [data-word-x="${x}"]`).click();
   assert.match(await page.locator('#wordGraph').getAttribute('aria-label'),new RegExp(`選んだ点は\\(${x},`));
@@ -41,8 +47,10 @@ const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runt
  assert.equal(await page.locator('#wordX').evaluate(el=>el===document.activeElement),true);
  await page.locator('#wordPlus').click();assert.equal(await page.evaluate(()=>wordState.x),3);
  await page.setViewportSize({width:390,height:844});
- await page.evaluate(async()=>{fit();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);document.getElementById('viewport').scrollTo(470,0);});
- await page.locator('#wordPlus').click();assert.equal(await page.evaluate(()=>wordState.x),4);
+ await page.evaluate(async()=>{fit();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);document.getElementById('viewport').scrollTo(9999,0);});
+ const mobilePlus=await page.locator('#wordPlus').boundingBox();
+ assert.ok(mobilePlus.x>=0&&mobilePlus.x+mobilePlus.width<=390,JSON.stringify(mobilePlus));
+ await page.mouse.click(mobilePlus.x+mobilePlus.width/2,mobilePlus.y+mobilePlus.height/2);assert.equal(await page.evaluate(()=>wordState.x),4);
  await page.setViewportSize({width:1600,height:900});await page.evaluate(()=>fit());
  await page.evaluate(()=>openSyllabus(1));await page.locator('#linked-x-2').click();
  assert.match(await page.locator('.sceneDrawing').getAttribute('aria-label'),/ブロックが2個。全体は7cm/);
@@ -56,9 +64,10 @@ const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runt
  await page.locator('[data-answer="0"]').click();
  assert.match(await page.locator('#lessonLink').innerText(),/約5℃/);
  const out='C:/Users/user/.cache/linear-word-lab-qa';fs.mkdirSync(out,{recursive:true});
- for(const [index,name] of [[0,'fee'],[8,'chase'],[16,'derive'],[18,'discrete'],[19,'capacity']]){
+ for(const [index,name] of [[0,'fee'],[1,'rental'],[8,'chase'],[16,'derive'],[18,'discrete'],[19,'capacity']]){
   await page.evaluate(i=>openWordLab(i),index);
   if(index===8)await page.locator('.wordTable [data-word-x="5"]').click();
+  await page.locator('.wordStoryAsset img').evaluateAll(imgs=>Promise.all(imgs.map(img=>img.decode())));
   await page.screenshot({path:`${out}/${name}.png`});
   const box=await page.locator('#wordNext').boundingBox();assert.ok(box.y+box.height<=900,`${name}: next button clipped`);
  }
@@ -67,4 +76,4 @@ const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runt
  await page.evaluate(()=>openSyllabus(15));await page.screenshot({path:`${out}/linked-measurements.png`});
  assert.deepEqual(errors,[]);console.log('PASS: 20 problems, independent expected answers, wrong/empty answers, progress, linked table/diagram/formula/graph, measured vs predicted values, and desktop bounds.');
  await browser.close();
-})().catch(e=>{console.error(e);process.exitCode=1;});
+})().catch(async e=>{console.error(e);await qaBrowser?.close();process.exitCode=1;});
