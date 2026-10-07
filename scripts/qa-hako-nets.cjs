@@ -7,6 +7,20 @@ for(let n=2;n<=6;n++){const next=new Map();for(const shape of shapes.values())fo
 assert.equal(shapes.size,35,'All 35 free hexominoes');let valid=0;
 for(const ps of shapes.values()){const faces=G.faces([1,1,1]).map((f,i)=>({...f,x:ps[i][0],y:ps[i][1]}));if(G.check(faces,[1,1,1]).ok)valid++}
 assert.equal(valid,11,'Exactly the 11 cube nets must fold');
+// The floor stays still; every moving face remains attached to its hinge.
+for(const dims of [[6,4,3],[4,4,4],[7,2,5]]){
+ const faces=G.example(dims),root=faces.findIndex(f=>f.id==='bottom'),options={root,sequential:true,floor:true};
+ const base=G.folded(faces,0,options).frames[root];
+ for(let step=0;step<=100;step++){
+  const fold=G.folded(faces,step/100,options);assert.deepEqual(fold.frames[root],base);
+  fold.parents.forEach((p,i)=>{if(!p)return;const a=G.corners(faces[p.from],fold.frames[p.from]),b=G.corners(faces[i],fold.frames[i]);
+   const edges={E:[[a[1],a[2]],[b[0],b[3]]],W:[[a[0],a[3]],[b[1],b[2]]],S:[[a[3],a[2]],[b[0],b[1]]],N:[[a[0],a[1]],[b[3],b[2]]]};
+   const [ae,be]=edges[p.dir];ae.forEach((v,j)=>v.forEach((n,k)=>assert(Math.abs(n-be[j][k])<1e-6,'Hinge edges stay together')));
+  });
+ }
+ assert.equal(G.folded(faces,1,options).cycle,false);
+ const first=G.folded(faces,.1,options);first.order.slice(1).forEach(i=>assert.deepEqual(first.frames[i].n,first.frames[first.parents[i].from].n,'Later hinges wait their turn'));
+}
 for(let w=1;w<=8;w++)for(let h=1;h<=8;h++)for(let d=1;d<=8;d++){
  const dims=[w,h,d],faces=G.example(dims);assert(G.check(faces,dims).ok);assert(G.check(faces.map(f=>({...f,x:-f.y-f.h,y:f.x,turn:1})),dims).ok);assert(G.check(faces.map(f=>({...f,x:-f.x-f.w})),dims).ok);
  const flat=G.folded(faces,0);flat.frames.forEach((f,i)=>{assert(Math.abs(f.o[0]-(faces[i].x-faces[0].x))<1e-6);assert(Math.abs(f.o[1]-(faces[i].y-faces[0].y))<1e-6);assert(Math.abs(f.o[2])<1e-6)});
@@ -24,7 +38,9 @@ const disconnected=G.example([6,4,3]);disconnected[1].x=40;assert.match(G.check(
  await page.keyboard.press('Escape');await page.locator('[data-open-nets]').click();assert(await page.locator('#netWorkshop').isVisible());
  await page.locator('[data-net-mode="faces"]').click();assert.equal(await page.locator('#netBoard [data-flat-face]').count(),6);await page.screenshot({path:path.join(out,'six-faces.png')});
  await page.locator('[data-net-mode="net"]').click();await page.locator('#netAssemble').click();assert.match(await page.locator('#netMessage').innerText(),/はなれ/);
- await page.locator('#netExample').click();await page.locator('#netAssemble').click();assert.equal(await page.locator('#netMessage').getAttribute('data-result'),'ok');await page.waitForTimeout(1900);assert.equal(await page.evaluate(()=>HakoNets.getState().progress),1);await page.screenshot({path:path.join(out,'folded.png')});
+ await page.locator('#netExample').click();const basePoints=await page.locator('#netPreview [data-fixed-base] polygon').getAttribute('points');
+ for(const value of [0,20,40,60,80,100]){await page.locator('#netFold').evaluate((el,v)=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}))},value);assert.equal(await page.locator('#netPreview [data-fixed-base] polygon').getAttribute('points'),basePoints,'Bottom face stays fixed on screen');await page.locator('#netPreview').screenshot({path:path.join(out,`fold-step-${value}.png`)})}
+ await page.locator('#netAssemble').click();assert.equal(await page.locator('#netMessage').getAttribute('data-result'),'ok');await page.waitForTimeout(5100);assert.equal(await page.evaluate(()=>HakoNets.getState().progress),1);assert.equal(await page.locator('#netPreview [data-fixed-base] polygon').getAttribute('points'),basePoints);await page.screenshot({path:path.join(out,'folded.png')});
  // Exercise actual drag and pointer capture without editing runtime state.
  const polygon=page.locator('#netBoard [data-face="back"] rect');const start=await polygon.boundingBox(),before=await page.evaluate(()=>HakoNets.getState().faces.find(f=>f.id==='back'));
  await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();await page.mouse.move(start.x+start.width/2+70,start.y+start.height/2+45,{steps:8});await page.mouse.up();const moved=await page.evaluate(()=>HakoNets.getState().faces.find(f=>f.id==='back'));assert(moved.x!==before.x||moved.y!==before.y);assert.equal(await page.evaluate(()=>HakoNets.getState().progress),0);
@@ -34,7 +50,7 @@ const disconnected=G.example([6,4,3]);disconnected[1].x=40;assert.match(G.check(
  await page.locator('#netPreset').selectOption('cube');await page.locator('#netExample').click();assert(await page.evaluate(()=>HakoNets.check().ok));
  // Six rectangles in one straight row are connected but cannot form a cube.
  await page.locator('#netSeparate').click();for(const [face,anchor]of [['back','front'],['left','back'],['right','left'],['top','right'],['bottom','top']]){await page.locator('#netSelected').selectOption(face);await page.locator('#netAnchor').selectOption(anchor);await page.locator('#netSide').selectOption('E');await page.locator('#netAttach').click()}
- await page.locator('#netAssemble').click();assert.match(await page.locator('#netMessage').innerText(),/重な/);await page.waitForTimeout(1900);await page.screenshot({path:path.join(out,'invalid-row.png')});
+ await page.locator('#netAssemble').click();assert.match(await page.locator('#netMessage').innerText(),/重な/);await page.waitForTimeout(5100);await page.screenshot({path:path.join(out,'invalid-row.png')});
  await page.locator('#netPreset').selectOption('flat');await page.locator('#netExample').click();assert(await page.evaluate(()=>HakoNets.check().ok));
  await page.locator('#netSelected').selectOption('right');await page.locator('#netAnchor').selectOption('front');await page.locator('#netSide').selectOption('N');await page.locator('#netAttach').click();assert.match(await page.locator('#netMessage').innerText(),/辺の長さ/);
  await page.locator('#netExample').click();await page.locator('#netBoard').focus();await page.keyboard.press('ArrowRight');assert.equal(await page.evaluate(()=>HakoNets.getState().faces[0].x),1);await page.locator('#netUndo').click();assert(await page.evaluate(()=>HakoNets.check().ok));

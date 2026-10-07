@@ -25,9 +25,14 @@
   if(dir==='N'){d=add(scale(a.d,c),scale(a.n,s));n=add(scale(a.d,-s),scale(a.n,c));o=add(o,scale(d,-bh))}
   return{o,r,d,n};
  }
- function folded(fs,progress=1){const {graph}=adjacency(fs),frames=Array(fs.length).fill(null),parents=Array(fs.length).fill(null);if(!fs.length)return{frames,parents,graph,cycle:false};frames[0]={o:[0,0,0],r:[1,0,0],d:[0,1,0],n:[0,0,1]};const queue=[0];let cycle=false;
-  while(queue.length){const i=queue.shift();for(const e of graph[i]){const next=child(frames[i],e.dir,size(fs[i]),size(fs[e.to]),progress*Math.PI/2);if(!frames[e.to]){frames[e.to]=next;parents[e.to]={from:i,dir:e.dir};queue.push(e.to)}else if(progress===1&&(!same(next.o,frames[e.to].o)||!same(next.n,frames[e.to].n)||!same(next.r,frames[e.to].r)))cycle=true}}
-  return{frames,parents,graph,cycle};
+ function folded(fs,progress=1,options={}){const {graph}=adjacency(fs),frames=Array(fs.length).fill(null),parents=Array(fs.length).fill(null);if(!fs.length)return{frames,parents,graph,cycle:false,order:[]};const root=options.root??0;
+  // Build the hinge tree first, so a child keeps following its parent's edge.
+  const queue=[root],order=[],seen=new Set(queue);let cycle=false;
+  for(let q=0;q<queue.length;q++){const i=queue[q];for(const e of graph[i])if(!seen.has(e.to)){seen.add(e.to);parents[e.to]={from:i,dir:e.dir};order.push(e.to);queue.push(e.to)}}
+  frames[root]=options.floor?{o:[0,0,0],r:[1,0,0],d:[0,0,-1],n:[0,1,0]}:{o:[0,0,0],r:[1,0,0],d:[0,1,0],n:[0,0,1]};
+  order.forEach((i,step)=>{const p=parents[i];let t=Math.max(0,Math.min(1,progress));if(options.sequential){t=Math.max(0,Math.min(1,(t*order.length-step)/.8));t=t*t*(3-2*t)}frames[i]=child(frames[p.from],p.dir,size(fs[p.from]),size(fs[i]),t*Math.PI/2)});
+  if(progress===1)for(const i of queue)for(const e of graph[i]){const next=child(frames[i],e.dir,size(fs[i]),size(fs[e.to]),Math.PI/2);if(!same(next.o,frames[e.to].o)||!same(next.n,frames[e.to].n)||!same(next.r,frames[e.to].r))cycle=true}
+  return{frames,parents,graph,cycle,order};
  }
  function corners(f,frame){const[w,h]=size(f);return[[0,0],[w,0],[w,h],[0,h]].map(([x,y])=>add(frame.o,add(scale(frame.r,x),scale(frame.d,y))))}
  function check(fs,dims){
