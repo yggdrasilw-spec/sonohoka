@@ -1,12 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
-  const topics = {add:'足し算',subtract:'引き算',multiply:'かけ算・九九',divide:'わり算',written:'筆算',place:'位取り・大きな数',units:'長さ・かさ・単位',shape:'図形・しきつめ',clock:'時計・時間',ratio:'倍・割合',number:'数感覚・数の性質',words:'国語・作文・辞書',characters:'漢字・書き順・かな',english:'英語・フォニックス',games:'ゲーム・対戦',classroom:'学級・生活',ai:'AI・画像認識',voice:'音声つき'};
+  const topics = {add:'足し算',subtract:'引き算',multiply:'かけ算・九九',divide:'わり算',written:'筆算',place:'位取り・大きな数',units:'長さ・かさ・単位',shape:'図形・しきつめ',clock:'時計・時間',ratio:'倍・割合',number:'数感覚・数の性質',functions:'関数・グラフ',words:'国語・作文・辞書',characters:'漢字・書き順・かな',english:'英語・フォニックス',games:'ゲーム・対戦',classroom:'学級・生活',ai:'AI・画像認識',voice:'音声つき'};
   const usages = {understand:'意味・仕組みを学ぶ',practice:'問題を練習する',game:'ゲームで学ぶ',create:'書く・作品を作る',teacher:'学級・生活を支援する',experiment:'技術・観察を体験する'};
+  const gradeLabel = grade => grade === 'j2' ? '中学2年' : grade + '年';
   const normalize = text => String(text).normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/([1-6])年生/g,'$1年').replace(/\s+/g,' ').trim();
   const aliases = [['足し算','たしざん','足しざん','たし算','加算'],['引き算','ひきざん','引きざん','ひき算','減算'],['かけ算','かけざん','掛け算','九九','乗算'],['わり算','わりざん','割り算','割算','除算'],['筆算','ひっさん'],['時計','とけい','時刻'],['漢字','かんじ'],['書き順','かきじゅん','筆順'],['図形','ずけい'],['しきつめ','敷き詰め','敷詰め','敷きつめ','タイリング'],['そろばん','算盤'],['長さ','ながさ'],['単位','たんい'],['位取り','くらいどり'],['ひらがな','平仮名'],['かたかな','片仮名']].map(a=>a.map(normalize));
   const tokenize = text => normalize(text).split(' ').filter(Boolean);
   const cards = [...document.querySelectorAll('.card')];
-  const items = cards.map(card => ({card,id:Number(card.dataset.registerOrder),title:card.querySelector('h3').textContent,grades:(card.dataset.grades||'').split(',').filter(Boolean),main:Number(card.dataset.mainGrade)||99,category:card.dataset.category,audience:card.dataset.audience,usage:card.dataset.usage,topics:card.dataset.topics.split(',').filter(Boolean),text:normalize([card.textContent,card.dataset.category,...(card.dataset.grades||'').split(',').filter(Boolean).map(g=>g+'年')].join(' '))}));
+  const items = cards.map(card => ({card,id:Number(card.dataset.registerOrder),title:card.querySelector('h3').textContent,grades:(card.dataset.grades||'').split(',').filter(Boolean),main:Number(card.dataset.mainGrade)||99,category:card.dataset.category,audience:card.dataset.audience,usage:card.dataset.usage,topics:card.dataset.topics.split(',').filter(Boolean),text:normalize([card.textContent,card.dataset.category,...(card.dataset.grades||'').split(',').filter(Boolean).map(gradeLabel)].join(' '))}));
   $('appCount').textContent = `${items.length}本`;
   items.forEach(item=>item.card.querySelector('[data-usage-label]').textContent=usages[item.usage]);
   const state = {q:'',grade:'all',category:'all',usage:'all',audience:'all',topics:new Set(),sort:'mainGrade'};
@@ -43,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('searchClearBtn').hidden=!state.q;
     $('resetFiltersBtn').hidden=!state.q&&state.grade==='all'&&state.category==='all'&&state.usage==='all'&&state.audience==='all'&&!state.topics.size;
     document.querySelectorAll('[data-topic]').forEach(b=>b.setAttribute('aria-pressed',String(state.topics.has(b.dataset.topic))));
-    [...$('gradeSelect').options].forEach(o=>{const common=i=>['common','teacher'].includes(i.audience);const n=items.filter(i=>matches(i,'grade')&&(o.value==='all'||(o.value==='common'?common(i):i.grades.includes(o.value)||common(i)))).length;o.textContent=(o.value==='all'?'すべての学年':o.value==='common'?'学年共通・先生用':o.value+'年')+`（${n}）`});
+    [...$('gradeSelect').options].forEach(o=>{const common=i=>['common','teacher'].includes(i.audience);const n=items.filter(i=>matches(i,'grade')&&(o.value==='all'||(o.value==='common'?common(i):i.grades.includes(o.value)||common(i)))).length;o.textContent=(o.value==='all'?'すべての学年':o.value==='common'?'学年共通・先生用':gradeLabel(o.value))+`（${n}）`});
     $('activeFilters').replaceChildren();if(state.q)activeButton(`検索：${state.q}`,()=>{state.q='';$('searchInput').value=''});
     ['category','grade','usage','audience'].forEach(key=>{if(state[key]!=='all'){const label=$(controls[key]).selectedOptions[0].textContent.replace(/（\d+）$/,'');activeButton(label,()=>{state[key]='all';$(controls[key]).value='all'})}});
     state.topics.forEach(t=>activeButton(topics[t],()=>state.topics.delete(t)));
