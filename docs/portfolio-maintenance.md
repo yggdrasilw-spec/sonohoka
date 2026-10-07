@@ -30,3 +30,9 @@
 `node scripts/preview-portfolio.cjs` で `http://127.0.0.1:8954/app_links_portfolio.html` を開く。
 
 再収録は `node scripts/capture-portfolio-missing.cjs N`、書き出しは `python scripts/encode-portfolio-missing.py N`。ローカルの各アプリのチェックアウト、Playwright、Chrome、Pillow、FFmpegが必要。さんすうステップは録画専用サーバー（8952番）を起動しておく。実行環境のパスはスクリプトに明示している。
+
+## 2026年10月6日の教材追加
+
+教材番号80「おはなしの しき（文章題ラボ）」と81「おはなしを 図にしよう（テープ図）」を追加し、掲載数を81本に更新した。紹介文、対象学年、検索用タグ、起動リンクと実画面のPNGを用意した。字幕付き10秒以内の紹介動画とPNGサムネイルも追加した。動画なしのカードは77〜79の3本。採用区間は `scripts/portfolio-demos-80-81.json`、ローカル録画は `.portfolio-work/demo-80` と `demo-81` に保存。再収録は `node scripts/capture-portfolio-80-81.cjs`、書き出しは `python scripts/encode-portfolio-missing.py 80 81`。土堂教材ライブラリは非公開開発版のため一覧に追加しない。
+
+`node scripts/qa-portfolio.cjs` で81本の件数・分類・検索・並び順・画像・スマートフォン表示を確認する。

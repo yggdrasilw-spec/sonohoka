@@ -1,0 +1,30 @@
+const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const E=require('../tape-diagram/extension-engine.js');
+assert.equal(E.percent({base:20,compared:8,unknown:'ratio'}).percent,40);
+assert.equal(E.percent({base:20,compared:30,unknown:'ratio'}).ratio,1.5);
+assert.equal(E.percent({base:8,compared:20,unknown:'ratio'}).percent,250);
+assert.equal(E.percent({base:20,compared:0,unknown:'ratio'}).ratio,0);
+assert.throws(()=>E.percent({base:0,compared:8,unknown:'ratio'}));
+assert.throws(()=>E.percent({base:20,compared:0,unknown:'base'}));
+const ratio=E.ratio({a:2,b:3,total:30});assert.equal(ratio.one,6);assert.equal(ratio.left,12);assert.equal(ratio.right,18);assert.throws(()=>E.ratio({a:2,b:3,total:31}));
+const out='C:/Users/user/.cache/tape-diagram-qa';fs.mkdirSync(out,{recursive:true});
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});try{
+ const page=await browser.newPage({viewport:{width:1280,height:1000},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('file:///C:/Users/user/sonohoka/tape-diagram/index.html');assert(await page.locator('#intro').isVisible());await page.locator('#extendButton').click();assert(await page.locator('#intro').isHidden());assert(await page.locator('#extension').isVisible());
+ await page.locator('#extensionActions button').first().click();assert(await page.locator('.extensionDiagram.lineMode').count());assert((await page.locator('#extensionStory').textContent()).includes('15本'));await page.screenshot({path:out+'/segments-desktop.png',fullPage:true});
+ await page.locator('#extensionModes button').nth(1).click();assert((await page.locator('#extensionStory').textContent()).includes('8冊'));assert((await page.locator('#extensionScene').textContent()).includes('□倍'));await page.locator('#extensionActions button').first().click();assert((await page.locator('.equation').textContent()).includes('8 ÷ 20 ＝ 0.4倍'));
+ const pairs=await page.locator('.partCorrespondence').evaluate(n=>[n.getAttribute('x1'),n.getAttribute('x2')]);assert.equal(pairs[0],pairs[1]);
+ await page.locator('#extensionActions button').nth(1).click();await page.locator('#extensionActions button').first().click();assert((await page.locator('.equation').textContent()).includes('20 ÷ 8 ＝ 2.5倍'));assert((await page.locator('#extensionScene').textContent()).includes('250％'));
+ await page.getByRole('button',{name:'150％の例',exact:true}).click();await page.locator('#extensionActions button').first().click();assert((await page.locator('#extensionScene').textContent()).includes('150％'));assert(await page.locator('.baseCorrespondence').evaluate(n=>Number(n.getAttribute('x1'))<Number(document.querySelector('.partCorrespondence').getAttribute('x1'))));await page.screenshot({path:out+'/percent-150-desktop.png',fullPage:true});
+ for(const unknown of ['compared','base']){await page.locator('#extUnknown').selectOption(unknown);await page.locator('#extensionSettings button').click();assert((await page.locator('#extensionStory').textContent()).includes('□冊'));await page.locator('#extensionActions button').first().click();assert((await page.locator('.equation').textContent()).includes(unknown==='compared'?'20 × 1.5 ＝ 30冊':'30 ÷ 1.5 ＝ 20冊'));}
+ await page.locator('#extUnknown').selectOption('ratio');await page.locator('#extCompared').fill('0');await page.locator('#extensionSettings button').click();assert(await page.locator('#extensionActions button').nth(1).isDisabled());await page.locator('#extensionActions button').first().click();assert((await page.locator('.equation').textContent()).includes('0 ÷ 20 ＝ 0倍'));
+ await page.locator('#extensionModes button').nth(2).click();await page.locator('#extensionActions button').nth(1).click();assert((await page.locator('#extensionScene').textContent()).includes('30 ÷（2 ＋ 3）＝ 6こ'));assert((await page.locator('#extensionScene').textContent()).includes('12こ'));assert((await page.locator('#extensionScene').textContent()).includes('18こ'));await page.locator('#extensionActions button').first().click();assert(await page.locator('.extensionDiagram.lineMode').count());
+ await page.locator('#extTotal').fill('31');await page.locator('#extensionSettings button').click();assert((await page.locator('#extensionError').textContent()).includes('5の倍数'));assert((await page.locator('#extensionStory').textContent()).includes('30こ'));
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:out+'/ratio-mobile.png',fullPage:true});
+ await page.locator('#extensionModes button').nth(1).click();await page.getByRole('button',{name:'40％の例',exact:true}).click();await page.locator('#extensionActions button').first().click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:out+'/percent-mobile.png',fullPage:true});
+ await page.locator('#introButton').click();assert(await page.locator('#intro').isVisible());assert(await page.locator('#extension').isHidden());
+ // The normal lesson also keeps its quantities and arcs when its tape becomes a segment.
+ await page.evaluate(()=>TapeLessonApp.start(TAPE_LESSONS[0],7));const before=await page.locator('#scene').textContent();const arcs=await page.locator('#scene .brace').count();await page.locator('.viewToggle').click();assert.equal(await page.locator('#scene').textContent(),before);assert.equal(await page.locator('#scene .brace').count(),arcs);assert(await page.locator('#scene .lineMode').count());
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,segmentTransition:true,percent:[0,40,150,250],unknowns:['ratio','compared','base'],ratio:'30 as 2:3 = 12:18',mobileOverflow:false},null,2));
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
