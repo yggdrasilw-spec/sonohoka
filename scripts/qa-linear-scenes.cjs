@@ -9,6 +9,7 @@ const {chromium} = require('C:/Users/user/.cache/codex-runtimes/codex-primary-ru
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(pathToFileURL(require('node:path').resolve('ichiji_kansu_lab_v11.html')).href);
+  await require('./linear-solve-test-helper.cjs')(page);
   await page.locator('#startBtn').click();
   assert.equal(await page.locator('.sceneDrawing').getAttribute('aria-label'), '土台3cmに2cmのブロックが0個。全体は3cm。');
   await page.locator('#exploreXPlus').click();

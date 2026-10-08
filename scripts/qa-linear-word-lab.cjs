@@ -8,6 +8,7 @@ let qaBrowser;
  const page=await browser.newPage({viewport:{width:1600,height:900}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(pathToFileURL(require('node:path').resolve('ichiji_kansu_lab_v11.html')).href);
+ await require('./linear-solve-test-helper.cjs')(page);
  await page.locator('#chooseCourse').click();await page.locator('#syllabusWords').click();
  assert.equal(await page.locator('[data-word]').count(),20);
  const expected=[[410],[600],[10],[40],[4],[500],[300],[60],[5],[1.5],[16],[6],[16],[1500],[12],[24],[2,5],[250,500],[],[0,4]];
