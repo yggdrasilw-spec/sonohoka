@@ -52,6 +52,14 @@ button{touch-action:manipulation}
 .top-actions .lesson-share-launcher{margin:0;padding:8px 11px;font-size:14px;font-weight:900}
 .icon-btn{border:1px solid #dbe0e5;background:#fff;border-radius:12px;padding:8px 11px;font-weight:900;cursor:pointer;color:#43505b}
 .icon-btn:disabled{opacity:.45;cursor:not-allowed}
+.lesson-jump-btn{background:var(--blue2);border-color:#a7c5ed;color:#245aa0}
+.lesson-jump-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:12px}
+.lesson-jump-card{border:2px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+.lesson-jump-card.current{border-color:var(--blue);background:#f5f9ff}
+.lesson-jump-card h3{font-size:18px;margin:0 0 8px}
+.lesson-jump-card select{width:100%;padding:10px;border:1px solid #bdc8d3;border-radius:10px;background:#fff;font:inherit;margin:8px 0}
+.lesson-jump-card .secondary{margin-top:6px}
+.lesson-jump-card label{display:block;font-size:13px;font-weight:800;margin-top:12px}
 .step-dots{display:flex;gap:5px;margin-top:7px}
 .step-dot{height:6px;flex:1;border-radius:999px;background:#e3e6e9}
 .step-dot.done{background:#69b58a}.step-dot.current{background:#4f8fde}
@@ -265,6 +273,7 @@ button{touch-action:manipulation}
       <button id="startBtn" class="big-btn" type="button">じゅんばんに学ぶ</button>
       <button id="shortStartBtn" class="secondary" type="button" aria-label="大事なところだけを学ぶコース">大事なところだけ学ぶ</button>
       <button id="resumeBtn" class="secondary hidden" type="button">つづきから</button>
+      <button id="coverLessonJumpBtn" class="secondary" type="button">時間・内容をえらぶ</button>
       <button class="secondary" type="button" onclick="LessonShare.open()">⚙️ 設定・配布URL</button>
     </div>
     <!-- 先生コード接続エリア -->
@@ -306,6 +315,7 @@ button{touch-action:manipulation}
       <div id="stepDots" class="step-dots" aria-hidden="true"></div>
     </div>
     <div class="top-actions">
+      <button id="lessonJumpBtn" class="icon-btn lesson-jump-btn" type="button">時間・内容をえらぶ</button>
       <button id="topTeacherStatusBtn" class="icon-btn" type="button" title="先生との接続状態">⚪ <span id="topTeacherStatusText">先生未接続</span></button>
       <button id="speakBtn" class="icon-btn" type="button" title="画面の文を読み上げる">🔊 <span class="text-label">よむ</span></button>
       <button id="pauseBtn" class="icon-btn" type="button" title="ここで休む">休む</button>
@@ -346,6 +356,14 @@ button{touch-action:manipulation}
         <button id="teacherHelpBackBtn" class="secondary" type="button">もどる</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="lessonJumpModal" class="modal" aria-hidden="true">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="lessonJumpTitle" tabindex="-1">
+    <div class="dialog-head"><h2 id="lessonJumpTitle">時間・内容をえらぶ</h2><button class="close-btn" data-close="lessonJumpModal" type="button">閉じる</button></div>
+    <p class="lesson-note">今日の内容へ、途中からでも移動できます。細かい場面をえらぶこともできます。学習の記録は残り、飛ばした内容は完了になりません。</p>
+    <div id="lessonJumpBody" class="lesson-jump-grid"></div>
   </div>
 </div>
 
@@ -722,6 +740,7 @@ function buildLcmAnimation(parent){
 /* ---------- 画面描画 ---------- */
 function renderScene(index){
   clearAnimTimers();
+  nextBtn.onclick=null;
   currentSceneIndex=Math.max(0,Math.min(SCENES.length-1,index));currentQuiz=null;nextOverride=null;clearFeedback();
   const s=SCENES[currentSceneIndex];const r=activeRoute(),rpos=routePosition(currentSceneIndex);if(r&&rpos>=0)pathState.routePos=rpos;pathState.sceneIndex=currentSceneIndex;pathState.started=true;pathState.lastSeen=now();save(STORAGE.PATH,pathState);
   $('#stepChip').textContent='STEP '+s.step+'　'+STEP_NAMES[s.step];$('#kicker').textContent=s.kicker||'';$('#lessonTitle').textContent=s.title||'';$('#lessonText').textContent=s.text||'';
@@ -982,7 +1001,50 @@ function renderFinishQuiz(s){
 /* ---------- 移動 ---------- */
 function goNext(){if(nextOverride){const f=nextOverride;nextOverride=null;f();return}const s=SCENES[currentSceneIndex];if(s.type==='quiz'&&!currentQuiz?.completed){if(currentQuiz?.activeQuestion){setFeedback('答えを選ぶか入れてから、右下のボタンを押そう。','info')}return}if(s.type==='finalSummary'){pathState.sceneIndex=0;pathState.started=false;save(STORAGE.PATH,pathState);showCover();return}if(isLastSceneOfStep(currentSceneIndex)&&!pathState.completedSteps.includes(s.step)){pathState.completedSteps.push(s.step);pathState.completedSteps.sort((a,b)=>a-b);save(STORAGE.PATH,pathState)}if(currentSceneIndex<SCENES.length-1)renderScene(currentSceneIndex+1)}
 function goBack(){if(nextOverride){nextOverride=null;renderScene(currentSceneIndex);return}if(currentSceneIndex>0)renderScene(currentSceneIndex-1)}
-nextBtn.addEventListener('click',goNext);backBtn.addEventListener('click',goBack);
+nextBtn.addEventListener('click',()=>{if(!nextBtn.onclick)goNext()});backBtn.addEventListener('click',goBack);
+
+/* ---------- 授業中の内容選択 ---------- */
+let lessonJumpOpener=null;
+function jumpToLesson(index){
+  if('speechSynthesis'in window)window.speechSynthesis.cancel();
+  // コースに含まれない場面を選んだときは、そこから順番に学ぶ。
+  if(activeRoute()&&routePosition(index)<0)setCourseMode('full');
+  closeModal($('#lessonJumpModal'));
+  showApp();
+  if(window.TeacherBridge)TeacherBridge.resume();
+  renderScene(index);
+  $('#lessonTitle').setAttribute('tabindex','-1');
+  $('#lessonTitle').focus();
+}
+function openLessonJump(event){
+  lessonJumpOpener=event.currentTarget;
+  const body=$('#lessonJumpBody');body.innerHTML='';
+  STEP_NAMES.forEach((name,step)=>{
+    const current=pathState.started&&SCENES[currentSceneIndex].step===step;
+    const card=el('section','lesson-jump-card'+(current?' current':''),body);
+    el('h3','',card,'STEP '+step+'　'+name);
+    if(current)el('div','lesson-note',card,'いま学習している内容');
+    const start=el('button','secondary',card,'この内容のはじめへ');start.type='button';
+    start.onclick=()=>jumpToLesson(sceneStepStart(step));
+    const label=el('label','',card,'細かい場面から');label.htmlFor='lessonJumpScene'+step;
+    const select=el('select','',card);select.id=label.htmlFor;
+    SCENES.forEach((s,index)=>{if(s.step!==step)return;const option=el('option','',select,scenePosInStep(index)+'　'+s.title);option.value=String(index)});
+    if(current)select.value=String(currentSceneIndex);
+    const go=el('button','secondary',card,'えらんだ場面へ');go.type='button';go.onclick=()=>jumpToLesson(Number(select.value));
+  });
+  openModal($('#lessonJumpModal'));
+  $('#lessonJumpModal .close-btn').focus();
+}
+$('#lessonJumpBtn').addEventListener('click',openLessonJump);
+$('#coverLessonJumpBtn').addEventListener('click',openLessonJump);
+$('#lessonJumpModal').addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();closeModal($('#lessonJumpModal'));return}
+  if(event.key!=='Tab')return;
+  const controls=[...$('#lessonJumpModal').querySelectorAll('button,select')];
+  const first=controls[0],last=controls.at(-1);
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+});
 
 /* ---------- 読み上げ ---------- */
 $('#speakBtn').addEventListener('click',()=>{if(!('speechSynthesis'in window))return;window.speechSynthesis.cancel();const parts=[$('#lessonTitle').textContent,$('#lessonText').textContent,$('#lessonMain').innerText,$('#feedback').innerText].filter(Boolean);const u=new SpeechSynthesisUtterance(parts.join('。'));u.lang='ja-JP';u.rate=.9;window.speechSynthesis.speak(u)});
@@ -1062,7 +1124,7 @@ function renderPractice(list,pos){const body=$('#practiceBody');body.innerHTML='
 
 /* ---------- モーダル ---------- */
 function openModal(m){m.classList.add('open');m.setAttribute('aria-hidden','false')}
-function closeModal(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}
+function closeModal(m){m.classList.remove('open');m.setAttribute('aria-hidden','true');if(m.id==='lessonJumpModal')lessonJumpOpener?.focus()}
 $$('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(document.getElementById(b.dataset.close))));$$('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m)}));
 
 /* ---------- 起動 ---------- */
