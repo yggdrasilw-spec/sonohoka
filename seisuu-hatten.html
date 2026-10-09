@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>整数のせいしつ　発展ラボ</title>
+<style>
+:root{--paper:#fdfdf8;--grid:#d9e6f2;--ink:#243447;--red:#d6336c;--org:#f08c00;--blue:#1c7ed6;--grn:#2f9e44}
+*{box-sizing:border-box}
+html{font-size:min(1.04vw,1.85vh)}
+html,body{height:100%;margin:0}
+body{overflow:hidden;color:var(--ink);font-family:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Meiryo",sans-serif;background:var(--paper);
+background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:1.2rem 1.2rem}
+.app{width:100vw;height:100vh;display:grid;grid-template-columns:23% 1fr 29%;grid-template-rows:auto 1fr;gap:.6rem;padding:.6rem}
+header{grid-column:1/4;display:flex;align-items:center;gap:.9rem}
+h1{font-size:1.2rem;margin:0;white-space:nowrap}
+#tabs{display:flex;gap:.4rem;flex:1}
+#tabs button{flex:1;padding:.5rem .3rem;border:.12rem solid var(--ink);background:#fff;border-radius:.5rem;font:inherit;font-size:1.05rem;font-weight:bold;cursor:pointer}
+#tabs button.on{background:var(--red);color:#fff;border-color:var(--red)}
+section{background:#fff;border:.14rem solid var(--ink);border-radius:.7rem;padding:.9rem;min-height:0;min-width:0}
+#left{display:flex;flex-direction:column;gap:1rem;overflow:auto}
+#q{font-size:1.2rem;line-height:1.75}
+#q b,.t b{color:var(--red)}
+#inp{display:flex;flex-wrap:wrap;gap:.8rem;align-items:end;border-top:.1rem dashed #adb5bd;padding-top:1rem}
+#inp label{font-size:1rem;display:flex;flex-direction:column;gap:.2rem}
+#inp input{width:6rem;font:inherit;font-size:1.5rem;padding:.2rem;border:.15rem solid var(--blue);border-radius:.4rem}
+button{font:inherit;color:var(--ink)}
+#rnd,#fs,#ctl button,.sb{padding:.45rem .8rem;border:.12rem solid var(--ink);background:#fff;border-radius:.5rem;cursor:pointer;font-weight:bold;font-size:1.05rem}
+.sb{margin:.2rem .3rem .2rem 0}
+#ctl .go{background:var(--blue);color:#fff;border-color:var(--blue)}
+button:focus-visible,input:focus-visible{outline:.2rem solid var(--org);outline-offset:.15rem}
+button:disabled{opacity:.35;cursor:default}
+#fig{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;overflow:hidden;background:#fffefa}
+#fig svg{flex:1 1 0;min-height:0;width:100%;max-width:none!important}
+#right{display:flex;flex-direction:column;gap:.6rem}
+#txt{flex:1;overflow:auto;min-height:0}
+#ctl{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;border-top:.1rem dashed #adb5bd;padding-top:.6rem;font-size:1.05rem}
+.t{font-size:1.2rem;line-height:1.8;margin:.6rem 0;background:#f8fafc;border-left:.35rem solid #adb5bd;border-radius:.4rem;padding:.4rem .8rem}
+.tb,b.tb{color:var(--blue)!important}.tg,b.tg{color:var(--grn)!important}.tp,b.tp{color:#e64980!important}.ty,b.ty{color:#d98e00!important}.tk,b.tk{color:#8d5524!important}.ta,b.ta{color:#e64980!important}
+#inp label.tb{color:var(--blue)}#inp label.tg{color:var(--grn)}#inp label.tk{color:#8d5524}#inp label.ta{color:#e64980}
+.stt{font-size:1.15rem;font-weight:bold;background:var(--ink);color:#fff;padding:.35rem .8rem;border-radius:.4rem;margin-bottom:.4rem}
+select{font:inherit;font-size:1.1rem;padding:.3rem;border:.15rem solid var(--blue);border-radius:.4rem;background:#fff}
+.tok{transition:transform .8s cubic-bezier(.35,0,.2,1),opacity .6s}.tok rect{transition:fill .6s,stroke .6s}
+.veh{opacity:0;transform-box:fill-box;transform-origin:center}.veh.stay{opacity:1}.veh.go{animation:dep .9s ease-in forwards}
+@keyframes dep{0%{opacity:0;transform:scale(.3)}25%{opacity:1;transform:scale(1)}100%{opacity:0;transform:translateX(70px)}}
+.dc{cursor:grab;touch-action:none}svg.dr{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.dc.drag{cursor:grabbing}.dc.anim{transition:transform .55s cubic-bezier(.35,0,.2,1)}.dc rect{transition:fill .3s,stroke .3s}
+.glow{animation:glw .9s ease-in-out infinite alternate}@keyframes glw{from{filter:drop-shadow(0 0 0 transparent)}to{filter:drop-shadow(0 0 10px var(--gc,#e64980))}}
+.go2{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
+.figp{font-size:1.5rem;line-height:2.3;align-self:stretch}.figp .chip{font-size:1.4rem}
+.cards,.row{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin:.4rem 0;font-size:1.7rem}
+.card,.slot{width:5.2rem;height:6.2rem;border:.2rem solid var(--ink);border-radius:.6rem;background:#ffe9b8;display:flex;align-items:center;justify-content:center;font-size:3.4rem;font-weight:bold;position:relative}
+.slot{background:#fff}.slot small{position:absolute;top:0;left:.3rem;font-size:.8rem;font-weight:normal}
+.card.ev,.slot.ev{background:#ffd8a8;border-color:var(--org)}
+.chip{display:inline-block;min-width:2.2rem;text-align:center;padding:.1rem .5rem;margin:.12rem;border-radius:1rem;background:#edf2f7;font-weight:bold;font-size:1.1rem}
+.chip.hi{background:var(--blue);color:#fff}.chip.hi.cg{background:var(--grn)}.chip.hi.big{background:var(--red);transform:scale(1.2)}
+.chip.pr{background:var(--grn);color:#fff}.chip.co{outline:.12rem solid var(--red);outline-offset:.08rem}
+.ans{border:.2rem solid var(--red);border-radius:.7rem;color:var(--red);font-size:1.7rem;font-weight:bold;padding:.4rem 1rem;margin:.6rem 0;display:inline-block;background:#fff5f8}
+table{border-collapse:collapse;margin:.4rem 0;font-size:1.1rem}td,th{border:.08rem solid #adb5bd;padding:.2rem .6rem;text-align:center}th{background:#e7f5ff;font-size:.9rem}
+.mv{transition:transform .7s cubic-bezier(.35,0,.2,1)}
+.dv{transition:transform .6s cubic-bezier(.35,0,.2,1),opacity .2s}
+.pop{animation:pop .6s ease-out}@keyframes pop{from{opacity:0}to{opacity:1}}
+svg text{font-family:inherit}
+@media (prefers-reduced-motion:reduce){.dv{transition-duration:.01s}.dc.anim{transition-duration:.01s}.glow{animation:none}.veh.go{animation:none;opacity:1}.tok{transition-duration:.01s}.mv{transition-duration:.01s}.pop{animation:none}}
+@media (max-aspect-ratio:1/1){html{font-size:min(2.6vw,2.2vh)}body{overflow:auto}.app{height:auto;display:flex;flex-direction:column}#fig{min-height:70vw}#fig svg{flex:none;height:auto}#txt{overflow:visible}}
+
+/* Readable at school-tablet widths and browser zoom. */
+html{font-size:16px}body{overflow:auto}
+.app{height:auto;min-height:100svh;grid-template-columns:minmax(240px,23%) minmax(0,1fr) minmax(300px,29%);grid-template-rows:auto 1fr;align-items:start}
+header{grid-column:1/-1;flex-wrap:wrap;min-width:0}h1{white-space:normal;font-size:1.1rem;line-height:1.5;overflow-wrap:anywhere}
+#tabs{flex:1 1 100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}#tabs:empty{display:none}
+#tabs button{min-width:0;line-height:1.5;font-size:1rem;overflow-wrap:anywhere}
+button,select,input{min-height:44px}button{line-height:1.5}#fs{margin-left:auto}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #c15c00;outline-offset:3px}
+#left{overflow:visible}#fig{min-height:520px;overflow:visible;justify-content:flex-start;width:100%}
+#fig svg{flex:none;height:auto;max-height:560px;width:100%}#fig svg.dr{max-height:390px}
+#right{min-height:520px}#txt{overflow:visible}#q,.t{font-size:1.05rem;line-height:1.8}
+#ctl{margin-top:auto}.tb,b.tb{color:#145ca4!important}.tg,b.tg{color:#237833!important}.ty,b.ty{color:#885300!important}.tp,b.tp,.ta,b.ta{color:#aa205b!important}
+#inp{gap:.6rem}#inp label{max-width:100%}#inp input{width:5rem;font-size:1.25rem}#inp select{max-width:100%}
+.figp{font-size:1.1rem;line-height:1.8;width:100%}.figp .chip{font-size:1.05rem}
+.card-tools{width:100%;padding:.7rem;background:#f3f7fc;border:1px solid #b9c9da;border-radius:.6rem;font-size:1rem;line-height:1.6}
+.card-tools p{margin:.2rem 0 .6rem}.tool-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0}
+.tool-row button{border:2px solid #243447;border-radius:.5rem;background:#fff;padding:.4rem .6rem;font-size:1rem;min-width:60px}
+.tool-row button[aria-pressed=true]{background:#ffe9b8;border-color:#b65300;box-shadow:0 0 0 2px #b65300}
+.groups{width:100%;display:grid;gap:.6rem}.group-box{border:2px solid #b9c9da;padding:.7rem;border-radius:.7rem;background:#f7faff;font-size:1.1rem;line-height:1.65}
+.group-box.chosen{border:3px solid #b62959;background:#fff4f8}.group-box strong{font-size:1.3rem}.group-box span{display:block}
+details{margin:.7rem 0;width:100%}summary{cursor:pointer;padding:.5rem;border:1px solid #b9c9da;border-radius:.5rem;line-height:1.6;font-size:1rem}
+.number-list{display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem 0}.number-list span{padding:.3rem .5rem;background:#eef3f8;border-radius:.3rem;font-size:1rem}
+.step-select{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;width:100%;font-size:1rem}.step-select select{max-width:100%;width:100%}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.notice{padding:.7rem;border-left:4px solid #b62959;background:#fff4f8;font-size:1rem;line-height:1.8}
+.chip{max-width:100%}table{width:100%;font-size:1rem}td,th{padding:.3rem;overflow-wrap:anywhere}.ans{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:1199px){.app{grid-template-columns:minmax(240px,32%) minmax(0,1fr)}#right{grid-column:1/-1;min-height:0}#fig{min-height:420px}}
+@media(max-width:760px){html{font-size:16px}.app{display:flex;flex-direction:column;padding:.5rem;gap:.6rem}.app>header,.app>section{width:100%}#tabs{grid-template-columns:repeat(2,minmax(0,1fr))}#fig{min-height:0;padding:.7rem}#fig svg{height:auto;min-height:0;max-height:none}#right{min-height:0}#inp{gap:.5rem}#ctl{position:static}.t{padding:.5rem .6rem}.group-box{font-size:1rem}.figp{font-size:1rem}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style></head><body>
+<div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><div class="app">
+<header><h1>整数のせいしつ　発展ラボ</h1><div id="tabs" role="tablist"></div><button id="fs">全画面</button></header>
+<section id="left"><div id="q"></div><div id="inp"></div><p id="inputNotice" class="notice" role="status" hidden></p></section>
+<section id="fig"></section>
+<section id="right" role="tabpanel" aria-labelledby="tab-0"><div id="txt"></div>
+<div id="ctl"><button id="bk">◀ もどる</button><button id="nx" class="go">つぎへ ▶</button><button id="all">ぜんぶ見る</button><span id="cnt"></span><label class="step-select">見たい場面へ<select id="stepJump" aria-label="見たい場面へ移動"></select></label></div></section>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const gcd=(a,b)=>b?gcd(b,a%b):a, lcm=(a,b)=>a/gcd(a,b)*b;
+const divs=n=>[...Array(n)].map((_,i)=>i+1).filter(i=>n%i==0);
+const mul=(n,m)=>{const r=[];for(let k=n;k<=m;k+=n)r.push(k);return r};
+const chips=(l,hi,big,co=[],cl='')=>l.slice(0,100).map(x=>`<span class="chip ${hi.includes(x)?'hi'+(x===big?' big':'')+(cl?' '+cl:''):''}${co.includes(x)?' co':''}">${x}</span>`).join('')+(l.length>100?'…':'');
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const dots=(n,c,x,y,col,sq)=>{let s='';for(let i=0;i<n;i++){const X=x+(i%c)*18,Y=y+Math.floor(i/c)*18;
+ s+=sq?`<rect x="${X-7}" y="${Y-5}" width="14" height="10" rx="3" fill="${col}"/>`:`<circle cx="${X}" cy="${Y}" r="7" fill="${col}"/>`}return s};
+const GUMMY='#ed8c38', CANDY=['#e64980','#1c7ed6','#2f9e44','#f08c00'];
+const candyDots=(n,c,x,y)=>{let s='';for(let i=0;i<n;i++)s+=dots(1,1,x+(i%c)*18,y+Math.floor(i/c)*18,CANDY[i%4],1);return s};
+
+const G={dp:0,pd:0,cn:1,rn:1,last:'',max:0,pos:null,dv:1,ps:-1,an:0,auto:0,tk:null,tr:[-1,-1,-1],hint:0,msg:'',bad:[],ok:0};
+function share(a,b,g,x,y){
+ const per=Math.min(g,6),bw=86,bh=(Math.ceil(x/4)+Math.ceil(y/4))*18+30,pr=Math.max(Math.ceil(a/10),Math.ceil(b/10)),py=26+pr*18+16,rows=Math.ceil(g/per),H=py+rows*(bh+10)+8;
+ const bx=p=>8+(p%per)*(bw+10),by=p=>py+Math.floor(p/per)*(bh+10),M=g*2;
+ G.max=M;
+ G.pos=(k,i,st)=>{const n=k?y:x,p=Math.floor(i/n),j=i%n;
+  if(p*2+k<st)return[bx(p)+14+(j%4)*18,by(p)+30+(k?Math.ceil(x/4)*18:0)+Math.floor(j/4)*18];
+  return[(k?366:26)+(i%10)*18,26+Math.floor(i/10)*18]};
+ let sv=`<text x="20" y="14" font-size="14" font-weight="bold" fill="#8d5524">グミ ${a}個</text><text x="360" y="14" font-size="14" font-weight="bold" fill="#e64980">ラムネ ${b}個</text>`;
+ for(let p=0;p<g;p++)sv+=`<rect x="${bx(p)}" y="${by(p)}" width="${bw}" height="${bh}" rx="8" fill="#fff" stroke="#243447" stroke-width="2"/><text x="${bx(p)+6}" y="${by(p)+15}" font-size="12">${p+1}袋め</text>`;
+ for(let k=0;k<2;k++)for(let i=0;i<(k?b:a);i++){const[X,Y]=G.pos(k,i,G.pd),n=k?y:x;
+  sv+=`<g class="mv" data-k="${k}" data-i="${i}" data-j="${i%n}" data-m="${Math.floor(i/n)*2+k}" style="transform:translate(${X}px,${Y}px)">${k?`<rect x="-7" y="-5" width="14" height="10" rx="3" fill="${CANDY[i%4]}"/>`:`<circle r="7" fill="${GUMMY}"/>`}</g>`}
+ const m=G.dp,nm=(q)=>{const p=Math.floor(q/2),k=q%2;return`${p+1}袋めに ${k?'ラムネ':'グミ'}を <b>${k?y:x}個</b>（${k?b:a}÷${g}）`};
+ let msg=m==0?`はじめはまだ1つも分けていません。1袋分を1種類ずつ配ってみましょう。<br>つぎ：${nm(0)}`:m>=M?`${nm(m-1)} 配りました。これで全袋に配り終わりました。`:`${nm(m-1)} 配りました。<br>つぎ：${nm(m)}`;
+ let h=`<svg class="sh" viewBox="0 0 640 ${H}">${sv}</svg><p class="t">${msg}</p>
+ <div><button class="sb" id="dn" ${m>=M?'disabled':''}>▶ 1種類ずつ配る</button><button class="sb" id="da">${UI.autoplay?'⏸ 自動配りを止める':'▶▶ 自動で配る'}</button><button class="sb" id="dr">もどす</button></div>`;
+ if(m>=M)h+=`<p class="t">${a}÷${g}＝<b>${x}</b>　${b}÷${g}＝<b>${y}</b></p><div class="ans">1袋の中身　グミ${x}個、ラムネ${y}個</div>`;
+ return h}
+function divfind(a,nm,k){
+ const mx=Math.floor(Math.sqrt(a)),n=Math.min(G.dv,mx),done=n>=mx;
+ let rows='',found=[],pairs=[];
+ for(let i=1;i<=n;i++){const q=Math.floor(a/i),r=a%i;
+  rows+=`<tr><td>${a}÷${i}</td><td>＝ ${q}${r?`　あまり ${r}`:''}</td><td>${r?'×':'<b>○</b>'}</td><td>${r?'':`<span class="chip hi">${i}</span> と <span class="chip pr">${q}</span>`}</td></tr>`;
+  if(!r){pairs.push(`${i}×${q}`);found.push(i);if(q!=i)found.push(q)}}
+ found.sort((p,q)=>p-q);
+ const q=Math.floor(a/n),r=a%n,pair=!r&&q!=n;
+ // ---- figure: pool -> n boxes (and pair: q boxes), items move by CSS transition
+ const pp=i=>[26+(i%10)*18,40+Math.floor(i/10)*18],poolB=40+Math.ceil(a/10)*18;
+ const c=q>12?8:4,cw=c*16+12,bh=Math.ceil(q/c)*16+24,ay=poolB+14,aTop=ay+12;
+ const cw2=Math.min(n,4)*16+12,c2=Math.min(n,4),bh2=Math.ceil(n/c2)*16+24,per=Math.max(1,Math.floor(680/(cw2+8)));
+ const bTitle=aTop+bh+22,bTop=bTitle+12,H=pair?bTop+Math.ceil(q/per)*(bh2+8)+8:aTop+bh+14;
+ const step=Math.min(90,Math.floor(2600/a)),dB=a*step+1100;
+ const shape=(i,st)=>k?`<rect x="-6" y="-4" width="12" height="9" rx="3" fill="${CANDY[i%4]}" ${st}/>`:`<circle r="6" fill="${GUMMY}" ${st}/>`;
+ const item=(i,tx,ty,d,b,st)=>{const[px,py]=pp(i);return`<g class="dv" data-tx="${tx}" data-ty="${ty}" data-d="${d}" ${b?'data-b="1"':''} style="transform:translate(${px}px,${py}px);${b?'opacity:0':''}">${shape(i,st)}</g>`};
+ let sv=`<text x="20" y="22" font-size="14" font-weight="bold" fill="${k?'#e64980':'#8d5524'}">もとの ${k?'ラムネ':'グミ'} ${a}個</text>`;
+ sv+=`<text x="8" y="${ay+2}" font-size="14" font-weight="bold">① ${n}袋に 1つずつ 順に配る</text>`;
+ for(let p=0;p<n;p++)sv+=`<rect x="${8+p*(cw+8)}" y="${aTop}" width="${cw}" height="${bh}" rx="6" fill="#fff" stroke="#243447" stroke-width="2"/><text x="${12+p*(cw+8)}" y="${aTop+13}" font-size="11">${p+1}袋め</text>`;
+ const lx=8+n*(cw+8);
+ if(r)sv+=`<rect x="${lx}" y="${aTop}" width="${Math.min(r,4)*16+12}" height="${Math.ceil(r/4)*16+24}" rx="6" fill="#fff5f8" stroke="#d6336c" stroke-width="2" stroke-dasharray="4 3"/><text x="${lx+4}" y="${aTop+13}" font-size="11" fill="#d6336c">あまり${r}</text>`;
+ if(pair){sv+=`<text x="8" y="${bTitle}" font-size="14" font-weight="bold" fill="#2f9e44">② ペア：${q}袋に 配っても ちょうど！（1袋 ${n}個）</text>`;
+  for(let p=0;p<q;p++)sv+=`<rect x="${8+(p%per)*(cw2+8)}" y="${bTop+Math.floor(p/per)*(bh2+8)}" width="${cw2}" height="${bh2}" rx="6" fill="#fff" stroke="#2f9e44" stroke-width="2"/>`}
+ for(let i=0;i<a;i++){let tx,ty,st='';
+  if(i<n*q){const b=i%n,j=Math.floor(i/n);tx=8+b*(cw+8)+14+(j%c)*16;ty=aTop+16+Math.floor(j/c)*16}
+  else{const kk=i-n*q;tx=lx+14+(kk%4)*16;ty=aTop+16+Math.floor(kk/4)*16;st='stroke="#d6336c" stroke-width="2"'}
+  sv+=item(i,tx,ty,i*step,0,st)}
+ if(pair)for(let i=0;i<a;i++){const b=i%q,j=Math.floor(i/q);
+  sv+=item(i,8+(b%per)*(cw2+8)+14+(j%c2)*16,bTop+Math.floor(b/per)*(bh2+8)+16+Math.floor(j/c2)*16,dB+i*step,1,'')}
+ let msg=r?`${nm}${a}個を ${n}袋に同じ数ずつ配ると、1袋 ${q}個で、あまりが <b>${r}個</b> でます。あまりがあるので、${n}は約数では<b>ありません</b>。`
+  :`${nm}${a}個を ${n}袋に配ると、1袋 <b>${q}個</b> でちょうど配れます（あまり0）。<b>${n}は約数</b>です。`+(q!=n?`<br>ということは、${q}袋に配れば 1袋 ${n}個 でも ちょうど（図の②）。<br>だから <b>${n} と ${q} はペア</b>で、両方とも約数です。`:`<br>${n}×${n}＝${a} なので、ペアの数も同じ ${n} です。`);
+ let o=`<svg class="sh" viewBox="0 0 700 ${H}" style="max-width:700px">${sv}</svg><p class="t">「${nm}${a}個を、1袋、2袋、3袋…に同じ数ずつ配る」と考えて、<b>わり算</b>でしらべます。あまりが出ない（わりきれる）ときの<b>わる数</b>が約数。そのときの<b>商（答え）もペア</b>で約数になります。</p>
+ <p class="t">${msg}</p>
+ <table><tr><th>わり算</th><th>答え</th><th>わりきれる？</th><th>記録（わる数と ペアの商）</th></tr>${rows}</table>`;
+ o+=done?`<p class="t">${n}までしらべました。つぎの${n+1}は ${n+1}×${n+1}＝${(n+1)**2} で ${a} より大きく、これ以上は ペアで見つけた数ばかりです。ここでおしまい。</p><p class="t">かけ算で ${a} になるペア：<b>${pairs.join('、')}</b><br>${nm}${a}個の約数：${chips(found,found)}（${found.length}こ）</p>`
+  :`<p class="t">見つけた約数（これまで）：${chips(found,found)}</p>`;
+ o+=`<div><button class="sb" id="vn" ${done?'disabled':''}>▶ つぎのわる数（${n+1}）をためす</button><button class="sb" id="vp">▶ もういちど配る</button><button class="sb" id="va">ぜんぶしらべる</button><button class="sb" id="vr">はじめから</button></div>`;
+ return o}
+function grow(w,h,L,cn,rn,ia){
+ const S=270,W=cn*w,H=rn*h,F=Math.max(L,W,H),k=S/F,ox=150,oy=44,cols=L/w,rows=L/h,eq=W==H,co=[L,2*L,3*L];
+ let sv='';
+ if(cn*rn<=400){for(let r=0;r<rn;r++)for(let c=0;c<cn;c++){const pop=ia&&((G.last=='w'&&c==cn-1)||(G.last=='h'&&r==rn-1));
+  sv+=`<rect class="${pop?'pop':''}" x="${ox+c*w*k}" y="${oy+r*h*k}" width="${w*k}" height="${h*k}" fill="${(r+c)%2?'#ffc9de':'#ffdeeb'}" stroke="#d6336c"/>`}}
+ else{let d='';for(let c=0;c<=cn;c++)d+=`M${ox+c*w*k} ${oy}v${H*k}`;for(let r=0;r<=rn;r++)d+=`M${ox} ${oy+r*h*k}h${W*k}`;
+  sv+=`<rect x="${ox}" y="${oy}" width="${W*k}" height="${H*k}" fill="#ffdeeb"/><path d="${d}" stroke="#d6336c" stroke-width=".6" fill="none"/>`}
+ sv+=`<rect x="${ox}" y="${oy}" width="${L*k}" height="${L*k}" fill="none" stroke="#495057" stroke-width="2" stroke-dasharray="6 4"/>`;
+ if(F>L)sv+=`<text x="${ox+L*k}" y="${oy+L*k+14}" text-anchor="end" font-size="12" fill="#495057" stroke="#fff" stroke-width="3" paint-order="stroke">点線＝最小の正方形 ${L}cm</text>`;
+ sv+=`<line x1="${ox}" y1="${oy-8}" x2="${ox+W*k}" y2="${oy-8}" stroke="#1c7ed6" stroke-width="4"/><text x="${ox}" y="${oy-16}" font-size="14" font-weight="bold" fill="#1c7ed6">横 ${cn}まい×${w}cm＝${W}cm</text><line x1="${ox-8}" y1="${oy}" x2="${ox-8}" y2="${oy+H*k}" stroke="#2f9e44" stroke-width="4"/><text x="${ox-16}" y="${oy+H*k/2-8}" text-anchor="end" font-size="14" font-weight="bold" fill="#2f9e44">たて ${rn}まい</text><text x="${ox-16}" y="${oy+H*k/2+8}" text-anchor="end" font-size="13" fill="#2f9e44">${rn}×${h}</text><text x="${ox-16}" y="${oy+H*k/2+24}" text-anchor="end" font-size="13" fill="#2f9e44">＝${H}cm</text>`;
+ let o=`<svg viewBox="0 0 460 ${oy+S+12}" style="max-width:460px">${sv}</svg>`;
+
+ const near=(n,value)=>{const i=Math.max(1,Math.round(value/n));return Array.from({length:5},(_,j)=>(i+j-2)*n).filter(x=>x>0&&x<=3*L);};
+ const full=(n,value,cl)=>chips(mul(n,3*L),[value],eq?value:-1,co,cl);
+ o+=`<div class="figp"><p><b class="tb">横</b>：${cn} × ${w} ＝ <b>${W}cm</b><br><b class="tg">たて</b>：${rn} × ${h} ＝ <b>${H}cm</b></p><p>今の長さの近くで比べよう。</p><p><b class="tb">${w}の倍数</b>：${chips(near(w,W),[W],eq?W:-1,co,'cb')}</p><p><b class="tg">${h}の倍数</b>：${chips(near(h,H),[H],eq?H:-1,co,'cg')}</p><p>赤い枠は公倍数。図は全体が見えるように縮尺を変えています。</p><details><summary>倍数をすべて確かめる（最小公倍数の3倍まで）</summary><p>${w}の倍数：${full(w,W,'cb')}</p><p>${h}の倍数：${full(h,H,'cg')}</p></details></div>`;
+
+ if(ia){
+  const sh=W<H?'<b class="tb">横</b>':'<b class="tg">たて</b>';
+  o+=eq?(W==L?`<p class="t"><b class="tb">横</b>も<b class="tg">たて</b>も <b>${W}cm</b>！ 正方形になりました。<br>${w}の倍数と${h}の倍数が はじめて同じになった数 ＝ 最小公倍数 <b>${L}</b></p>`
+   :`<p class="t"><b class="tb">横</b>も<b class="tg">たて</b>も <b>${W}cm</b>！ これも正方形です。<br>${w}の倍数にも${h}の倍数にもある数（<b>公倍数</b>）。<br>ただし 最小公倍数 ${L} の ${W/L}倍 なので、いちばん小さい正方形ではありません。</p>`)
+   :`<p class="t"><b class="tb">横 ${W}cm</b>、<b class="tg">たて ${H}cm</b>。まだ長方形です。<br>${sh}のほうが短いので、${sh}に布パーツをふやしてみよう。</p>`;
+  const cc=3*cols,cr=3*rows;
+  o+=`<div><button class="sb" id="gw" ${cn>=cc?'disabled':''}>＋ 横に1まい</button><button class="sb" id="gw-" ${cn<=1?'disabled':''}>－ 横から1まい</button></div><div><button class="sb" id="gh" ${rn>=cr?'disabled':''}>＋ たてに1まい</button><button class="sb" id="gh-" ${rn<=1?'disabled':''}>－ たてから1まい</button></div><div><button class="sb" id="gs" ${cn>=cc&&rn>=cr?'disabled':''}>短いほうをふやす</button><button class="sb" id="gr">はじめから</button></div>`}
+ return o}
+let MODE=0;const MN=['いちばん大きい偶数','いちばん小さい偶数','いちばん大きい奇数','いちばん小さい奇数'];
+function p1calc(v){const par=MODE<2?0:1,mx=MODE%2==0,seen=new Set(),cands=[];
+ v.forEach((d,ci)=>{if(d%2!=par||seen.has(d))return;seen.add(d);
+  const ri=[0,1,2].filter(i=>i!=ci).sort((p,q)=>mx?v[q]-v[p]:v[p]-v[q]);
+  if(!mx&&v[ri[0]]==0&&v[ri[1]]!=0)ri.reverse();
+  if(v[ri[0]]==0)return;
+  cands.push({ci,d,ri,num:v[ri[0]]*100+v[ri[1]]*10+d})});
+ const ns=cands.map(c=>c.num);return{cands,par,mx,best:cands.length?(mx?Math.max(...ns):Math.min(...ns)):null}}
+const jikoku=m=>{const t=540+m,H=Math.floor(t/60),M=t%60;return(H<12?'午前':'午後')+(H>12?H-12:H)+'時'+(M?M+'分':'')};
+const br=h=>h.replace(/。(?!<\/|<br)/g,'。<br>');
+function playDep(){cancelAnimationFrame(G.an);const sv=$('#fig svg.tl');if(!sv)return;
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches){const L=+sv.dataset.l;sv.querySelector('.clk').textContent=jikoku(L);sv.querySelectorAll('.veh').forEach(e=>e.classList.add('stay'));const x=40+L*(+sv.dataset.k);sv.querySelector('.cur').setAttribute('x1',x);sv.querySelector('.cur').setAttribute('x2',x);return;}
+ const L=+sv.dataset.l,k=+sv.dataset.k,vs=[...sv.querySelectorAll('.veh')],cur=sv.querySelector('.cur'),clk=sv.querySelector('.clk'),T0=performance.now(),dur=Math.min(14000,Math.max(6000,L*220));
+ vs.forEach(e=>e.classList.remove('go','stay'));
+ const f=now=>{const t=Math.min(L,(now-T0)/dur*L),x=40+t*k;cur.setAttribute('x1',x);cur.setAttribute('x2',x);clk.textContent=jikoku(Math.floor(t));
+  vs.forEach(e=>{if(+e.dataset.n<=t&&!e.classList.contains('go'))e.classList.add('go')});
+  if(t<L)G.an=requestAnimationFrame(f)};
+ G.an=requestAnimationFrame(f)}
+
+const SLC=[['百','#1c7ed6','#d0ebff'],['十','#f59f00','#fff3bf'],['一','#e64980','#ffd6e5']];
+const trPos=c=>{const s=G.tr[c];return s<0?{x:20+c*110,y:40}:{x:20+s*110,y:230}};
+
+function noParityText(v){const P=p1calc(v),pw=P.par?'奇数':'偶数';return v.every(d=>d%2!==P.par)?`この3枚には、一の位に置ける${pw}のカードがないので、3けたの${pw}は作れません。`:`一の位を${pw}のカードにすると、残りが0だけになり、百の位を0以外にできません。この3枚では3けたの${pw}は作れません。`;}
+function trial(v){let sv='<text x="20" y="25" font-size="18">手持ちカード</text>';
+ SLC.forEach(([l,c],s)=>sv+=`<rect class="sl" data-s="${s}" x="${20+s*110}" y="230" width="80" height="92" rx="10" fill="#fff" stroke="${c}" stroke-width="3" stroke-dasharray="6 4"/><text x="${60+s*110}" y="217" text-anchor="middle" font-size="18">${l}の位</text>`);
+ v.forEach((x,c)=>sv+=`<g class="dc" data-c="${c}"><rect width="80" height="92" rx="10" stroke-width="3.5"/><text x="40" y="66" text-anchor="middle" font-size="52" font-weight="bold" pointer-events="none">${x}</text></g>`);
+ const impossible=!p1calc(v).cands.length;
+ return `<svg class="dr" viewBox="0 0 350 350">${sv}</svg><p class="t">3枚のカードを1枚ずつ使い、百・十・一の位にならべて、<b>${MN[MODE]}</b>を作ろう。</p>${impossible?`<p class="notice">${noParityText(v)}<br>カードの数か、もんだいを変えてみよう。</p>`:''}<div id="trmsg" role="status" aria-live="polite" aria-atomic="true">${G.msg}</div><div><button class="sb go2" id="tc">こたえあわせ</button><button class="sb" id="th">ヒント</button><button class="sb" id="tr">やりなおし</button></div>`;}
+function trMsg(h){G.msg=h;const e=$('#trmsg');if(e)e.innerHTML=h}
+function trApply(){const sv=$('#fig svg.dr');if(!sv)return;const v=V[0],P=p1calc(v),bc=P.cands.find(c=>c.num==P.best);
+ sv.querySelectorAll('.dc').forEach(g=>{const c=+g.dataset.c,p=trPos(c),s=G.tr[c],r=g.firstChild;
+  g.style.transform=`translate(${p.x}px,${p.y}px)`;r.style.fill=s<0?'#ffe9b8':SLC[s][2];r.style.stroke=s<0?'#243447':SLC[s][1];
+  const gl=G.ok?'#2f9e44':(s>=0&&G.bad.includes(s)?'#d6336c':(s<0&&G.hint===1&&P.cands.some(cd=>cd.d===v[c])?'#e64980':''));
+  g.classList.toggle('glow',!!gl);if(gl)g.style.setProperty('--gc',gl)});
+ sv.querySelectorAll('.sl').forEach(r=>{const s=+r.dataset.s,gl=G.ok?'#2f9e44':G.bad.includes(s)?'#d6336c':G.hint==1&&s==2?'#e64980':'';
+  r.style.stroke=gl||SLC[s][1];r.classList.toggle('glow',!!gl);if(gl)r.style.setProperty('--gc',gl)})}
+const trAnim=()=>document.querySelectorAll('#fig .dc').forEach(g=>g.classList.add('anim'));
+function trDrop(c,x,y){const cx=x+40,cy=y+46;let bs=-1,bd=70;for(let s=0;s<3;s++){const d=Math.hypot(cx-(60+s*110),cy-276);if(d<bd){bd=d;bs=s}}
+ placeCard(c,bs)}
+function trCheck(){const v=V[0],{cands,best,par,mx}=p1calc(v),pw=par?'奇数':'偶数',ow=par?'1・3・5・7・9':'0・2・4・6・8';
+ if(!cands.length){trMsg(`<p class="t">${noParityText(v)}<br>カードの数か、もんだいを変えてみよう。</p>`);return}
+ if(G.tr.some(s=>s<0)){G.bad=[];trMsg('<p class="t">3まいぜんぶ、枠に ならべてから<br>こたえあわせしてね。</p>');trApply();return}
+ const x=[0,1,2].map(s=>v[G.tr.indexOf(s)]),num=x[0]*100+x[1]*10+x[2];let m='',bad=[];G.ok=0;
+ if(x[2]%2!=par){bad=[2];m=`<b class="tp">一の位</b>が ${x[2]} だよ。<br>${pw}は 一の位が <b class="tp">${ow}</b> のカードだけ。`}
+ else if(x[0]==0){bad=[0];m='0は <b class="tb">百の位</b> に おけないよ。<br>（3けたの数に ならないため）'}
+ else if(num==best){G.ok=1;m=`せいかい！ <b>${num}</b> は ${MN[MODE]}です。<br>「つぎへ ▶」で、なぜそうなるか 見てみよう。`}
+ else{const cd=cands.find(c=>c.d==x[2]);
+  if(cd&&cd.num!=num){bad=[0,1];m=`${pw}には なっているよ。<br>一の位を ${x[2]} にしたときの、残りの2枚を見なおそう。<br><b class="tb">百の位</b>には、残りの中でいちばん${mx?'大きい':'小さい（0はだめ）'}カードを。`}
+  else{bad=[2];m=`ならべ方は よいよ。でも ${pw}のカードは ほかにも あるよ。<br><b class="tp">一の位</b>に ほかの${pw}のカードを おくと、<br>${mx?'もっと大きい':'もっと小さい'}数に ならないかな？`}}
+ G.bad=bad;trMsg(`<p class="t">${m}</p>`);trApply()}
+
+function trHint(){const v=V[0],{cands,best,par,mx}=p1calc(v),pw=par?'奇数':'偶数';G.bad=[];G.ok=0;
+ if(!cands.length){trMsg(`<p class="notice">${noParityText(v)}</p>`);trApply();return;}
+ G.hint=Math.min(3,G.hint+1);const bc=cands.find(c=>c.num===best);
+ if(G.hint===1)trMsg(`<p class="t">${pw}かどうかは、一の位で決まります。<br>一の位の候補は <b>${cands.map(c=>c.d).join('・')}</b>。${pw}のカードのうち、残りのカードで百の位を0以外にできる数字です。</p>`);
+ else if(G.hint===2)trMsg(`<p class="t">一の位の候補ごとに、残りの2枚を比べます。百の位には、<b>残りの中で</b>いちばん${mx?'大きい':'小さい（0以外の）'}数字を置きます。</p>`+cands.map(c=>`<p class="t">一の位を <b>${c.d}</b> にする場合：<br>残りは <b>${c.ri.map(i=>v[i]).join('・')}</b>。<br>百の位は <b>${v[c.ri[0]]}</b>、十の位は <b>${v[c.ri[1]]}</b>。<br>→ <b>${c.num}</b></p>`).join('')+`<p class="t">できた数を比べて、いちばん${mx?'大きい':'小さい'}数を選ぼう。</p>`);
+ else{G.tr=[-1,-1,-1];G.tr[bc.ci]=2;G.tr[bc.ri[0]]=0;G.tr[bc.ri[1]]=1;UI.pick=-1;trAnim();trMsg(`<p class="t">答えは <b>${bc.num}</b>。一の位は${bc.d}、百の位は${v[bc.ri[0]]}、十の位は${v[bc.ri[1]]}です。<br>「つぎへ」で候補を比べる考え方を見よう。</p>`);}
+ trApply();updateTools();}
+function trReset(){stopDrag();UI.pick=-1;G.tr=[-1,-1,-1];G.bad=[];G.ok=0;G.hint=0;trMsg('');trAnim();trApply();updateTools();announce(placementSummary());}
+
+const svgPt=(sv,e)=>{const m=sv.getScreenCTM();if(!m)return null;const p=sv.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(m.inverse())};
+let DR=null;
+document.addEventListener('pointerdown',e=>{const g=e.target.closest?.('.dc');if(!g||DR||e.button!==0||!e.isPrimary)return;const sv=g.ownerSVGElement,p=svgPt(sv,e);if(!p)return;const c=+g.dataset.c,q=trPos(c);DR={g,c,sv,id:e.pointerId,dx:p.x-q.x,dy:p.y-q.y,last:p,x:e.clientX,y:e.clientY,moved:false};g.classList.remove('anim');g.classList.add('drag');try{sv.setPointerCapture(e.pointerId)}catch(_){}sv.appendChild(g);e.preventDefault()});
+document.addEventListener('pointermove',e=>{if(!DR||e.pointerId!==DR.id)return;if(!DR.sv.isConnected){stopDrag();return;}const p=svgPt(DR.sv,e);if(!p)return;DR.last=p;if(Math.hypot(e.clientX-DR.x,e.clientY-DR.y)>6)DR.moved=true;if(DR.moved)DR.g.style.transform=`translate(${p.x-DR.dx}px,${p.y-DR.dy}px)`;});
+document.addEventListener('pointerup',e=>{if(!DR||e.pointerId!==DR.id)return;const d=DR,p=svgPt(d.sv,e);stopDrag();if(!p||!d.sv.isConnected)return;if(d.moved)trDrop(d.c,p.x-d.dx,p.y-d.dy);else chooseCard(d.c);updateTools();});
+document.addEventListener('pointercancel',stopDrag);document.addEventListener('lostpointercapture',e=>{if(DR&&DR.id===e.pointerId)stopDrag();});
+document.addEventListener('click',e=>{const r=e.target.closest?.('.sl');if(r&&UI.pick>=0)placeCard(UI.pick,+r.dataset.s);});
+const T=[
+{n:'数のカード研究',steps:6,sel:1,
+ ti:['やってみよう：カードをならべよう','3まいのカードを見る','一の位に使えるカードをさがす','カードが分かれて、一の位が決まる','のこりを百の位・十の位へ','くらべて、答えを決める'],
+ f:[['カード①',2,0,9],['カード②',5,0,9],['カード③',8,0,9]],
+ rd:()=>{let v,ok=0;for(let i=0;i<80&&!ok;i++){v=[rnd(0,9),rnd(0,9),rnd(0,9)];ok=p1calc(v).cands.length>1}return v},
+ q:v=>`数字のカード <b>${v.join('・')}</b> があります。3枚すべてを1回ずつ使って、条件に合う数を探そう。<br>今回の研究：<b>${MN[MODE]}</b>。百の位に0は使えません。`,
+ r(v,s){return s==0?trial(v):this.r2(v,s-1)},
+ r2(v,s){const{cands,best,par,mx}=p1calc(v),pw=par?'奇数':'偶数',ow=par?'1・3・5・7・9':'0・2・4・6・8',dw=mx?'大きい':'小さい',n=cands.length,ps=G.ps<0?s:Math.max(G.ps-1,0),mt=i=>cands.some(c=>c.d===v[i]);
+  const PK=['#ffd6e5','#e64980'],YL=['#fff3bf','#f59f00'],BL=['#d0ebff','#1c7ed6'],CD=['#ffe9b8','#243447'];
+  G.tk=(j,c,st)=>{const og={x:240+c*120,y:14},m=mt(c);
+   if(j<0)return{...og,o:st>=2?.35:1,f:st>=1&&m?PK[0]:CD[0],s:st>=1&&m?PK[1]:CD[1]};
+   const cd=cands[j],y=150+j*128,dm=st>=4&&n>1&&cd.num!=best?.4:1;
+   if(st<2)return{...og,o:0,f:CD[0],s:CD[1]};
+   if(c==cd.ci)return{x:500,y,o:dm,f:PK[0],s:PK[1]};
+   if(st<3){const ti=[0,1,2].filter(i=>i!=cd.ci).indexOf(c);return{x:40+ti*90,y,o:dm,f:CD[0],s:CD[1]}}
+   const hp=c==cd.ri[0];return{x:hp?300:400,y,o:dm,f:hp?BL[0]:YL[0],s:hp?BL[1]:YL[1]}};
+  const tok=(j,c)=>{const a=G.tk(j,c,ps);return`<g class="tok" data-j="${j}" data-c="${c}" style="transform:translate(${a.x}px,${a.y}px);opacity:${a.o}"><rect width="80" height="92" rx="10" stroke-width="3.5" style="fill:${a.f};stroke:${a.s}"/><text x="40" y="66" text-anchor="middle" font-size="52" font-weight="bold" fill="#243447">${v[c]}</text></g>`};
+  let sv=`<text x="20" y="64" font-size="15" fill="#868e96">もとの</text><text x="20" y="84" font-size="15" fill="#868e96">カード</text>`+[0,1,2].map(c=>tok(-1,c)).join('');
+  cands.forEach((cd,j)=>{const y=150+j*128;if(s<2)return;const win=cd.num==best,dm=s>=4&&n>1&&!win?.4:1;
+   sv+=`<g opacity="${dm}">`+(n>1?`<text x="20" y="${y-8}" font-size="16" font-weight="bold" fill="#495057">パターン${j+1}：一の位に ${cd.d}</text>`:'');
+   [['百',300,BL[1]],['十',400,YL[1]],['一',500,PK[1]]].forEach(([l,x,c])=>sv+=`<rect x="${x}" y="${y}" width="80" height="92" rx="10" fill="#fff" stroke="${c}" stroke-width="3" stroke-dasharray="6 4"/><text x="${x+40}" y="${y-8}" text-anchor="middle" font-size="15" font-weight="bold" fill="${c}">${l}の位</text>`);
+   if(s==2)sv+=`<text x="85" y="${y+112}" text-anchor="middle" font-size="14" fill="#868e96">のこりのカード</text>`;
+   if(s>=4){sv+=`<text x="600" y="${y+66}" font-size="50" font-weight="bold" fill="${win?'#d6336c':'#495057'}">→ ${cd.num}</text>`;
+    if(win)sv+=`<rect x="12" y="${y-32}" width="776" height="146" rx="14" fill="none" stroke="#d6336c" stroke-width="3"/>`+(n>1?`<text x="640" y="${y-8}" font-size="16" font-weight="bold" fill="#d6336c">★ いちばん${dw}</text>`:'')}
+   sv+='</g>'});
+  cands.forEach((cd,j)=>[0,1,2].forEach(c=>sv+=tok(j,c)));
+  const H=n?150+(n-1)*128+92+44:130;let h=`<svg class="sh" viewBox="0 0 800 ${H}">${sv}</svg>`;
+  const zero=!mx&&cands.some(c=>c.ri.some(i=>v[i]==0));
+  if(!n)h+=`<p class="notice">${noParityText(v)}</p>`;
+  else if(s==0)h+=`<p class="t">${pw}かどうかは、<b class="tp">一の位</b> だけで決まります。<br>${pw}は 一の位が <b class="tp">${ow}</b>。</p><p class="t">「つぎへ ▶」で、カードが動きます。</p>`;
+  else if(s==1)h+=`<p class="t">一の位には<b class="tp">${pw}のカード</b>を置きます。さらに、残りのカードで百の位を0以外にできることが必要です。<br>候補の数字：<b class="tp">${cands.map(c=>c.d).join('・')}</b></p>`;
+  else if(s==2)h+=`<p class="t">${pw}のカードを <b class="tp">一の位</b> に置きます。<br>のこりの2まいは 左に のこします。</p>`+(n>1?`<p class="t">${pw}のカードが ${n}種類あるので、<br><b>${n}つのパターン</b> に分かれます。</p>`:'');
+  else if(s==3)h+=`<p class="t">のこりの2まいを <b>${dw}順</b> に ならべます。<br>左から <b class="tb">百の位</b>、<b class="ty">十の位</b>。</p>`+(zero?`<p class="t">0は <b class="tb">百の位</b> に おけません。<br>（0だと 3けたの数にならないため）</p>`:'');
+  else h+=(n>1?`<p class="t">できた数：${cands.map(c=>`<b>${c.num}</b>`).join('、')}<br>この中で いちばん${dw}のは <b>${best}</b>。</p>`:`<p class="t">できた数は <b>${best}</b>。</p>`)+`<div class="ans">答え　${best}</div>`;
+  return h}},
+
+{n:'グミとラムネを分ける',steps:5,ti:['グミとラムネを見る','グミの約数をさがす','ラムネの約数をさがす','公約数と最大公約数','1袋ぶんずつ配る'],f:[['グミ(個)',20,1,60,'tk'],['ラムネ(個)',30,1,60,'ta']],
+ rd:()=>{const g=rnd(2,8);return[g*rnd(2,6),g*rnd(2,6)]},
+ q:v=>`遠足のおみやげに、グミを<b>${v[0]}個</b>、ラムネを<b>${v[1]}個</b>用意しました。全員の袋に、グミは同じ個数、ラムネも同じ個数になるよう入れます。使い残しは出しません。<br>作れる袋の数をいちばん多くすると何袋？ そのとき、1袋に入るグミとラムネはそれぞれ何個？`,
+ r(v,s){const[a,b]=v,g=gcd(a,b),x=a/g,y=b/g;let h='';
+  if(s==0){const rc=Math.ceil(a/10),rb=Math.ceil(b/10);h+=`<svg viewBox="0 0 700 ${Math.max(rc,rb)*18+50}"><text x="20" y="20" font-size="15" font-weight="bold" fill="#8d5524">グミ ${a}個</text><text x="360" y="20" font-size="15" font-weight="bold" fill="#e64980">ラムネ ${b}個</text>${dots(a,10,26,42,GUMMY)}${candyDots(b,10,366,42)}</svg>
+   <p class="t">あまりなく同じ数ずつ分けられる袋数 ＝ わりきれる数（<b>約数</b>）。<br>まず グミ${a}個だけ、つぎに ラムネ${b}個だけで、約数をさがしましょう。</p>`}
+  if(s==1)h+=divfind(a,'<span class="tk">グミ</span>',0);
+  if(s==2)h+=divfind(b,'<span class="ta">ラムネ</span>',1);
+  if(s==3){const cd=divs(g);h+=`<p class="t figp">${a}の約数：${chips(divs(a),cd,g)}<br>${b}の約数：${chips(divs(b),cd,g)}</p><p class="t">どちらにも出てくる数（<b>公約数</b>）に色がつきました。<br>いちばん大きい <b>最大公約数</b> は <b>${g}</b></p><div class="ans">袋の数　${g}袋</div>`}
+  if(s==4)h+=`<p class="t"><b>${g}袋</b>に、グミとラムネを同じ数ずつ配ります。</p>`+share(a,b,g,x,y);
+  return h}},
+
+{n:'布のパーツで正方形',steps:3,ti:['布パーツの形を見る','布パーツをふやして、長さをそろえる','答え：最小公倍数'],f:[['たて(cm)',4,1,30,'tg'],['横(cm)',10,1,30,'tb']],
+ rd:()=>[rnd(2,12),rnd(2,12)],
+ q:v=>`たて<b>${v[0]}cm</b>・横<b>${v[1]}cm</b>の長方形の布パーツで、小さな正方形のマットを作ります。パーツは切らず、回さず、同じ向きで、すきまも重なりもなく敷きつめます。<br>完成する最小の正方形の1辺は何cm？`,
+ r(v,s){const[h0,w0]=v,L=lcm(h0,w0),cols=L/w0,rows=L/h0;
+  if(s==0){const k=190/Math.max(h0,w0),W=w0*k,H=h0*k;
+   return`<svg viewBox="0 0 400 260"><rect x="110" y="50" width="${W}" height="${H}" fill="#ffc9de" stroke="#d6336c" stroke-width="3"/><line x1="110" y1="38" x2="${110+W}" y2="38" stroke="#1c7ed6" stroke-width="4"/><text x="${110+W/2}" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#1c7ed6">横 ${w0}cm</text><line x1="98" y1="50" x2="98" y2="${50+H}" stroke="#2f9e44" stroke-width="4"/><text x="88" y="${50+H/2}" text-anchor="end" font-size="18" font-weight="bold" fill="#2f9e44">たて ${h0}cm</text></svg>
+   <p class="t">布パーツをならべて広げると、<br><b class="tb">横の長さ</b>は <b class="tb">${w0}の倍数</b>、<br><b class="tg">たての長さ</b>は <b class="tg">${h0}の倍数</b> になります。</p>
+   <p class="t">正方形になるのは、<br><b class="tb">横</b>と<b class="tg">たて</b>が <b>同じ長さ</b> のとき。</p>`}
+  if(s==1)return grow(w0,h0,L,G.cn,G.rn,1)+`<p class="t">布パーツを1まいずつふやして、<br><b class="tb">横</b>と<b class="tg">たて</b>の長さを見くらべよう。</p><p class="t">ふえた長さは、倍数リストに色がつきます。<br>最小公倍数をこえても、3ばいまで ふやせます。</p>`;
+  return grow(w0,h0,L,cols,rows,0)+`<p class="t"><b class="tb">横</b>も<b class="tg">たて</b>も 同じになるのは <b>${L}cm</b>。<br><b class="tb">横 ${cols}まい</b> × <b class="tg">たて ${rows}まい</b> ＝ ${cols*rows}まい。</p><p class="t">${w0}と${h0}の公倍数で いちばん小さい数 ＝ <b>最小公倍数</b>。</p><div class="ans">答え　${L}cm</div><p class="t">${L}の倍数（${L*2}cm、${L*3}cm…）も公倍数なので、<br>もっと大きい正方形もつくれます。<br>（前の画面でためせます）</p>`}},
+
+{n:'水やりのタイミング',steps:4,ti:['午前9時に同時に水やり','数直線に水やりをならべる','はじめて重なるのは？','時こくになおす'],
+ f:[['青の水やり器(分おき)',9,1,30,'tb'],['緑の水やり器(分おき)',12,1,30,'tg']],
+ rd:()=>[rnd(2,12),rnd(2,12)],
+ q:v=>`温室に2台の自動水やり器があります。青は<b>${v[0]}分ごと</b>、緑は<b>${v[1]}分ごと</b>に水を出します。午前9時に2台を一緒に動かしました。<br>9時より後で、2台の水やりが初めて重なる時刻を求めよう。`,
+ r(v,s){const[a,b]=v,L=lcm(a,b),k=620/L,X=n=>40+n*k,TR='<b class="tb">青の水やり器</b>',BS='<b class="tg">緑の水やり器</b>';
+  const tick=(n,col,up,st)=>`<line x1="${X(n)}" y1="100" x2="${X(n)}" y2="${up?75:125}" stroke="${col}" stroke-width="3"/><circle cx="${X(n)}" cy="${up?72:128}" r="5" fill="${col}"/>${k*st>=22||n==0||n==L?`<text x="${X(n)}" y="${up?60:148}" text-anchor="middle" font-size="12">${n}</text>`:''}`;
+  const veh=(n,up)=>`<g transform="translate(${X(n)} ${up?40:178})"><text class="veh${s>=2&&n==L?' stay':''}" data-n="${n}" text-anchor="middle" font-size="24">${up?'💧':'🌱'}</text></g>`;
+  let sv=`<line x1="40" y1="100" x2="${X(L)+20}" y2="100" stroke="#243447" stroke-width="3"/><text x="6" y="80" font-size="13" font-weight="bold" fill="#1c7ed6">青</text><text x="6" y="132" font-size="13" font-weight="bold" fill="#2f9e44">緑</text>`;
+  if(s>=1){for(let n=0;n<=L;n+=a)sv+=tick(n,'#1c7ed6',1,a)+veh(n,1);for(let n=0;n<=L;n+=b)sv+=tick(n,'#2f9e44',0,b)+veh(n,0);
+   sv+=`<line class="cur" x1="${X(0)}" y1="28" x2="${X(0)}" y2="170" stroke="#868e96" stroke-width="2" stroke-dasharray="3 3"/><text class="clk" x="350" y="16" text-anchor="middle" font-size="16" font-weight="bold">${jikoku(0)}</text>`}
+  else sv+=tick(0,'#243447',1,1).replace(/<text.*?<\/text>/,'');
+  if(s>=2)sv+=`<line x1="${X(L)}" y1="28" x2="${X(L)}" y2="165" stroke="#d6336c" stroke-width="3" stroke-dasharray="6 4"/><text x="${X(L)}" y="192" text-anchor="middle" font-size="15" font-weight="bold" fill="#d6336c">${L}分後 ★</text>`;
+  sv+=`<text x="${X(0)}" y="192" text-anchor="middle" font-size="12">午前9時</text>`;
+  let h=`<svg class="tl" viewBox="0 0 700 200" data-l="${L}" data-k="${k}">${sv}</svg>`;
+  const btn=`<div><button class="sb" id="tp">▶ 水やりアニメを見る</button><button class="sb" id="ts">⏸ 止める</button></div>`;
+  if(s==0)h+=`<p class="t">午前9時に ${TR}と${BS}が 同時に水やりします。<br>この時こくを <b>0分</b> とします。</p><p class="t">${TR}は ${a}分ごと、${BS}は ${b}分ごとに水やり。</p>`;
+  if(s==1)h+=`<p class="t">${TR}が水やりするのは<br>${a}分、${a*2}分、${a*3}分… ＝ <b class="tb">${a}の倍数</b></p><p class="t">${BS}が水やりするのは<br>${b}分、${b*2}分、${b*3}分… ＝ <b class="tg">${b}の倍数</b></p>`+btn;
+  if(s==2)h+=`<p class="t">${TR}（${a}の倍数）：${chips(mul(a,L),[L],L,[],'cb')}</p><p class="t">${BS}（${b}の倍数）：${chips(mul(b,L),[L],L,[],'cg')}</p><p class="t">最初に同じになる数（<b>最小公倍数</b>）は <b>${L}</b>。<br>→ 午前9時の <b>${L}分後</b>。</p>`+btn;
+  if(s==3)h+=`<p class="t">午前9時 ＋ ${L}分 ＝ ${jikoku(L)}</p><div class="ans">答え　${jikoku(L)}</div>`+btn;
+  return h}}
+
+];
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&window.parent!==window){e.preventDefault();window.parent.postMessage({type:'integer-development-close'},'*')}});
+let cur=0,step=0,timer=0;const V=T.map(p=>p.f.map(f=>f[1]));
+function rs(){stopDrag();UI.pick=-1;UI.autoplay=false;clearInterval(timer);cancelAnimationFrame(G.an);Object.assign(G,{dp:0,pd:0,cn:1,rn:1,last:'',dv:1,ps:-1,auto:0,tr:[-1,-1,-1],hint:0,msg:'',bad:[],ok:0})}
+function drawBase(){const p=T[cur],v=V[cur];
+ if(!$('#tabs').children.length)$('#tabs').innerHTML=T.map((t,i)=>`<button role="tab" id="tab-${i}" aria-controls="right" data-i="${i}">${t.n}</button>`).join('');
+ $('#tabs').querySelectorAll('button').forEach((b,i)=>{b.classList.toggle('on',i===cur);b.setAttribute('aria-selected',String(i===cur));b.tabIndex=i===cur?0:-1;});
+ mountInputs('lesson-'+cur,p.f.map((f,k)=>`<label class="${f[4]||''}">${f[0]}<input type="text" inputmode="numeric" value="${v[k]}" data-k="${k}"></label>`).join('')+(p.sel?`<label>もんだい<select id="mode">${MN.map((m,i)=>`<option value="${i}" ${i==MODE?'selected':''}>${m}</option>`).join('')}</select></label>`:'')+'<button id="rnd">数をランダムに変える</button>');
+ $('#inp').querySelectorAll('[data-k]').forEach(i=>{if(document.activeElement!==i)i.value=v[+i.dataset.k];});if($('#mode'))$('#mode').value=MODE;$('#right').setAttribute('aria-labelledby','tab-'+cur);
+ $('#q').innerHTML=br(p.q(v));
+ const tmp=document.createElement('div');tmp.innerHTML=br(p.r(v,step));$('#fig').innerHTML='';$('#txt').innerHTML=`<div class="stt">ステップ ${step+1}　${p.ti[step]}</div>`;
+ [...tmp.children].forEach(c=>{const f=c.tagName.toLowerCase()=='svg'||c.classList.contains('figp');(f?$('#fig'):$('#txt')).appendChild(c)});
+ $('#bk').disabled=step==0;$('#nx').disabled=step==p.steps-1;$('#cnt').textContent=`${step+1} / ${p.steps}`;post()}
+function post(){if($('#fig svg.dr'))trApply();const tl=$('#fig svg.tl');if(tl&&G.auto){G.auto=0;playDep()}
+ const sv=$('#fig svg.sh');if(!sv)return;sv.getBoundingClientRect();
+ sv.querySelectorAll('.mv').forEach(e=>{const m=+e.dataset.m,[X,Y]=G.pos(+e.dataset.k,+e.dataset.i,G.dp);
+  e.style.transitionDelay=(m>=G.pd&&m<G.dp?(+e.dataset.j)*70:0)+'ms';e.style.transform=`translate(${X}px,${Y}px)`});
+ sv.querySelectorAll('.dv').forEach(e=>{e.style.transitionDelay=e.dataset.d+'ms';e.style.transform=`translate(${e.dataset.tx}px,${e.dataset.ty}px)`;if(e.dataset.b)e.style.opacity=1});
+ sv.querySelectorAll('.tok').forEach(e=>{const a=G.tk(+e.dataset.j,+e.dataset.c,step-(cur==0?1:0)),r=e.firstChild;
+  e.style.transitionDelay=(+e.dataset.c*90)+'ms';e.style.transform=`translate(${a.x}px,${a.y}px)`;e.style.opacity=a.o;r.style.fill=a.f;r.style.stroke=a.s});
+ G.pd=G.dp;G.ps=-1}
+document.addEventListener('click',e=>{const t=e.target,i=t.id;
+ if(t.matches('#tabs button')){rs();cur=+t.dataset.i;step=0}
+ else if(i=='bk'){rs();G.ps=step;step--}else if(i=='nx'){rs();G.ps=step;step++;if(cur==3&&step==1&&!matchMedia('(prefers-reduced-motion: reduce)').matches)G.auto=1}
+ else if(i=='tp'){G.auto=1}else if(i=='ts'){cancelAnimationFrame(G.an);announce('水やりアニメを止めました。');return;}
+ else if(i=='all'){rs();step=T[cur].steps-1;if(cur==1){const[a,b]=V[1];G.dp=G.pd=gcd(a,b)*2}}
+ else if(i=='rnd'){rs();V[cur]=T[cur].rd();step=0}
+
+ else if(i=='dn'){clearInterval(timer);UI.autoplay=false;G.pd=G.dp;G.dp=Math.min(G.max,G.dp+1);}
+ else if(i=='da'){if(UI.autoplay){clearInterval(timer);UI.autoplay=false;}else{clearInterval(timer);UI.autoplay=true;if(G.dp>=G.max)G.dp=G.pd=0;G.pd=G.dp;G.dp=Math.min(G.max,G.dp+1);
+  timer=setInterval(()=>{if(cur!==1||step!==4){clearInterval(timer);UI.autoplay=false;return;}G.pd=G.dp;G.dp=Math.min(G.max,G.dp+1);if(G.dp>=G.max){clearInterval(timer);UI.autoplay=false;}draw();},1600);}}
+ else if(i=='dr'){clearInterval(timer);UI.autoplay=false;G.dp=G.pd=0}
+ else if(i=='vn')G.dv++
+ else if(i=='va')G.dv=999
+ else if(i=='vr')G.dv=1
+ else if(i=='vp'){}
+ else if(i=='gw'){G.cn=Math.min(G.cn+1,3*lcm(...V[2])/V[2][1]);G.last='w'}
+ else if(i=='gw-'){G.cn=Math.max(1,G.cn-1);G.last=''}
+ else if(i=='gh-'){G.rn=Math.max(1,G.rn-1);G.last=''}
+ else if(i=='gh'){G.rn=Math.min(G.rn+1,3*lcm(...V[2])/V[2][0]);G.last='h'}
+ else if(i=='gs'){const[h0,w0]=V[2];if(G.cn*w0<G.rn*h0){G.cn++;G.last='w'}else{G.rn++;G.last='h'}}
+ else if(i=='gr'){G.cn=G.rn=1;G.last=''}
+ else if(i=='tc'){trCheck();return}else if(i=='th'){trHint();return}else if(i=='tr'){trReset();return}
+ else if(i=='fs'){setFullscreen();return}
+ else return;
+ draw()});
+document.addEventListener('change',e=>{const t=e.target;if(t.id==='mode'){rs();MODE=+t.value;step=0;draw();return;}if(t.dataset.k===undefined)return;
+ const k=+t.dataset.k,f=T[cur].f[k],n=readInteger(t,f[2],f[3],V[cur][k]);if(n===null)return;rs();V[cur][k]=n;step=0;draw();});
+document.addEventListener('keydown',e=>{if(e.target.matches('[role=tab]')){const tabs=[...$('#tabs').querySelectorAll('button')],i=tabs.indexOf(e.target),next=e.key==='ArrowRight'?(i+1)%tabs.length:e.key==='ArrowLeft'?(i+tabs.length-1)%tabs.length:e.key==='Home'?0:e.key==='End'?tabs.length-1:-1;if(next>=0){e.preventDefault();tabs[next].click();tabs[next].focus();}return;}if(/INPUT|SELECT|BUTTON|SUMMARY/.test(e.target.tagName)||e.isComposing)return;if(e.key=='ArrowRight')click('nx');if(e.key=='ArrowLeft')click('bk')});
+function click(id){const b=document.getElementById(id);if(b&&!b.disabled)b.click()}const IS_RANK=false;
+
+const UI={pick:-1,inputKey:'',stepKey:'',autoplay:false};
+function mountInputs(key,html){const e=$('#inp');if(UI.inputKey!==key){e.innerHTML=html;UI.inputKey=key;}}
+function announce(text){$('#live').textContent=text;}
+function cardValues(){return IS_RANK?S.v:V[0];}
+function placeNames(){return IS_RANK?PN[S.n]:SLC.map(x=>x[0]);}
+function placementSummary(){const names=placeNames(),v=cardValues();return names.map((name,s)=>{const c=G.tr.indexOf(s);return name+'の位：'+(c<0?'空いています':v[c]);}).join('、');}
+function updateTools(){const root=$('#card-tools');if(!root)return;const v=cardValues(),names=placeNames();
+ root.querySelectorAll('[data-card]').forEach(b=>{const c=+b.dataset.card,s=G.tr[c];b.setAttribute('aria-pressed',String(UI.pick===c));b.setAttribute('aria-label',`カード${c+1}、${v[c]}、${s<0?'手持ち':names[s]+'の位'}`);});
+ root.querySelectorAll('[data-place]').forEach(b=>{const s=+b.dataset.place,c=G.tr.indexOf(s);b.textContent=names[s]+'の位：'+(c<0?'空き':v[c]);b.disabled=UI.pick<0;b.setAttribute('aria-label',names[s]+'の位に置く、現在'+(c<0?'空き':v[c]));});
+ $('#unplace').disabled=UI.pick<0;$('#picked').textContent=UI.pick<0?'① カードを選び、② 置く位を選びます。':`カード${UI.pick+1}の ${v[UI.pick]} を選びました。置く位を選んでね。`;
+ $('#placement').textContent=placementSummary();
+}
+function toolsHtml(){const v=cardValues();return `<div id="card-tools" class="card-tools"><p id="picked"></p><div class="tool-row" role="group" aria-label="カードを選ぶ">${v.map((d,c)=>`<button type="button" data-card="${c}" aria-pressed="false">${c+1}枚目：${d}</button>`).join('')}</div><div class="tool-row" role="group" aria-label="置く位を選ぶ">${placeNames().map((n,s)=>`<button type="button" data-place="${s}"></button>`).join('')}<button type="button" id="unplace">手持ちに戻す</button></div><p id="placement"></p><p>ドラッグでも動かせます。同じ位に置くとカードを交換します。</p></div>`;}
+function chooseCard(c){UI.pick=c;updateTools();announce(`カード${c+1}の ${cardValues()[c]} を選びました。置く位を選んでね。`);}
+function placeCard(c,s){const old=G.tr[c],other=G.tr.indexOf(s);if(s>=0&&other>=0&&other!==c)G.tr[other]=old;G.tr[c]=s;
+ UI.pick=-1;G.bad=[];G.ok=0;G.gc=-1;G.gs=-1;G.hint=0;trMsg('');trAnim();trApply();updateTools();announce(placementSummary());}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.card!==undefined)chooseCard(+b.dataset.card);else if(b.dataset.place!==undefined&&UI.pick>=0){const c=UI.pick;placeCard(c,+b.dataset.place);$('#card-tools [data-card="'+c+'"]').focus({preventScroll:true});}else if(b.id==='unplace'&&UI.pick>=0){const c=UI.pick;placeCard(c,-1);$('#card-tools [data-card="'+c+'"]').focus({preventScroll:true});}});
+function stopDrag(){if(typeof DR==='undefined'||!DR)return;const d=DR;DR=null;try{d.sv.releasePointerCapture(d.id)}catch(_){}d.g.classList.remove('drag');if(d.sv.isConnected)trApply();}
+function stepTitles(){return IS_RANK?['カードをならべる','グループを見くらべる',...PN[S.n].map(n=>n+'の位をきめる')]:T[cur].ti;}
+function finishDraw(){
+ const sv=$('#fig svg.dr');if(sv){sv.setAttribute('aria-hidden','true');$('#fig').insertAdjacentHTML('beforeend',toolsHtml());updateTools();}
+ else $('#fig').querySelectorAll('svg').forEach(s=>{s.setAttribute('role','img');s.setAttribute('aria-label',stepTitles()[step]);});
+ const titles=stepTitles(),key=(IS_RANK?S.n:cur)+':'+titles.length;
+ if(UI.stepKey!==key){$('#stepJump').innerHTML=titles.map((t,i)=>`<option value="${i}">${i+1}　${t}</option>`).join('');UI.stepKey=key;}$('#stepJump').value=step;
+ $('#all').textContent='答えまで見る';
+ const liveMsg=IS_RANK?rankUnavailable():(!p1calc(V[0]).cands.length&&cur===0?noParityText(V[0]):'');
+ if(liveMsg)announce(liveMsg);else announce(`ステップ ${step+1}、${titles[step]}`);
+}
+function draw(){const a=document.activeElement,id=a?.id;const ds=a?.dataset;const key=ds?.i!==undefined?'[data-i="'+ds.i+'"]':null;stopDrag();$('#inputNotice').hidden=true;drawBase();finishDraw();
+ if(a&&a!==document.body&&!a.isConnected){const next=id?document.getElementById(id):key?document.querySelector(key):null;if(next&&!next.disabled)next.focus({preventScroll:true});}}
+document.addEventListener('change',e=>{if(e.target.id!=='stepJump')return;const n=+e.target.value;if(!Number.isInteger(n)||n<0||n>=stepTitles().length)return;rs();step=n;draw();});
+function setFullscreen(){const op=document.fullscreenElement?document.exitFullscreen?.():document.documentElement.requestFullscreen?.();if(op&&op.catch)op.catch(()=>announce('全画面にできませんでした。このまま使えます。'));else if(!op)announce('このブラウザでは全画面に対応していません。');}
+function readInteger(t,min,max,previous){const raw=t.value.trim().replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
+ if(!/^\d+$/.test(raw)||!Number.isSafeInteger(Number(raw))||+raw<min||+raw>max){t.value=previous;const msg=`${min}から${max}までの整数を入れてね。前の数に戻しました。`;$('#inputNotice').hidden=false;$('#inputNotice').textContent=msg;announce(msg);return null;}$('#inputNotice').hidden=true;t.value=String(+raw);return +raw;}
+
+draw();
+</script></body></html>

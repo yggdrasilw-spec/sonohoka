@@ -259,6 +259,16 @@ button{touch-action:manipulation}
 @media(max-width:700px){.parity-step-controls .step-next{min-width:130px}.actionbar{grid-template-columns:auto minmax(0,1fr) auto}.actionbar #nextBtn{grid-column:3;grid-row:1}.actionbar .challenge-btn{display:none}}
 @media(prefers-reduced-motion:reduce){.ten-pair-dot,.ten-pair-example{transition:none}}
 
+
+#hattenDialog{width:calc(100vw - 20px);max-width:1500px;height:calc(100dvh - 20px);max-height:none;padding:0;border:2px solid var(--line);border-radius:18px;color:var(--ink);background:var(--bg)}
+#hattenDialog::backdrop{background:rgba(25,35,45,.6)}
+.hatten-shell{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.hatten-head{padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;background:white;flex-shrink:0}
+.hatten-head h2{font-size:18px;margin:0}.hatten-head p{font-size:13px;margin:4px 0 0}
+#hattenFrame{width:100%;flex:1;min-height:0;border:0;background:white}
+#hattenClose{min-height:44px;flex-shrink:0}
+@media(max-width:520px){#hattenDialog{width:100vw;height:100dvh;max-width:none;margin:0;border-radius:0}.hatten-head{padding:8px}.hatten-head p{font-size:12px}}
+
 </style>
 </head>
 <body>
@@ -273,6 +283,7 @@ button{touch-action:manipulation}
       <button id="startBtn" class="big-btn" type="button">じゅんばんに学ぶ</button>
       <button id="shortStartBtn" class="secondary" type="button" aria-label="大事なところだけを学ぶコース">大事なところだけ学ぶ</button>
       <button id="resumeBtn" class="secondary hidden" type="button">つづきから</button>
+      <button type="button" class="secondary" data-open-hatten>発展：図で考える</button>
       <button id="coverLessonJumpBtn" class="secondary" type="button">時間・内容をえらぶ</button>
       <button class="secondary" type="button" onclick="LessonShare.open()">⚙️ 設定・配布URL</button>
     </div>
@@ -315,6 +326,7 @@ button{touch-action:manipulation}
       <div id="stepDots" class="step-dots" aria-hidden="true"></div>
     </div>
     <div class="top-actions">
+      <button type="button" class="icon-btn lesson-jump-btn" data-open-hatten>発展</button>
       <button id="lessonJumpBtn" class="icon-btn lesson-jump-btn" type="button">時間・内容をえらぶ</button>
       <button id="topTeacherStatusBtn" class="icon-btn" type="button" title="先生との接続状態">⚪ <span id="topTeacherStatusText">先生未接続</span></button>
       <button id="speakBtn" class="icon-btn" type="button" title="画面の文を読み上げる">🔊 <span class="text-label">よむ</span></button>
@@ -359,6 +371,7 @@ button{touch-action:manipulation}
   </div>
 </div>
 
+<dialog id="hattenDialog" aria-labelledby="hattenTitle"><div class="hatten-shell"><div class="hatten-head"><div><h2 id="hattenTitle">発展：図で考える</h2><p>数のカード・分け方・布の形・水やり。見終えたら元の学習へ戻れます。</p></div><button id="hattenClose" type="button" class="secondary">学習に戻る</button></div><iframe id="hattenFrame" title="整数のせいしつ 発展ラボ"></iframe></div></dialog>
 <div id="lessonJumpModal" class="modal" aria-hidden="true">
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="lessonJumpTitle" tabindex="-1">
     <div class="dialog-head"><h2 id="lessonJumpTitle">時間・内容をえらぶ</h2><button class="close-btn" data-close="lessonJumpModal" type="button">閉じる</button></div>
@@ -926,7 +939,7 @@ const RENDERERS={
 };
 
 function renderSummary(s){const wrap=el('div','visual-box center',lessonMain),card=el('div','summary-card',wrap);el('div','summary-icon',card,'✓');el('h3','',card,s.title);el('p','',card,s.text);const list=el('div','learned-list',card);(s.data?.items||[]).forEach(x=>el('div','learned-item',list,'・'+x));workBox(lessonMain,'<div class="big-label">つぎへ進めるよ</div><p class="lesson-note">説明を見て理解してから、別のかんたんな問題を自分で解く流れで進んだ。</p>');nextBtn.textContent=s.step===6?'しあげへ →':'つぎのSTEPへ →'}
-function renderFinalSummary(){const v=el('div','visual-box center',lessonMain),card=el('div','summary-card',v);el('div','summary-icon',card,'✓');el('h3','',card,'ここまで完了');el('p','',card,'しあげまで進めたよ。');if(pathState.mode==='short')el('p','lesson-note',card,'大事なところのしあげを終えたよ。');const list=el('div','learned-list',card);['整数','偶数・奇数','倍数・公倍数','約数・公約数','問題で使う'].forEach(x=>el('div','learned-item',list,x));const w=workBox(lessonMain,'<div class="big-label">ここまで見たこと</div><p>数のなかまを、図や式とつないで考えた。</p><p>もう一度見たい所があれば、ここからそのSTEPだけ見なおせるよ。</p>'+(pathState.mode==='short'?'<p class="lesson-note">もっとくわしく見たいときは、「じゅんばんに学ぶ」で続けられるよ。</p>':''));const failed=Object.entries(finish.skills).filter(([,x])=>x.attempts>x.selfPasses).map(([k])=>k);const map={finish_integer:0,finish_parity:1,finish_multiple_basic:2,finish_common_multiple:3,finish_largest_even:1,finish_common_divisor:5,finish_divisor_app:4,finish_square:6,finish_square_count:6,finish_reason:1};const steps=[...new Set(failed.map(k=>map[k]).filter(x=>x!==undefined))];if(steps.length){el('div','lesson-note',w,'もう一度見られるSTEP');const rg=el('div','review-grid',w);steps.forEach(st=>{const b=el('button','review-btn',rg,'STEP '+st+' '+STEP_NAMES[st]);b.type='button';b.onclick=()=>renderScene(sceneStepStart(st))})}else{el('div','feedback good',w,'ここまで進めたね。');}pathState.completedSteps=[0,1,2,3,4,5,6,7];save(STORAGE.PATH,pathState);renderStepDots(7)}
+function renderFinalSummary(){const v=el('div','visual-box center',lessonMain),card=el('div','summary-card',v);el('div','summary-icon',card,'✓');el('h3','',card,'ここまで完了');el('p','',card,'しあげまで進めたよ。');if(pathState.mode==='short')el('p','lesson-note',card,'大事なところのしあげを終えたよ。');const list=el('div','learned-list',card);['整数','偶数・奇数','倍数・公倍数','約数・公約数','問題で使う'].forEach(x=>el('div','learned-item',list,x));const w=workBox(lessonMain,'<div class="big-label">ここまで見たこと</div><p>数のなかまを、図や式とつないで考えた。</p><p>もう一度見たい所があれば、ここからそのSTEPだけ見なおせるよ。</p>'+(pathState.mode==='short'?'<p class="lesson-note">もっとくわしく見たいときは、「じゅんばんに学ぶ」で続けられるよ。</p>':''));const failed=Object.entries(finish.skills).filter(([,x])=>x.attempts>x.selfPasses).map(([k])=>k);const map={finish_integer:0,finish_parity:1,finish_multiple_basic:2,finish_common_multiple:3,finish_largest_even:1,finish_common_divisor:5,finish_divisor_app:4,finish_square:6,finish_square_count:6,finish_reason:1};const steps=[...new Set(failed.map(k=>map[k]).filter(x=>x!==undefined))];if(steps.length){el('div','lesson-note',w,'もう一度見られるSTEP');const rg=el('div','review-grid',w);steps.forEach(st=>{const b=el('button','review-btn',rg,'STEP '+st+' '+STEP_NAMES[st]);b.type='button';b.onclick=()=>renderScene(sceneStepStart(st))})}else{el('div','feedback good',w,'ここまで進めたね。');}const ext=el('button','secondary',w,'発展：図で考える');ext.type='button';ext.setAttribute('data-open-hatten','');pathState.completedSteps=[0,1,2,3,4,5,6,7];save(STORAGE.PATH,pathState);renderStepDots(7)}
 
 function askTeacher(onDone){
   teacherHelpConfirm=typeof onDone==='function'?onDone:null;
@@ -1032,9 +1045,29 @@ function openLessonJump(event){
     if(current)select.value=String(currentSceneIndex);
     const go=el('button','secondary',card,'えらんだ場面へ');go.type='button';go.onclick=()=>jumpToLesson(Number(select.value));
   });
+  const extra=el('section','lesson-jump-card',body);el('h3','',extra,'発展：図で考える');
+  el('p','lesson-note',extra,'整数のきまりを、別の場面でも使ってみよう。');
+  const ext=el('button','secondary',extra,'発展を開く');ext.type='button';ext.onclick=()=>{closeModal($('#lessonJumpModal'));openHatten(lessonJumpOpener)};
   openModal($('#lessonJumpModal'));
   $('#lessonJumpModal .close-btn').focus();
 }
+
+/* 発展は任意の図解教材。既存コースの解答・進捗を変更しない。 */
+let hattenOpener=null;
+function openHatten(opener){
+  hattenOpener=opener;
+  if('speechSynthesis' in window)window.speechSynthesis.cancel();
+  $('#hattenFrame').src='seisuu-hatten.html';
+  $('#hattenDialog').showModal();$('#hattenClose').focus();
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-open-hatten]');if(b)openHatten(b)});
+$('#hattenClose').onclick=()=>$('#hattenDialog').close();
+$('#hattenDialog').addEventListener('close',()=>{$('#hattenFrame').src='about:blank';hattenOpener?.focus()});
+// Message source is checked; also supports local file previews with opaque origins.
+window.addEventListener('message',e=>{
+  if(e.source===$('#hattenFrame').contentWindow&&e.data?.type==='integer-development-close'&&$('#hattenDialog').open)$('#hattenDialog').close();
+});
+
 $('#lessonJumpBtn').addEventListener('click',openLessonJump);
 $('#coverLessonJumpBtn').addEventListener('click',openLessonJump);
 $('#lessonJumpModal').addEventListener('keydown',event=>{

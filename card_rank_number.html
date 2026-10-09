@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>カードで作る N番目に大きい／小さい整数</title>
+<style>
+:root{--paper:#fdfdf8;--grid:#d9e6f2;--ink:#243447;--red:#d6336c;--org:#f08c00;--blue:#1c7ed6;--grn:#2f9e44}
+*{box-sizing:border-box}
+html{font-size:min(1.04vw,1.85vh)}
+html,body{height:100%;margin:0}
+body{overflow:hidden;color:var(--ink);font-family:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Meiryo",sans-serif;background:var(--paper);
+background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:1.2rem 1.2rem}
+.app{width:100vw;height:100vh;display:grid;grid-template-columns:23% 1fr 29%;grid-template-rows:auto 1fr;gap:.6rem;padding:.6rem}
+header{grid-column:1/4;display:flex;align-items:center;gap:.9rem}
+h1{font-size:1.2rem;margin:0;white-space:nowrap}
+#tabs{display:flex;gap:.4rem;flex:1}
+#tabs button{flex:1;padding:.5rem .3rem;border:.12rem solid var(--ink);background:#fff;border-radius:.5rem;font:inherit;font-size:1.05rem;font-weight:bold;cursor:pointer}
+#tabs button.on{background:var(--red);color:#fff;border-color:var(--red)}
+section{background:#fff;border:.14rem solid var(--ink);border-radius:.7rem;padding:.9rem;min-height:0;min-width:0}
+#left{display:flex;flex-direction:column;gap:1rem;overflow:auto}
+#q{font-size:1.2rem;line-height:1.75}
+#q b,.t b{color:var(--red)}
+#inp{display:flex;flex-wrap:wrap;gap:.8rem;align-items:end;border-top:.1rem dashed #adb5bd;padding-top:1rem}
+#inp label{font-size:1rem;display:flex;flex-direction:column;gap:.2rem}
+#inp input{width:6rem;font:inherit;font-size:1.5rem;padding:.2rem;border:.15rem solid var(--blue);border-radius:.4rem}
+button{font:inherit;color:var(--ink)}
+#rnd,#fs,#ctl button,.sb{padding:.45rem .8rem;border:.12rem solid var(--ink);background:#fff;border-radius:.5rem;cursor:pointer;font-weight:bold;font-size:1.05rem}
+.sb{margin:.2rem .3rem .2rem 0}
+#ctl .go{background:var(--blue);color:#fff;border-color:var(--blue)}
+button:focus-visible,input:focus-visible{outline:.2rem solid var(--org);outline-offset:.15rem}
+button:disabled{opacity:.35;cursor:default}
+#fig{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;overflow:hidden;background:#fffefa}
+#fig svg{flex:1 1 0;min-height:0;width:100%;max-width:none!important}
+#right{display:flex;flex-direction:column;gap:.6rem}
+#txt{flex:1;overflow:auto;min-height:0}
+#ctl{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;border-top:.1rem dashed #adb5bd;padding-top:.6rem;font-size:1.05rem}
+.t{font-size:1.2rem;line-height:1.8;margin:.6rem 0;background:#f8fafc;border-left:.35rem solid #adb5bd;border-radius:.4rem;padding:.4rem .8rem}
+.tb,b.tb{color:var(--blue)!important}.tg,b.tg{color:var(--grn)!important}.tp,b.tp{color:#e64980!important}.ty,b.ty{color:#d98e00!important}.tk,b.tk{color:#8d5524!important}.ta,b.ta{color:#e64980!important}
+#inp label.tb{color:var(--blue)}#inp label.tg{color:var(--grn)}#inp label.tk{color:#8d5524}#inp label.ta{color:#e64980}
+.stt{font-size:1.15rem;font-weight:bold;background:var(--ink);color:#fff;padding:.35rem .8rem;border-radius:.4rem;margin-bottom:.4rem}
+select{font:inherit;font-size:1.1rem;padding:.3rem;border:.15rem solid var(--blue);border-radius:.4rem;background:#fff}
+.tok{transition:transform .8s cubic-bezier(.35,0,.2,1),opacity .6s}.tok rect{transition:fill .6s,stroke .6s}
+.veh{opacity:0;transform-box:fill-box;transform-origin:center}.veh.stay{opacity:1}.veh.go{animation:dep .9s ease-in forwards}
+@keyframes dep{0%{opacity:0;transform:scale(.3)}25%{opacity:1;transform:scale(1)}100%{opacity:0;transform:translateX(70px)}}
+.dc{cursor:grab;touch-action:none}svg.dr{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.dc.drag{cursor:grabbing}.dc.anim{transition:transform .55s cubic-bezier(.35,0,.2,1)}.dc rect{transition:fill .3s,stroke .3s}
+.glow{animation:glw .9s ease-in-out infinite alternate}@keyframes glw{from{filter:drop-shadow(0 0 0 transparent)}to{filter:drop-shadow(0 0 10px var(--gc,#e64980))}}
+.go2{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
+.figp{font-size:1.5rem;line-height:2.3;align-self:stretch}.figp .chip{font-size:1.4rem}
+.cards,.row{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin:.4rem 0;font-size:1.7rem}
+.card,.slot{width:5.2rem;height:6.2rem;border:.2rem solid var(--ink);border-radius:.6rem;background:#ffe9b8;display:flex;align-items:center;justify-content:center;font-size:3.4rem;font-weight:bold;position:relative}
+.slot{background:#fff}.slot small{position:absolute;top:0;left:.3rem;font-size:.8rem;font-weight:normal}
+.card.ev,.slot.ev{background:#ffd8a8;border-color:var(--org)}
+.chip{display:inline-block;min-width:2.2rem;text-align:center;padding:.1rem .5rem;margin:.12rem;border-radius:1rem;background:#edf2f7;font-weight:bold;font-size:1.1rem}
+.chip.hi{background:var(--blue);color:#fff}.chip.hi.cg{background:var(--grn)}.chip.hi.big{background:var(--red);transform:scale(1.2)}
+.chip.pr{background:var(--grn);color:#fff}.chip.co{outline:.12rem solid var(--red);outline-offset:.08rem}
+.ans{border:.2rem solid var(--red);border-radius:.7rem;color:var(--red);font-size:1.7rem;font-weight:bold;padding:.4rem 1rem;margin:.6rem 0;display:inline-block;background:#fff5f8}
+table{border-collapse:collapse;margin:.4rem 0;font-size:1.1rem}td,th{border:.08rem solid #adb5bd;padding:.2rem .6rem;text-align:center}th{background:#e7f5ff;font-size:.9rem}
+.mv{transition:transform .7s cubic-bezier(.35,0,.2,1)}
+.pop{animation:pop .6s ease-out}@keyframes pop{from{opacity:0}to{opacity:1}}
+svg text{font-family:inherit}
+@media (prefers-reduced-motion:reduce){.dc.anim{transition-duration:.01s}.glow{animation:none}.veh.go{animation:none;opacity:1}.tok{transition-duration:.01s}.mv{transition-duration:.01s}.pop{animation:none}}
+@media (max-aspect-ratio:1/1){html{font-size:min(2.6vw,2.2vh)}body{overflow:auto}.app{height:auto;display:flex;flex-direction:column}#fig{min-height:70vw}#fig svg{flex:none;height:auto}#txt{overflow:visible}}
+
+/* Readable at school-tablet widths and browser zoom. */
+html{font-size:16px}body{overflow:auto}
+.app{height:auto;min-height:100svh;grid-template-columns:minmax(240px,23%) minmax(0,1fr) minmax(300px,29%);grid-template-rows:auto 1fr;align-items:start}
+header{grid-column:1/-1;flex-wrap:wrap;min-width:0}h1{white-space:normal;font-size:1.1rem;line-height:1.5;overflow-wrap:anywhere}
+#tabs{flex:1 1 100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}#tabs:empty{display:none}
+#tabs button{min-width:0;line-height:1.5;font-size:1rem;overflow-wrap:anywhere}
+button,select,input{min-height:44px}button{line-height:1.5}#fs{margin-left:auto}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #c15c00;outline-offset:3px}
+#left{overflow:visible}#fig{min-height:520px;overflow:visible;justify-content:flex-start;width:100%}
+#fig svg{flex:none;height:auto;max-height:560px;width:100%}#fig svg.dr{max-height:390px}
+#right{min-height:520px}#txt{overflow:visible}#q,.t{font-size:1.05rem;line-height:1.8}
+#ctl{margin-top:auto}.tb,b.tb{color:#145ca4!important}.tg,b.tg{color:#237833!important}.ty,b.ty{color:#885300!important}.tp,b.tp,.ta,b.ta{color:#aa205b!important}
+#inp{gap:.6rem}#inp label{max-width:100%}#inp input{width:5rem;font-size:1.25rem}#inp select{max-width:100%}
+.figp{font-size:1.1rem;line-height:1.8;width:100%}.figp .chip{font-size:1.05rem}
+.card-tools{width:100%;padding:.7rem;background:#f3f7fc;border:1px solid #b9c9da;border-radius:.6rem;font-size:1rem;line-height:1.6}
+.card-tools p{margin:.2rem 0 .6rem}.tool-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0}
+.tool-row button{border:2px solid #243447;border-radius:.5rem;background:#fff;padding:.4rem .6rem;font-size:1rem;min-width:60px}
+.tool-row button[aria-pressed=true]{background:#ffe9b8;border-color:#b65300;box-shadow:0 0 0 2px #b65300}
+.groups{width:100%;display:grid;gap:.6rem}.group-box{border:2px solid #b9c9da;padding:.7rem;border-radius:.7rem;background:#f7faff;font-size:1.1rem;line-height:1.65}
+.group-box.chosen{border:3px solid #b62959;background:#fff4f8}.group-box strong{font-size:1.3rem}.group-box span{display:block}
+details{margin:.7rem 0;width:100%}summary{cursor:pointer;padding:.5rem;border:1px solid #b9c9da;border-radius:.5rem;line-height:1.6;font-size:1rem}
+.number-list{display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem 0}.number-list span{padding:.3rem .5rem;background:#eef3f8;border-radius:.3rem;font-size:1rem}
+.step-select{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;width:100%;font-size:1rem}.step-select select{max-width:100%;width:100%}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.notice{padding:.7rem;border-left:4px solid #b62959;background:#fff4f8;font-size:1rem;line-height:1.8}
+.chip{max-width:100%}table{width:100%;font-size:1rem}td,th{padding:.3rem;overflow-wrap:anywhere}.ans{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:1199px){.app{grid-template-columns:minmax(240px,32%) minmax(0,1fr)}#right{grid-column:1/-1;min-height:0}#fig{min-height:420px}}
+@media(max-width:760px){html{font-size:16px}.app{display:flex;flex-direction:column;padding:.5rem;gap:.6rem}.app>header,.app>section{width:100%}#tabs{grid-template-columns:repeat(2,minmax(0,1fr))}#fig{min-height:0;padding:.7rem}#fig svg{height:auto;min-height:0;max-height:none}#right{min-height:0}#inp{gap:.5rem}#ctl{position:static}.t{padding:.5rem .6rem}.group-box{font-size:1rem}.figp{font-size:1rem}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+#fig svg.sh{max-height:330px}.groups{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:760px){.groups{grid-template-columns:1fr}#fig svg.sh{max-height:none}}
+</style>
+</head><body>
+<div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><div class="app">
+<header><h1>カードで作る「◯番目に大きい／小さい数」</h1><div id="tabs"></div><button id="fs">全画面</button></header>
+<section id="left"><div id="q"></div><div id="inp"></div><p id="inputNotice" class="notice" role="status" hidden></p></section>
+<section id="fig"></section>
+<section id="right"><div id="txt"></div>
+<div id="ctl"><button id="bk">◀ もどる</button><button id="nx" class="go">つぎへ ▶</button><button id="all">ぜんぶ見る</button><span id="cnt"></span><label class="step-select">見たい場面へ<select id="stepJump" aria-label="見たい場面へ移動"></select></label></div></section>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const br=h=>h.replace(/。(?!<\/|<br)/g,'。<br>');
+const PN={3:['百','十','一'],4:['千','百','十','一']};
+const PC={千:['#d3f9d8','#2f9e44','tg'],百:['#d0ebff','#1c7ed6','tb'],十:['#fff3bf','#f59f00','ty'],一:['#ffd6e5','#e64980','tp']};
+const S={n:3,k:2,dir:0,v:[3,7,9]};let step=0,D={},DR=null;
+const G={tr:[-1,-1,-1],hint:0,msg:'',bad:[],ok:0,gc:-1,gs:-1,ps:-1};
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const perms=a=>a.length<2?[a]:a.flatMap((x,i)=>perms([...a.slice(0,i),...a.slice(i+1)]).map(p=>[x,...p]));
+const pn=s=>PN[S.n][s],cl=s=>PC[pn(s)][2],col=s=>PC[pn(s)];
+const dwd=()=>S.dir?'小さい':'大きい';
+const hp=c=>({x:20+c*100,y:44}),sp=s=>({x:20+s*110,y:300});
+function rs(){stopDrag();UI.pick=-1;Object.assign(G,{tr:Array(S.n).fill(-1),hint:0,msg:'',bad:[],ok:0,gc:-1,gs:-1,ps:-1})}
+function calc(){const{n,v,dir}=S,seen=new Set(),seqs=[];
+ perms([...Array(n).keys()]).forEach(p=>{const d=p.map(i=>v[i]);if(d[0]==0)return;const s=d.join('');if(!seen.has(s)){seen.add(s);seqs.push(s)}});
+ seqs.sort((a,b)=>dir?a-b:b-a);D={list:seqs,kk:S.k,target:null,levels:[],asg:[]};
+ if(!seqs.length||S.k>seqs.length)return;
+ const kk=S.k;let cur=seqs.slice(),idx=kk-1;const levels=[];
+ for(let p=0;p<n;p++){const gr=[];cur.forEach(s=>{const g=gr[gr.length-1];if(g&&g.d==s[p])g.m.push(s);else gr.push({d:s[p],m:[s]})});
+  let off=0,gi=0;gr.forEach(g=>{g.from=off+1;off+=g.m.length;g.to=off});
+  gi=gr.findIndex(g=>idx+1>=g.from&&idx+1<=g.to);
+  levels.push({p,gr,gi,digit:gr[gi].d,rank:idx+1});idx-=gr[gi].from-1;cur=gr[gi].m}
+ const target=cur[0],used=Array(n).fill(0),asg=[...target].map(d=>{const c=v.findIndex((x,i)=>!used[i]&&String(x)==d);used[c]=1;return c});
+ D={list:seqs,kk,target,levels,asg}}
+
+function rankUnavailable(){return !D.list.length?`${S.n}枚とも0なので、${S.n}けたの整数は作れません。いちばん左は0以外にする必要があります。`:!D.target?`作れる異なる数は${D.list.length}種類です。${S.k}番目に${dwd()}数はありません。順位を変えるか、カードの数を変えてみよう。`:'';}
+function levelText(p){const L=D.levels[p],c=cl(p),chosen=L.gr[L.gi],skip=chosen.from-1,inside=L.rank-skip;
+ let h=`<p class="t"><b class="${c}">${pn(p)}の位</b>をきめます。${p?`すでに決めた ${D.target.slice(0,p)} ではじまる数の中で考えます。`:''}</p>`;
+ h+=`<p class="t">この位に使える数字は <b>${L.gr.length}種類</b>。同じ数字のカードが何枚あっても、同じ数は1種類として数えます。</p>`;
+ if(p===0&&S.v.includes(0))h+='<p class="t">0は一番左に置けないので、0ではじまるグループはありません。</p>';
+ h+=`<p class="t">この中で${L.rank}番目の数は、<b>${L.digit}</b>をこの位に置くグループに入ります。<br>→ ${pn(p)}の位は <b class="${c}">${L.digit}</b>。</p>`;
+ if(p<S.n-1)h+=`<p class="t">このグループより前には <b>${skip}個</b>の数があります。<br><b>${L.rank} − ${skip} ＝ ${inside}</b><br>次は、このグループの中で <b>${inside}番目</b>の数をさがします。残りのカードは <b>${S.n-p-1}枚</b>です。</p>`;
+ else h+='<p class="t">すべての位が決まりました。</p>';
+ return h;}
+const kword=()=>S.k===1?'いちばん':S.k+'番目に';
+function groupHtml(p,reveal){const prefix=p?D.target.slice(0,p):'',items=p===0?D.list:D.list.filter(n=>n.startsWith(prefix));
+ const groups=[];items.forEach(n=>{let g=groups.at(-1);if(!g||g.d!==n[p]){g={d:n[p],m:[]};groups.push(g);}g.m.push(n);});let count=0;
+ return `<div class="figp"><p>同じ${pn(p)}の位で分ける${prefix?'（'+prefix+'ではじまる数）':''}</p><div class="groups">${groups.map(g=>{const from=count+1;count+=g.m.length;const chosen=reveal&&g.d===D.target[p];return `<div class="group-box ${chosen?'chosen':''}"><strong>${prefix}${g.d}${'□'.repeat(S.n-p-1)}</strong><span>${g.m.length}個の数：${from===count?from+'番目':from+'〜'+count+'番目'}${p?'（このグループ内）':''}</span>${chosen?'<span>✓ このグループを選びます</span>':''}</div>`;}).join('')}</div><details><summary>すべての数を確かめる（${D.list.length}種類）</summary><div class="number-list">${D.list.map((n,i)=>`<span>${i+1}番目：${n}</span>`).join('')}</div></details></div>`;}
+function slotsSvg(glowS){let sv=`<text x="20" y="30" font-size="16" fill="#868e96">手持ちカード</text><rect x="${8}" y="${250}" width="${S.n*110+4}" height="${150}" rx="16" fill="#f8fafc" stroke="#ced4da"/>`;
+ for(let s=0;s<S.n;s++){const c=col(s),q=sp(s);sv+=`<rect class="sl" data-s="${s}" x="${q.x}" y="${q.y}" width="80" height="92" rx="10" fill="#fff" stroke="${c[1]}" stroke-width="3" stroke-dasharray="6 4"/><text x="${q.x+40}" y="${q.y-10}" text-anchor="middle" font-size="16" font-weight="bold" fill="${c[1]}">${pn(s)}の位</text>`}
+ return sv}
+function trialSvg(){let sv=slotsSvg();S.v.forEach((x,c)=>sv+=`<g class="dc" data-c="${c}"><rect width="80" height="92" rx="10" stroke-width="3.5"/><text x="40" y="66" text-anchor="middle" font-size="52" font-weight="bold" fill="#243447" pointer-events="none">${x}</text></g>`);
+ return`<svg class="dr" viewBox="0 0 ${Math.max(S.n*110+30,440)} 430">${sv}</svg>`}
+const tokp=(c,st)=>{const s=D.asg.indexOf(c);if(st>=2&&s<=st-2){const q=sp(s),k=col(s);return{x:q.x,y:q.y,f:k[0],s:k[1]}}const q=hp(c);return{x:q.x,y:q.y,f:'#ffe9b8',s:'#243447'}};
+
+function explSvg(st,ps){let sv=slotsSvg();const width=Math.max(S.n*110+30,440);
+ if(st>=2)sv+=`<rect x="${sp(st-2).x}" y="${sp(st-2).y}" width="80" height="92" rx="10" fill="none" stroke="${col(st-2)[1]}" stroke-width="4"/>`;
+ S.v.forEach((d,c)=>{const a=tokp(c,ps);sv+=`<g class="tok" data-c="${c}" style="transform:translate(${a.x}px,${a.y}px)"><rect width="80" height="92" rx="10" stroke-width="3.5" style="fill:${a.f};stroke:${a.s}"/><text x="40" y="66" text-anchor="middle" font-size="52" font-weight="bold">${d}</text></g>`;});
+ return `<svg class="sh" viewBox="0 0 ${width} 420">${sv}</svg>`+groupHtml(Math.max(0,st-2),st>=2);}
+// ---- try phase
+const trPos=c=>{const s=G.tr[c];return s<0?hp(c):sp(s)};
+function trMsg(h){G.msg=h;const e=$('#trmsg');if(e)e.innerHTML=h}
+const trAnim=()=>document.querySelectorAll('#fig .dc').forEach(g=>g.classList.add('anim'));
+function trApply(){const sv=$('#fig svg.dr');if(!sv)return;
+ sv.querySelectorAll('.dc').forEach(g=>{const c=+g.dataset.c,p=trPos(c),s=G.tr[c],r=g.firstChild;
+  g.style.transform=`translate(${p.x}px,${p.y}px)`;r.style.fill=s<0?'#ffe9b8':col(s)[0];r.style.stroke=s<0?'#243447':col(s)[1];
+  const gl=G.ok?'#2f9e44':(s>=0&&G.bad.includes(s)?'#d6336c':(G.gc==c?(col(G.gs)[1]):''));g.classList.toggle('glow',!!gl);if(gl)g.style.setProperty('--gc',gl)});
+ sv.querySelectorAll('.sl').forEach(r=>{const s=+r.dataset.s,gl=G.ok?'#2f9e44':G.bad.includes(s)?'#d6336c':G.gs==s?col(s)[1]:'';r.style.stroke=gl||col(s)[1];r.classList.toggle('glow',!!gl);if(gl)r.style.setProperty('--gc',gl)})}
+function trDrop(c,x,y){const cx=x+40,cy=y+46;let bs=-1,bd=70;for(let s=0;s<S.n;s++){const q=sp(s),d=Math.hypot(cx-(q.x+40),cy-(q.y+46));if(d<bd){bd=d;bs=s}}
+ placeCard(c,bs)}
+function trCheck(){const{n}=S,{list,target,kk}=D;if(!target){trMsg('<p class="t">'+rankUnavailable()+'</p>');return}
+ if(G.tr.some(s=>s<0)){G.bad=[];trMsg(`<p class="t">${n}まいぜんぶ、枠に ならべてから<br>こたえあわせしてね。</p>`);trApply();return}
+ const x=[...Array(n)].map((_,s)=>S.v[G.tr.indexOf(s)]),num=x.join('');let m='',bad=[];G.ok=0;G.gc=-1;G.gs=-1;
+ if(x[0]==0){bad=[0];m=`0は いちばん左（<b class="${cl(0)}">${pn(0)}の位</b>）に おけないよ。`}
+ else if(num==target){G.ok=1;m=`せいかい！ <b>${num}</b> は ${kword()}${dwd()}数です。<br>「つぎへ ▶」で、速い見つけ方を 見てみよう。`}
+ else{const r=D.list.indexOf(num)+1,p=x.findIndex((d,i)=>String(d)!=target[i]);bad=[p];
+  m=`いまの数 <b>${num}</b> は、${dwd()}じゅんで <b>${r}番目</b>。<br>ほしいのは <b>${kk}番目</b> だから、<br>もう少し <b>${r<kk?(S.dir?'大きい':'小さい'):(S.dir?'小さい':'大きい')}</b> 数だよ。<br><b class="${cl(p)}">${pn(p)}の位</b>を 見なおそう。「ヒント」も おしてみてね。`}
+ G.bad=bad;trMsg(`<p class="t">${m}</p>`);trApply()}
+function trHint(){if(!D.target){trMsg('<p class="t">'+rankUnavailable()+'</p>');return;}const p=[...Array(S.n)].findIndex((_,s)=>{const c=G.tr.indexOf(s);return c<0||String(S.v[c])!=D.target[s]});G.ok=0;G.bad=[];
+ if(p<0){G.gc=-1;G.gs=-1;trMsg('<p class="t">もう ぜんぶ あっているよ。<br>こたえあわせ してみよう。</p>')}
+ else{G.hint++;G.gs=p;G.gc=D.asg[p];trMsg(`<p class="t"><b>ヒント</b>　<b class="${cl(p)}">${pn(p)}の位</b> がまだ。<br>光っているカードが入るよ。</p>`+levelText(p))}
+ trApply()}
+function trAnswer(){if(!D.target){trMsg('<p class="t">'+rankUnavailable()+'</p>');return;}G.tr=Array(S.n).fill(-1);D.asg.forEach((c,s)=>G.tr[c]=s);G.bad=[];G.gc=-1;G.gs=-1;G.ok=0;trAnim();trMsg(`<p class="t">こたえは <b>${D.target}</b>。<br>「つぎへ ▶」で 見つけ方を 見よう。</p>`);trApply();updateTools()}
+function trReset(){rs();trMsg('');trAnim();trApply();updateTools();announce(placementSummary());}
+// ---- draw
+function drawBase(){calc();const{n}=S,TI=['やってみよう：カードをならべよう','グループを見くらべる',...PN[n].map(p=>`${p}の位を きめる`)],ST=TI.length;if(step>=ST)step=ST-1;
+ $('#q').innerHTML=br(`下の${n}枚のカード <b>${S.v.join('・')}</b> を1枚ずつ使って、<br><b>${kword()}${dwd()}${n}けたの整数</b>を作りましょう。<br><small>同じ数は1種類として数えます。</small>`);
+ const sel=(id,l,o,cur)=>`<label>${l}<select id="${id}">${o.map(([v,t])=>`<option value="${v}" ${v==cur?'selected':''}>${t}</option>`).join('')}</select></label>`;
+ mountInputs('rank-'+n,sel('sn','カードのまい数',[[3,'3まい'],[4,'4まい']],n)+sel('sk','何番目',[[1,'1番目'],[2,'2番目'],[3,'3番目']],S.k)+sel('sd','大きい／小さい',[[0,'大きい'],[1,'小さい']],S.dir)+S.v.map((x,k)=>`<label>カード${k+1}<input type="text" inputmode="numeric" value="${x}" data-k="${k}"></label>`).join('')+'<button id="rnd">数をランダムに変える</button>');
+ $('#sn').value=n;$('#sk').value=S.k;$('#sd').value=S.dir;$('#inp').querySelectorAll('[data-k]').forEach(i=>{if(document.activeElement!==i)i.value=S.v[+i.dataset.k];});
+ const ps=G.ps<0?step:G.ps;let fig,txt=`<div class="stt">ステップ ${step+1}　${TI[step]}</div>`;
+ if(!D.target){fig=trialSvg()+groupEmpty();txt+='<p class="notice">'+rankUnavailable()+'</p><div id="trmsg" role="status" aria-live="polite" aria-atomic="true"></div><button class="sb" id="th">理由を確かめる</button><button class="sb" id="tr">やりなおし</button>'}
+ else if(step==0){fig=trialSvg();txt+=br(`<p class="t">${n}まいのカードを 枠にならべて、<br><b>${kword()}${dwd()}整数</b> を つくろう。</p><div id="trmsg" role="status" aria-live="polite" aria-atomic="true">${G.msg}</div><div><button class="sb go2" id="tc">こたえあわせ</button><button class="sb" id="th">ヒント</button><button class="sb" id="ta">こたえを見る</button><button class="sb" id="tr">やりなおし</button></div>`)}
+ else{fig=explSvg(step,ps);
+  if(step==1)txt+=br(`<p class="t">${n}まいで つくれる数は、ぜんぶで <b>${D.list.length}通り</b>。<br>${dwd()}じゅんにグループに分けると、図のようになります。</p><p class="t">${D.kk}番目を さがしたい。<br>でも ぜんぶ書くのは たいへん…！</p><p class="t">そこで <b>グループ</b> で考えます。<br>「つぎへ ▶」を おしてね。</p>`);
+  else txt+=br(levelText(step-2)+(step==n+1?`<div class="ans">答え　${D.target}</div><p class="t">${kword()}${dwd()}数は <b>${D.target}</b>。<br>全部書かなくても、グループで 考えれば 速く見つかる！</p>`:''))}
+ const tmp=document.createElement('div');tmp.innerHTML=fig;$('#fig').innerHTML='';[...tmp.children].forEach(c=>$('#fig').appendChild(c));$('#txt').innerHTML=txt;
+ $('#bk').disabled=step==0;$('#nx').disabled=step==ST-1;$('#cnt').textContent=`${step+1} / ${ST}`;post()}
+function post(){if($('#fig svg.dr'))trApply();const sv=$('#fig svg.sh');if(!sv)return;sv.getBoundingClientRect();
+ sv.querySelectorAll('.tok').forEach(e=>{const a=tokp(+e.dataset.c,step),r=e.firstChild;e.style.transitionDelay=(+e.dataset.c*90)+'ms';e.style.transform=`translate(${a.x}px,${a.y}px)`;r.style.fill=a.f;r.style.stroke=a.s});G.ps=-1}
+
+const svgPt=(sv,e)=>{const m=sv.getScreenCTM();if(!m)return null;const p=sv.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(m.inverse())};
+
+document.addEventListener('pointerdown',e=>{const g=e.target.closest?.('.dc');if(!g||DR||e.button!==0||!e.isPrimary)return;const sv=g.ownerSVGElement,p=svgPt(sv,e);if(!p)return;const c=+g.dataset.c,q=trPos(c);DR={g,c,sv,id:e.pointerId,dx:p.x-q.x,dy:p.y-q.y,last:p,x:e.clientX,y:e.clientY,moved:false};g.classList.remove('anim');g.classList.add('drag');try{sv.setPointerCapture(e.pointerId)}catch(_){}sv.appendChild(g);e.preventDefault()});
+document.addEventListener('pointermove',e=>{if(!DR||e.pointerId!==DR.id)return;if(!DR.sv.isConnected){stopDrag();return;}const p=svgPt(DR.sv,e);if(!p)return;DR.last=p;if(Math.hypot(e.clientX-DR.x,e.clientY-DR.y)>6)DR.moved=true;if(DR.moved)DR.g.style.transform=`translate(${p.x-DR.dx}px,${p.y-DR.dy}px)`;});
+document.addEventListener('pointerup',e=>{if(!DR||e.pointerId!==DR.id)return;const d=DR,p=svgPt(d.sv,e);stopDrag();if(!p||!d.sv.isConnected)return;if(d.moved)trDrop(d.c,p.x-d.dx,p.y-d.dy);else chooseCard(d.c);updateTools();});
+document.addEventListener('pointercancel',stopDrag);document.addEventListener('lostpointercapture',e=>{if(DR&&DR.id===e.pointerId)stopDrag();});
+document.addEventListener('click',e=>{const r=e.target.closest?.('.sl');if(r&&UI.pick>=0)placeCard(UI.pick,+r.dataset.s);});
+const newCards=n=>{const a=[0,1,2,3,4,5,6,7,8,9];for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]];}return a.slice(0,n);};
+function groupEmpty(){return `<div class="figp notice">${rankUnavailable()}${D.list.length?`<div class="number-list">${D.list.map((n,i)=>`<span>${i+1}番目：${n}</span>`).join('')}</div>`:''}</div>`;}
+document.addEventListener('click',e=>{const i=e.target.id;
+ if(i=='bk'){rs();G.ps=step;step--}else if(i=='nx'){rs();G.ps=step;step++}else if(i=='all'){rs();step=S.n+1}
+ else if(i=='rnd'){S.v=newCards(S.n);rs();step=0}
+ else if(i=='tc'){trCheck();return}else if(i=='th'){trHint();return}else if(i=='ta'){trAnswer();return}else if(i=='tr'){trReset();return}
+ else if(i=='fs'){setFullscreen();return}
+ else return;draw()});
+document.addEventListener('change',e=>{const t=e.target;
+ if(t.id==='sn'){S.n=+t.value;S.v=newCards(S.n);}else if(t.id==='sk')S.k=+t.value;else if(t.id==='sd')S.dir=+t.value;
+ else if(t.dataset.k!==undefined){const k=+t.dataset.k,n=readInteger(t,0,9,S.v[k]);if(n===null)return;S.v[k]=n;}else return;
+ rs();step=0;draw();});
+document.addEventListener('keydown',e=>{if(/INPUT|SELECT|BUTTON|SUMMARY/.test(e.target.tagName)||e.isComposing)return;const b=document.getElementById(e.key=='ArrowRight'?'nx':e.key=='ArrowLeft'?'bk':'');if(b&&!b.disabled)b.click()});
+const IS_RANK=true;
+
+const UI={pick:-1,inputKey:'',stepKey:'',autoplay:false};
+function mountInputs(key,html){const e=$('#inp');if(UI.inputKey!==key){e.innerHTML=html;UI.inputKey=key;}}
+function announce(text){$('#live').textContent=text;}
+function cardValues(){return IS_RANK?S.v:V[0];}
+function placeNames(){return IS_RANK?PN[S.n]:SLC.map(x=>x[0]);}
+function placementSummary(){const names=placeNames(),v=cardValues();return names.map((name,s)=>{const c=G.tr.indexOf(s);return name+'の位：'+(c<0?'空いています':v[c]);}).join('、');}
+function updateTools(){const root=$('#card-tools');if(!root)return;const v=cardValues(),names=placeNames();
+ root.querySelectorAll('[data-card]').forEach(b=>{const c=+b.dataset.card,s=G.tr[c];b.setAttribute('aria-pressed',String(UI.pick===c));b.setAttribute('aria-label',`カード${c+1}、${v[c]}、${s<0?'手持ち':names[s]+'の位'}`);});
+ root.querySelectorAll('[data-place]').forEach(b=>{const s=+b.dataset.place,c=G.tr.indexOf(s);b.textContent=names[s]+'の位：'+(c<0?'空き':v[c]);b.disabled=UI.pick<0;b.setAttribute('aria-label',names[s]+'の位に置く、現在'+(c<0?'空き':v[c]));});
+ $('#unplace').disabled=UI.pick<0;$('#picked').textContent=UI.pick<0?'① カードを選び、② 置く位を選びます。':`カード${UI.pick+1}の ${v[UI.pick]} を選びました。置く位を選んでね。`;
+ $('#placement').textContent=placementSummary();
+}
+function toolsHtml(){const v=cardValues();return `<div id="card-tools" class="card-tools"><p id="picked"></p><div class="tool-row" role="group" aria-label="カードを選ぶ">${v.map((d,c)=>`<button type="button" data-card="${c}" aria-pressed="false">${c+1}枚目：${d}</button>`).join('')}</div><div class="tool-row" role="group" aria-label="置く位を選ぶ">${placeNames().map((n,s)=>`<button type="button" data-place="${s}"></button>`).join('')}<button type="button" id="unplace">手持ちに戻す</button></div><p id="placement"></p><p>ドラッグでも動かせます。同じ位に置くとカードを交換します。</p></div>`;}
+function chooseCard(c){UI.pick=c;updateTools();announce(`カード${c+1}の ${cardValues()[c]} を選びました。置く位を選んでね。`);}
+function placeCard(c,s){const old=G.tr[c],other=G.tr.indexOf(s);if(s>=0&&other>=0&&other!==c)G.tr[other]=old;G.tr[c]=s;
+ UI.pick=-1;G.bad=[];G.ok=0;G.gc=-1;G.gs=-1;G.hint=0;trMsg('');trAnim();trApply();updateTools();announce(placementSummary());}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.card!==undefined)chooseCard(+b.dataset.card);else if(b.dataset.place!==undefined&&UI.pick>=0){const c=UI.pick;placeCard(c,+b.dataset.place);$('#card-tools [data-card="'+c+'"]').focus({preventScroll:true});}else if(b.id==='unplace'&&UI.pick>=0){const c=UI.pick;placeCard(c,-1);$('#card-tools [data-card="'+c+'"]').focus({preventScroll:true});}});
+function stopDrag(){if(typeof DR==='undefined'||!DR)return;const d=DR;DR=null;try{d.sv.releasePointerCapture(d.id)}catch(_){}d.g.classList.remove('drag');if(d.sv.isConnected)trApply();}
+function stepTitles(){return IS_RANK?['カードをならべる','グループを見くらべる',...PN[S.n].map(n=>n+'の位をきめる')]:T[cur].ti;}
+function finishDraw(){
+ const sv=$('#fig svg.dr');if(sv){sv.setAttribute('aria-hidden','true');$('#fig').insertAdjacentHTML('beforeend',toolsHtml());updateTools();}
+ else $('#fig').querySelectorAll('svg').forEach(s=>{s.setAttribute('role','img');s.setAttribute('aria-label',stepTitles()[step]);});
+ const titles=stepTitles(),key=(IS_RANK?S.n:cur)+':'+titles.length;
+ if(UI.stepKey!==key){$('#stepJump').innerHTML=titles.map((t,i)=>`<option value="${i}">${i+1}　${t}</option>`).join('');UI.stepKey=key;}$('#stepJump').value=step;
+ $('#all').textContent='答えまで見る';
+ const liveMsg=IS_RANK?rankUnavailable():(!p1calc(V[0]).cands.length&&cur===0?noParityText(V[0]):'');
+ if(liveMsg)announce(liveMsg);else announce(`ステップ ${step+1}、${titles[step]}`);
+}
+function draw(){const a=document.activeElement,id=a?.id;const ds=a?.dataset;const key=ds?.i!==undefined?'[data-i="'+ds.i+'"]':null;stopDrag();$('#inputNotice').hidden=true;drawBase();finishDraw();
+ if(a&&a!==document.body&&!a.isConnected){const next=id?document.getElementById(id):key?document.querySelector(key):null;if(next&&!next.disabled)next.focus({preventScroll:true});}}
+document.addEventListener('change',e=>{if(e.target.id!=='stepJump')return;const n=+e.target.value;if(!Number.isInteger(n)||n<0||n>=stepTitles().length)return;rs();step=n;draw();});
+function setFullscreen(){const op=document.fullscreenElement?document.exitFullscreen?.():document.documentElement.requestFullscreen?.();if(op&&op.catch)op.catch(()=>announce('全画面にできませんでした。このまま使えます。'));else if(!op)announce('このブラウザでは全画面に対応していません。');}
+function readInteger(t,min,max,previous){const raw=t.value.trim().replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
+ if(!/^\d+$/.test(raw)||!Number.isSafeInteger(Number(raw))||+raw<min||+raw>max){t.value=previous;const msg=`${min}から${max}までの整数を入れてね。前の数に戻しました。`;$('#inputNotice').hidden=false;$('#inputNotice').textContent=msg;announce(msg);return null;}$('#inputNotice').hidden=true;t.value=String(+raw);return +raw;}
+rs();draw();
+
+</script></body></html>
