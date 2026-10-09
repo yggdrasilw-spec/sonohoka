@@ -48,3 +48,10 @@
 教材番号83「ひとふでヒント」に、実際の漢字練習を収録した約9.4秒の紹介動画とPNGサムネイルを追加。単元選択から、一画ヒント、手書き、自動判定での正解確認へ進む。日本語字幕は3本、画面の下に専用の80px帯を設けた。
 
 再収録は `node scripts/capture-portfolio-83.cjs`、書き出しは `python scripts/encode-portfolio-missing.py 83`。アプリのチェックアウトは既定で `C:/Users/user/kanji-hint-drill`、変更する場合は `KANJI_HINT_ROOT` を指定する。元録画は `.portfolio-work/demo-83/source.webm`、採用区間・字幕・参照URLは `scripts/portfolio-demos-83.json` に保存。動画は `media/portfolio-83-intro.mp4`、サムネイルは同名PNG。カードでのホバー再生とモーダル再生を検証する。
+
+
+## 2026年10月10日の簡易版整理
+
+教材7「足し算忍者アプリ」と14「ひき算アプリ（20玉版）」のカードを削除。一筆ヒント（83）の動画と、追加済みの数のカード（84）・非公開の整数図解（85）は保持した。教材番号は詰め直さず、掲載数は82本、動画76本、静止画6本。初期表示と検証の件数、最新順、動画なしカードの一覧を更新した。
+
+`node scripts/qa-portfolio.cjs --videos` と `node scripts/qa-portfolio-83.cjs` で検索・新規カード・削除対象・全動画・一筆ヒントの再生を確認する。検証サーバーの `/sonohoka/` はスクリプトのあるチェックアウトを配信するため、worktreeでも独立して確認できる。
