@@ -42,3 +42,9 @@
 ## 2026年10月7日の教材追加
 
 教材番号82「一次関数ラボ」を試作版として追加。対象は中学2年、教科は数学。19テーマ・53課題、表・式・グラフの対応、自由な実演、発展のバッテリー問題を紹介する。リンク先は `ichiji_kansu_lab_v11.html`。実画面のPNGを掲載し、動画は付けていない。掲載数82本、動画78本、静止画4本。対象学年のキー `j2` は中学2年、並び順の主学年 `8` は小学校6年より後に扱う。
+
+## 2026年10月9日の動画追加
+
+教材番号83「ひとふでヒント」に、実際の漢字練習を収録した約9.4秒の紹介動画とPNGサムネイルを追加。単元選択から、一画ヒント、手書き、自動判定での正解確認へ進む。日本語字幕は3本、画面の下に専用の80px帯を設けた。
+
+再収録は `node scripts/capture-portfolio-83.cjs`、書き出しは `python scripts/encode-portfolio-missing.py 83`。アプリのチェックアウトは既定で `C:/Users/user/kanji-hint-drill`、変更する場合は `KANJI_HINT_ROOT` を指定する。元録画は `.portfolio-work/demo-83/source.webm`、採用区間・字幕・参照URLは `scripts/portfolio-demos-83.json` に保存。動画は `media/portfolio-83-intro.mp4`、サムネイルは同名PNG。カードでのホバー再生とモーダル再生を検証する。
