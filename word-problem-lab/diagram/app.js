@@ -41,7 +41,7 @@
   }
   const ns='http://www.w3.org/2000/svg';
   function svgEl(tag,attrs={},text){const n=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v)));if(text!==undefined)n.textContent=text;return n;}
-  function makeSvg(){const lineMode=step>=7&&diagramStyle==='line';const s=svgEl('svg',{viewBox:'0 0 900 300',class:'diagram'+(lineMode?' lineMode':''),role:'img','aria-label':`${m.typeName}の ${step===3?'○':lineMode?'線分':'テープ'}図`});$('scene').append(s);return s;}
+  function makeSvg(){const lineMode=step>=7&&diagramStyle==='line';const s=svgEl('svg',{viewBox:`0 0 900 ${m.kind==='compare'?340:300}`,class:'diagram'+(lineMode?' lineMode':''),role:'img','aria-label':`${m.typeName}の ${step===3?'○':lineMode?'線分':'テープ'}図`});$('scene').append(s);return s;}
   const x=100,w=700,y=115,h=58;
   function rect(s,a,b,c,cl){s.append(svgEl('rect',{x:a,y:b,width:c,height:h,rx:2,class:cl}));const line=svgEl('path',{d:`M ${a} ${b+h/2-8} V ${b+h/2+8} M ${a} ${b+h/2} H ${a+c} M ${a+c} ${b+h/2-8} V ${b+h/2+8}`,class:'segmentShape '+(cl.includes('tapeB')?'segmentB':'segmentA')});s.append(line);}
   function text(s,a,b,t,cl=''){s.append(svgEl('text',{x:a,y:b,'text-anchor':'middle',class:cl},t));}
@@ -58,7 +58,7 @@
       const scale=w/(m.unknown==='total'?m.left+Math.max(3,m.left*.5):m.total);
       dots(s,'total',x,x+scale*m.total,100,'dotB');dots(s,'left',x,x+scale*m.left,190,'dotA');
       brace(s,x,x+scale*m.total,60,m.label('total'));partArc(s,x,x+scale*m.left,212,m.label('left'));
-      if(m.unknown==='right')brace(s,x+scale*m.left,x+scale*m.total,150,'ちがい □'+m.unit);
+      if(m.unknown==='right')partArc(s,x+scale*m.left,x+scale*m.total,115,'ちがい □'+m.unit);
       if(m.unknown==='total'||m.unknown==='left')text(s,450,285,'数が わからない列は「？」で あらわすよ。','labelSmall');
       return;
     }
@@ -81,11 +81,11 @@
   function tapeDiagram(mode='full',labels=false,reveal=false){
     const s=makeSvg(),cut=x+w*m.ratio;
     if(m.kind==='compare'){
-      const top=80,lower=185;
+      const top=80,lower=200;
       rect(s,x,top,w,'tapeB appears');
       if(mode!=='first')rect(s,x,lower,w*m.ratio,'tapeA appears');
-      if(labels){brace(s,x,x+w,65,m.label('total',reveal));partArc(s,x,cut,lower+h+8,m.label('left',reveal));brace(s,cut,x+w,lower+5,m.label('right',reveal));}
-      text(s,50,110,'大','labelSmall');if(mode!=='first')text(s,50,215,'小','labelSmall');
+      if(labels){brace(s,x,x+w,65,m.label('total',reveal));partArc(s,x,cut,lower+h+8,m.label('left',reveal));partArc(s,cut,x+w,top+h,m.label('right',reveal));}
+      text(s,50,110,'大','labelSmall');if(mode!=='first')text(s,50,lower+30,'小','labelSmall');
     }else{
       if(mode==='first'&&m.start==='left'){rect(s,x,y,w*m.ratio,'tapeA appears');partArc(s,x,x+w*m.ratio,185,m.label('left'));}
       else if(mode==='first'){rect(s,x,y,w,'whole appears');brace(s,x,x+w,75,m.label('total'));}
@@ -109,7 +109,7 @@
     const cut=x+w*m.ratio;
     const startX=second&&['increase','combine'].includes(m.kind)?cut:x;
     const endX=second?m.kind==='compare'?cut:x+w:m.start==='left'?cut:x+w;
-    const yy=second&&m.kind==='compare'?185:m.kind==='compare'?80:y;
+    const yy=second&&m.kind==='compare'?200:m.kind==='compare'?80:y;
     const target={start:startX,end:endX,y:yy};
     if(partition)s.append(svgEl('line',{x1:cut,y1:y-10,x2:cut,y2:y+h+10,class:'trace'}));
     else rect(s,startX,yy,endX-startX,'trace');

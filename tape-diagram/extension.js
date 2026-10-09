@@ -26,7 +26,7 @@
     $('extensionStory').textContent=`${m.label('total',true)}。長い四角も 線分も、同じ数のまとまりを あらわします。`;
     $('extensionHint').textContent='テープの はばを なくしてみよう。両端の場所と 弧の範囲は そのままです。';
     if(m.kind==='compare'){
-      tape(s,a,b,125,'tapeB');tape(s,a,cut,255,'tapeA');arc(s,a,b,88,m.label('total',true));arc(s,a,cut,289,m.label('left',true),true);arc(s,cut,b,232,m.label('right',true));
+      tape(s,a,b,125,'tapeB');tape(s,a,cut,255,'tapeA');arc(s,a,b,88,m.label('total',true));arc(s,a,cut,289,m.label('left',true),true);arc(s,cut,b,149,m.label('right',true),true);
     }else{
       tape(s,a,cut,165,'tapeA');tape(s,cut,b,165,'tapeB');arc(s,a,b,112,m.label('total',true));arc(s,a,cut,207,m.label('left',true),true);arc(s,cut,b,207,m.label('right',true),true);
     }

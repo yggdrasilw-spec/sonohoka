@@ -56,8 +56,12 @@
     for(const g of s.querySelectorAll('.arcLabel')){
       const a=+g.dataset.a,b=+g.dataset.b,y=+g.dataset.y,below=g.dataset.below==='true';
       const edge=x=>{const candidates=edges.filter(e=>x>=e.a-.1&&x<=e.b+.1);return candidates.length?candidates.map(e=>below?e.bottom:e.top).sort((u,v)=>Math.abs(u-y)-Math.abs(v-y))[0]:y;};
-      const ya=edge(a),yb=edge(b),bend=(below?1:-1)*(Number(g.dataset.bend)||28),cy=(ya+yb)/2+bend;
-      const [p,r,t]=g.children;p.setAttribute('d',`M ${a} ${ya} Q ${(a+b)/2} ${cy} ${b} ${yb}`);
+      const [p,r,t]=g.children;
+      // A quadratic curve rises by half its control-point offset at the centre.
+      // Leave room for the entire label backing plus a gap from the diagram.
+      const labelHeight=t.getBBox().height;
+      const ya=edge(a),yb=edge(b),bend=(below?1:-1)*Math.max(Number(g.dataset.bend)||64,labelHeight+26),cy=(ya+yb)/2+bend;
+      p.setAttribute('d',`M ${a} ${ya} Q ${(a+b)/2} ${cy} ${b} ${yb}`);
       const midY=(ya+2*cy+yb)/4;t.setAttribute('x',(a+b)/2);t.setAttribute('y',midY);t.setAttribute('dominant-baseline','middle');
       const box=t.getBBox();r.setAttribute('x',box.x-7);r.setAttribute('y',box.y-3);r.setAttribute('width',box.width+14);r.setAttribute('height',box.height+6);
       const hit=g.parentElement.querySelector(':scope > .rangeHit,:scope > .groupHit');

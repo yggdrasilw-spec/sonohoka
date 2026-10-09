@@ -60,7 +60,7 @@
     const a=geometry?.a??90,b=geometry?.b??810,cut=geometry?.cut??a+(b-a)*m.ratio;
     if(m.kind==='compare'){
       bar(s,a,b,105,'total',style);if(!partial)bar(s,a,cut,220,'left',style);
-      if(!partial){range(s,'total',a,b,72,false,labelFor('total',m),interactive);range(s,'left',a,cut,253,true,labelFor('left',m),interactive);range(s,'right',cut,b,205,false,labelFor('right',m),interactive);}
+      if(!partial){range(s,'total',a,b,72,false,labelFor('total',m),interactive);range(s,'left',a,cut,253,true,labelFor('left',m),interactive);range(s,'right',cut,b,125,true,labelFor('right',m),interactive);}
     }else{
       if(partial)bar(s,a,b,140,m.kind==='decrease'?'total':'left',style);
       else{bar(s,a,cut,140,'left',style);bar(s,cut,b,140,'right',style);range(s,'total',a,b,92,false,labelFor('total',m),interactive);range(s,'left',a,cut,180,true,labelFor('left',m),interactive);range(s,'right',cut,b,180,true,labelFor('right',m),interactive);}

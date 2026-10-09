@@ -37,7 +37,10 @@
       s.append(sv('rect',{x:90,y:130,width:720,height:50,class:'groupTape'}),sv('rect',{x:90,y:205,width:180,height:40,class:'groupTape'}),sv('text',{x:450,y:164,'text-anchor':'middle',class:'groupText'},'…'));
       range(s,'a',90,270,270,true);
     }
-    range(s,'total',90,810,108,false);range(s,'b',90,810,count?270:198,true);$('figure').replaceChildren(s);window.TapeLessonEngine.layoutArcs(s);
+    range(s,'total',90,810,108,false);range(s,'b',90,810,count?270:198,true);
+    // Keep the short one-unit label and its touch target above the wider arc.
+    s.append(s.querySelector('[data-range="a"]'));
+    $('figure').replaceChildren(s);window.TapeLessonEngine.layoutArcs(s);
   }
   function render(){
     $('tools').replaceChildren();$('figure').replaceChildren();$('check').hidden=stage!==2;
