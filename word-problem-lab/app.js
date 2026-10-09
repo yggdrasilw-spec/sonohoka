@@ -55,8 +55,8 @@
   }
   function reasons(){
     const area=$('reasonChoices');area.replaceChildren();
-    const options=[...m.reasonOptions];if(index%2)options.reverse();
-    options.forEach(o=>{const label=el('label',undefined,'reasonOption'),radio=el('input');radio.type='radio';radio.name='reason';radio.value=o.id;label.append(radio,el('span',o.text));area.append(label);});
+    const scene=WordProblemDiagrams.draw(m);scene.classList.add('observationDiagram');area.append(scene);
+    const prompt=el('p','図の数と、あなたの式の数を 見くらべよう。なぜその式になるか、ことばで話してみよう。','observationPrompt');area.append(prompt);
   }
   function load(data){
     if(data.id==='custom'){if(!customAvailable())return;}
@@ -65,7 +65,7 @@
     m=E.model(data);target='';$('solveForm').reset();invalidate();updateNavigation();
     $('storyTitle').textContent=m.title||'自分で つくったお話';textStory(m,$('storyLines'));$('question').textContent=m.question;$('answerUnit').textContent=m.unit;
     $('knownNumbers').replaceChildren();m.quantities.filter(q=>q.id!==m.unknown&&!q.derived).forEach(q=>{const chip=el('div',q.label,'numberChip');chip.append(el('strong',(q.display||E.format(q.value))+q.unit));$('knownNumbers').append(chip);});
-    $('targetChoices').replaceChildren();m.quantities.filter(q=>!q.derived||q.id===m.unknown).forEach(q=>{const b=el('button',q.label);b.type='button';b.dataset.role=q.id;b.setAttribute('aria-pressed','false');b.addEventListener('click',()=>{target=q.id;$('targetChoices').querySelectorAll('button').forEach(n=>n.setAttribute('aria-pressed',n===b));invalidate();});$('targetChoices').append(b);});
+    target=m.unknown;$('targetChoices').replaceChildren(el('p','知りたいのは「'+m.names[m.unknown]+'」。図ではどこになるかな？','observationPrompt'));
     $('storyPictures').replaceChildren(WordProblemIllustrations.samples(m));reasons();hints();save();window.WordProblemDiagramBridge?.load(m);
   }
   function paths(){
@@ -77,14 +77,13 @@
   const feedbackLine=(ok,text)=>{const line=el('p',undefined,'resultLine');line.append(el('span',ok?'✓':'→','badge'),el('span',text));$('feedback').append(line);};
   $('solveForm').addEventListener('submit',event=>{
     event.preventDefault();invalidate();
-    const expression=$('expression').value.trim(),answer=$('answer').value.trim(),reason=document.querySelector('input[name=reason]:checked')?.value;
+    const expression=$('expression').value.trim(),answer=$('answer').value.trim();
     const check=expression?E.checkWork(expression,m):{ok:false,code:'empty'};
-    const targetOK=target===m.unknown,answerOK=E.checkAnswer(answer,m),reasonOK=m.reasonOptions.some(o=>o.id===reason&&o.correct)&&(!check.pathId||reason===check.pathId);
+    const targetOK=target===m.unknown,answerOK=E.checkAnswer(answer,m);
     feedbackLine(targetOK,targetOK?`知りたいのは「${m.names[m.unknown]}」だね。`:'質問の文を読んで、聞かれた量をえらぼう。');
     feedbackLine(check.ok,check.ok?(check.code==='relation-equation'?'お話の関係を、□で表せたね。':'量の関係に合う式になっているね。'):check.code==='empty'?'考えた式を書いてみよう。':check.code==='format'?'数・計算の記号・かっこの書き方を確かめよう。':check.code==='calculation'?'＝の左右の計算や、途中の計算を確かめよう。':'その式で何の量を求めているかな？ 図と数の名前を確かめよう。');
     feedbackLine(answerOK,answerOK?`答えは ${E.format(m.answer)}${m.unit}。お話に合っているね。`:'答えを求めて、お話の関係に戻して確かめよう。');
-    feedbackLine(reasonOK,reasonOK?'量の名前を使って、理由も説明できたね。':'言葉や数の順番だけで決めず、量の関係を使って説明しよう。');
-    if(targetOK&&check.ok&&answerOK&&reasonOK){$('feedback').className='success';feedbackLine(true,'式・答え・理由がつながったね！');if(m.id!=='custom')completed.add(m.id);updateNavigation();save();paths();}
+    if(targetOK&&check.ok&&answerOK){$('feedback').className='success';feedbackLine(true,'式と答えを たしかめたね。最後に、図と理由を 見くらべよう。');if(m.id!=='custom')completed.add(m.id);updateNavigation();save();paths();}
   });
   $('expression').addEventListener('input',invalidate);$('answer').addEventListener('input',invalidate);$('reasonChoices').addEventListener('change',invalidate);
   function mode(value){const creating=value==='create';if(creating&&!complete())return;$('practice').hidden=creating;$('creator').hidden=!creating;$('practiceMode').setAttribute('aria-pressed',!creating);$('createMode').setAttribute('aria-pressed',creating);if(creating)creatorSetup();}

@@ -7,20 +7,7 @@ const out='C:/Users/user/.cache/tape-diagram-qa';fs.mkdirSync(out,{recursive:tru
  try{
   const context=await browser.newContext({viewport:{width:1280,height:1000}}),page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));await page.goto('file:///C:/Users/user/sonohoka/tape-diagram/index.html');
-  assert(await page.locator('#intro').isVisible());assert(await page.locator('#lessonContent').isHidden());
-  assert.equal(await page.locator('#introScene img').count(),15);assert(await page.locator('#introNext').isDisabled());
-  await page.locator('#introConvert').click();assert.equal(await page.locator('#introScene .introDot:not(.flower)').count(),15);
-  await page.locator('#introNext').click();assert.equal(await page.locator('#introScene .introDot.ghost').count(),55);
-  for(let i=0;i<4;i++)await page.locator('#introDraw').click();assert(await page.locator('#introNext').isDisabled());
-  await page.locator('#introDraw').click();assert(await page.locator('#introNext').isEnabled());assert((await page.locator('#introFeedback').textContent()).includes('あと 50こ'));
-  await page.setViewportSize({width:390,height:844});await page.locator('#introNext').click();assert.equal(await page.locator('#introScene .introDot').count(),55);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:out+'/intro-many-mobile.png',fullPage:true});
-  await page.locator('#introEffort').click();assert((await page.locator('#introFeedback').textContent()).includes('回数を 少なく'));
-  await page.locator('#introNext').click();assert.equal(await page.locator('#introScene circle').count(),55);assert.equal(await page.locator('#introScene rect').count(),2);assert(await page.locator('#introNext').isDisabled());
-  await page.locator('#introTransform').click();assert(await page.locator('#introScene .morphed').count());assert((await page.locator('#introFeedback').textContent()).includes('数のまとまりは かわらない'));
-  await page.locator('#introNext').click();assert((await page.locator('#introHint').textContent()).includes('テープなら２本'));await page.waitForTimeout(1400);await page.screenshot({path:out+'/intro-tape-mobile.png',fullPage:true});
-  await page.locator('#introNext').click();assert(await page.locator('#intro').isHidden());assert((await page.locator('#lessonTitle').textContent()).includes('数が ふえたら'));assert.equal(await page.locator('#position').textContent(),'5 / 9');
-  await page.locator('#introButton').click();assert(await page.locator('#intro').isVisible());await page.locator('#introConvert').click();await page.locator('#introNext').click();await page.locator('#introAuto').click();await page.waitForFunction(()=>!document.getElementById('introNext').disabled);await page.locator('#introNext').click();await page.waitForTimeout(300);assert.equal(await page.locator('#introScene .introDot').count(),55);
-  await page.setViewportSize({width:1280,height:1000});
+  assert(await page.locator('#intro').isVisible());await page.evaluate(()=>TapeLessonApp.start(TAPE_LESSONS[0]));
   const source=await page.evaluate(()=>window.TAPE_LESSONS);assert.equal(source.length,12);
   const next=async()=>{assert(await page.locator('#next').isEnabled());await page.locator('#next').click();};
   async function select(id){await page.locator('#settingsButton').click();await page.locator('#lessonSelect').selectOption(id);await page.locator('#settingsButton').click();}
@@ -35,8 +22,7 @@ const out='C:/Users/user/.cache/tape-diagram-qa';fs.mkdirSync(out,{recursive:tru
     assert.equal(await page.locator('.piece.isCircle').count(),actual);
    }
    await next();await next();assert(await page.locator('#next').isDisabled());
-   const wrong=l.kind==='compare'?1:model.start==='left'?1:0;await page.locator('#action button').nth(wrong).click();assert(await page.locator('#next').isDisabled());
-   await page.locator('#action button').nth(1-wrong).click();await next();
+   await page.locator('#action button').first().click();await next();
    await page.locator('#action button').first().click();await next();
    await page.locator('#action button').first().click();await next();
    assert((await page.locator('#scene').textContent()).includes('□'));
@@ -51,7 +37,7 @@ const out='C:/Users/user/.cache/tape-diagram-qa';fs.mkdirSync(out,{recursive:tru
   let a=p(100,140),b=p(180,140);await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y);await page.mouse.up();assert(await page.locator('#next').isDisabled());
   b=p(537.5,140);await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y,{steps:8});await page.mouse.up();assert(await page.locator('#next').isEnabled());
   await next();await page.locator('#action button').click();await next();await page.waitForTimeout(800);await page.screenshot({path:out+'/increase-desktop.png',fullPage:true});
-  await select('decrease-small');await next();await next();for(const dot of await page.locator('.piece').all())await dot.click();await next();await next();await page.locator('#action button').nth(1).click();await next();await page.locator('#action button').click();await next();
+  await select('decrease-small');await next();await next();for(const dot of await page.locator('.piece').all())await dot.click();await next();await next();await page.locator('#action button').first().click();await next();await page.locator('#action button').click();await next();
   const partition=await page.locator('.partition,.trace').last().boundingBox();await page.mouse.click(partition.x,partition.y+partition.height/2);assert(await page.locator('#next').isEnabled());await next();await page.waitForTimeout(800);await page.screenshot({path:out+'/decrease-desktop.png',fullPage:true});
   // Import data is displayed as text, and malicious or invalid inputs are rejected.
   await page.locator('#settingsButton').click();const custom={...source[2],id:'custom',left:9,right:4,title:'<img src=x onerror=alert(1)>',story:[]};
@@ -66,6 +52,6 @@ const out='C:/Users/user/.cache/tape-diagram-qa';fs.mkdirSync(out,{recursive:tru
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.waitForTimeout(800);await page.screenshot({path:out+'/compare-mobile.png',fullPage:true});
   await next();await page.locator('#action button').first().click();await next();await page.locator('#action button').click();await next();await page.locator('#action button').click();await next();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.waitForTimeout(800);await page.screenshot({path:out+'/compare-tape-mobile.png',fullPage:true});
   await page.setViewportSize({width:1280,height:1000});await select('combine-large');await next();await next();await page.locator('#action button').click();await page.waitForFunction(()=>document.querySelectorAll('.piece.isCircle').length===55);await next();await page.waitForTimeout(800);await page.screenshot({path:out+'/large-circles.png',fullPage:true});
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,intro:'small circles / large drawing effort / same quantities as two tapes',lessons:source.length,pointerDrawing:true,partition:true,customImages:true,exportImport:true,mobileOverflow:false,screenshots:out},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,lessons:source.length,pointerDrawing:true,partition:true,customImages:true,exportImport:true,mobileOverflow:false,screenshots:out},null,2));
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

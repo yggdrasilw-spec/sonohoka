@@ -38,7 +38,34 @@
     return m;
   }
   function rangeArc(start,end,baseline,bend=-14){return `M ${start} ${baseline} Q ${(start+end)/2} ${baseline+2*bend} ${end} ${baseline}`;}
-  const api={kinds,typeNames,steps,validate,model,rangeArc};
+  // Labels sit on the curve, with a real white backing also preserved in SVG exports.
+  function labeledArc(s,a,b,y,label,below=false){
+    const ns='http://www.w3.org/2000/svg',g=document.createElementNS(ns,'g');g.setAttribute('class','arcLabel');
+    g.dataset.a=a;g.dataset.b=b;g.dataset.y=y;g.dataset.below=below;
+    for(const tag of ['path','rect','text'])g.append(document.createElementNS(ns,tag));
+    g.children[0].setAttribute('class','brace');g.children[1].setAttribute('fill','white');
+    g.children[2].textContent=label;g.children[2].setAttribute('text-anchor','middle');
+    s.append(g);return g;
+  }
+  function layoutArcs(s){
+    const shapes=[...s.querySelectorAll('rect.tapeA,rect.tapeB,rect.whole,rect.groupTape')];
+    const segments=[...s.querySelectorAll('path.segmentA,path.segmentB,path.segmentShape')];
+    const edges=[];
+    if(!s.classList.contains('lineMode'))for(const r of shapes){const x=+r.getAttribute('x'),y=+r.getAttribute('y'),w=+r.getAttribute('width'),h=+r.getAttribute('height');edges.push({a:x,b:x+w,top:y,bottom:y+h});}
+    if(!edges.length)for(const p of segments){const nums=p.getAttribute('d').match(/-?\d+(?:\.\d+)?/g)?.map(Number);if(nums?.length>=8)edges.push({a:nums[0],b:nums[6],top:nums[1],bottom:nums[2]});}
+    for(const g of s.querySelectorAll('.arcLabel')){
+      const a=+g.dataset.a,b=+g.dataset.b,y=+g.dataset.y,below=g.dataset.below==='true';
+      const edge=x=>{const candidates=edges.filter(e=>x>=e.a-.1&&x<=e.b+.1);return candidates.length?candidates.map(e=>below?e.bottom:e.top).sort((u,v)=>Math.abs(u-y)-Math.abs(v-y))[0]:y;};
+      const ya=edge(a),yb=edge(b),bend=(below?1:-1)*(Number(g.dataset.bend)||28),cy=(ya+yb)/2+bend;
+      const [p,r,t]=g.children;p.setAttribute('d',`M ${a} ${ya} Q ${(a+b)/2} ${cy} ${b} ${yb}`);
+      const midY=(ya+2*cy+yb)/4;t.setAttribute('x',(a+b)/2);t.setAttribute('y',midY);t.setAttribute('dominant-baseline','middle');
+      const box=t.getBBox();r.setAttribute('x',box.x-7);r.setAttribute('y',box.y-3);r.setAttribute('width',box.width+14);r.setAttribute('height',box.height+6);
+      const hit=g.parentElement.querySelector(':scope > .rangeHit,:scope > .groupHit');
+      if(hit){const compact=hit.classList.contains('groupHit'),left=compact?box.x-9:Math.min(a,b,box.x-7),right=compact?box.x+box.width+9:Math.max(a,b,box.x+box.width+7),top=compact?box.y-8:Math.min(ya,yb,midY,box.y-3)-5,bottom=compact?box.y+box.height+8:Math.max(ya,yb,midY,box.y+box.height+3)+5;hit.setAttribute('x',left);hit.setAttribute('y',top);hit.setAttribute('width',right-left);hit.setAttribute('height',bottom-top);}
+      const curve=g.parentElement.querySelector(':scope > .groupCurveHit');if(curve)curve.setAttribute('d',p.getAttribute('d'));
+    }
+  }
+  const api={kinds,typeNames,steps,validate,model,rangeArc,labeledArc,layoutArcs};
   if(typeof module!=='undefined') module.exports=api;
   root.TapeLessonEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

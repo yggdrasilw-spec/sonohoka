@@ -1,0 +1,33 @@
+const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const E=require('../word-problem-lab/curriculum.js'),out='C:/Users/user/.cache/observation-flow-qa';fs.mkdirSync(out,{recursive:true});
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});try{
+ const page=await browser.newPage({viewport:{width:1280,height:1000},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const open=async p=>page.goto('file:///C:/Users/user/sonohoka/'+p);
+ const overflow=async()=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ async function arcs(selector){const result=await page.locator(selector).evaluate(s=>{const rects=[...s.querySelectorAll('rect.tapeA,rect.tapeB,rect.whole')];return [...s.querySelectorAll('.arcLabel')].map(g=>{const p=g.children[0],v=p.getAttribute('d').match(/-?\d+(?:\.\d+)?/g).map(Number),box=g.children[1].getBBox(),t=g.children[2].getBBox();const touches=(x,y)=>rects.some(r=>{const a=+r.getAttribute('x'),b=a+ +r.getAttribute('width'),top=+r.getAttribute('y'),bot=top+ +r.getAttribute('height');return x>=a-.1&&x<=b+.1&&(Math.abs(y-top)<.1||Math.abs(y-bot)<.1)});return {contact:!rects.length||s.classList.contains('lineMode')||touches(v[0],v[1])&&touches(v[4],v[5]),backing:box.x<t.x&&box.y<t.y&&box.width>t.width&&box.height>t.height};});});assert(result.length);assert(result.every(x=>x.contact&&x.backing),JSON.stringify(result));}
+ for(const base of ['tape-diagram','word-problem-lab/diagram']){
+  await open(base+'/index.html');assert((await page.locator('#introTitle').textContent()).includes('おはなし'));
+  await page.locator('#introObserve').click();await page.locator('#introNext').click();assert.equal(await page.locator('.introSpeech').count(),0);
+  await page.locator('#introDrawPictures').click();assert((await page.locator('.introSpeech').textContent()).includes('時間が'));assert(await page.locator('.introCharacter img').evaluate(i=>i.complete&&i.naturalWidth>0));
+  if(base==='tape-diagram')await page.screenshot({path:out+'/child-desktop.png',fullPage:true});
+  await page.locator('#introNext').click();assert.equal(await page.locator('#introScene .flower').count(),15);await page.locator('#introConvert').click();assert((await page.locator('#introFeedback').textContent()).includes('「○図」'));
+  await page.locator('#introNext').click();await page.locator('#introAuto').click();assert.equal(await page.locator('#introScene .ghost').count(),0);
+  await page.locator('#introNext').click();await page.locator('#introTransform').click();await arcs('#introScene svg');await page.locator('#introNext').click();await page.locator('#introJoin').click();await arcs('#introScene svg');
+  await page.locator('#introNext').click();assert.equal(await page.locator('#action .choice').count(),0);await page.locator('#action button').click();assert(await page.locator('#next').isEnabled());
+  const lessons=await page.evaluate(()=>TAPE_LESSONS);
+  for(const l of lessons){await page.evaluate(id=>TapeLessonApp.start(TAPE_LESSONS.find(l=>l.id===id),7),l.id);await arcs('#scene svg');await page.locator('.viewToggle').click();await arcs('#scene svg');}
+  await page.locator('#extendButton').click();await arcs('#extensionScene svg');await page.locator('#extensionActions button').first().click();await arcs('#extensionScene svg');
+  await page.locator('#workshopButton').click();await page.locator('.practiceChoice').first().click();await arcs('#workshopScene svg');
+  await page.setViewportSize({width:390,height:844});await overflow();await page.locator('#introButton').click();await page.locator('#introObserve').click();await page.locator('#introNext').click();await page.locator('#introDrawPictures').click();await overflow();if(base==='tape-diagram')await page.screenshot({path:out+'/child-mobile.png',fullPage:true});await page.setViewportSize({width:1280,height:1000});
+ }
+ await open('tape-diagram/groups.html');
+ for(const unknown of ['total','a','b']){await page.locator('#groupsUnknown').selectOption(unknown);await page.locator('#tools button').click();await page.locator('#tools button').click();for(const role of ['a','b','total']){await page.locator(`[data-fact="${role}"]`).click();await page.locator(`[data-range="${role}"] .groupHit`).click();}await page.locator('#check').click();assert((await page.locator('#status').textContent()).includes('つながった'));assert.equal(await page.locator('#figure .arcLabel>rect[fill=white]').count(),3);}
+ await open('wariai-lab/index.html');await page.locator('[data-mode=practice]').click();
+ for(let i=0;i<4;i++){assert.equal(await page.locator('#answerControls>button').count(),1);assert.equal(await page.locator('.observationTakeaway').count(),0);await page.locator('#answerControls>button').click();assert.equal(await page.locator('.observationTakeaway').count(),1);if(i===3)await page.screenshot({path:out+'/wariai-reason.png',fullPage:true});await page.locator('#stepButton').click();}
+ const answer=await page.evaluate(()=>WariaiMath.fmt(WariaiMath.answer(WariaiProblems.core[0])));await page.locator('#numericAnswer').fill(answer);await page.getByRole('button',{name:'答えを たしかめる'}).click();await page.locator('#stepButton').click();assert(await page.locator('#nextButton').isVisible());
+ await open('word-problem-lab/index.html');let stage=0;
+ for(const l of E.lessons){while(stage<l.stage){await page.locator('#advanceStage').click();stage++;}await page.locator('#lessonSelect').selectOption(l.id);assert.equal(await page.locator('#targetChoices button,input[name=reason]').count(),0);assert(await page.locator('#solutions').isHidden());const m=E.model(l);await page.locator('#expression').fill(m.paths[0].work||m.paths[0].expression);await page.locator('#answer').fill(E.format(m.answer));await page.locator('#solveForm button[type=submit]').click();assert(await page.locator('#feedback').evaluate(n=>n.classList.contains('success')),l.id);assert(await page.locator('#solutions').isVisible());}
+ await page.setViewportSize({width:390,height:844});await overflow();await page.screenshot({path:out+'/word-problem-mobile.png',fullPage:true});
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,entryPoints:2,tapeLessons:12,wordProblems:E.lessons.length,arcsTouchTape:true,whiteLabelBacking:true,noIdeaSelectionGates:true,mobileOverflow:false,screenshots:out},null,2));
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -354,6 +354,10 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:28;background:rgba(255,255
 #askTeacherFooterBtn:hover{background:#ffe9a0}
 .teacher-ind{font-size:14px;cursor:default}
 
+
+.observationPattern{padding:24px;text-align:center}.observationPattern .promptLead{font-size:26px}.observationPattern .rule{font-size:28px;margin-top:28px;animation:fadeIn .5s}.observationPattern .miniArray{margin:28px auto;transform:scale(1.12)}.observationPattern .patternSeq{flex-wrap:wrap;gap:15px;margin:28px 0}.observationPattern .choice{margin-top:24px}.observationPattern .growthCard{padding:28px}.observationPattern .miniGroup:last-child{animation:fadeIn .7s}@media(max-width:650px){.observationPattern{padding:12px}.observationPattern .promptLead,.observationPattern .rule{font-size:21px}.observationPattern .miniArray{transform:none}.observationPattern .growthCard{padding:12px}.observationPattern .patternNum{font-size:24px}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:650px){.observationPattern .growthCard,.observationPattern .arrayCompare>div{min-width:0}.observationPattern .miniArray{max-width:100%;gap:6px!important;padding:4px}.observationPattern .miniArray>div{padding:3px!important;gap:4px!important;min-width:0}.observationPattern .miniArray .arrayDot{width:18px;height:18px;border-width:2px}.observationPattern .growthBig{font-size:21px;overflow-wrap:anywhere}}
 </style>
 </head>
 <body>
@@ -818,19 +822,7 @@ function p12Retry(){
 function p14Render(){
  const host=document.getElementById('p14host');if(!host)return;
  const seq=[5,10,15,20,25,30,35,40,45];
- const visible=p14Step>=2?9:7;
- const table=`<table class="gridTable"><tbody>${seq.map((v,i)=>`<tr><th>5×${i+1}</th><td>${i<visible?v:'？'}</td><td>${i<visible?`一の位 <b>${v%10}</b>`:'まだ見ない'}</td></tr>`).join('')}</tbody></table>`;
- let q='';
- if(p14Step===0)q=`<div class="patternQuest"><p class="promptLead">見えている答えの一の位は、どんなくり返し？</p><div class="patternSeq">${[5,0,5,0,5,0,5].map(n=>`<span class="patternNum hot">${n}</span>`).join('')}</div><div class="patternChoices"><button class="choice" onclick="p14Pick(0,'50',this)">5・0</button><button class="choice" onclick="p14Pick(0,'51',this)">5・1</button><button class="choice" onclick="p14Pick(0,'055',this)">0・5・5</button></div><div class="fb" id="p14fb"></div></div>`;
- else if(p14Step===1)q=`<div class="patternQuest"><p class="promptLead">5×7＝35。まだ見えていない 5×8 は？</p><div class="patternChoices"><button class="choice" onclick="p14Pick(1,38,this)">38</button><button class="choice" onclick="p14Pick(1,40,this)">40</button><button class="choice" onclick="p14Pick(1,45,this)">45</button></div><div class="fb" id="p14fb"></div></div>`;
- else q=`<div class="rule"><b>見つけたきまり：</b>答えは5ずつ増え、一の位は「5、0、5、0…」とくり返す。</div>`;
- host.innerHTML=table+q;
-}
-function p14Pick(step,val,btn){
- const fb=document.getElementById('p14fb');if(!fb)return;let ok=false,msg='';
- if(step===0){ok=val==='50';msg=ok?'そう。5、0、5、0…と交互になる。':'5のだんの答えの一の位だけを上から見よう。'}
- else{ok=Number(val)===40;msg=ok?'35に5を足して40。きまりでも確かめられた。':'次の答えは、前の35に5を足して考えよう。'}
- document.querySelectorAll('#p14host .patternChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');fb.textContent=msg;if(ok){document.querySelectorAll('#p14host .patternChoices button').forEach(b=>b.disabled=true);setTimeout(()=>{p14Step++;p14Render()},520)}
+ host.innerHTML='<div class="observationPattern"><p class="promptLead">5のだんを上から見よう。答えと一の位は、どう変わるかな？</p><div class="patternSeq">'+seq.map((v,i)=>'<span class="patternNum">'+v+(p14Step>=1?'<small style="display:block;color:#08784a">一の位 '+v%10+'</small>':'')+'</span>').join('')+'</div>'+(p14Step===0?'<button class="choice" onclick="p14Step=1;p14Render()">一の位を 色で見てみる</button>':p14Step===1?'<div class="patternSeq">'+seq.map(v=>'<span class="patternNum hot">'+v%10+'</span>').join('')+'</div><button class="choice" onclick="p14Step=2;p14Render()">見えたきまりを たしかめる</button>':'<div class="rule">答えは5ずつ増える。一の位は「5、0、5、0…」とくり返す。</div>')+'</div>';
 }
 function twoJumpSvg(n){
  const x0=55,dx=44,y=175;let c=`<line x1="${x0}" y1="${y}" x2="${x0+18*dx}" y2="${y}" stroke="#777" stroke-width="4"/>`;
@@ -846,34 +838,20 @@ function p17Render(){
 function p17Pick(v,btn){const fb=document.getElementById('p17fb');const ans=3*(p17N+1),ok=Number(v)===ans;document.querySelectorAll('#p17host .patternChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');fb.textContent=ok?`正解。まとまりが1つ増えたので、答えも3増えて ${ans}。`:`前の答え ${3*p17N} に、1つ分の3を足そう。`;if(ok){document.querySelectorAll('#p17host .patternChoices button').forEach(b=>b.disabled=true);if(p17N<8)setTimeout(()=>{p17N++;p17Render()},520);else setTimeout(()=>{document.getElementById('p17host').insertAdjacentHTML('beforeend','<div class="rule">×4から×9まで、毎回「前の答え＋3」でつなげられた。</div>')},520)}}
 function p18Render(){
  const host=document.getElementById('p18host');if(!host)return;
- const d2=p18Step>=1?'＋2':'どれだけ？',d3=p18Step>=2?'＋3':'どれだけ？';
- const q=p18Step===0?`<div class="patternQuest"><p class="promptLead">かける数が4→5になるとき、2のだんは何ふえる？</p><div class="patternChoices"><button class="choice" onclick="p18Pick(0,2,this)">2</button><button class="choice" onclick="p18Pick(0,3,this)">3</button><button class="choice" onclick="p18Pick(0,5,this)">5</button></div><div class="fb" id="p18fb"></div></div>`:p18Step===1?`<div class="patternQuest"><p class="promptLead">では、3のだんは何ふえる？</p><div class="patternChoices"><button class="choice" onclick="p18Pick(1,2,this)">2</button><button class="choice" onclick="p18Pick(1,3,this)">3</button><button class="choice" onclick="p18Pick(1,4,this)">4</button></div><div class="fb" id="p18fb"></div></div>`:`<div class="rule">1つ分が2なら答えは2ずつ、1つ分が3なら答えは3ずつ増える。<b>増える数は「1つ分」と同じ。</b></div>`;
- host.innerHTML=`<div class="compareGrowth"><div class="growthCard"><b>2のだん</b><div class="growthBig">2×4＝8 → 2×5＝10</div><span class="growthDelta">${d2}</span></div><div class="growthCard"><b>3のだん</b><div class="growthBig">3×4＝12 → 3×5＝15</div><span class="growthDelta">${d3}</span></div></div>${q}`
+ host.innerHTML='<div class="observationPattern"><p class="promptLead">まとまりが４つから５つになるようすを、２つの段で見くらべよう。</p><div class="compareGrowth">'+[2,3].map(n=>'<div class="growthCard"><b>'+n+'のだん</b>'+miniArrayHtml(n,p18Step?5:4)+'<div class="growthBig">'+n+'×'+(p18Step?5:4)+'＝'+n*(p18Step?5:4)+'</div>'+(p18Step?'<span class="growthDelta">＋'+n+'</span>':'')+'</div>').join('')+'</div>'+(p18Step===0?'<button class="choice" onclick="p18Step=1;p18Render()">まとまりを １つふやす</button>':p18Step===1?'<button class="choice" onclick="p18Step=2;p18Render()">増えた数を たしかめる</button>':'<div class="rule">２のだんは２ずつ、３のだんは３ずつ増える。増える数は「１つ分」の数と同じ。</div>')+'</div>';
 }
-function p18Pick(step,val,btn){const ans=step===0?2:3,fb=document.getElementById('p18fb'),ok=Number(val)===ans;document.querySelectorAll('#p18host .patternChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');fb.textContent=ok?`そう。${step===0?'2':'3'}のだんは、まとまりが1つ増えると${ans}増える。`:'「1つ分」がいくつかを見よう。';if(ok){document.querySelectorAll('#p18host .patternChoices button').forEach(b=>b.disabled=true);setTimeout(()=>{p18Step++;p18Render()},500)}}
 function p19DoubleArray(n=6){
  return `<div class="miniArray" style="grid-template-columns:repeat(${n},auto);gap:12px">${Array.from({length:n},()=>`<div style="display:grid;gap:5px;padding:5px 7px;border:2px dashed #cbd8df;border-radius:10px">${Array.from({length:2},()=>'<span class="arrayDot"></span>').join('')}${Array.from({length:2},()=>'<span class="arrayDot" style="background:#f0b53e;border-color:#c78514"></span>').join('')}</div>`).join('')}</div>`
 }
 function p19Render(){
  const host=document.getElementById('p19host');if(!host)return;
- if(p19Step===0){
-  host.innerHTML=`<div class="predictCard"><div class="growthBig">2×6＝12</div><div class="micro">青の2こずつの6つ分に、もう同じ12こを合わせる。</div><div style="margin:12px auto">${p19DoubleArray(6)}</div><p class="promptLead">すると 4×6 の答えはいくつ？</p><div class="patternChoices"><button class="choice" onclick="p19Pick('ans',18,this)">18</button><button class="choice" onclick="p19Pick('ans',24,this)">24</button><button class="choice" onclick="p19Pick('ans',36,this)">36</button></div><div class="fb" id="p19fb"></div></div>`;
- }else if(p19Step===1){
-  host.innerHTML=`<div class="predictCard"><div class="growthBig">2×6＝12　→　4×6＝24</div><p class="promptLead">同じ「×6」なら、4のだんの答えは2のだんの答えの何ばい？</p><div class="patternChoices"><button class="choice" onclick="p19Pick('relation',2,this)">2ばい</button><button class="choice" onclick="p19Pick('relation',4,this)">4ばい</button><button class="choice" onclick="p19Pick('relation',0.5,this)">半分</button></div><div class="fb" id="p19fb"></div></div>`;
- }else{
-  host.innerHTML=`<div class="rule"><b>4×n ＝ 2×n ＋ 2×n</b>。知っている2のだんを2つ合わせれば、4のだんを作れる。</div><details style="margin-top:12px"><summary class="labHintBtn" style="cursor:pointer;text-align:center">はってん：一の位のきまりも見る</summary><div class="patternSeq" style="margin-top:10px">${[4,8,2,6,0,4,8,2,6].map(v=>`<span class="patternNum">${v}</span>`).join('')}</div><div class="miniNote" style="text-align:center">一の位は 4→8→2→6→0 の並びをくり返す。</div></details>`;
- }
-}
-function p19Pick(kind,v,btn){
- const fb=document.getElementById('p19fb');let ok=false,msg='';
- if(kind==='ans'){ok=Number(v)===24;msg=ok?'そう。12＋12＝24。だから4×6＝24。':'2×6の答え12を、もう1つ合わせて考えよう。'}
- else{ok=Number(v)===2;msg=ok?'そう。4は2の2倍なので、同じ×nなら答えも2倍になる。':'2×6＝12と4×6＝24を比べよう。'}
- document.querySelectorAll('#p19host .patternChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');fb.textContent=msg;
- if(ok){document.querySelectorAll('#p19host .patternChoices button').forEach(b=>b.disabled=true);setTimeout(()=>{p19Step++;p19Render()},520)}
+ host.innerHTML='<div class="observationPattern"><p class="promptLead">青の２こずつ６つ分に、同じまとまりを重ねてみよう。</p>'+(p19Step?p19DoubleArray(6):miniArrayHtml(2,6))+'<div class="growthBig">'+(p19Step?'2×6＝12　→　4×6＝24':'2×6＝12')+'</div>'+(p19Step===0?'<button class="choice" onclick="p19Step=1;p19Render()">同じ１２こを 重ねる</button>':p19Step===1?'<button class="choice" onclick="p19Step=2;p19Render()">２つの式の関係を たしかめる</button>':'<div class="rule">１つ分が２倍になり、いくつ分は同じ。だから答えも２倍。4×6＝2×6＋2×6。</div>')+'</div>';
 }
 function miniArrayHtml(each,groups){return `<div class="miniArray" style="grid-template-columns:repeat(${groups},auto)">${Array.from({length:groups},(_,g)=>`<div class="miniGroup" aria-label="${g+1}つめのまとまり、${each}こ">${Array.from({length:each},()=>'<span class="arrayDot"></span>').join('')}</div>`).join('')}</div>`}
-function p20Render(){const host=document.getElementById('p20host');if(!host)return;const ans=p20Solved?'12':'？';host.innerHTML=`<div class="arrayCompare"><div><div class="arrayLabel">4こずつの3つ分</div>${miniArrayHtml(4,3)}<div class="eq">4×3＝${ans}</div></div><div class="bridgeArrow">↔</div><div><div class="arrayLabel">3こずつの4つ分</div>${miniArrayHtml(3,4)}<div class="eq">3×4＝${ans}</div></div></div>${p20Solved?'<div class="rule">どちらも12。まとまり方は違うが、全部の数は同じ。</div>':`<div class="patternQuest"><p class="promptLead">ドットのまとまり方はちがう。全部の数はどうなる？</p><div class="patternChoices"><button class="choice" onclick="p20Pick('same',this)">同じになる</button><button class="choice" onclick="p20Pick('different',this)">ちがう数になる</button></div><div class="fb" id="p20fb"></div></div>`}`}
-function p20Pick(v,btn){const fb=document.getElementById('p20fb'),ok=v==='same';document.querySelectorAll('#p20host .patternChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');fb.innerHTML=ok?'そう。まずドットを数えると、どちらも12になる。':'片方ずつ、ドットを全部数えて比べよう。';if(ok){p20Solved=true;document.querySelectorAll('#p20host .patternChoices button').forEach(b=>b.disabled=true);setTimeout(p20Render,520)}}
+function p20Render(){
+ const host=document.getElementById('p20host');if(!host)return;
+ host.innerHTML='<div class="observationPattern"><p class="promptLead">まとまり方は どうちがう？ ドットを１つずつ対応させて見くらべよう。</p><div class="arrayCompare"><div><div class="arrayLabel">４こずつの３つ分</div>'+miniArrayHtml(4,3)+'<div class="eq">4×3＝'+(p20Solved?'12':'？')+'</div></div><div class="bridgeArrow">↔</div><div><div class="arrayLabel">３こずつの４つ分</div>'+miniArrayHtml(3,4)+'<div class="eq">3×4＝'+(p20Solved?'12':'？')+'</div></div></div>'+(p20Solved?'<div class="rule">どちらも１２こ。１つ分といくつ分はちがっても、全部の数は同じ。</div>':'<button class="choice" onclick="p20Solved=true;p20Render()">全部の数を たしかめる</button>')+'</div>';
+}
 
 function quantityPick(target,expr,btn){const fb=document.getElementById(target+'Fb');if(fb.dataset.solved==='1')return;document.querySelectorAll(`[data-qtarget="${target}"]`).forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');const ok=(target==='tapeQ'&&expr==='5×3')||(target==='bottleQ'&&expr==='2×4');fb.className='fb show '+(ok?'ok':'try');fb.innerHTML=ok?(target==='tapeQ'?'5cmが1つ分、それが3つ分。だから <b>5×3</b>。':'2Lが1つ分、それが4つ分。だから <b>2×4＝8</b>。'):'この場面を「1つ分 × いくつ分」で書くなら、図の1まとまりの量を前に置こう。';if(ok){fb.dataset.solved='1';lockSolvedChoices(`[data-qtarget="${target}"]`,btn)}}
 function scenePick(target,expr,btn){const fb=document.getElementById(target+'Fb');if(fb.dataset.solved==='1')return;document.querySelectorAll(`[data-starget="${target}"]`).forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');const ok=(target==='tea'&&expr==='2×5')||(target==='boat'&&expr==='2×3');fb.className='fb show '+(ok?'ok':'try');if(ok){const ans=target==='tea'?10:6;fb.innerHTML=`${expr}＝<b>${ans}</b>。1つ分の数を最初に書けた。`;fb.dataset.solved='1';lockSolvedChoices(`[data-starget="${target}"]`,btn)}else fb.textContent='この場面を「1つ分の数 × いくつ分」で書くなら、1つ分の数を前に置こう。'}
@@ -887,10 +865,8 @@ function p22Render(){
 }
 function p22Pick(v,btn){const q=P22_FACTS[p22Index],fb=document.getElementById('p22fb'),ok=Number(v)===q.ans;document.querySelectorAll('#p22quiz .finishChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');if(ok){fb.textContent=`正解。${q.expr}＝${q.ans}。`;document.querySelectorAll('#p22quiz .finishChoices button').forEach(b=>b.disabled=true);p22Done++;setTimeout(()=>{p22Index=(p22Index+1)%P22_FACTS.length;p22Render()},430)}else{fb.textContent='九九を思い出して、もう一度選ぼう。'}}
 function p23MissionHtml(){
- if(p23Solved)return `<div class="p23Mission"><div class="practiceDone">きまりを見つけた ✓</div><div class="rule">九九の表で右へ1つ進むと、<b>その段の数だけ答えが増える</b>。2のだんなら＋2、3なら＋3、4なら＋4、5なら＋5。</div></div>`;
- if(p23Step===0)return `<div class="p23Mission"><p class="promptLead">4のだんで、×3 から ×4 へ右に1つ進むと、答えはいくつ増える？</p><div class="pair"><span>4×3＝12</span><b>→</b><span>4×4＝16</span></div><div class="patternChoices"><button class="choice" onclick="p23Pick(4,this)">4</button><button class="choice" onclick="p23Pick(3,this)">3</button><button class="choice" onclick="p23Pick(8,this)">8</button></div><div class="fb" id="p23fb"></div></div>`;
- if(p23Step===1)return `<div class="p23Mission"><p class="promptLead">では5のだん。×6 から ×7 へ右に1つ進むと？</p><div class="pair"><span>5×6＝30</span><b>→</b><span>5×7＝35</span></div><div class="patternChoices"><button class="choice" onclick="p23Pick(4,this)">4</button><button class="choice" onclick="p23Pick(5,this)">5</button><button class="choice" onclick="p23Pick(7,this)">7</button></div><div class="fb" id="p23fb"></div></div>`;
- return `<div class="p23Mission"><p class="promptLead">表を右へ1つ進むと、答えは何だけ増える？</p><div class="patternChoices"><button class="choice" onclick="p23RulePick('row',this)">その段の数</button><button class="choice" onclick="p23RulePick('one',this)">いつも1</button><button class="choice" onclick="p23RulePick('right',this)">かける数</button></div><div class="fb" id="p23fb"></div></div>`
+ const n=p23Step===0?4:5,groups=p23Step===0?3:6;
+ return '<div class="p23Mission observationPattern"><p class="promptLead">九九の表で、右へ１つ進めたときの まとまりを見よう。</p>'+miniArrayHtml(n,groups+(p23Step===1?1:0))+'<div class="growthBig">'+(p23Step===0?'4×3＝12 → 4×4＝16':'5×6＝30 → 5×7＝35')+'</div>'+(p23Step===0?'<button class="choice" onclick="p23Step=1;renderGrowTable()">５のだんでも 見くらべる</button>':'<button class="choice" onclick="p23Solved=true;renderGrowTable();refreshNextGate()">見えたきまりを たしかめる</button>')+'</div>';
 }
 function p23MissionCell(r,c){return (p23Step===0&&r===4&&(c===3||c===4))||(p23Step===1&&r===5&&(c===6||c===7))}
 function renderGrowTable(){
@@ -907,8 +883,6 @@ function renderGrowTable(){
  if(b){b.hidden=false;b.disabled=false;b.textContent=growAdvanced?'2・3・4・5のだんにもどる':'はってん：ほかのだんも見る'}
  if(note)note.textContent=growAdvanced?'1〜9のだんを表示中。未習のだんは、はってんとして見よう。':'学習した2・3・4・5のだんで、見つけたきまりを自由に確かめよう。';
 }
-function p23Pick(v,btn){const ans=p23Step===0?4:5,fb=document.getElementById('p23fb'),ok=Number(v)===ans;document.querySelectorAll('.p23Mission .patternChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');fb.textContent=ok?`${ans}増えた。横の2つの答えの差を見つけられた。`:'2つの答えを引き算して、どれだけ増えたか見よう。';if(ok){document.querySelectorAll('.p23Mission .patternChoices button').forEach(b=>b.disabled=true);setTimeout(()=>{p23Step++;renderGrowTable()},430)}}
-function p23RulePick(v,btn){const fb=document.getElementById('p23fb'),ok=v==='row';document.querySelectorAll('.p23Mission .patternChoices button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');fb.className='fb show '+(ok?'ok':'try');fb.textContent=ok?'そう。右へ1つ進むと、その段の数だけ増える。':'4のだんでは＋4、5のだんでは＋5だったことを比べよう。';if(ok){p23Solved=true;document.querySelectorAll('.p23Mission .patternChoices button').forEach(b=>b.disabled=true);setTimeout(()=>{renderGrowTable();refreshNextGate()},430)}}
 function toggleGrowAdvanced(){growAdvanced=!growAdvanced;renderGrowTable()}function fillCellV6(btn,r,c,val){const now=Date.now();if(btn.dataset.stage!=='1'){btn.dataset.stage='1';btn.dataset.readyAt=String(now+650);btn.textContent=`${r}×${c}`;btn.classList.add('hinting');const table=btn.closest('table');[...table.rows].forEach(x=>x.classList.remove('rowHot'));const targetRow=table.querySelector(`tr[data-row="${r}"]`);if(targetRow)targetRow.classList.add('rowHot');[...table.querySelectorAll('.colHot')].forEach(x=>x.classList.remove('colHot'));[...table.rows].forEach(row=>row.cells[c]?.classList.add('colHot'));return}if(now<Number(btn.dataset.readyAt||0))return;btn.textContent=val;btn.disabled=true;btn.classList.remove('hinting');btn.style.background='#fff0c8'}
 let chestMoveFrom=null,chestMoveTo=null;
 const P24_PROBLEMS=[

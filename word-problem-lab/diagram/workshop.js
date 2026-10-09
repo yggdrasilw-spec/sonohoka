@@ -42,8 +42,7 @@
   }
   function range(s,role,a,b,y,below,label,interactive){
     const g=sv('g',{class:'workshopRange'+(state.selected===role?' selectedRange':''),'data-range':role});
-    g.append(sv('path',{d:T.rangeArc(a,b,y,below?14:-14),class:'brace'}));
-    g.append(sv('text',{x:(a+b)/2,y:y+(below?40:-24),'text-anchor':'middle'},label));
+    T.labeledArc(g,a,b,y,label,below);
     if(interactive){
       g.setAttribute('role','button');g.setAttribute('tabindex','0');g.setAttribute('aria-label',role==='total'?'全体の弧':role==='left'?'左の部分の弧':'右の部分の弧');
       g.append(sv('rect',{x:a,y:below?y-5:y-53,width:b-a,height:62,class:'rangeHit'}));
@@ -66,7 +65,7 @@
       if(partial)bar(s,a,b,140,m.kind==='decrease'?'total':'left',style);
       else{bar(s,a,cut,140,'left',style);bar(s,cut,b,140,'right',style);range(s,'total',a,b,92,false,labelFor('total',m),interactive);range(s,'left',a,cut,180,true,labelFor('left',m),interactive);range(s,'right',cut,b,180,true,labelFor('right',m),interactive);}
     }
-    $('workshopScene').append(s);return s;
+    $('workshopScene').append(s);T.layoutArcs(s);return s;
   }
   function facts(repair=false){
     const m=model();W.roles.forEach(role=>{const label=m.label(repair?state.assignment[role]:role);const b=button(label,e=>{state.selected=role;render();feedback(repair?'この名前と数を、正しい弧へ動かそう。':'この名前と数が表す範囲の弧を タッチしよう。');if(e.detail===0)$('workshopScene').querySelector('[data-range="total"]')?.focus();},'factChip'+(state.selected===role?' selectedFact':'')+(state.mapped[role]===role?' placedFact':''));b.dataset.fact=role;b.setAttribute('aria-pressed',String(state.selected===role));$('workshopFacts').append(b);});
@@ -91,7 +90,8 @@
     if(state.drawStage===-1){
       $('workshopPrompt').textContent=m.kind==='compare'?'どちらから 描く？':'さいしょは、どこから 描く？';
       $('workshopHint').textContent=m.kind==='decrease'?'出ていった分ものこりも、はじめは同じまとまりに入っていたね。':m.kind==='increase'?'はじめの数に、あとから来た分がつながるね。':'お話のまとまりを、順番に描いてみよう。';
-      [['left',m.kind==='compare'?'少ないほうから':'左の部分から'],['total',m.kind==='compare'?'多いほうから':'全体から']].forEach(([role,label])=>addAction(label,()=>{if(role!==m.start){feedback(m.kind==='decrease'?'へる話の「はじめ」は、どちらの部分も入った全体だね。':m.kind==='increase'?'はじめの数は、ふえた分と合わせた全体の一部分だね。':'お話のまとまりを順番に確かめよう。');return;}state.drawStage=0;render();}));return;
+      $('workshopPrompt').textContent='描き始める まとまりを 見よう';
+      addAction('描き始めを たしかめる',()=>{state.drawStage=0;render();feedback(m.start==='total'?'はじめの全体から 描きます。':'１つめの部分から 描きます。');});return;
     }
     if(state.drawStage===2){$('workshopPrompt').textContent='弧に、名前と数を 置こう';$('workshopHint').textContent='ボタンをえらんで、その範囲の弧をタッチしよう。';facts();figure({interactive:true,geometry:state.geometry});addAction('図を たしかめる',()=>check(state.mapped),'primary');return;}
     const second=state.drawStage===1,partition=second&&m.kind==='decrease',g=state.geometry;

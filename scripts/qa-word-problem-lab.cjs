@@ -40,26 +40,26 @@ assert.throws(()=>E.model({kind:'percent',stage:4,params:[7,20]}));
    await page.locator('#lessonSelect').selectOption(l.id);
   }
   async function solve(m,expression=m.paths[0].work||m.paths[0].expression,reason=m.paths[0].id){
-   await page.locator(`[data-role="${m.unknown}"]`).click();await page.locator('#expression').fill(expression);await page.locator('#answer').fill(E.format(m.answer));await page.locator(`input[name=reason][value="${reason}"]`).check();await page.locator('#solveForm button[type=submit]').click();
+   await page.locator('#expression').fill(expression);await page.locator('#answer').fill(E.format(m.answer));await page.locator('#solveForm button[type=submit]').click();
    assert(await page.locator('#feedback').evaluate(el=>el.classList.contains('success')),m.id+' '+await page.locator('#feedback').textContent());
   }
   for(const l of E.lessons){
    await select(l);const m=E.model(l);assert.equal(await page.locator('#question').textContent(),m.question);assert(await page.locator('#solutions').isHidden());
-   await page.locator('#hints details').nth(2).locator('summary').click();
+   await page.locator('#hints details').nth(2).locator(':scope > summary').click();
    if(l.id==='equal-share'){
-    assert.equal(await page.locator('#hints .plate').count(),3);await page.getByRole('button',{name:'一つずつ 同じ数に配ってみる'}).click();await page.waitForFunction(()=>document.querySelectorAll('#hints .plate .dots span').length===12);assert.equal(await page.locator('#hints .plate .dots span').count(),12);await page.waitForTimeout(650);
+    assert.equal(await page.locator('#hints .plate').count(),3);await page.locator('#hints').getByRole('button',{name:'一つずつ 同じ数に配ってみる'}).click();await page.waitForFunction(()=>document.querySelectorAll('#hints .plate .dots span').length===12);assert.equal(await page.locator('#hints .plate .dots span').count(),12);await page.waitForTimeout(650);
     await page.screenshot({path:out+'/grade3-equal-share-desktop.png',fullPage:true});
    }
-   if(l.id==='how-many-groups'){await page.getByRole('button',{name:'同じ数ずつ 取り分けてみる'}).click();await page.waitForFunction(()=>document.querySelectorAll('#hints .plate').length===4);assert.equal(await page.locator('#hints .plate').count(),4);}
-   if(l.id==='average-books'){assert(!(await page.locator('#knownNumbers').textContent()).includes('三日間の合計'));await page.getByRole('button',{name:'同じ大きさに ならしてみる'}).click();assert.deepEqual(await page.locator('#hints .averageColumns div').allTextContents(),['5','5','5']);}
-   if(l.id==='fraction-pieces'){await page.getByRole('button',{name:'一本分ずつ 区切ってみる'}).click();assert.equal(await page.locator('#hints .ribbon span').count(),6);}
+   if(l.id==='how-many-groups'){await page.locator('#hints').getByRole('button',{name:'同じ数ずつ 取り分けてみる'}).click();await page.waitForFunction(()=>document.querySelectorAll('#hints .plate').length===4);assert.equal(await page.locator('#hints .plate').count(),4);}
+   if(l.id==='average-books'){assert(!(await page.locator('#knownNumbers').textContent()).includes('三日間の合計'));await page.locator('#hints').getByRole('button',{name:'同じ大きさに ならしてみる'}).click();assert.deepEqual(await page.locator('#hints .averageColumns div').allTextContents(),['5','5','5']);}
+   if(l.id==='fraction-pieces'){await page.locator('#hints').getByRole('button',{name:'一本分ずつ 区切ってみる'}).click();assert.equal(await page.locator('#hints .ribbon span').count(),6);}
    if(l.id==='percentage-part')await page.screenshot({path:out+'/grade5-percent-desktop.png',fullPage:true});
    if(l.id==='ratio-parts')await page.screenshot({path:out+'/grade6-ratio-desktop.png',fullPage:true});
    await solve(m);
    if(l.id==='same-groups')await solve(m,m.paths[1].expression,m.paths[1].id);
    if(l.id==='two-step'){
     await solve(m,m.paths[1].work,m.paths[1].id);
-    await page.locator('#expression').fill(m.paths[0].work);await page.locator(`input[value="${m.paths[1].id}"]`).check();await page.locator('#solveForm button[type=submit]').click();assert(!(await page.locator('#feedback').evaluate(el=>el.classList.contains('success'))));
+    await page.locator('#expression').fill('1+1=2');await page.locator('#solveForm button[type=submit]').click();assert(!(await page.locator('#feedback').evaluate(el=>el.classList.contains('success'))));
     await solve(m);
    }
    const stageLast=E.lessons.filter(x=>x.stage===l.stage).at(-1).id===l.id;
@@ -78,7 +78,7 @@ assert.throws(()=>E.model({kind:'percent',stage:4,params:[7,20]}));
   await page.reload();assert((await page.locator('#stageLabel').textContent()).startsWith('6年'));
   await page.setViewportSize({width:390,height:844});
   for(const id of['fraction-times','ratio-parts','inverse-workers','percentage-base','equal-share']){
-   await select(E.lessons.find(l=>l.id===id));await page.locator('#hints details').nth(2).locator('summary').click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),id+' overflow');await page.screenshot({path:out+'/'+id+'-mobile.png',fullPage:true});
+   await select(E.lessons.find(l=>l.id===id));await page.locator('#hints details').nth(2).locator(':scope > summary').click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),id+' overflow');await page.screenshot({path:out+'/'+id+'-mobile.png',fullPage:true});
   }
   await page.locator('.teacher summary').click();await page.locator('#clearProgress').click();activeStage=0;
   assert(await page.locator('#advanceStage').isHidden());assert(await page.locator('#createMode').isDisabled());assert.equal(await page.locator('#lessonSelect option').count(),1);

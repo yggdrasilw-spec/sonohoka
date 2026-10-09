@@ -45,8 +45,8 @@
   const x=100,w=700,y=115,h=58;
   function rect(s,a,b,c,cl){s.append(svgEl('rect',{x:a,y:b,width:c,height:h,rx:2,class:cl}));const line=svgEl('path',{d:`M ${a} ${b+h/2-8} V ${b+h/2+8} M ${a} ${b+h/2} H ${a+c} M ${a+c} ${b+h/2-8} V ${b+h/2+8}`,class:'segmentShape '+(cl.includes('tapeB')?'segmentB':'segmentA')});s.append(line);}
   function text(s,a,b,t,cl=''){s.append(svgEl('text',{x:a,y:b,'text-anchor':'middle',class:cl},t));}
-  function brace(s,a,b,yy,label){s.append(svgEl('path',{d:E.rangeArc(a,b,yy+10),class:'brace'}));text(s,(a+b)/2,yy-12,label);}
-  function partArc(s,a,b,yy,label){s.append(svgEl('path',{d:E.rangeArc(a,b,yy,14),class:'brace'}));text(s,(a+b)/2,yy+40,label);}
+  function brace(s,a,b,yy,label){E.labeledArc(s,a,b,yy,label);}
+  function partArc(s,a,b,yy,label){E.labeledArc(s,a,b,yy,label,true);}
   function dots(s,role,a,b,yy,cl){
     if(m.unknown===role){text(s,(a+b)/2,yy+8,'？');return;}
     const count=m[role],spacing=(b-a)/Math.max(count,1),r=Math.max(3,Math.min(13,spacing*.35));
@@ -93,16 +93,15 @@
         if(labels){brace(s,x,x+w,75,m.label('total',reveal));partArc(s,x,cut,185,m.label('left',reveal));partArc(s,cut,x+w,185,m.label('right',reveal));text(s,450,35,'ぜんたい','labelSmall');text(s,(x+cut)/2,260,'ぶぶん','labelSmall');text(s,(cut+x+w)/2,260,'ぶぶん','labelSmall');}
       }
     }
-    return s;
+    E.layoutArcs(s);return s;
   }
   function startChoice(){
-    const isTemporal=['increase','decrease'].includes(m.kind);
-    groups();
-    const answers=m.kind==='compare'?[['total','多いほうの テープ'],['left','少ないほうの テープ']]:[['left','左の ぶぶんから'],['total','ぜんたいから']];
-    answers.forEach(([r,t])=>$('action').append(button(t,e=>{
-      if(r===m.start){finish(m.kind==='increase'?'はじめの数は「ぶぶん」。左の部分から 描くよ。':m.kind==='decrease'?'はじめの数は「ぜんたい」。全体から 描くよ。':m.kind==='compare'?'多いほうを描いて、同じ左端から 少ないほうを描くよ。':'１つめのまとまりを描いて、もう１つを つなぐよ。');e.currentTarget.classList.add('correct');}
-      else say(isTemporal?(m.kind==='increase'?'はじめの数に、あとから くっつく分が あるね。はじめは 部分かな、全体かな？':'出ていった分も、のこりも、はじめの数に 入っていたね。はじめは 部分かな、全体かな？'):'お話のまとまりを、順番に 描いてみよう。');
-    },'choice')));
+    tapeDiagram('first');
+    $('action').append(button('つづきの 描き方を 見る',()=>{
+      $('scene').replaceChildren();tapeDiagram('full',true);
+      const takeaway=m.kind==='increase'?'はじめの ぶぶんに、ふえた ぶぶんを つなげます。':m.kind==='decrease'?'はじめの ぜんたいを、出ていった分と のこりに 分けます。':m.kind==='compare'?'左端を そろえると、右端の あまったところが ちがいです。':'２つの ぶぶんを つなげると、ぜんたいに なります。';
+      $('scene').append(el('p','keyPoint',takeaway));finish(takeaway);$('action').replaceChildren();
+    },'primary'));
   }
   function drawing(second){
     const partition=second&&m.kind==='decrease';
@@ -142,13 +141,14 @@
     if(step<2)groups();
     if(step===2){groups(true);if(!m.continuous){$('action').append(button('１つずつ ○にする',()=>{clearInterval(timer);const queue=[...$('scene').querySelectorAll('.piece[data-key]')].filter(p=>!converted.has(p.dataset.key));let i=0;timer=setInterval(()=>{if(i>=queue.length){clearInterval(timer);timer=null;checkConverted();return;}convertPiece(queue[i++]);},m.left+m.right>30?90:220);}));checkConverted();}}
     if(step===3){if(m.continuous)tapeDiagram('first');else dotDiagram();}
-    if(step===4)startChoice();
+    if(step===4){$('prompt').textContent='テープを 描く順番を 見よう';$('hint').textContent='まず１つのまとまり。つづきは どうなるかな？';startChoice();}
     if(step===5||step===6)drawing(step===6);
     if(step===7)tapeDiagram('full',true);
     if(step===8){tapeDiagram('full',true,true);$('scene').append(el('p','equation',m.equation),el('p','reason',m.reason),el('p','keyPoint',m.kind==='increase'?'ふえる話の「はじめ」は、ぶぶん。':m.kind==='decrease'?'へる話の「はじめ」は、ぜんたい。':m.kind==='compare'?'ちがいは、組にならずに あまった ぶぶん。':'２つの ぶぶんを あわせると、ぜんたい。'));$('action').append(button('同じお話で もういちど',()=>choose(lesson)),button('べつのお話へ',another));}
     if(step>=7){$('action').append(button(diagramStyle==='tape'?'線分図に してみる':'テープ図に もどす',()=>{diagramStyle=diagramStyle==='tape'?'line':'tape';render();say('線の両端と 弧が、同じ数のまとまりを あらわすよ。');},'viewToggle'));}
     if(step===8)$('action').append(button('この図から 割合・比へ',()=>window.TapeExtension.open('bridge',lesson)));
     if(step===8)$('action').append(button('自分で 図をつくる練習',()=>window.TapeWorkshop.open(lesson)));
+    $('scene').querySelectorAll('svg').forEach(E.layoutArcs);
     $('lessonSelect').value=lesson.id||'custom';
   }
   function another(){const same=lessons.filter(l=>l.kind===m.kind);const idx=same.findIndex(l=>l.id===lesson.id);choose(same[(idx+1)%same.length]);}

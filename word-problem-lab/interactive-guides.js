@@ -15,14 +15,14 @@
     function button(text,run,cls='quiet'){const b=el('button',text,cls);b.type='button';b.addEventListener('click',run);return b;}
     function beads(count,key){const dots=el('div',undefined,'guideBeads');dots.setAttribute('role','img');dots.setAttribute('aria-label',count+'こ');for(let i=0;i<count;i++)dots.append(root.WordProblemIllustrations.token(key));return dots;}
     if(m.kind==='percent'||m.kind==='discount'){
-      d.append(el('h3','まず、100%にする量をえらぼう'));
+      d.append(el('h3','全体を100%とする図を 見よう'));
       const choices=el('div',undefined,'guideChoices'),graphic=el('div',undefined,'percentExplore');graphic.hidden=true;
       const grid=el('div',undefined,'hundredGrid');grid.setAttribute('role','img');
       function paint(rate){grid.replaceChildren();percentFill(rate).forEach(fill=>{const cell=el('span');cell.dataset.fill=String(fill);cell.style.background=`linear-gradient(to right,#377b67 ${fill*100}%,#eef4ee ${fill*100}%)`;grid.append(cell);});grid.setAttribute('aria-label',`100マスのうち${E.format(rate)}%の部分`);}
       const label=el('p'),explanation=el('p');
       graphic.append(el('strong','この枠ぜんぶが100%'),grid,label,explanation);
       let selected=false;
-      ['total','a'].forEach(id=>{const b=button(`${q(id).label} ${shown(id)}`,()=>{
+      ['a'].forEach(id=>{const b=button('全体と部分を 図でたしかめる',()=>{
         if(id!=='a'){status.textContent=m.kind==='discount'?'払う代金は、値引きしたあとの量だね。何の代金を100%としているかな？':'比べる量は、全体の中の図書委員の人数だね。もとにしている全体はどれかな？';return;}
         selected=true;choices.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
         graphic.hidden=false;status.textContent=`${q('a').label} ${shown('a')}が100%だね。求める量が分からなくても、基準の量はえらべるよ。`;

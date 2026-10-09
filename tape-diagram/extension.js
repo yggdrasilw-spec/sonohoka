@@ -11,7 +11,7 @@
   function open(nextMode='bridge',data){window.TapeWorkshop?.hide();window.TapeLessonApp.pause();window.TapeIntro.hide();$('intro').hidden=true;$('lessonContent').hidden=true;$('extension').hidden=false;$('settings').hidden=true;$('settingsButton').setAttribute('aria-expanded','false');$('extendButton').setAttribute('aria-pressed','true');bridgeLesson=data||window.TapeLessonApp.current();mode=nextMode;lineMode=false;revealed=false;render();}
   function make(){const s=sv('svg',{viewBox:'0 0 900 380',class:'diagram extensionDiagram'+(lineMode?' lineMode':''),role:'img','aria-label':titles[mode]});$('extensionScene').append(s);return s;}
   function text(s,x,y,value,cls=''){s.append(sv('text',{x,y,'text-anchor':'middle',class:cls},value));}
-  function arc(s,a,b,y,label,below=false){s.append(sv('path',{d:T.rangeArc(a,b,y,below?14:-14),class:'brace'}));text(s,(a+b)/2,y+(below?40:-24),label);}
+  function arc(s,a,b,y,label,below=false){T.labeledArc(s,a,b,y,label,below);}
   function line(s,a,b,y,cls='segmentA'){s.append(sv('path',{d:`M ${a} ${y-8} V ${y+8} M ${a} ${y} H ${b} M ${b} ${y-8} V ${y+8}`,class:cls+' extensionLine'}));}
   function tape(s,a,b,y,cls){s.append(sv('rect',{x:a,y:y-24,width:b-a,height:48,class:cls}));line(s,a,b,y,cls==='tapeA'?'segmentA':'segmentB');}
   function mark(s,x,y,label){s.append(sv('line',{x1:x,y1:y-8,x2:x,y2:y+8,class:'numberMark'}));if(label!==undefined)text(s,x,y+35,label);}
@@ -82,6 +82,7 @@
     $('extensionModes').replaceChildren();Object.entries(titles).forEach(([key,title])=>{const b=node('button',key===mode?'active':'',title);b.type='button';b.addEventListener('click',()=>{mode=key;lineMode=false;revealed=false;render();});$('extensionModes').append(b);});
     $('extensionTitle').textContent=titles[mode];$('extensionScene').replaceChildren();$('extensionActions').replaceChildren();$('extensionFields').replaceChildren();$('extensionFeedback').textContent='';$('extensionError').textContent='';$('extensionSettings').hidden=false;
     if(mode==='bridge')bridge();else if(mode==='percent')percentView();else ratioView();
+    $('extensionScene').querySelectorAll('svg').forEach(T.layoutArcs);
   }
   $('extensionSettings').addEventListener('submit',e=>{e.preventDefault();try{
     const unit=$('extUnit').value.trim();if(!unit||unit.length>8)throw Error('単位を1〜8文字で入力してください。');
