@@ -268,17 +268,34 @@
         .canvas-panel {
             flex: 1.2;
             display: flex;
+            flex-direction: column;
+            min-width: 0;
+            gap: 10px;
             justify-content: center;
             align-items: center;
             position: relative;
         }
 
         canvas {
+            touch-action: none;
+            cursor: grab;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             background-color: #ffffff;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
             max-width: 100%;
+        }
+        canvas.dragging { cursor: grabbing; }
+        canvas:focus-visible, .view-controls button:focus-visible {
+            outline: 3px solid #4a90e2;
+            outline-offset: 3px;
+        }
+        .view-hint { margin: 0; font-size: 14px; text-align: center; }
+        .view-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+        .view-controls button {
+            min-height: 44px; padding: 8px 12px; font-size: 15px;
+            color: #24496b; background: #edf5fc; border: 1px solid #b6cde1;
+            border-radius: 8px; cursor: pointer;
         }
 
         @media (max-width: 850px) {
@@ -360,7 +377,15 @@
     </div>
 
     <div class="canvas-panel">
-        <canvas id="prismCanvas" width="520" height="440"></canvas>
+        <canvas id="prismCanvas" width="520" height="440" tabindex="0" aria-label="直方体の立体図。ドラッグまたは矢印キーで回転。Homeキーでもとの向きに戻ります。" aria-describedby="viewHint"></canvas>
+        <p class="view-hint" id="viewHint">指やマウスで動かして、回して見よう。<br>矢印キーでも回せます。</p>
+        <div class="view-controls" aria-label="立体の向き">
+            <button type="button" onclick="rotateView(-0.25, 0)">← 回す</button>
+            <button type="button" onclick="rotateView(0.25, 0)">回す →</button>
+            <button type="button" onclick="rotateView(0, 0.15)">上から見る</button>
+            <button type="button" onclick="rotateView(0, -0.15)">横から見る</button>
+            <button type="button" onclick="resetView()">もとの向き</button>
+        </div>
     </div>
 </div>
 
@@ -384,6 +409,58 @@
     let scale = 30;
     let base_x = 0;
     let base_y = 0;
+    const defaultYaw = -0.55;
+    const defaultPitch = 0.42;
+    let viewYaw = defaultYaw;
+    let viewPitch = defaultPitch;
+    let dragPointer = null;
+    let dragX = 0;
+    let dragY = 0;
+
+    function rotateView(yaw, pitch) {
+        viewYaw = (viewYaw + yaw) % (Math.PI * 2);
+        viewPitch = Math.max(0.08, Math.min(1.35, viewPitch + pitch));
+        drawCanvas();
+    }
+    function resetView() {
+        viewYaw = defaultYaw;
+        viewPitch = defaultPitch;
+        drawCanvas();
+    }
+    canvas.addEventListener('pointerdown', event => {
+        if (dragPointer !== null || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        dragPointer = event.pointerId;
+        dragX = event.clientX;
+        dragY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+        canvas.classList.add('dragging');
+        canvas.focus({ preventScroll: true });
+    });
+    canvas.addEventListener('pointermove', event => {
+        if (event.pointerId !== dragPointer) return;
+        rotateView((event.clientX - dragX) * 0.01, (event.clientY - dragY) * 0.008);
+        dragX = event.clientX;
+        dragY = event.clientY;
+    });
+    function endViewDrag(event) {
+        if (event.pointerId !== dragPointer) return;
+        dragPointer = null;
+        canvas.classList.remove('dragging');
+        if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    }
+    canvas.addEventListener('pointerup', endViewDrag);
+    canvas.addEventListener('pointercancel', endViewDrag);
+    canvas.addEventListener('lostpointercapture', endViewDrag);
+    canvas.addEventListener('keydown', event => {
+        const changes = { ArrowLeft: [-0.15, 0], ArrowRight: [0.15, 0], ArrowUp: [0, 0.1], ArrowDown: [0, -0.1] };
+        if (changes[event.key]) {
+            event.preventDefault();
+            rotateView(...changes[event.key]);
+        } else if (event.key === 'Home') {
+            event.preventDefault();
+            resetView();
+        }
+    });
 
     window.onload = function() {
         redrawApp();
@@ -688,167 +765,127 @@
         }
     }
 
-    // キャンバス調整
-    function adjustScaleAndBase() {
-        const margin = 80;
-        const availableW = canvas.width - margin;
-        const availableH = canvas.height - margin;
-        const wFactor = yoko + tate * 0.5;
-        const hFactor = takasa + tate * 0.4;
-        
-        scale = Math.min(availableW / wFactor, availableH / hFactor);
-        if (scale > 45) scale = 45;
-        if (scale < 20) scale = 20;
-        
-        const totalWidth = yoko * scale + tate * scale * 0.5;
-        const totalHeight = takasa * scale + tate * scale * 0.4;
-        
-        base_x = (canvas.width - totalWidth) / 2;
-        base_y = (canvas.height + totalHeight) / 2;
+    // 世界座標は横=x、高さ=y、たて=z。視点だけを回して数量は変えない。
+    function cameraPoint(x, y, z) {
+        x -= yoko / 2; y -= takasa / 2; z -= tate / 2;
+        const horizontal = Math.cos(viewYaw) * x - Math.sin(viewYaw) * z;
+        const away = Math.sin(viewYaw) * x + Math.cos(viewYaw) * z;
+        return {
+            x: horizontal,
+            y: -Math.cos(viewPitch) * y - Math.sin(viewPitch) * away,
+            depth: Math.cos(viewPitch) * away - Math.sin(viewPitch) * y
+        };
     }
-
-    // キャンバスの描画処理
+    function project(x, y, z) {
+        const p = cameraPoint(x, y, z);
+        return { x: base_x + p.x * scale, y: base_y + p.y * scale, depth: p.depth };
+    }
+    function adjustScaleAndBase() {
+        const points = [];
+        for (const x of [0, yoko]) for (const y of [0, takasa]) for (const z of [0, tate]) {
+            points.push(cameraPoint(x, y, z));
+        }
+        const minX = Math.min(...points.map(p => p.x)), maxX = Math.max(...points.map(p => p.x));
+        const minY = Math.min(...points.map(p => p.y)), maxY = Math.max(...points.map(p => p.y));
+        scale = Math.min(45, (canvas.width - 180) / (maxX - minX), (canvas.height - 130) / (maxY - minY));
+        base_x = canvas.width / 2 - (minX + maxX) * scale / 2;
+        base_y = canvas.height / 2 - (minY + maxY) * scale / 2;
+    }
+    // 面を奥から描き、どの向きでも手前のブロックが奥のブロックを隠す。
     function drawCanvas() {
+        adjustScaleAndBase();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawNotebookGrid();
-        
-        // 奥(z大)から手前(z=0)へ、下(y=0)から上へ、左から右へ描画
-        for (let z = tate - 1; z >= 0; z--) {
-            for (let y = 0; y < takasa; y++) {
-                for (let x = 0; x < yoko; x++) {
-                    
-                    let shouldDrawBlock = false;
-                    
-                    if (currentStep === 2) {
-                        // ステップ2: 最初の1列 (y=0, x=0 のみ)
-                        if (y === 0 && x === 0) shouldDrawBlock = true;
-                    } else if (currentStep === 3) {
-                        // ステップ3: 1段目の全体 (y=0 のみすべて)
-                        if (y === 0) shouldDrawBlock = true;
-                    } else if (currentStep === 4) {
-                        // ステップ4: 【アニメーション】 1列目〜最終列まで連動
-                        if (y === 0 && x < animProgress) shouldDrawBlock = true;
-                    } else if (currentStep === 5) {
-                        // ステップ5: 【アニメーション】 1段目〜最終段まで連動
-                        if (y < animProgress) shouldDrawBlock = true;
-                    } else if (currentStep === 6) {
-                        // ステップ6: まとめ (すべて描画)
-                        shouldDrawBlock = true;
-                    }
-                    
-                    if (shouldDrawBlock) {
-                        drawSingleCube(x, y, z);
-                    }
-                }
-            }
+        const faces = [];
+        for (let z = 0; z < tate; z++) for (let y = 0; y < takasa; y++) for (let x = 0; x < yoko; x++) {
+            const visible = currentStep === 2 ? y === 0 && x === 0
+                : currentStep === 3 ? y === 0
+                : currentStep === 4 ? y === 0 && x < animProgress
+                : currentStep === 5 ? y < animProgress
+                : currentStep === 6;
+            if (visible) addCubeFaces(faces, x, y, z);
         }
-        
-        // 外枠と寸法線の描画
+        faces.sort((a, b) => b.depth - a.depth);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#4d5656';
+        for (const face of faces) {
+            ctx.fillStyle = face.color;
+            ctx.beginPath();
+            face.points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
         drawOuterFrame(currentStep === 1);
     }
-
-    // ノート風背景
     function drawNotebookGrid() {
-        ctx.strokeStyle = "#eaf2f8";
-        ctx.lineWidth = 1;
-        const gridSize = 20;
-        for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.strokeStyle = '#eaf2f8'; ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 20) {
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += gridSize) {
+        for (let y = 0; y < canvas.height; y += 20) {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
         }
     }
-
-    // 立方体1個の描画
-    function drawSingleCube(x, y, z) {
-        let cx = base_x + x * scale + z * scale * 0.5;
-        let cy = base_y - y * scale - z * scale * 0.4;
-        
-        let frontColor = "#d2ecf9";
-        let topColor = "#aed6f1";
-        let rightColor = "#5dade2";
-        
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = "#4d5656";
-        
-        // 1. 上面
-        ctx.fillStyle = topColor;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - scale);
-        ctx.lineTo(cx + scale * 0.5, cy - scale - scale * 0.4);
-        ctx.lineTo(cx + scale + scale * 0.5, cy - scale - scale * 0.4);
-        ctx.lineTo(cx + scale, cy - scale);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        
-        // 2. 右側面
-        ctx.fillStyle = rightColor;
-        ctx.beginPath();
-        ctx.moveTo(cx + scale, cy);
-        ctx.lineTo(cx + scale + scale * 0.5, cy - scale * 0.4);
-        ctx.lineTo(cx + scale + scale * 0.5, cy - scale - scale * 0.4);
-        ctx.lineTo(cx + scale, cy - scale);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        
-        // 3. 正面
-        ctx.fillStyle = frontColor;
-        ctx.beginPath();
-        ctx.rect(cx, cy - scale, scale, scale);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
+    function normalDepth(n) {
+        return Math.cos(viewPitch) * (Math.sin(viewYaw) * n[0] + Math.cos(viewYaw) * n[2]) - Math.sin(viewPitch) * n[1];
     }
-
-    // 見取り図の枠線と矢印テキスト
-    function drawOuterFrame(drawHiddenLines) {
-        let p000 = { x: base_x, y: base_y };
-        let p100 = { x: base_x + yoko * scale, y: base_y };
-        let p010 = { x: base_x, y: base_y - takasa * scale };
-        let p110 = { x: base_x + yoko * scale, y: base_y - takasa * scale };
-        
-        let p001 = { x: base_x + tate * scale * 0.5, y: base_y - tate * scale * 0.4 };
-        let p101 = { x: base_x + yoko * scale + tate * scale * 0.5, y: base_y - tate * scale * 0.4 };
-        let p011 = { x: base_x + tate * scale * 0.5, y: base_y - takasa * scale - tate * scale * 0.4 };
-        let p111 = { x: base_x + yoko * scale + tate * scale * 0.5, y: base_y - takasa * scale - tate * scale * 0.4 };
-        
-        if (drawHiddenLines) {
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = "rgba(120, 120, 120, 0.5)";
-            if (ctx.setLineDash) ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(p001.x, p001.y); ctx.lineTo(p101.x, p101.y);
-            ctx.moveTo(p001.x, p001.y); ctx.lineTo(p011.x, p011.y);
-            ctx.moveTo(p001.x, p001.y); ctx.lineTo(p000.x, p000.y);
-            ctx.stroke();
-            if (ctx.setLineDash) ctx.setLineDash([]);
+    const cubeFaces = [
+        { normal: [-1,0,0], color: '#5dade2', corners: [[0,0,0],[0,0,1],[0,1,1],[0,1,0]] },
+        { normal: [1,0,0], color: '#5dade2', corners: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]] },
+        { normal: [0,-1,0], color: '#aed6f1', corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]] },
+        { normal: [0,1,0], color: '#aed6f1', corners: [[0,1,0],[0,1,1],[1,1,1],[1,1,0]] },
+        { normal: [0,0,-1], color: '#d2ecf9', corners: [[0,0,0],[0,1,0],[1,1,0],[1,0,0]] },
+        { normal: [0,0,1], color: '#d2ecf9', corners: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]] }
+    ];
+    function addCubeFaces(faces, x, y, z) {
+        for (const face of cubeFaces) {
+            if (normalDepth(face.normal) >= -0.00001) continue;
+            const points = face.corners.map(p => project(x + p[0], y + p[1], z + p[2]));
+            faces.push({ points, color: face.color, depth: points.reduce((sum, p) => sum + p.depth, 0) / 4 });
         }
-        
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = "#2c3e50";
-        ctx.beginPath();
-        ctx.moveTo(p000.x, p000.y); ctx.lineTo(p100.x, p100.y);
-        ctx.lineTo(p110.x, p110.y); ctx.lineTo(p010.x, p010.y);
-        ctx.closePath();
-        ctx.moveTo(p010.x, p010.y); ctx.lineTo(p011.x, p011.y);
-        ctx.lineTo(p111.x, p111.y); ctx.lineTo(p110.x, p110.y);
-        ctx.moveTo(p100.x, p100.y); ctx.lineTo(p101.x, p101.y);
-        ctx.lineTo(p111.x, p111.y);
-        ctx.stroke();
-        
-        // 寸法表示
-        ctx.fillStyle = "#2c3e50";
-        ctx.font = "bold 15px sans-serif";
-        
-        ctx.textAlign = "center"; ctx.textBaseline = "top";
-        ctx.fillText("横 " + yoko + " cm", (p000.x + p100.x) / 2, p000.y + 10);
-        drawArrow(p000.x, p000.y + 5, p100.x, p100.y + 5);
-        
-        ctx.textAlign = "right"; ctx.textBaseline = "middle";
-        ctx.fillText("高さ " + takasa + " cm", p000.x - 15, (p000.y + p010.y) / 2);
-        drawArrow(p000.x - 8, p000.y, p010.x - 8, p010.y);
-        
-        ctx.textAlign = "left"; ctx.textBaseline = "bottom";
-        let mx = (p100.x + p101.x) / 2; let my = (p100.y + p101.y) / 2;
-        ctx.fillText("たて " + tate + " cm", mx + 15, my);
-        drawArrow(p100.x + 8, p100.y - 3, p101.x + 8, p101.y - 3);
+    }
+    function drawOuterFrame(drawHiddenLines) {
+        // 各辺に接する面のうち、一つでも手前を向いていれば実線。
+        for (let axis = 0; axis < 3; axis++) {
+            const others = [0,1,2].filter(a => a !== axis);
+            for (const a of [0,1]) for (const b of [0,1]) {
+                const dimensions = [yoko, takasa, tate];
+                const from = [0,0,0], to = [0,0,0];
+                from[others[0]] = to[others[0]] = a * dimensions[others[0]];
+                from[others[1]] = to[others[1]] = b * dimensions[others[1]];
+                to[axis] = dimensions[axis];
+                const n1 = [0,0,0], n2 = [0,0,0];
+                n1[others[0]] = a ? 1 : -1; n2[others[1]] = b ? 1 : -1;
+                const visible = normalDepth(n1) < 0 || normalDepth(n2) < 0;
+                if (!visible && !drawHiddenLines) continue;
+                const p = project(...from), q = project(...to);
+                ctx.setLineDash(visible ? [] : [4,4]);
+                ctx.lineWidth = visible ? 2 : 1;
+                ctx.strokeStyle = visible ? '#2c3e50' : '#aab2b8';
+                ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke();
+            }
+        }
+        ctx.setLineDash([]);
+        // 寸法は常に同じ世界座標軸に結びつける。視点に近い底の角から表示。
+        const nearX = Math.sin(viewYaw) < 0 ? yoko : 0;
+        const nearZ = Math.cos(viewYaw) < 0 ? tate : 0;
+        drawDimension([0,0,nearZ], [yoko,0,nearZ], '横 ' + yoko + ' cm', '#30336b');
+        drawDimension([nearX,0,0], [nearX,0,tate], 'たて ' + tate + ' cm', '#b12acb');
+        const leftCorner = [[0,0,0], [yoko,0,0], [0,0,tate], [yoko,0,tate]]
+            .sort((a, b) => project(...a).x - project(...b).x)[0];
+        drawDimension(leftCorner, [leftCorner[0],takasa,leftCorner[2]], '高さ ' + takasa + ' cm', '#16828c');
+    }
+    function drawDimension(from, to, label, color) {
+        const p = project(...from), q = project(...to);
+        const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+        let dx = mx - canvas.width / 2, dy = my - canvas.height / 2;
+        const length = Math.hypot(dx,dy) || 1;
+        dx = dx / length; dy = dy / length;
+        drawArrow(p.x + dx * 9, p.y + dy * 9, q.x + dx * 9, q.y + dy * 9);
+        const tx = mx + dx * 34, ty = my + dy * 34;
+        ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const width = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(255,255,255,0.94)'; ctx.fillRect(tx - width / 2 - 4, ty - 11, width + 8, 22);
+        ctx.fillStyle = color; ctx.fillText(label, tx, ty);
     }
 
     function drawArrow(x1, y1, x2, y2) {
