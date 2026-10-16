@@ -20,7 +20,7 @@ h1{font-size:20px;margin:8px 0 4px}
 #msg p{margin:2px}.big{font-size:34px;font-weight:bold}.hint{color:#8a5200;font-size:17px}.okk{color:#2e9e2e;font-size:26px}
 #app{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:10px;max-width:1280px;margin:0 auto;padding:0 8px;align-items:stretch}
 @media(max-width:820px){#app{grid-template-columns:1fr}}
-#L{position:relative;min-width:0;box-sizing:border-box;padding:8px 8px clamp(80px,12vh,104px);border-radius:20px;background:linear-gradient(#f5f1e8,#eee9dd);box-shadow:inset 0 1px 1px #fff,0 5px 14px #66573820}#RC{display:flex;flex-direction:column;min-width:0}#R{background:#fff;border:2px solid #ddd;border-radius:12px;padding:8px;container-type:inline-size;min-width:0}
+#L{position:relative;min-width:0;box-sizing:border-box;padding:8px 8px clamp(26.667px,4vh,34.667px);border-radius:20px;background:linear-gradient(#f5f1e8,#eee9dd);box-shadow:inset 0 1px 1px #fff,0 5px 14px #66573820}#RC{display:flex;flex-direction:column;min-width:0}#R{background:#fff;border:2px solid #ddd;border-radius:12px;padding:8px;container-type:inline-size;min-width:0}
 #q.eq{font-size:clamp(30px,3.6vw,64px);font-size:min(12cqw,72px);white-space:nowrap}
 #q.eq b{display:inline-block;min-width:1.3em;border-radius:14px;margin:0 .04em}
 #ch.lg button{font-size:clamp(30px,3.6vw,48px);font-size:min(10cqw,52px);min-width:1.8em;padding:6px 14px}
@@ -72,7 +72,7 @@ const COL=['#1e9be8','#5b9a2f','#f5c400','#f2f2f2'],svg=document.getElementById(
 const PAL_NAMES=['あおい おはじき','みどりの おはじき','きいろの ブロック','しろい ブロック'];
 let pal=0;
 let mode='play',items=[],nid=1,drag=null,prob=null,fb='',ans=0,cur=null,hl=0,sm=0,fs=0,H=450,ph=0,jf=0,cnt=0,tm=null,lastSig='',AC=null,snd=1;
-let voice=1,audioReady=false,readTimer=null,lastRead='';
+let voice=1,audioReady=false,readTimer=null,readState=null;
 let history=[],pendingUndo=null;
 const colorNum=(c,n)=>`<b class="${c}">${n}</b>`,makeExpr=(a,b)=>`${colorNum('cb',a)}×${colorNum('cr',b)}`;
 function boardState(){return{H,items:items.map(({id,t,x,y})=>({id,t,x,y})).sort((a,b)=>a.id-b.id)}}
@@ -101,9 +101,14 @@ const D=['れい','いち','に','さん','よん','ご','ろく','なな','は�
 const num=n=>n<=10?D[n]:(n>=20?D[n/10|0]:'')+'じゅう'+(n%10?D[n%10]:'');
 const tsu=n=>n<=10?T[n]:num(n)+'こ';
 const kc=n=>{const s=num(n);return n%10==0&&n>0?s.replace(/う$/,'っこ'):/[ちく]$/.test(s)?s.replace(/[ちく]$/,'っこ'):s+'こ'};
-function autoRead(){clearTimeout(readTimer);if(!voice||!audioReady||drag||anim)return;
- const text=[$('q'),$('msg')].map(el=>el.innerText).join(' ').replace(/\s+/g,' ').trim();if(!text||text==lastRead)return;
- readTimer=setTimeout(()=>{if(!voice||drag||anim)return;lastRead=text;speak(text)},180)}
+function readingState(){const clean=text=>text.replace(/\s+/g,' ').trim();
+ const question=fl()&&!ans?['1つぶんの かずを えらぼう。','いくつぶんかを えらぼう。','ぜんぶの かずを えらぼう。'][fs]:fl()?'':clean($('q').innerText);
+ return{question,messages:[...$('msg').children].map(el=>clean(el.innerText)).filter(Boolean)}}
+function autoRead(){clearTimeout(readTimer);if(drag||anim)return;const next=readingState();
+ if(!readState||!voice||!audioReady){readState=next;return}
+ const changed=[next.question!=readState.question?next.question:'',...next.messages.filter(text=>!readState.messages.includes(text))].filter(Boolean);
+ if(!changed.length){readState=next;return}
+ readTimer=setTimeout(()=>{if(!voice||drag||anim)return;readState=next;speak(changed.join(' '))},180)}
 function audioUi(){for(const[id,on]of [['se',snd],['voice',voice]]){const b=$(id);b.setAttribute('aria-pressed',String(!!on));b.title=b.getAttribute('aria-label')+' '+(on?'ON':'OFF')}}
 function enableAudio(){if(audioReady)return;audioReady=true;autoRead()}
 document.addEventListener('pointerdown',enableAudio,{capture:true});document.addEventListener('keydown',enableAudio,{capture:true});
@@ -241,7 +246,7 @@ function fillPick(b){const v=+b.dataset.v,{n,g}=cur;
  fillStep()}
 $('hn').onclick=()=>{hl=Math.min(3,hl+1);sm=1;SFX.hint();render();if(fl()&&fs==2)count()};
 $('se').onclick=()=>{snd=!snd;audioUi()};
-$('voice').onclick=()=>{voice=!voice;audioUi();clearTimeout(readTimer);if(!voice){if(window.speechSynthesis)speechSynthesis.cancel();lastRead=''}else autoRead()};
+$('voice').onclick=()=>{voice=!voice;audioUi();clearTimeout(readTimer);readState=readingState();if(!voice&&window.speechSynthesis)speechSynthesis.cancel()};
 // ---- ともだちと(ならべる→みせる→こたえてもらう) ----
 function pairMsg(an){return an.s==3?'<p class="cele">もんだいが できたよ！</p><p>「ともだちに みせる」を おしてね。</p>':an.s==0?'<p>おなじ かずずつの まとまりを つくってね。</p><p>できたら ともだちに みせよう。</p>':an.s==2?'<p>まとまりを 2つ いじょう つくって ならべてね。</p>':an.h}
 function pairGo(){const an=analyze(groups());if(an.s!=3){SFX.ng();shake();return}
