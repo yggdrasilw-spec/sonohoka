@@ -2,11 +2,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const {serve}=require('./portfolio-demo-inspect.cjs');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'.portfolio-work/kana-feedback');
-const hash=b=>crypto.createHash('sha256').update(b.toString('utf8').replace(/\r\n/g,'\n')).digest('hex');
+const hash=(b,name)=>crypto.createHash('sha256').update(name.endsWith('.bin')?b:b.toString('utf8').replace(/\r\n/g,'\n')).digest('hex');
 (async()=>{
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'kana-feedback-lab/_SOURCE.json')));
- assert.equal(manifest.files.length,5);
- for(const file of manifest.files)assert.equal(hash(fs.readFileSync(path.join(root,'kana-feedback-lab',file.path))),file.sha256,file.path);
+ assert.equal(manifest.files.length,8);
+ for(const file of manifest.files)assert.equal(hash(fs.readFileSync(path.join(root,'kana-feedback-lab',file.path)),file.path),file.sha256,file.path);
  const server=serve();await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const origin=`http://127.0.0.1:${server.address().port}/sonohoka`;
  const browser=await chromium.launch({channel:'chrome',headless:true});fs.mkdirSync(out,{recursive:true});
@@ -14,7 +14,7 @@ const hash=b=>crypto.createHash('sha256').update(b.toString('utf8').replace(/\r\
   const lab=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[];lab.on('pageerror',e=>errors.push(e.message));
   await lab.goto(origin+'/kana-feedback-lab/index.html?char=%E3%81%97&demo=wide');
   await lab.waitForFunction(()=>window.KanaFeedbackLab?.getState().result);
-  assert.equal(await lab.locator('[data-character]').count(),6);assert.ok(await lab.locator('[data-rule="outline"]').count());
+  assert.equal(await lab.locator('[data-character]').count(),86);assert.ok(await lab.locator('[data-rule="outline"]').count());
   assert.equal(await lab.locator('.back').getAttribute('href'),'../app_links_portfolio.html');
   assert.equal(await lab.evaluate(()=>KanaFeedbackLab.getState().result.identity.status),'unavailable');
   const moduleResponse=await lab.request.get(origin+'/kana-feedback-lab/kana-feedback-engine.mjs');
@@ -36,7 +36,7 @@ const hash=b=>crypto.createHash('sha256').update(b.toString('utf8').replace(/\r\
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await card.screenshot({path:path.join(out,`card-${width}.png`)});
    const popup=page.waitForEvent('popup');await card.locator('.actions a').click();const opened=await popup;
-   await opened.waitForFunction(()=>window.KanaFeedbackLab?.getState().reference.length);
+   await opened.waitForFunction(()=>window.KanaFeedbackLab?.getState().ready);
    assert.equal(await opened.title(),'かなの かたち研究室');
    if(width<=390)assert.equal(await opened.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await opened.close();await page.close();
