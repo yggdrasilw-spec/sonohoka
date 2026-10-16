@@ -171,10 +171,10 @@ svg.onpointerdown=e=>{if(stat()||drag||anim||e.button>0)return;const p=e.target.
  dpid=e.pointerId;fb='';SFX.pick();if(svg.setPointerCapture)svg.setPointerCapture(e.pointerId);render()};
 svg.onpointermove=e=>{if(!drag||e.pointerId!=dpid)return;const[x,y]=pt(e);
  if(Math.hypot(x-drag.sx,y-drag.sy)>6)drag.mv=1;
- if(drag.grp){const dx=x-drag.lx,dy=y-drag.ly;drag.grp.forEach(i=>{i.x=cl(i.x+dx,24,776);i.y=cl(i.y+dy,24,H-100)});drag.lx=x;drag.ly=y;relax(drag.grp)}
+ if(drag.grp){const g=drag.grp,dx=cl(x-drag.lx,24-Math.min(...g.map(i=>i.x)),776-Math.max(...g.map(i=>i.x))),dy=cl(y-drag.ly,24-Math.min(...g.map(i=>i.y)),H-4-Math.max(...g.map(i=>i.y)));g.forEach(i=>{i.x+=dx;i.y+=dy});drag.lx=x;drag.ly=y;relax(g)}
  else{drag.x=cl(x,24,776);drag.y=cl(y,24,H-4);if(drag.y<=H-78)relax([drag])}render()};
 const up=e=>{if(!drag||(e&&e.pointerId!=dpid))return;let del=0,g=null;
- if(drag.fresh&&!drag.mv)freeSpot(drag);else if(drag.grp)g=drag.grp;else if(drag.y>H-78){items=items.filter(i=>i!==drag);del=1}
+ if(drag.fresh&&!drag.mv)freeSpot(drag);else if(drag.grp){if(drag.ly>H-78){items=items.filter(i=>!drag.grp.includes(i));del=1}else g=drag.grp}else if(drag.y>H-78){items=items.filter(i=>i!==drag);del=1}
  drag=null;del?SFX.del():SFX.drop();
  if(g)tidy(g,after);else{relax([]);render();after()}};
 svg.onpointerup=svg.onpointercancel=svg.onlostpointercapture=up;
