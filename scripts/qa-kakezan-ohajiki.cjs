@@ -3,6 +3,20 @@ const{pathToFileURL}=require('node:url');
 const{chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});try{const page=await browser.newPage({viewport:{width:1366,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(pathToFileURL(path.resolve(__dirname,'../kakezan_ohajiki.html')).href);await page.evaluate(()=>snd=0);let cases=0;
 async function drag(from,to){const points=await page.evaluate(([from,to])=>{const m=svg.getScreenCTM();return[from,to].map(([x,y])=>({x:m.a*x+m.c*y+m.e,y:m.b*x+m.d*y+m.f}))},[from,to]);await page.mouse.move(points[0].x,points[0].y);await page.mouse.down();await page.mouse.move(points[1].x,points[1].y,{steps:12});await page.mouse.up();await page.waitForFunction(()=>!anim)}
+// Intro: six visible drags build two groups of three, then explain factor order.
+assert.equal(await page.evaluate(()=>mode),'demo');
+assert.equal(await page.locator('#demoNext').innerText(),'デモを はじめる');
+await page.locator('#demoNext').click();await page.waitForFunction(()=>!demoMotion);
+assert.deepEqual(await page.evaluate(()=>groups().map(g=>g.n)),[3]);
+await page.locator('#demoNext').click();await page.waitForFunction(()=>!demoMotion);
+assert.deepEqual(await page.evaluate(()=>groups().map(g=>g.n)),[3,3]);
+await page.locator('#demoNext').click();assert.equal(await page.locator('#msg .big').innerText(),'3×2＝6');
+assert.equal(await page.locator('#msg .cb').first().innerText(),'3こずつ');
+assert.equal(await page.locator('#msg .cr').first().innerText(),'2つぶん');
+await page.screenshot({path:path.resolve(__dirname,'../tmp/ohajiki-demo.png')});
+await page.locator('#demoNext').click();assert.equal(await page.evaluate(()=>items.length),0);
+await page.locator('#demoNext').click();await page.waitForTimeout(180);await page.locator('#demoPlay').click();await page.waitForTimeout(750);
+assert.equal(await page.evaluate(()=>mode),'play');assert.equal(await page.evaluate(()=>items.length),0);cases++;
 // Only one source is visible; switching preserves placed items and supports keyboard use.
 for(const viewport of [{width:1366,height:768},{width:768,height:1024}]){await page.setViewportSize(viewport);await page.locator('[data-m=play]').click();await page.evaluate(()=>{pal=0;render()});for(let t=0;t<4;t++){assert.equal(await page.locator('[data-pal]').count(),1);assert.equal(await page.locator('[data-pal]').getAttribute('data-pal'),String(t));const h=await page.evaluate(()=>H);await drag([240,h-46],[100+t*160,120]);assert.deepEqual(await page.evaluate(()=>items.map(i=>i.t)),Array.from({length:t+1},(_,i)=>i));await page.locator('[data-pal-step="1"]').click();cases++}assert.equal(await page.locator('[data-pal]').getAttribute('data-pal'),'0');await page.locator('[data-pal-step="-1"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('[data-pal]').getAttribute('data-pal'),'3');await page.keyboard.press('Space');assert.equal(await page.locator('[data-pal]').getAttribute('data-pal'),'2');assert.deepEqual(await page.evaluate(()=>items.map(i=>i.t)),[0,1,2,3]);cases++}
 for(const m of ['make','pair','choose','fill']){await page.locator(`[data-m=${m}]`).click();assert.equal(await page.locator('[data-pal]').count(),['make','pair'].includes(m)?1:0);cases++}
@@ -20,6 +34,8 @@ for(const viewport of [{width:1366,height:768},{width:1180,height:664}]){await p
 // Speech follows meaningful content changes and is independent of sound effects.
 await page.evaluate(()=>{window.spoken=[];Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{cancel(){},speak(u){spoken.push(u.text)}}});snd=1;voice=1;audioReady=true;readState={question:'',messages:[]};audioUi();setMode('make')});await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.length),1);
 await page.locator('#hn').click();await page.waitForTimeout(250);assert.ok(await page.evaluate(()=>spoken.at(-1).includes('まず')));assert.ok(await page.evaluate(()=>!spoken.at(-1).includes('の かたちを')));cases++;
+// Put a sentence pause after a complete expression, without breaking its equality or duplicating punctuation.
+for(const[source,expected]of [['3×2 の かたちを つくろう！','さん かける に。 の かたちを つくろう！'],['3×2＝6 だよ。','さん かける に は ろく。 だよ。'],['3×2。つぎへ。','さん かける に。つぎへ。'],['3＋2＝5','さん たす に は ご。'],['3こずつ ならべよう。','さんこずつ ならべよう。']]){await page.evaluate(text=>speak(text),source);assert.equal(await page.evaluate(()=>spoken.at(-1)),expected);cases++}
 await page.locator('#se').click();assert.equal(await page.locator('#se').getAttribute('aria-pressed'),'false');let spokenBefore=await page.evaluate(()=>spoken.length);await page.locator('[data-m=choose]').click();await page.waitForTimeout(250);assert.ok(await page.evaluate(()=>spoken.length)>spokenBefore);cases++;
 await page.locator('#voice').click();assert.equal(await page.locator('#voice').getAttribute('aria-pressed'),'false');spokenBefore=await page.evaluate(()=>spoken.length);await page.locator('#hn').click();await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.length),spokenBefore);await page.locator('#voice').click();await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.length),spokenBefore);await page.locator('#hn').click();await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.length),spokenBefore+1);cases++;
 spokenBefore=await page.evaluate(()=>spoken.length);await page.evaluate(()=>{render();render()});await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.length),spokenBefore);assert.equal(await page.locator('#sp').count(),0);cases++;
@@ -29,6 +45,16 @@ await page.evaluate(()=>{setMode('make');fb='<p>その ならべかたを たし
 spokenBefore=await page.evaluate(()=>spoken.length);await page.locator('[data-pal-step="1"]').click();await page.setViewportSize({width:1366,height:800});await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.length),spokenBefore);cases++;
 // Filling advances with a short prompt rather than reading question marks and the whole equation.
 await page.locator('[data-m=fill]').click();await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.at(-1)),'ひとつぶんの かずを えらぼう。');const fillN=await page.evaluate(()=>cur.n);await page.locator(`#ch button[data-v="${fillN}"]`).click();await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.at(-1)),'いくつぶんかを えらぼう。');cases++;
+// Play reads only an equal grouping and its expression; uneven/single/empty boards stay quiet.
+await page.locator('[data-m=play]').click();await page.waitForTimeout(250);spokenBefore=await page.evaluate(()=>spoken.length);
+await page.evaluate(()=>{items=[{id:nid++,t:0,x:200,y:150},{id:nid++,t:0,x:252,y:150}];render()});await page.waitForTimeout(250);
+assert.equal(await page.evaluate(()=>spoken.length),spokenBefore);
+await page.evaluate(()=>{items.push({id:nid++,t:0,x:500,y:150});render()});await page.waitForTimeout(250);
+assert.equal(await page.evaluate(()=>spoken.length),spokenBefore);
+await page.evaluate(()=>{items.push({id:nid++,t:0,x:552,y:150});render()});await page.waitForTimeout(250);
+assert.equal(await page.evaluate(()=>spoken.at(-1)),'おなじ かずずつに なったね。に かける に は よん。');
+spokenBefore=await page.evaluate(()=>spoken.length);await page.evaluate(()=>render());await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>spoken.length),spokenBefore);cases++;
+await page.evaluate(()=>speak('⭕ せいかい！ 💡 ヒント 📖'));assert.equal((await page.evaluate(()=>spoken.at(-1))).trim(),'せいかい！  ヒント');cases++;
 await page.evaluate(()=>{voice=0;snd=0;audioUi()});await page.setViewportSize({width:1366,height:768});await page.locator('[data-m=play]').click();await page.screenshot({path:path.resolve(__dirname,'../tmp/ohajiki-bottom-space.png')});
 // Preserve a friend's question and its groups across resizing and returning to edit.
 await page.setViewportSize({width:1366,height:900});await page.locator('[data-m=pair]').click();await page.evaluate(()=>{items=[{id:nid++,t:0,x:250,y:550},{id:nid++,t:0,x:302,y:550},{id:nid++,t:0,x:250,y:720},{id:nid++,t:0,x:302,y:720}];render()});const before=await page.evaluate(()=>({H,points:items.map(i=>[i.x,i.y])}));await page.locator('#chk').click();await page.setViewportSize({width:768,height:1024});await page.waitForTimeout(80);assert.deepEqual(await page.evaluate(()=>({H,points:items.map(i=>[i.x,i.y])})),before);await page.locator('#nx').click();assert.deepEqual(await page.evaluate(()=>groups().map(g=>g.n)),[2,2]);cases++;assert.deepEqual(errors,[]);console.log(`PASS: ${cases} deletion, group movement and resize cases`)}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
