@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const E=require('../word-problem-lab/curriculum.js');
 const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const out='C:/Users/user/.cache/word-problem-lab-qa';fs.mkdirSync(out,{recursive:true});
+const out=require('node:path').resolve(__dirname,'../tmp/word-problem-lab-qa');fs.mkdirSync(out,{recursive:true});
 let modelChecks=0;
 for(const kind of E.kinds)for(const unknown of E.roles)for(const [a,b]of[[3,5],[4,4],[1,50]]){
  const m=E.model({kind,unknown,a,b});for(const expression of[m.expression,m.relation,`${m.expression}=${m.answer}`,`${m.answer}=${m.expression}`]){assert(E.checkExpression(expression,m).ok,expression);modelChecks++;}
@@ -31,9 +31,17 @@ assert.throws(()=>E.model({kind:'percent',stage:4,params:[7,20]}));
   const context=await browser.newContext({viewport:{width:1280,height:1000}}),page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('file:///C:/Users/user/sonohoka/word-problem-lab/index.html');
-  assert(await page.locator('#advanceStage').isHidden());assert(await page.locator('#nextLesson').isDisabled());assert(await page.locator('#createMode').isDisabled());assert.equal(await page.locator('#lessonSelect option').count(),1);
+  assert(await page.locator('#advanceStage').isVisible());assert(await page.locator('#nextLesson').isEnabled());assert(await page.locator('#createMode').isDisabled());assert.equal(await page.locator('#lessonSelect option').count(),4);
   assert(!(await page.locator('#conceptText').textContent()).includes('割合'));
-  let activeStage=0;
+  assert.equal(await page.locator('.mapLesson').count(),44);
+  await page.locator('.mapPanel > summary').click();
+  await page.locator('.mapLesson button').filter({hasText:'分数'}).first().click();
+  let progress=await page.evaluate(()=>JSON.parse(localStorage.getItem('word-problem-lab-v3')));
+  assert.equal(progress.completed.length,0);assert.equal(progress.stage,5);
+  await page.locator('#markMastered').click();await page.reload();
+  assert.equal(await page.locator('#markMastered').getAttribute('aria-pressed'),'true');
+  assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('word-problem-lab-v3')))).completed.length,0);
+  let activeStage=5;
   async function select(l){
    while(activeStage<l.stage){await page.locator('#advanceStage').click();activeStage++;}
    while(activeStage>l.stage){await page.locator('#reviewStage').click();activeStage--;}
@@ -45,6 +53,15 @@ assert.throws(()=>E.model({kind:'percent',stage:4,params:[7,20]}));
   }
   for(const l of E.lessons){
    await select(l);const m=E.model(l);assert.equal(await page.locator('#question').textContent(),m.question);assert(await page.locator('#solutions').isHidden());
+   assert.equal(await page.locator('#storyLines').textContent(),m.story.join(' '));
+   await page.locator('#storyLines .readingNumber').evaluateAll(nodes=>nodes.forEach(n=>n.click()));await page.locator('.readingQuestion').click();await page.locator('#checkReading').click();
+   assert((await page.locator('#readingFeedback').textContent()).includes('付けたね'),l.id);
+   await page.locator('#openLocalDiagram').click();await page.locator('[data-tool=circle]').click();await page.locator('#drawingCanvas svg').click({position:{x:35,y:40}});assert.equal(await page.locator('#drawingCanvas circle').count(),1);
+   await page.locator('[data-tool=arrow]').click();await page.locator('#drawingCanvas svg').click({position:{x:35,y:40}});await page.locator('#drawingCanvas svg').click({position:{x:100,y:80}});assert.equal(await page.locator('#drawingCanvas line').count(),1);
+   await page.locator('#undoDrawing').click();assert.equal(await page.locator('#drawingCanvas line').count(),0);
+   if(l.stage===0){assert(await page.locator('#openDiagram').isHidden());await page.locator('#reasonChoices .actionScene summary').click();await page.locator('#reasonChoices .circleAction button').click();await page.waitForTimeout(1200);assert.equal(await page.locator('#reasonChoices .circleAction svg circle').count(),l.kind==='compare'?m.a+m.total:m.total);
+    const bounds=await page.locator('#reasonChoices .observationDiagram').boundingBox(),prompt=await page.locator('#reasonChoices .observationPrompt').boundingBox();assert(bounds.y+bounds.height<=prompt.y+1,'expanded scene overlaps text');
+   }
    await page.locator('#hints details').nth(2).locator(':scope > summary').click();
    if(l.id==='equal-share'){
     assert.equal(await page.locator('#hints .plate').count(),3);await page.locator('#hints').getByRole('button',{name:'一つずつ 同じ数に配ってみる'}).click();await page.waitForFunction(()=>document.querySelectorAll('#hints .plate .dots span').length===12);assert.equal(await page.locator('#hints .plate .dots span').count(),12);await page.waitForTimeout(650);
@@ -74,19 +91,19 @@ assert.throws(()=>E.model({kind:'percent',stage:4,params:[7,20]}));
     await page.locator('#lessonSelect').selectOption(l.id);
    }
   }
-  assert((await page.locator('#stageStatus').textContent()).includes('6年生まで'));
+  assert((await page.locator('#stageStatus').textContent()).includes('代表問題'));
   await page.reload();assert((await page.locator('#stageLabel').textContent()).startsWith('6年'));
   await page.setViewportSize({width:390,height:844});
   for(const id of['fraction-times','ratio-parts','inverse-workers','percentage-base','equal-share']){
    await select(E.lessons.find(l=>l.id===id));await page.locator('#hints details').nth(2).locator(':scope > summary').click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),id+' overflow');await page.screenshot({path:out+'/'+id+'-mobile.png',fullPage:true});
   }
   await page.locator('.teacher summary').click();await page.locator('#clearProgress').click();activeStage=0;
-  assert(await page.locator('#advanceStage').isHidden());assert(await page.locator('#createMode').isDisabled());assert.equal(await page.locator('#lessonSelect option').count(),1);
+  assert(await page.locator('#advanceStage').isVisible());assert(await page.locator('#createMode').isDisabled());assert.equal(await page.locator('#lessonSelect option').count(),4);assert.equal(await page.locator('.masteryStar[aria-pressed=true]').count(),0);
   await page.reload();assert((await page.locator('#stageLabel').textContent()).startsWith('1年'));
-  // Out-of-order saved completions cannot skip the sequence.
+  // Independent completions and an independently chosen grade survive reload.
   await page.evaluate(()=>localStorage.setItem('word-problem-lab-v3',JSON.stringify({completed:['fraction-times'],stage:5,currentId:'fraction-times'})));
-  await page.reload();assert((await page.locator('#stageLabel').textContent()).startsWith('1年'));assert.equal(await page.locator('#lessonSelect option').count(),1);
+  await page.reload();assert((await page.locator('#stageLabel').textContent()).startsWith('6年'));assert.equal(await page.locator('#lessonSelect option').count(),8);assert.deepEqual((await page.evaluate(()=>JSON.parse(localStorage.getItem('word-problem-lab-v3')))).completed,['fraction-times']);
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({passed:true,grades:6,lessons:E.lessons.length,modelChecks,sequentialProgression:true,distinctDivisionActions:true,multiplePaths:true,intermediateWork:true,posingAllGrades:true,persistence:true,mobileOverflow:false,screenshots:out},null,2));
+  console.log(JSON.stringify({passed:true,grades:6,lessons:E.lessons.length,modelChecks,freeNavigation:true,readingMarksAllGrades:true,localDrawingAllLessons:true,independentStars:true,distinctDivisionActions:true,multiplePaths:true,intermediateWork:true,posingAllGrades:true,persistence:true,mobileOverflow:false,screenshots:out},null,2));
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

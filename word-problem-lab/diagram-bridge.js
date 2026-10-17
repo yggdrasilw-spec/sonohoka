@@ -4,7 +4,7 @@
   let model=null,requestId='',results={};
   try{results=JSON.parse(localStorage.getItem('word-problem-diagrams-v1')||'{}');if(!results||typeof results!=='object'||Array.isArray(results))results={};}catch{}
   const panel=document.createElement('section');panel.className='card';panel.hidden=true;
-  panel.innerHTML='<div class="sectionLabel">図で 考えよう</div><p>このお話のまま、絵・○・テープ図で考えられます。</p><button id="openDiagram" type="button">このお話を 図にする</button><div id="returnedDiagram" aria-live="polite"></div>';
+  panel.innerHTML='<div class="sectionLabel">図で 考えよう</div><p>このお話のまま、絵・○・テープ図で考えられます。</p><button id="openDiagram" type="button">テープ図の教材でも 考える</button><div id="returnedDiagram" aria-live="polite"></div>';
   document.querySelector('.support').before(panel);
   const dialog=document.createElement('dialog');dialog.className='diagramDialog';
   dialog.innerHTML='<div class="diagramDialogHead"><strong>お話を 図にしよう</strong><button id="closeDiagram" type="button">お話にもどる</button></div><p id="diagramLoading" role="status">図の教材を開いています。</p><iframe id="diagramFrame" title="同じお話で図をつくる教材"></iframe>';
@@ -59,5 +59,5 @@
       showResult();close();
     }
   });
-  window.WordProblemDiagramBridge={load(m){model=m;panel.hidden=!supported(m);panel.querySelector('p').textContent=m.kind==='groups'?'このお話のまま、一つ分・いくつ分・ぜんぶの関係を図にできます。':'このお話のまま、絵・○・テープ図で考えられます。';if(!panel.hidden)showResult();},clear(){results={};try{localStorage.removeItem('word-problem-diagrams-v1');}catch{}if(model)showResult();}};
+  window.WordProblemDiagramBridge={load(m){model=m;panel.hidden=m.stage===0||!supported(m);panel.querySelector('p').textContent=m.kind==='groups'?'このお話のまま、一つ分・いくつ分・ぜんぶの関係を図にできます。':'このお話のまま、絵・○・テープ図で考えられます。';if(!panel.hidden)showResult();},clear(){results={};try{localStorage.removeItem('word-problem-diagrams-v1');}catch{}if(model)showResult();}};
 })();

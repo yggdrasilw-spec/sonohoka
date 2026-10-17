@@ -7,15 +7,15 @@
   try { stored=JSON.parse(localStorage.getItem(key)||'{}')||{}; }catch(_){storageAvailable=false;}
   if(typeof stored!=='object'||Array.isArray(stored))stored={};
   const completed=new Set(Array.isArray(stored.completed)?stored.completed:[]);
-  let gap=false;E.lessons.forEach(l=>{if(!completed.has(l.id))gap=true;if(gap)completed.delete(l.id);});
+  const starred=new Set(Array.isArray(stored.starred)?stored.starred:[]);
   let stage=0,index=0,m,target='',draft=null,custom=null;
   try { if(stored.custom) { E.model(stored.custom);custom=stored.custom; } }catch(_){}
   const stageLessons=()=>E.lessons.filter(l=>l.stage===stage);
   const complete=(level=stage)=>E.lessons.filter(l=>l.stage===level).every(l=>completed.has(l.id));
-  const accessible=i=>i>=0&&i<E.lessons.length&&E.lessons.slice(0,i).every(l=>completed.has(l.id));
+  const accessible=i=>i>=0&&i<E.lessons.length;
   const customAvailable=()=>custom&&custom.stage===stage&&complete()&&E.lessons.some(l=>l.id===custom.templateId&&l.stage===stage&&completed.has(l.id));
   function save(){
-    try{localStorage.setItem(key,JSON.stringify({completed:[...completed],stage,currentId:m?.id,custom}));}catch(_){storageAvailable=false;}
+    try{localStorage.setItem(key,JSON.stringify({completed:[...completed],starred:[...starred],stage,currentId:m?.id,custom}));}catch(_){storageAvailable=false;}
     $('storageNote').textContent=storageAvailable?'学習の続きと作ったお話は、このブラウザに保存します。':'このブラウザでは保存できません。この画面で使えます。';
   }
   function speak(text){if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='ja-JP';u.rate=.85;speechSynthesis.speak(u);}
@@ -27,23 +27,40 @@
     $('conceptText').textContent=m.concept;
     $('conceptBridge').hidden=stage===0;
     $('conceptBridgeText').textContent=E.levels[stage].bridge;
-    $('advanceStage').hidden=!complete()||stage===5;
+    $('advanceStage').hidden=stage===5;
     $('advanceStage').textContent=`${stage+2}年生の段階へ すすむ →`;
     $('reviewStage').hidden=stage===0;
     $('reviewStage').textContent=`${stage}年生の段階を ふくしゅうする`;
     $('createMode').disabled=!complete();
-    $('stageStatus').textContent=complete()?(stage===5?'6年生までの代表問題を たしかめたね。作問や復習にも取り組もう。':'この学年の代表問題を たしかめたね。次の段階と作問に進めるよ。'):'一つずつ、式・答え・理由をたしかめて すすもう。';
+    $('stageStatus').textContent=complete()?'この学年の代表問題を たしかめたね。作問や復習にも取り組もう。':'学習マップから、どのお話にも進めるよ。数字に○、聞かれたことに線を付けて考えよう。';
     const list=stageLessons(),count=list.filter(l=>completed.has(l.id)).length;
     $('progressText').textContent=`この段階で たしかめたお話　${count} / ${list.length}`;
     $('previousLesson').disabled=m.id==='custom'||index===0||E.lessons[index-1].stage!==stage;
-    $('nextLesson').disabled=m.id==='custom'||!completed.has(m.id)||index===E.lessons.length-1||E.lessons[index+1].stage!==stage;
+    $('nextLesson').disabled=m.id==='custom'||index===E.lessons.length-1||E.lessons[index+1].stage!==stage;
     $('lessonSelect').replaceChildren(...E.lessons.filter((l,i)=>l.stage===stage&&accessible(i)).map(l=>new Option(l.title,l.id)));
     if(customAvailable())$('lessonSelect').append(new Option('自分で つくったお話','custom'));
     $('lessonSelect').value=m.id;
     $('expression').placeholder=stage===0?'数と ＋、−、＝ が使えるよ':stage===1?'数と ＋、−、×、＝、□':stage===2?'＋、−、×、÷、＝、□':'＋、−、×、÷、かっこ、□';
     $('expressionGuide').textContent=stage>=2?'式を改行や「;」で区切ると、途中の式も書けます。'+(stage===5?'分数は「3/4」のように書けます。':''):stage===1?'求める式も、□を使ったお話の式も書けるよ。':'お話の数を使って、たしざんか ひきざんの式を書こう。';
     $('answerGuide').textContent=stage===5?'小数・分数（例：1/2）も書けます。単位は右に表示しています。':stage>=3||m.kind==='decimaladd'?'小数も書けます。単位は右に表示しています。':'';
+    renderMap();
   }
+  function renderMap(){
+    const area=$('learningMap');area.replaceChildren();
+    E.levels.forEach((level,s)=>{
+      const group=el('section',undefined,'mapGrade');group.append(el('h3',level.title),el('p',level.bridge,'tiny'));
+      E.lessons.filter(l=>l.stage===s).forEach(l=>{
+        const row=el('div',undefined,'mapLesson'),jump=el('button',l.title),star=el('button',starred.has(l.id)?'★':'☆','masteryStar');
+        jump.type=star.type='button';jump.setAttribute('aria-current',m?.id===l.id?'step':'false');jump.addEventListener('click',()=>{stage=l.stage;mode('practice');load(l);$('storyTitle').scrollIntoView({behavior:'smooth'});});
+        star.setAttribute('aria-label',l.title+'：自信がついた');star.setAttribute('aria-pressed',starred.has(l.id));star.addEventListener('click',()=>toggleStar(l.id));
+        row.append(jump,star,el('small',completed.has(l.id)?'式・答え 確認済み':'これから'));group.append(row);
+      });area.append(group);
+    });
+    $('markMastered').textContent=starred.has(m.id)?'★ 自信がついた（もう一度押すと外す）':'☆ このお話に 自信がついた';
+    $('markMastered').setAttribute('aria-pressed',starred.has(m.id));$('markMastered').disabled=m.id==='custom';
+  }
+  function toggleStar(id){starred.has(id)?starred.delete(id):starred.add(id);save();renderMap();}
+  $('markMastered').addEventListener('click',()=>toggleStar(m.id));
   function hints(){
     const area=$('hints');area.replaceChildren();
     const names=el('div');m.quantities.filter(q=>q.id!==m.unknown&&!q.derived).forEach(q=>names.append(el('p',`${q.display||E.format(q.value)}${q.unit}は「${q.label}」の量だよ。`)));
@@ -63,7 +80,7 @@
     else{const i=E.lessons.findIndex(l=>l.id===data.id);if(!accessible(i)||data.stage!==stage)return;index=i;}
     if('speechSynthesis'in window)speechSynthesis.cancel();
     m=E.model(data);target='';$('solveForm').reset();invalidate();updateNavigation();
-    $('storyTitle').textContent=m.title||'自分で つくったお話';textStory(m,$('storyLines'));$('question').textContent=m.question;$('answerUnit').textContent=m.unit;
+    $('storyTitle').textContent=m.title||'自分で つくったお話';window.WordProblemWorkspace.read(m);$('answerUnit').textContent=m.unit;
     $('knownNumbers').replaceChildren();m.quantities.filter(q=>q.id!==m.unknown&&!q.derived).forEach(q=>{const chip=el('div',q.label,'numberChip');chip.append(el('strong',(q.display||E.format(q.value))+q.unit));$('knownNumbers').append(chip);});
     target=m.unknown;$('targetChoices').replaceChildren(el('p','知りたいのは「'+m.names[m.unknown]+'」。図ではどこになるかな？','observationPrompt'));
     $('storyPictures').replaceChildren(WordProblemIllustrations.samples(m));reasons();hints();save();window.WordProblemDiagramBridge?.load(m);
@@ -88,7 +105,7 @@
   $('expression').addEventListener('input',invalidate);$('answer').addEventListener('input',invalidate);$('reasonChoices').addEventListener('change',invalidate);
   function mode(value){const creating=value==='create';if(creating&&!complete())return;$('practice').hidden=creating;$('creator').hidden=!creating;$('practiceMode').setAttribute('aria-pressed',!creating);$('createMode').setAttribute('aria-pressed',creating);if(creating)creatorSetup();}
   $('practiceMode').addEventListener('click',()=>mode('practice'));$('createMode').addEventListener('click',()=>mode('create'));
-  $('advanceStage').addEventListener('click',()=>{if(!complete()||stage===5)return;stage++;mode('practice');load(E.lessons.find(l=>l.stage===stage));});
+  $('advanceStage').addEventListener('click',()=>{if(stage===5)return;stage++;mode('practice');load(E.lessons.find(l=>l.stage===stage));});
   $('reviewStage').addEventListener('click',()=>{if(stage===0)return;stage--;mode('practice');load(E.lessons.find(l=>l.stage===stage));});
   $('lessonSelect').addEventListener('change',()=>load($('lessonSelect').value==='custom'?custom:E.lessons.find(l=>l.id===$('lessonSelect').value)));
   function move(step){const next=index+step;if(m.id==='custom'||!accessible(next)||E.lessons[next].stage!==stage)return;load(E.lessons[next]);$('storyTitle').scrollIntoView({behavior:'smooth'});}
@@ -122,7 +139,7 @@
   });
   $('tryCreated').addEventListener('click',()=>{if(!draft)return;mode('practice');load(draft);});
   $('readStory').addEventListener('click',()=>speak([...m.story,m.question].join('。')));
-  $('clearProgress').addEventListener('click',()=>{completed.clear();window.WordProblemDiagramBridge?.clear();stage=0;mode('practice');clearDraft();load(E.lessons[0]);});
-  const savedStage=Number(stored.stage);stage=Number.isInteger(savedStage)&&savedStage>=0&&savedStage<=5&&E.lessons.filter(l=>l.stage<savedStage).every(l=>completed.has(l.id))?savedStage:0;
+  $('clearProgress').addEventListener('click',()=>{completed.clear();starred.clear();window.WordProblemWorkspace.clear();window.WordProblemDiagramBridge?.clear();stage=0;mode('practice');clearDraft();load(E.lessons[0]);});
+  const savedStage=Number(stored.stage);stage=Number.isInteger(savedStage)&&savedStage>=0&&savedStage<=5?savedStage:0;
   const resume=E.lessons.find((l,i)=>l.id===stored.currentId&&l.stage===stage&&accessible(i))||E.lessons.find(l=>l.stage===stage);load(resume);
 })();
