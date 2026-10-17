@@ -21,6 +21,7 @@ h1{font-size:20px;margin:8px 0 4px}
 #app{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:10px;max-width:1280px;margin:0 auto;padding:0 8px;align-items:stretch}
 @media(max-width:820px){#app{grid-template-columns:1fr}}
 #L{position:relative;min-width:0;box-sizing:border-box;padding:8px 8px clamp(26.667px,4vh,34.667px);border-radius:20px;background:linear-gradient(#f5f1e8,#eee9dd);box-shadow:inset 0 1px 1px #fff,0 5px 14px #66573820}#RC{display:flex;flex-direction:column;min-width:0}#R{background:#fff;border:2px solid #ddd;border-radius:12px;padding:8px;container-type:inline-size;min-width:0}
+#progress{font-size:17px;margin:4px 0;line-height:1.5}#progress[hidden]{display:none}
 #q.demo{font-size:24px;line-height:1.5}
 #q.eq{font-size:clamp(30px,3.6vw,64px);font-size:min(12cqw,72px);white-space:nowrap}
 #q.eq b{display:inline-block;min-width:1.3em;border-radius:14px;margin:0 .04em}
@@ -44,12 +45,13 @@ h1{font-size:20px;margin:8px 0 4px}
 #ref .row{display:flex;align-items:center;gap:8px;margin:4px 0}#ref .row>b{flex:0 0 3em;text-align:center}
 #ref small{color:#666}#ref p{margin:4px 0}
 .cb,.cr,.cy{padding:0 .4em;border-radius:8px;font-weight:bold}
+#q.no-color .cb,#q.no-color .cr,#q.no-color .cy{background:transparent;color:inherit}
 .cb{background:#1e88e5;color:#fff}.cr{background:#e53935;color:#fff}.cy{background:#f5c400;color:#222}
 </style></head><body>
 <h1>かけ算の しきを おはじきで あらわそう</h1>
 <div><button class="tab" data-m="demo">さいしょに見る</button><button class="tab" data-m="play">あそぶ</button><button class="tab" data-m="make">つくろう</button><button class="tab" data-m="choose">どのしき？</button><button class="tab" data-m="fill">しきを かんせい</button><button class="tab" data-m="pair">ともだちと</button></div>
 <div id="app"><div id="L"><svg id="sv" viewBox="0 0 800 450"></svg></div>
-<div id="RC"><div id="R"><div id="q"></div><div id="ch"></div>
+<div id="RC"><div id="R"><div id="progress" role="status" hidden></div><div id="q"></div><div id="ch"></div>
 <div>
 <button class="btn main" id="chk">できた！</button>
 <button class="btn" id="hn"><span aria-hidden="true">💡</span> ヒント</button>
@@ -78,6 +80,16 @@ let mode='play',items=[],nid=1,drag=null,prob=null,fb='',ans=0,cur=null,hl=0,sm=
 let voice=1,audioReady=false,readTimer=null,readState=null;
 let history=[],pendingUndo=null;
 const colorNum=(c,n)=>`<b class="${c}">${n}</b>`,makeExpr=(a,b)=>`${colorNum('cb',a)}×${colorNum('cr',b)}`;
+// モードごとの学習記録。この画面を開いている間、5連続達成を保持する。
+const progress={make:{correct:0,streak:0,faded:false},fill:{correct:0,streak:0,faded:false}};
+let questionSolved=false,questionAssisted=false,questionColor=false;
+function startQuestion(){const p=progress[mode];if(p&&!questionSolved)p.streak=0;questionSolved=false;questionAssisted=false;questionColor=false}
+function missQuestion(){const p=progress[mode];if(!p||questionSolved)return;questionAssisted=true;p.streak=0}
+function solveQuestion(){const p=progress[mode];if(!p||questionSolved)return;questionSolved=true;p.correct++;if(!questionAssisted){p.streak++;if(p.streak>=5)p.faded=true}}
+function progressUi(){const p=progress[mode];$('progress').hidden=!p;if(!p)return;
+ $('progress').textContent=`せいかい ${p.correct}もん ／ れんぞくせいかい ${p.streak}もん`+(p.faded?'　いろなしに チャレンジ！':'　5もん れんぞくで いろなしに チャレンジ！');
+ $('q').classList.toggle('no-color',p.faded&&!questionColor);
+}
 function boardState(){return{H,items:items.map(({id,t,x,y})=>({id,t,x,y})).sort((a,b)=>a.id-b.id)}}
 function resetUndo(){history=[];pendingUndo=null}
 function undoUi(){$('undo').disabled=!history.length||!!drag||!!anim||stat()}
@@ -161,7 +173,7 @@ function render(){
   s+=`<text x="540" y="${H-28}" font-size="34" aria-hidden="true">🗑</text><text x="585" y="${H-32}" font-size="16" fill="#666">ここに おとすと きえる</text>`}
  svg.innerHTML=s;$('ch').classList.toggle('fr',mode=='choose'&&hl>=3);
  $('msg').innerHTML=mode=='demo'?demoMessage():mode=='play'?an.h:(mode=='pair'&&ph==0)?pairMsg(an):fb+hintH();
- undoUi();autoRead();
+ progressUi();undoUi();autoRead();
 }
 function pt(e){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(svg.getScreenCTM().inverse());return[q.x,q.y]}
 let dpid=null,anim=0;
@@ -216,11 +228,27 @@ const up=e=>{if(!drag||(e&&e.pointerId!=dpid))return;let del=0,g=null;
  if(g)tidy(g,after);else{relax([]);render();after()}};
 svg.onpointerup=svg.onpointercancel=svg.onlostpointercapture=up;
 // ---- もんだい ----
-function newMake(){resetUndo();prob={a:ri(2,5),b:ri(2,5)};items=[];fb='';hl=0;sm=0;$('q').innerHTML=`${makeExpr(prob.a,prob.b)} の かたちを つくろう！`}
+// 全16通りを、総数→大きいほうの数→まとまりの数の順に並べる。
+// 交換した式も「1つぶん」と「いくつぶん」が違うため、別の問題として扱う。
+const problemOrder=Array.from({length:16},(_,i)=>({a:2+(i/4|0),b:2+i%4}))
+ .sort((p,q)=>p.a*p.b-q.a*q.b||Math.max(p.a,p.b)-Math.max(q.a,q.b)||p.b-q.b);
+const problemPosition={make:0,choose:0,fill:0};
+const problemDecks={make:[...problemOrder],choose:[...problemOrder],fill:[...problemOrder]};
+function nextProblem(){let deck=problemDecks[mode],i=problemPosition[mode];
+ if(i==deck.length){const last=deck.at(-1);deck=[...problemOrder];
+  // 2巡目以降は難易度に関係なく、全問を重複なしでシャッフルする。
+  for(let j=deck.length-1;j>0;j--){const k=ri(0,j);[deck[j],deck[k]]=[deck[k],deck[j]]}
+  // 巡の境目でも同じ式を続けて出さない。
+  if(deck[0].a==last.a&&deck[0].b==last.b){const k=ri(1,deck.length-1);[deck[0],deck[k]]=[deck[k],deck[0]]}
+  problemDecks[mode]=deck;i=0;
+ }
+ problemPosition[mode]=i+1;return{...deck[i]}}
+
+function newMake(){startQuestion();resetUndo();prob=nextProblem();items=[];fb='';hl=0;sm=0;$('q').innerHTML=`${makeExpr(prob.a,prob.b)} の かたちを つくろう！`}
 function check(){const an=analyze(groups()),{a,b}=prob,rule=`${makeExpr(a,b)}は ${colorNum('cb',a+'こずつ')}が ${colorNum('cr',b+'つぶん')} だよ。`;
  if(an.s==3){fb=an.n==a&&an.g==b?'<p class="okk"><span aria-hidden="true">⭕</span> せいかい！</p>'+an.h:an.n==b&&an.g==a?`<p>おしい！ ${makeExpr(b,a)}の かたちに なっているよ。</p><p>${rule}</p>`:`<p>ざんねん。${makeExpr(an.n,an.g)}の かたちに なっているよ。</p><p>${rule}</p>`}
- else fb=an.h+(an.s?`<p>${rule}</p>`:'');fb.includes('okk')?(SFX.ok(),burst()):(SFX.ng(),shake());render()}
-function newChoose(){const n=ri(2,5),g=ri(2,5),t=ri(0,1),cols=g<4?g:Math.ceil(g/2),rows=g<4?1:2;items=[];ans=0;fb='';hl=0;sm=0;clearInterval(tm);cnt=0;
+ else fb=an.h+(an.s?`<p>${rule}</p>`:'');if(an.s==3&&an.n==a&&an.g==b)solveQuestion();else missQuestion();fb.includes('okk')?(SFX.ok(),burst()):(SFX.ng(),shake());render()}
+function newChoose(){if(mode=='fill')startQuestion();const{a:n,b:g}=nextProblem(),t=ri(0,1),cols=g<4?g:Math.ceil(g/2),rows=g<4?1:2;items=[];ans=0;fb='';hl=0;sm=0;clearInterval(tm);cnt=0;
  for(let i=0;i<g;i++){const cx=100+((i%cols)+.5)*600/cols+rnd(-10,10),cy=(rows==1?190:(i/cols|0)?300:110)+rnd(-10,10),a0=rnd(0,6.28),R=26/Math.sin(Math.PI/n);
   for(let k=0;k<n;k++){const a=a0+2*Math.PI*k/n;items.push({id:nid++,t,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)})}}
  cur={n,g};if(mode=='fill'){fs=0;fillStep();return}
@@ -246,10 +274,10 @@ function fillStep(){const{n,g}=cur,t=n*g;let h='';
   h=[...new Set([c,...ds,c+1,c+2,c+3].filter(x=>x>0))].slice(0,4).sort(()=>Math.random()-.5).map(v=>`<button data-v="${v}">${v}</button>`).join('')}
  $('ch').innerHTML=h;jf=0;render()}
 function fillPick(b){const v=+b.dataset.v,{n,g}=cur;
- if(v!=[n,g,n*g][fs]){b.classList.add('bad');b.disabled=true;fb='<p>ちがうよ。もういちど えらんでみよう。ヒントも つかえるよ。</p>';SFX.ng();shake();render();return}
- fs++;hl=0;fb='';jf=1;if(fs<3)SFX.step();else{SFX.ok();burst();ans=1;fb='<p class="okk"><span aria-hidden="true">⭕</span> できた！</p>'+analyze(groups()).h}
+ if(v!=[n,g,n*g][fs]){missQuestion();b.classList.add('bad');b.disabled=true;fb='<p>ちがうよ。もういちど えらんでみよう。ヒントも つかえるよ。</p>';SFX.ng();shake();render();return}
+ fs++;hl=0;fb='';jf=1;if(fs<3)SFX.step();else{solveQuestion();SFX.ok();burst();ans=1;fb='<p class="okk"><span aria-hidden="true">⭕</span> できた！</p>'+analyze(groups()).h}
  fillStep()}
-$('hn').onclick=()=>{hl=Math.min(3,hl+1);sm=1;SFX.hint();render();if(fl()&&fs==2)count()};
+$('hn').onclick=()=>{missQuestion();questionColor=true;hl=Math.min(3,hl+1);sm=1;SFX.hint();render();if(fl()&&fs==2)count()};
 $('se').onclick=()=>{snd=!snd;audioUi()};
 $('voice').onclick=()=>{voice=!voice;audioUi();clearTimeout(readTimer);readState=readingState();if(!voice&&window.speechSynthesis)speechSynthesis.cancel()};
 // ---- ともだちと(ならべる→みせる→こたえてもらう) ----
@@ -280,7 +308,7 @@ function demoAdvance(){if(mode!='demo'||demoMotion)return;if(demoStep==3){setMod
  requestAnimationFrame(frame)}move()}
 $('demoNext').onclick=demoAdvance;$('demoPlay').onclick=()=>setMode('play');
 // ---- モード切替 ----
-function setMode(m){demoRun++;demoMotion=false;clearTimeout(readTimer);if(window.speechSynthesis)speechSynthesis.cancel();resetUndo();mode=m;ph=0;items=[];fb='';ans=0;hl=0;sm=0;clearInterval(tm);cnt=0;lastSig='';$('q').className='';$('ch').className='';$('ch').innerHTML='';
+function setMode(m){demoRun++;demoMotion=false;clearTimeout(readTimer);if(window.speechSynthesis)speechSynthesis.cancel();resetUndo();if(progress[mode]&&!questionSolved)progress[mode].streak=0;questionSolved=true;mode=m;ph=0;items=[];fb='';ans=0;hl=0;sm=0;clearInterval(tm);cnt=0;lastSig='';$('q').className='';$('ch').className='';$('ch').innerHTML='';
  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.m==m));
  $('q').textContent=m=='play'?'おはじきを ドラッグして、すきなように ならべてみよう':m=='pair'?PQ:'';
  if(m=='demo'){demoStep=0;pal=0;$('q').className='demo';$('q').innerHTML='おなじ かずずつの<br>まとまりを つくろう'}
