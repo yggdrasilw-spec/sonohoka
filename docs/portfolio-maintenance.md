@@ -1,5 +1,9 @@
 # 学習アプリ作品集の更新
 
+## 2026年10月18日の手書き収集アプリ追加
+
+教材番号90「手書きサンプル収集（かな採集室）」を先生・制作者向けに追加。公開元は `hiragana-ninshiki/handwriting-capture.html`。端末内保存とZIP出力を備えた収集用アプリで、モデルの認識や字形採点は行わないことを明記する。実画面の静止画は `media/portfolio-handwriting-capture.png`。掲載数87本、動画75本、静止画12本。`node scripts/qa-portfolio.cjs` で検索・リンク・画像・件数・表示幅を確認する。
+
 入口は `app_links_portfolio.html`、表示は `css/portfolio.css`、検索・動画操作は `js/portfolio.js`。
 各カードは短い紹介文・使い方・対象を一覧で見せ、元の詳しい説明とタグを `details` に保持している。
 
