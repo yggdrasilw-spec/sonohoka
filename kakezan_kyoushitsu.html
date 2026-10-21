@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>きょうしつで かけ算を さがそう</title>
+<style>
+:root{--b:#2f6fdf;--r:#e0484f;--y:#f7c92b;--ink:#23323f}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:"BIZ UDPGothic","UD Digi Kyokasho N-R","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;color:var(--ink);background:#eef3f0}
+header{display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-bottom:3px solid var(--b)}
+h1{font-size:20px;margin:0;flex:1}
+button{font:inherit;cursor:pointer;border:2px solid var(--ink);background:#fff;border-radius:10px;padding:6px 12px;color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid #f08a24;outline-offset:2px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:1.8fr 1fr;grid-template-rows:minmax(0,1fr);gap:12px;padding:10px 14px}
+#vw{position:relative;min-height:0;border:3px solid var(--ink);border-radius:14px;overflow:hidden;background:#dfe9e4}
+#vw canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#panel{background:#fff;border:3px solid var(--ink);border-radius:14px;padding:12px;overflow:auto}
+#eq{display:flex;align-items:center;gap:6px;font-size:26px;font-weight:700;flex-wrap:wrap}
+.n{width:64px;font:inherit;text-align:center;border:3px solid;border-radius:10px;padding:4px}
+.n:nth-of-type(1){border-color:var(--b);background:#eaf1fe}.n:nth-of-type(2){border-color:var(--r);background:#fdecec}.n:nth-of-type(3){border-color:var(--y);background:#fff8d6}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;font-size:16px}
+.opt.ok{background:#dff5e3;border-color:#2e9e57}.opt.ng{background:#fdecec}
+#msg,#wm{min-height:1.4em;font-weight:700}.ok-t{color:#1f8a4c}.w-t{color:#c4570c}
+.note{background:#fff8d6;border-radius:8px;padding:6px 8px;font-size:15px;margin:6px 0}
+.cb{color:var(--b)}.cr{color:var(--r)}.cy{background:var(--y);padding:0 4px;border-radius:4px}
+/* いろの ヒント OFF: 文字・しきの ますの 色を ぜんぶ けす */
+body.nch .cb,body.nch .cr{color:inherit}body.nch .cy{background:none;padding:0}body.nch .n{border-color:var(--ink);background:#fff}body.nch #leg,#idle:not([hidden])~#leg{display:none}
+body:not(.nch) .bl.ba:not(.ok):not(.ng){border-color:var(--b);background:#eaf1fe}body:not(.nch) .bl.bb:not(.ok):not(.ng){border-color:var(--r);background:#fdecec}body:not(.nch) .bl.bc:not(.ok):not(.ng){border-color:#d9a200;background:#fff8d6}
+.nav{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.q{font-size:22px;margin:0 0 8px;padding:8px 10px;background:#fff8d6;border-left:6px solid var(--y);border-radius:8px}
+#bk{position:absolute;left:12px;top:12px;z-index:5;font-size:22px;font-weight:700;padding:12px 22px;background:#ff7a1a;color:#fff;border:3px solid #fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.4);animation:pu 1.6s ease-in-out infinite}
+.lvs{font:inherit;border:2px solid var(--ink);border-radius:10px;padding:6px 8px;background:#fff;color:var(--ink)}header{flex-wrap:wrap}.sen{font-size:19px;line-height:2.3;background:#fff8d6;border-radius:8px;padding:6px 10px}.bl{font:inherit;width:68px;text-align:center;border:2px solid #2f6fdf;border-radius:8px;padding:2px;background:#fff}textarea.bl{width:100%;text-align:left}.bl.bw{width:auto;min-width:96px}.bl.ng{background:#fdecec;border-color:#e0484f}.bl.ok{background:#dff5e3;border-color:#2e9e57}
+@keyframes pu{50%{transform:scale(1.07)}}
+@media(max-width:760px){header h1{flex-basis:100%;font-size:18px}body{height:auto}main{grid-template-columns:1fr;grid-template-rows:55vh auto}}
+
+#cover{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;background:linear-gradient(#cfe6f7 0%,#eef6ee 55%,#f7e7c0 100%);transition:opacity .45s}
+#cover.out{opacity:0;pointer-events:none}.cv-in{max-width:520px;width:100%}
+.cv-art{width:100%;max-height:42vh;filter:drop-shadow(0 6px 10px rgba(0,0,0,.2))}
+#cover h2{font-size:clamp(26px,6vw,42px);margin:10px 0 4px;line-height:1.3}
+#cover p{margin:0 0 18px;font-weight:700;color:#4a5b69;font-size:clamp(15px,3.6vw,20px)}
+#go0{font-size:clamp(22px,5vw,30px);font-weight:700;padding:14px 34px;background:#d9560b;color:#fff;border:3px solid #fff;border-radius:999px;box-shadow:0 5px 16px rgba(0,0,0,.35);animation:pu 1.6s ease-in-out infinite}
+#cover small{display:block;margin-top:10px;color:#5d6d7a}
+@media(prefers-reduced-motion:reduce){#bk,#go0{animation:none}}
+</style></head><body><div id="cover"><div class="cv-in"><svg class="cv-art" viewBox="0 0 320 190" aria-hidden="true"><rect x="30" y="8" width="260" height="130" rx="10" fill="#c9a46a"/><rect x="40" y="18" width="240" height="110" rx="5" fill="#2e5948"/>
+<g stroke="#fff" stroke-width="2.5"><circle cx="62" cy="48" r="11" fill="#e0484f"/><circle cx="92" cy="48" r="11" fill="#2f6fdf"/><circle cx="122" cy="48" r="11" fill="#f7c92b"/><circle cx="152" cy="48" r="11" fill="#3aa56b"/><circle cx="62" cy="78" r="11" fill="#2f6fdf"/><circle cx="92" cy="78" r="11" fill="#f7c92b"/><circle cx="122" cy="78" r="11" fill="#3aa56b"/><circle cx="152" cy="78" r="11" fill="#f08a24"/><circle cx="62" cy="108" r="11" fill="#f7c92b"/><circle cx="92" cy="108" r="11" fill="#3aa56b"/><circle cx="122" cy="108" r="11" fill="#f08a24"/><circle cx="152" cy="108" r="11" fill="#e0484f"/></g>
+<g fill="#eef4ee" font-weight="700" text-anchor="middle" font-size="30"><text x="228" y="70">3×4</text><text x="228" y="108">＝12</text></g>
+<rect x="36" y="130" width="248" height="7" rx="3" fill="#d9dde0"/><rect x="190" y="126" width="16" height="5" rx="2" fill="#fff"/><rect x="212" y="127" width="12" height="4" rx="2" fill="#f6e27a"/>
+<g fill="#b96b2e"><rect x="50" y="156" width="70" height="8" rx="2"/><rect x="200" y="156" width="70" height="8" rx="2"/></g><g stroke="#8a8f94" stroke-width="3"><path d="M58 164v22M112 164v22M208 164v22M262 164v22"/></g><g fill="#f08a24"><rect x="70" y="172" width="30" height="6" rx="2"/><rect x="220" y="172" width="30" height="6" rx="2"/></g></svg><h2>きょうしつで かけ算を さがそう</h2><p>おなじ 数ずつ ならんでいる ところを さがそう</p><button id="go0">タップして はじめる</button><small>おとが なるよ</small></div></div>
+<header><h1>きょうしつで かけ算を さがそう</h1><span id="cnt">0 / 9</span><select id="lv" class="lvs" aria-label="せつめいの レベル"><option value="1">レベル1 えらぶ</option><option value="2">レベル2 あなあき えらぶ</option><option value="3">レベル3 あなあき かく</option><option value="4">レベル4 ぜんぶ かく</option></select><button id="lb">いろの ヒント</button><button id="sb">おと ON</button><button id="vb" aria-label="よみあげの ON/OFF">よみあげ ON</button><button id="ri" aria-label="せつめいを きく">🔊 せつめいを きく</button></header>
+<main>
+<div id="vw"><svg id="ov"></svg><button id="bk" hidden>◀ ぜんたいを みる</button></div>
+<aside id="panel">
+<details id="guide"><summary>つかいかたを みる</summary><p>きょうしつを ぐるっと 見まわして、<b>おなじ 数ずつ</b> ならんでいる ところを さがそう。ドラッグで まわせるよ。タップすると その ものだけが 見やすく なるよ。オレンジの「ぜんたいを みる」ボタンで もとに もどるよ。ロッカーの とびらが すこし あいて いるよ。のぞいて みよう。まどの したの つくえや、おくの つくえの したも のぞいて みよう。ぐるっと まわして、きょうしつの うしろの かべも 見てみよう。</p>
+</details>
+<p id="idle">きょうしつを 見まわして、おなじ 数ずつ ならんでいる ところを さがそう。ドラッグで まわせるよ。ものを タップすると 大きく 見えるよ。「ぜんたいを みる」で もとに もどれるよ。</p>
+<div id="leg"><p><span class="cb"><b>ずつ</b>＝1つぶんの 数</span> / <span class="cr"><b>いくつぶん</b>＝まとまりの 数</span> / <span class="cy"><b>ぜんぶ</b>＝こたえ</span></p><p>しきは <b class="cb">1つぶんの 数</b> × <b class="cr">いくつぶん</b> ＝ <b class="cy">ぜんぶ</b></p></div>
+<div id="work" hidden>
+<h2 id="ttl" class="q"></h2>
+<p id="nt" class="note">たてに 見ても、よこに 見ても いいよ。おなじ 数ずつに なっていれば しきに できるよ。</p>
+<p style="margin:8px 0 4px">どんな しきに なるかな？</p>
+<div id="eq"><input class="n" id="e1" aria-label="1つぶんの 数"><span>×</span><input class="n" aria-label="いくつぶん"><span>＝</span><input class="n" aria-label="ぜんぶの 数"><button id="chk">これで いい</button></div>
+<p id="msg" aria-live="polite"></p><div id="why" hidden></div>
+<div class="nav"><button id="hb">ヒント</button><button id="tg">たて⇄よこ</button><button id="rd" aria-label="もういちど きく" title="もういちど きく">🔊 きく</button><button id="pv">◀ まえ</button><button id="nx">つぎ ▶</button></div>
+</div></aside></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+let rd;try{rd=new THREE.WebGLRenderer({antialias:true})}catch(e){}
+if(!rd){$('vw').textContent='3Dが ひょうじ できません。ネットに つながっているか かくにんしてね。';$('cover').remove();throw 0}
+const T=THREE,K=[0xe0484f,0x2f6fdf,0xf7c92b,0x3aa56b,0xf08a24],cv=rd.domElement,scene=new T.Scene(),cam=new T.PerspectiveCamera(48,1,.1,60);
+rd.setPixelRatio(Math.min(devicePixelRatio,2));$('vw').prepend(cv);scene.background=new T.Color(0xdfe9e4);
+scene.add(new T.AmbientLight(0xffffff,.72));const dl=new T.DirectionalLight(0xffffff,.55);dl.position.set(3,6,8);scene.add(dl);const d2=new T.DirectionalLight(0xffffff,.3);d2.position.set(1,-6,3);scene.add(d2);
+const SP=[],pk=[],reg=(m,i)=>{m.userData.s=i;pk.push(m);SP[i].ms.push(m)},M=c=>new T.MeshLambertMaterial({color:c});
+function bx(w,h,d,c,x,y,z,p,i){const m=new T.Mesh(new T.BoxGeometry(w,h,d),M(c));m.position.set(x,y,z);(p||scene).add(m);if(i>=0)reg(m,i);return m}
+function sm(g,c,x,y,z,i){const m=new T.Mesh(g,M(c));m.position.set(x,y,z);scene.add(m);reg(m,i);return m}
+const mk=(n,u,gr,cp)=>(SP.push({n,u,gr,cp,ms:[],it:[],f:1,ft:1}),SP.length-1),A=(n,f)=>Array.from({length:n},(_,i)=>f(i)),one=(a,b,per,g)=>[{a,b,per,g,dir:g,gs:A(b,j=>A(a,k=>j*a+k))}];
+// 行(よこ)でまとめる／列(たて)でまとめる の2通りを自動生成。ならびを増やすときは grid(段数,列数,段の呼び名,列の呼び名)
+const grid=(R,C,rn,cn)=>[{a:C,b:R,per:`1${rn}に`,g:rn,dir:'よこ',gs:A(R,r=>A(C,c=>r*C+c))},{a:R,b:C,per:`1${cn}に`,g:cn,dir:'たて',gs:A(C,c=>A(R,r=>r*C+c))}];
+const pl=(w,h,c,x,y,z,rx,ry)=>{const m=new T.Mesh(new T.PlaneGeometry(w,h),c.isMaterial?c:M(c));m.position.set(x,y,z);m.rotation.set(rx,ry,0);scene.add(m)};
+// 首振り式せんぷうき: ヘッドが左右にふれ、はねが回る。えらんでいる間は正面でとまる(はねの数をかぞえやすく)
+const FN=[],GL=[],Q=Math.PI*2/3,RM=matchMedia('(prefers-reduced-motion:reduce)').matches;let ft0=performance.now();
+function fanTick(){const n=performance.now(),dt=Math.min(.05,(n-ft0)/1e3);ft0=n;
+GL.forEach(m=>{const u=m.userData;m.visible=SP[u.gi].f>.03;m.material.opacity=u.o*SP[u.gi].f;m.rotation.x=Math.atan2(u.wy-cam.position.y,cam.position.z-u.wz)});
+FN.forEach(F=>{const rest=RM||(cur==F.i&&(foc||show));F.v+=((rest?0:1)-F.v)*Math.min(1,dt*4);F.s+=F.v*dt*(F.k||6);
+if(rest&&F.v<.15){const q=F.q||Q;F.s+=(Math.round(F.s/q)*q-F.s)*.12}
+F.w+=F.v*dt*.9;F.p.rotation.y=Math.sin(F.w+F.ph)*.7*F.v;F.sp.rotation.z=F.s})}
+const AN=rd.capabilities.getMaxAnisotropy(),rnd=(a,b)=>a+Math.random()*(b-a),tx=(w,h,f,rx,ry)=>{const k=document.createElement('canvas');k.width=w;k.height=h;f(k.getContext('2d'),w,h);const t=new T.CanvasTexture(k);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(rx||1,ry||1);t.anisotropy=AN;return t};
+/* 床: フローリング(板ごとに色・木目・つなぎ目がちがう) */
+const FLR=new T.MeshPhongMaterial({shininess:22,specular:0x1e1a14,map:tx(512,512,(x,w,h)=>{const dp=(x0,len,y)=>{const k=document.createElement('canvas');k.width=len;k.height=64;const c=k.getContext('2d');c.fillStyle=`hsl(${rnd(37,42)},${rnd(36,44)}%,${rnd(67,74)}%)`;c.fillRect(0,0,len,64);for(let n=0;n<16;n++){const gy=rnd(2,62),ph=rnd(0,6);c.strokeStyle=`rgba(${rnd(0,1)>.5?'150,110,60':'255,250,230'},${rnd(.05,.15)})`;c.lineWidth=rnd(.6,1.8);c.beginPath();c.moveTo(0,gy);for(let q=0;q<=len;q+=20)c.lineTo(q,gy+Math.sin(q*.04+ph)*1.6);c.stroke()}c.fillStyle='rgba(96,70,36,.55)';c.fillRect(0,0,len,1.5);c.fillRect(0,0,1.5,64);c.fillStyle='rgba(255,248,225,.35)';c.fillRect(0,1.5,len,1);x.drawImage(k,x0,y);x.drawImage(k,x0-512,y)};for(let r=0;r<8;r++){const o=Math.round(rnd(0,512)),l=Math.round(rnd(200,312));dp(o,l,r*64);dp(o+l,512-l,r*64)}},6,5)}),
+/* 天井: あなあきの吸音板(60cm角) + Tバー */
+CEL=new T.MeshLambertMaterial({map:tx(512,512,(x,w,h)=>{x.fillStyle='#d6d2c2';x.fillRect(0,0,w,h);for(let n=0;n<2600;n++){x.fillStyle=`rgba(${rnd(0,1)>.5?'255,255,255':'120,112,90'},${rnd(.02,.07)})`;x.fillRect(rnd(0,w),rnd(0,h),rnd(1,3),rnd(1,3))}for(let j=6;j<h;j+=12)for(let i=(j/12|0)%2?6:0;i<w;i+=12){x.fillStyle='rgba(78,72,56,.5)';x.beginPath();x.arc(i+3,j,1.3,0,6.3);x.fill()}for(const p of[0,256,512]){x.fillStyle='#ecece6';x.fillRect(p-3,0,6,h);x.fillRect(0,p-3,w,6);x.fillStyle='rgba(70,66,56,.4)';x.fillRect(p+3,0,1.5,h);x.fillRect(p-4.5,0,1.5,h);x.fillRect(0,p+3,w,1.5);x.fillRect(0,p-4.5,w,1.5)}},10,10/1.2)});
+pl(12,10,FLR,0,0,0,-Math.PI/2,0);pl(12,3.2,0xe6f1ec,0,1.6,-5,0,0);pl(10,3.2,0xdfeee6,-6,1.6,0,0,Math.PI/2);pl(10,3.2,0xdfeee6,6,1.6,0,0,-Math.PI/2);pl(12,10,CEL,0,3.2,0,Math.PI/2,0);
+{const i=mk('てんじょうの でんきは 何本？','ほん',grid(2,4,'れつ','くみ'),{y:0,p:-1.45,w:8.8,h:2,t:[0,3.1,-1.5]});
+// 2本どりの蛍光灯: 白いうすいき具(うら板・ななめの側板・中央カバー) + 丸い蛍光管(明るい白) + 両はしのソケット
+const PI=Math.PI,L=(c,k)=>{const m=M(c);m.color.multiplyScalar(k);return m},HW=M(0xe8ecee),HS=M(0xd9dfe2),CV=M(0xc9d0d4),SK=M(0xf3f4f1),CP=M(0xb9c0c4),TB=M(0xffffff),OL=new T.MeshLambertMaterial({color:0x3f3b2c,side:T.BackSide});TB.map=tx(128,4,(x,w,h)=>{const g=x.createLinearGradient(0,0,w,0);[[0,'#f2d067'],[.12,'#f6dc80'],[.25,'#b99b44'],[.38,'#f6dc80'],[.5,'#f2d067'],[.62,'#fbe9a0'],[.75,'#fffef2'],[.88,'#fbe9a0'],[1,'#f2d067']].forEach(([o,c])=>g.addColorStop(o,c));x.fillStyle=g;x.fillRect(0,0,w,h)});
+const BP=new T.BoxGeometry(1.8,.016,.46),SW=new T.BoxGeometry(1.8,.07,.008),EP=new T.BoxGeometry(.008,.07,.46),CO=new T.BoxGeometry(.4,.02,.2),KN=new T.CylinderGeometry(.028,.028,.006,20),SO=new T.BoxGeometry(.075,.075,.1),TG=new T.CylinderGeometry(.038,.038,1.6,24),CG=new T.CylinderGeometry(.031,.031,.03,16),OG=new T.CylinderGeometry(.055,.055,1.63,24);
+// グロウ: 蛍光管ごとのやわらかい光のにじみ(カメラのほうをむく帯) + き具まわりの広いにじみ。てんじょうより上は切る
+const GT=(()=>{const W=256,H=64,k=document.createElement('canvas');k.width=W;k.height=H;const x=k.getContext('2d'),d=x.createImageData(W,H),ss=(a,b,v)=>{v=Math.max(0,Math.min(1,(v-a)/(b-a)));return v*v*(3-2*v)};for(let j=0;j<H;j++)for(let n=0;n<W;n++){const u=n/(W-1),v=j/(H-1)-.5,a=Math.exp(-v*v/(2*.12*.12))*ss(0,.12,u)*ss(0,.12,1-u),o=(j*W+n)*4;d.data[o]=d.data[o+1]=d.data[o+2]=Math.round(255*a);d.data[o+3]=255}x.putImageData(d,0,0);return new T.CanvasTexture(k)})();
+const cpl=new T.Plane(new T.Vector3(0,-1,0),3.2),gm=c=>new T.MeshBasicMaterial({map:GT,color:c,transparent:true,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,clippingPlanes:[cpl]}),GN=gm(0xffe79a),GW=gm(0xffdf8a),gl=(g,z,w,h,m,o)=>{const q=new T.Mesh(new T.PlaneGeometry(w,h),m);q.position.set(0,-.04,z);g.add(q);q.userData={gi:i,o,wy:3.16,wz:g.position.z+z};GL.push(q)};rd.localClippingEnabled=true;
+for(let c=0;c<4;c++){const g=new T.Group(),ad=(q,m,x,y,z)=>{const o=new T.Mesh(q,m);o.position.set(x,y,z);g.add(o);reg(o,i);return o};
+g.position.set(-3.3+c*2.2,3.2,-1.5);scene.add(g);
+ad(BP,HW,0,-.008,0);ad(SW,HS,0,-.05,.23).rotation.x=-.5;ad(SW,HS,0,-.05,-.23).rotation.x=.5;ad(EP,HS,.896,-.04,0);ad(EP,HS,-.896,-.04,0);
+ad(CO,CV,0,-.026,0);ad(KN,CP,0,-.037,0);
+for(let r=0;r<2;r++){const z=r?.15:-.15;ad(SO,SK,.84,-.075,z);ad(SO,SK,-.84,-.075,z);
+ad(OG,OL,0,-.09,z).rotation.z=PI/2;const t=ad(TG,TB,0,-.09,z);t.rotation.z=PI/2;[-1,1].forEach(s=>{ad(CG,CP,s*.815,-.09,z).rotation.z=PI/2});SP[i].it[r*4+c]={o:t};gl(g,z,2,.5,GN,.58)}gl(g,0,2.6,1.2,GW,.2)}}
+{const i=mk('てんじょうの せんぷうきの はねは 何まい？','まい',one(3,2,'1だいに','だい'),{y:0,p:-.5,w:7.8,h:2.8,t:[0,2.7,1.7]});
+const W=M(0xf3f6f7),W2=M(0xdbe3e8),G=M(0x7a8791),B=M(0x3d9be9),R=.56;B.side=T.DoubleSide;
+const ad=(g,m,x,y,z,p,rx)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);if(rx)o.rotation.x=rx;p.add(o);reg(o,i);return o};
+const bs=new T.Shape();bs.moveTo(-.04,.07);bs.bezierCurveTo(-.3,.12,-.26,.46,0,.47);bs.bezierCurveTo(.22,.46,.24,.14,.04,.07);const BG=new T.ShapeGeometry(bs,12);
+[-2.8,2.8].forEach((x,f)=>{const rt=new T.Group(),pv=new T.Group(),hd=new T.Group(),sp=new T.Group();
+rt.position.set(x,3.2,1.5);scene.add(rt);pv.position.y=-.3;rt.add(pv);hd.position.set(0,-.3,.42);hd.rotation.x=.55;pv.add(hd);sp.position.z=.1;hd.add(sp);
+// 天井のうけ板とカバー / くびと うで / モーターと ノブ
+ad(new T.CylinderGeometry(.22,.22,.06,24),W,0,-.03,0,rt);ad(new T.CylinderGeometry(.12,.15,.24,20),W,0,-.18,0,rt);
+ad(new T.CylinderGeometry(.05,.05,.2,12),G,0,-.1,0,pv);ad(new T.BoxGeometry(.1,.08,.5),W,0,-.22,.2,pv);
+ad(new T.CylinderGeometry(.18,.18,.36,24),W,0,0,-.12,hd,Math.PI/2);ad(new T.SphereGeometry(.18,20,14),W,0,0,-.3,hd);ad(new T.CylinderGeometry(.025,.025,.1,10),G,0,.2,-.12,hd);
+// はね(3まい)と 中心のカバー
+ad(new T.SphereGeometry(.1,18,12),W,0,0,.06,sp);
+for(let k=0;k<3;k++){const m=ad(BG,B,0,0,0,sp);m.rotation.set(0,.4,k*Q,'ZYX');SP[i].it[f*3+k]={o:m}}
+// ワイヤーのガード: 外わく + 前後のドーム(ワイヤーと わ)
+const rg=(r,z,t)=>ad(new T.TorusGeometry(r,t,6,48),W2,0,0,z,hd);rg(R,.1,.02);
+const dome=(n,zc,ze)=>{for(let k=0;k<n;k++){const a=k*2*Math.PI/n,c=Math.cos(a),s=Math.sin(a);
+ad(new T.TubeGeometry(new T.QuadraticBezierCurve3(new T.Vector3(R*c,R*s,.1),new T.Vector3(R*c/2,R*s/2,zc),new T.Vector3(.05*c,.05*s,ze)),8,.008,4),W2,0,0,0,hd)}
+[.3,.55,.8].forEach(t=>{const u=1-t;rg(u*u*R+u*t*R+t*t*.05,u*u*.1+2*u*t*zc+t*t*ze,.008)})};
+dome(18,.34,.38);dome(8,-.02,-.2);FN.push({i,p:pv,sp,v:RM?0:1,w:0,s:0,ph:f*1.7})})}
+{const i=mk('こくばんに ついている マグネットは 何こ？','こ',grid(2,5,'だん','れつ'),{y:0,p:0,w:4.8,h:1.6,t:[-1.6,1.7,-4.9]});
+const BX=-1.6,BY=1.7,AL=0xd3d7d9,bd=bx(4.5,1.3,.04,0xffffff,BX,BY,-4.93,0,i);
+bd.material.map=tx(1024,512,(x,w,h)=>{x.fillStyle='#2e5948';x.fillRect(0,0,w,h);for(let n=0;n<9000;n++){x.fillStyle=`rgba(${rnd(0,1)>.5?'255,255,255':'0,0,0'},${rnd(.02,.06)})`;x.fillRect(rnd(0,w),rnd(0,h),rnd(1,2.5),rnd(1,2.5))}
+x.strokeStyle='rgba(235,245,238,.05)';x.lineWidth=1;for(let u=34;u<w;u+=34.1){x.beginPath();x.moveTo(u,0);x.lineTo(u,h);x.stroke()}for(let v=59;v<h;v+=59){x.beginPath();x.moveTo(0,v);x.lineTo(w,v);x.stroke()}
+x.lineCap='round';for(let n=0;n<26;n++){x.globalAlpha=rnd(.015,.04);x.strokeStyle='#eef4ee';x.lineWidth=rnd(26,62);const a=rnd(0,w),b=rnd(40,h-40);x.beginPath();x.moveTo(a,b);x.quadraticCurveTo(a+rnd(40,160),b+rnd(-50,50),a+rnd(160,380),b+rnd(-30,30));x.stroke()}x.globalAlpha=1;
+let g=x.createLinearGradient(0,h*.7,0,h);g.addColorStop(0,'rgba(240,246,240,0)');g.addColorStop(1,'rgba(240,246,240,.2)');x.fillStyle=g;x.fillRect(0,0,w,h);
+g=x.createLinearGradient(0,0,w,h);g.addColorStop(0,'rgba(255,255,255,.12)');g.addColorStop(.5,'rgba(255,255,255,0)');g.addColorStop(1,'rgba(0,0,0,.16)');x.fillStyle=g;x.fillRect(0,0,w,h)});bd.material.needsUpdate=true;
+bx(4.8,1.5,.02,0x8e9599,BX,BY,-4.99,0,i);
+[[4.8,.1,0,.7],[4.8,.1,0,-.7],[.15,1.5,-2.325,0],[.15,1.5,2.325,0]].forEach(([w,h,dx,dy])=>bx(w,h,.1,AL,BX+dx,BY+dy,-4.945,0,i));
+[[4.5,.018,0,.641],[4.5,.018,0,-.641],[.018,1.3,-2.241,0],[.018,1.3,2.241,0]].forEach(([w,h,dx,dy])=>bx(w,h,.02,0x8a9195,BX+dx,BY+dy,-4.905,0,i));
+bx(4.8,.03,.17,0xd9dde0,BX,.935,-4.915,0,i);bx(4.8,.05,.02,0xb9bfc3,BX,.965,-4.84,0,i);
+[[-3.7,0xf3f3ee,.1],[-3.62,0xf6e27a,-.2],[-3.55,0xf0b6c4,.3],[-1.2,0xf3f3ee,-.15]].forEach(([cx,c,r])=>{const m=sm(new T.CylinderGeometry(.009,.009,.07,10),c,cx,.959,-4.9,i);m.rotation.set(0,r,Math.PI/2)});
+bx(.142,.012,.062,0xe6e0d0,-2.9,.956,-4.9,0,i);bx(.14,.032,.06,0x55616d,-2.9,.979,-4.9,0,i);
+
+for(let r=0;r<2;r++)for(let c=0;c<5;c++){const m=sm(new T.CylinderGeometry(.1,.1,.04,16),K[(c+r*2)%5],-3.1+c*.75,1.95-r*.5,-4.88,i);m.rotation.x=Math.PI/2;SP[i].it[r*5+c]={o:m}}}
+let LI,LD=[],CELL=[];const mm=(g,c,x,y,z,p,i)=>{const m=new T.Mesh(g,M(c));m.position.set(x,y,z);p.add(m);reg(m,i);return m},BG=(w,h,d)=>new T.BoxGeometry(w,h,d);
+// ロッカー: 中空のセル(とびら つき)。とびらは ちょうつがいを中心に そとへ ひらく
+{const i=LI=mk('ロッカーの 入れる ところは いくつ？','こ',grid(4,3,'だん','れつ'),{y:-1.57,p:0,w:3,h:2.2,t:[5.74,1.25,-2.65]});bx(.5,.27,3,0x9aa7b1,5.74,.135,-2.65,0,i);
+for(let r=0;r<4;r++)for(let c=0;c<3;c++){const g=new T.Group(),n=r*3+c,P=(w,h,d,k,x,y,z,q)=>mm(BG(w,h,d),k,x,y,z,q||g,i);g.position.set(5.74,2-r*.5,-3.6+c*.95);scene.add(g);
+P(.5,.02,.9,0xb4c3ce,0,-.22,0);P(.5,.02,.9,0xb4c3ce,0,.22,0);P(.5,.46,.02,0xaab9c4,0,0,-.44);P(.5,.46,.02,0xaab9c4,0,0,.44);P(.02,.46,.9,0x8fa0ad,.24,0,0);
+const pv=new T.Group();pv.position.set(-.27,0,-.44);g.add(pv);P(.02,.44,.88,0xc9d6df,0,0,.44,pv);P(.04,.1,.05,0x8a9aa6,-.02,0,.76,pv);P(.012,.025,.5,0x93a3af,-.011,.15,.44,pv);P(.012,.025,.5,0x93a3af,-.011,.09,.44,pv);
+LD.push({g:pv,n,a:0,h:0});CELL[n]=g;SP[i].it[n]={o:g}}}
+/* とびら: ふだんは 中身が あるところだけ すこし ひらく。中身を えらんで 拡大した ときは ひらかず とうめいに して(op の行)、中身を まっすぐ 見せる。とうめいな とびらは タップを じゃましない(np) */
+function lkTick(){BW.visible=BWon=cam.position.z<4.7;const o=cur>=0&&foc?SP[cur].op||[]:[];let ch=0;LD.forEach(d=>{const t=d.h&&!foc?.3:0,tk=o.includes(d.n)?.16:1;d.a+=(t-d.a)*.12;d.g.rotation.y=-d.a*1.5708;if(d.k==null)d.k=1;if(Math.abs(tk-d.k)>.002){d.k=Math.abs(tk-d.k)<.01?tk:d.k+(tk-d.k)*.15;ch=1;d.g.children.forEach(m=>{m.userData.k=d.k;m.userData.np=d.k<.6;m.material.depthWrite=d.k>.999})}});if(ch)ap(SP[LI])}
+{const i=mk('たなに ある ボールは 何こ？','こ',grid(5,3,'だん','れつ'),{y:1.57,p:0,w:1.8,h:2,t:[-5.6,1,-2.2]});
+bx(.1,1.9,1.7,0xd6a96a,-5.93,1,-2.2,0,i);
+/* ボール: 1しゅうに 約190この こまかい つぶつぶ + ななめの うすい線(あみ目) + ゴムの軽いツヤ */
+const BLT=tx(256,256,(x,w,h)=>{x.fillStyle='#bcbcbc';x.fillRect(0,0,w,h);x.globalCompositeOperation='lighten';for(let r=0;r<16;r++)for(let c=0;c<16;c++){const cy=r*16+8+rnd(-1,1),cx=(c+(r%2?.5:0))*16+8+rnd(-1,1),R=rnd(6.2,7.6);[0,-256].forEach(o=>{const g=x.createRadialGradient(cx+o,cy,0,cx+o,cy,R);g.addColorStop(0,'#fff');g.addColorStop(.55,'#e4e4e4');g.addColorStop(1,'#bcbcbc');x.fillStyle=g;x.beginPath();x.arc(cx+o,cy,R,0,6.3);x.fill()})}x.globalCompositeOperation='source-over';x.strokeStyle='rgba(50,50,50,.38)';x.lineWidth=2;x.beginPath();for(let k=-4;k<=8;k++){x.moveTo(k*64,0);x.lineTo(k*64+256,256);x.moveTo(k*64,256);x.lineTo(k*64+256,0)}x.stroke()},12,6),mkBall=(c,x,y,z,i)=>{const m=sm(new T.SphereGeometry(.14,32,20),c,x,y,z,i);m.material=new T.MeshPhongMaterial({color:c,map:BLT,bumpMap:BLT,bumpScale:.007,shininess:18,specular:0x2a2a2a});return m};
+for(let r=0;r<5;r++){const y=.25+(4-r)*.32;bx(.5,.04,1.7,0xc08f4f,-5.7,y,-2.2,0,i);for(let c=0;c<3;c++)SP[i].it[r*3+c]={o:mkBall(K[(r+c)%5],-5.65,y+.16,-2.2+(c-1)*.5,i)}}}
+{const i=mk('つくえと いすは、いくつ？','セット',grid(2,3,'れつ','れつ'),{y:0,p:1.3,w:6,h:3,t:[0,.4,2.6]});
+// 学校用の机といす: 木目の天板・座面・背もたれ + ベージュのスチールわく(T字あし・横ざん) + グレーのゴムあし
+const PI=Math.PI,wd=(c,d)=>{const k=document.createElement('canvas');k.width=k.height=128;const x=k.getContext('2d');x.fillStyle=c;x.fillRect(0,0,128,128);for(let n=0;n<48;n++){const y=Math.random()*128;x.strokeStyle=`rgba(${d},${.05+Math.random()*.13})`;x.lineWidth=.6+Math.random()*1.5;x.beginPath();x.moveTo(0,y);for(let u=16;u<=128;u+=16)x.lineTo(u,y+Math.sin(u*.05+n)*2.2);x.stroke()}const t=new T.CanvasTexture(k);t.wrapS=t.wrapT=T.RepeatWrapping;return new T.MeshLambertMaterial({map:t})};
+const WT=wd('#b96b2e','80,34,10'),WS=wd('#ee8a1e','150,60,0'),ED=M(0xe0c9a0),BE=M(0xe4ddc8),BD=M(0xd2c9ae),RB=M(0x5f6468);
+const rs=(w,h,r)=>{const s=new T.Shape(),x=w/2,y=h/2;s.moveTo(-x+r,-y);s.lineTo(x-r,-y);s.quadraticCurveTo(x,-y,x,-y+r);s.lineTo(x,y-r);s.quadraticCurveTo(x,y,x-r,y);s.lineTo(-x+r,y);s.quadraticCurveTo(-x,y,-x,y-r);s.lineTo(-x,-y+r);s.quadraticCurveTo(-x,-y,-x+r,-y);return s},sl=(w,h,t,r)=>new T.ExtrudeGeometry(rs(w,h,r),{depth:t,curveSegments:8,bevelThickness:.003,bevelSize:.003,bevelSegments:2}),B=(w,h,d)=>new T.BoxGeometry(w,h,d);
+const TG=sl(.84,.6,.026,.04),EG=sl(.832,.592,.032,.036),SG=sl(.4,.38,.024,.05),KG=sl(.36,.2,.02,.045),AP=B(.66,.077,.016),BR=B(.036,.077,.54),PO=B(.038,.535,.05),SV=B(.046,.2,.058),RL=B(.04,.03,.66),FT=B(.05,.02,.06),CR=B(.62,.03,.03),CP=B(.026,.36,.026),CL=B(.028,.03,.52),CF=B(.04,.02,.05),SR=B(.022,.022,.4),BP=B(.022,.34,.022),CC=B(.35,.026,.026);
+for(let r=0;r<2;r++)for(let c=0;c<3;c++){const g=new T.Group(),ad=(q,m,x,y,z)=>{const o=new T.Mesh(q,m);o.position.set(x,y,z);g.add(o);reg(o,i);return o};
+g.position.set(-2.4+c*2.4,0,1.5+r*1.8);scene.add(g);
+// 机: 天板(木目)とふち + 天板の下のわく + 左右のT字あし
+ad(TG,WT,0,.691,0).rotation.x=-PI/2;ad(EG,ED,0,.653,0).rotation.x=-PI/2;ad(AP,BE,0,.6115,.27);ad(AP,BE,0,.6115,-.27);
+[-1,1].forEach(s=>{const x=s*.33;ad(BR,BE,x,.6115,0);ad(PO,BE,x,.3175,0);ad(SV,BD,x,.485,0);ad(RL,BE,x,.035,0);ad(FT,RB,x,.01,.3);ad(FT,RB,x,.01,-.3)});ad(CR,BE,0,.035,0);
+// いす: 木の座面・背もたれ + スチールのあし
+ad(SG,WS,0,.413,.62).rotation.x=-PI/2;ad(KG,WS,0,.665,.81).rotation.x=.14;ad(CC,BE,0,.035,.62);
+[-1,1].forEach(s=>{const x=s*.19;ad(BP,BE,x,.59,.822).rotation.x=.14;ad(CP,BE,x,.23,.45);ad(CP,BE,x,.23,.8);ad(SR,BE,x,.395,.62);ad(CL,BE,x,.035,.62);ad(CF,RB,x,.01,.385);ad(CF,RB,x,.01,.855)});
+SP[i].it[r*3+c]={o:g}}}
+{const i=mk('かんきせんの はねは 何まい？','まい',one(4,3,'1だいに','だい'),{y:-1.57,p:0,w:3.4,h:1.2,t:[5.95,2.85,-2.65]});
+// 壁のかんきせん: うすい白わく(丸いあな) + 大きな4まいのはね + 小さな中心キャップ。はねは回り、えらんでいる間はとまる(FN共通)
+const PI=Math.PI,Rh=.3,hw=.335,rr=.07,W=(c,k)=>{const m=M(c);m.color.multiplyScalar(k);return m},FW=W(0xf2f1ec,1.35),BL=W(0xe2e7e9,1.3),HB=W(0xf3ece8,1.3),DK=M(0x1d2226),DW=M(0x59626a);DW.side=BL.side=T.DoubleSide;
+const fs=new T.Shape();fs.moveTo(-hw+rr,-hw);fs.lineTo(hw-rr,-hw);fs.quadraticCurveTo(hw,-hw,hw,-hw+rr);fs.lineTo(hw,hw-rr);fs.quadraticCurveTo(hw,hw,hw-rr,hw);fs.lineTo(-hw+rr,hw);fs.quadraticCurveTo(-hw,hw,-hw,hw-rr);fs.lineTo(-hw,-hw+rr);fs.quadraticCurveTo(-hw,-hw,-hw+rr,-hw);
+const ho=new T.Path();ho.absarc(0,0,Rh,0,PI*2,true);fs.holes.push(ho);
+const FG=new T.ExtrudeGeometry(fs,{depth:.05,curveSegments:48,bevelThickness:.008,bevelSize:.008,bevelSegments:2}),DG=new T.CircleGeometry(Rh,48),TG=new T.CylinderGeometry(.289,.289,.062,48,1,true),HG=new T.SphereGeometry(.062,24,12);
+const bs=new T.Shape();bs.moveTo(.03,.05);bs.bezierCurveTo(.09,.1,.145,.17,.14,.225);bs.bezierCurveTo(.135,.265,.075,.275,.015,.272);bs.bezierCurveTo(-.05,.268,-.12,.24,-.125,.18);bs.bezierCurveTo(-.13,.135,-.07,.1,-.03,.05);bs.closePath();const BG=new T.ShapeGeometry(bs,16);
+for(let f=0;f<3;f++){const U=new T.Group(),sp=new T.Group(),ad=(g,m,x,y,z,p)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);(p||U).add(o);reg(o,i);return o};
+U.position.set(5.998,2.8,-3.6+f*.95);U.rotation.y=-PI/2;scene.add(U);sp.position.z=.04;U.add(sp);
+ad(FG,FW,0,0,.01);ad(DG,DK,0,0,.006);ad(TG,DW,0,0,.036).rotation.x=PI/2;bx(.44,.028,.012,0xc3c8ca,0,-.318,.072,U,i);
+ad(HG,HB,0,0,.012,sp).scale.z=.6;
+for(let k=0;k<4;k++){const g=new T.Group();g.rotation.z=k*PI/2+.35;sp.add(g);const m=ad(BG,BL,0,0,0,g);m.rotation.y=.22;m.scale.set(.95,.95,1);SP[i].it[f*4+k]={o:g}}
+FN.push({i,p:new T.Object3D(),sp,v:RM?0:1,w:0,s:0,ph:0,k:-9,q:PI/2})}}
+{const i=mk('まどの ガラスは 何まい？','まい',grid(2,3,'だん','れつ'),{y:1.57,p:0,w:4.6,h:2.2,t:[-5.9,1.9,2.08]});
+bx(.08,1.9,4.5,0xaeb7bd,-5.95,1.9,2.08,0,i);
+/* 窓の外: 遠近3そうの街なみ(近い・中・遠い)。そらは むげんにとおい。視線が各面(x=-16,-30,-50)とまじわる点で絵をひくので、視点を動かすと 近いものほど大きくずれる */
+const oGY=-4,oGW=60,oGH=30,oVD=[16,30,50],oVL=[['#a3b2bf',2.5,6,1,5,2.5],['#bac6d1',5,10,5,11,.8],['#cfd9e1',8,16,9,17,.8]].map(([col,w0,w1,h0,h1,gp],L)=>{const t=tx(1024,512,(x,w,h)=>{const s=w/oGW;for(let u=0;u<w;){const bw=rnd(w0,w1)*s,bh=rnd(h0,h1)*s,ty=h-bh;x.fillStyle=col;x.fillRect(u,ty,bw,bh);x.fillStyle=`rgba(${rnd(0,1)>.5?'255,255,255':'60,80,100'},${rnd(.03,.1)})`;x.fillRect(u,ty,bw,bh);x.fillStyle='rgba(60,80,100,.15)';for(let yy=ty+s;yy<h-s;yy+=1.5*s)for(let xx=u+.7*s;xx<u+bw-1.2*s;xx+=1.1*s)x.fillRect(xx,yy,.6*s,.7*s);u+=bw+rnd(0,gp)*s}if(!L)for(let n=0;n<18;n++){x.fillStyle='#9fb5a6';x.beginPath();x.arc(rnd(0,w),h-rnd(1.2,2.4)*s,rnd(1.2,2.1)*s,0,6.3);x.fill()}});t.premultiplyAlpha=true;return t});
+const GLS=m=>{m.onBeforeCompile=sh=>{oVL.forEach((t,k)=>sh.uniforms['vm'+k]={value:t});sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;');sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;uniform sampler2D vm0,vm1,vm2;').replace('#include <map_fragment>',`vec3 gc=vec3(.78,.89,.95);if(cameraPosition.x>-5.95){vec3 rd=normalize(vWP-cameraPosition),P;float h=rd.y,k=min(rd.x,-.15);vec2 uv;vec4 s;gc=mix(vec3(.82,.86,.81),vec3(.94,.96,.96),smoothstep(-.3,.02,h));gc=mix(gc,vec3(.78,.87,.94),smoothstep(.05,.7,h));${[2,1,0].map(L=>`P=vWP+rd*((${-oVD[L]}.0-vWP.x)/k);uv=vec2((2.08-P.z)/${oGW}.0+.5,(P.y-(${oGY}.0))/${oGH}.0);s=texture2D(vm${L},uv)*step(0.,uv.y)*step(uv.y,1.);gc=gc*(1.-s.a)+s.rgb;`).join('')}gc=mix(gc,vec3(.86,.93,.98),.1)+.05*smoothstep(.55,.9,sin(vWP.z*1.1+vWP.y*1.7));}diffuseColor.rgb*=gc;`)}};
+/* アルミ枠(上下・中央の横ざん / 外わく・縦のしきり) + クレセント錠 */
+[[4.5,.05,2.08,2.825],[4.5,.1,2.08,1],[4.5,.15,2.08,1.925]].forEach(([w,h,z,y])=>bx(.11,h,w,0x9aa1a6,-5.915,y,z,0,i));
+[[.07,1.9,-.135],[.07,1.9,4.295],[.08,1.9,1.34],[.08,1.9,2.82]].forEach(([w,h,z])=>bx(.1,h,w,0x9aa1a6,-5.92,1.9,z,0,i));
+[1.34,2.82].forEach(z=>bx(.03,.09,.05,0x4b5156,-5.855,1.925,z,0,i));
+/* 木の窓枠(上・左右)と窓台 */
+[[4.66,.07,2.08,2.885],[.08,2.005,-.21,1.9175],[.08,2.005,4.37,1.9175]].forEach(([w,h,z,y],k)=>bx(k?.09:.095,h,w,0xd4a76f,k?-5.945:-5.9425,y,z,0,i));
+bx(.2,.035,4.8,0xdcb683,-5.89,.9325,2.08,0,i);
+/* カーテン: ひだのある うすい緑。ガラスをかくさないよう窓の外がわに寄せる */
+const CUG=w=>{const g=new T.PlaneGeometry(w,2.1,48,1),q=g.attributes.position;for(let k=0;k<q.count;k++)q.setZ(k,Math.sin(q.getX(k)*55)*.035);g.computeVertexNormals();return g};
+[-.45,4.61].forEach(z=>{const m=sm(CUG(.56),0xbcd6a4,-5.82,1.9,z,i);m.rotation.y=Math.PI/2;m.material.side=T.DoubleSide});bx(.03,.03,5.75,0x8a9298,-5.82,2.98,2.075,0,i);
+for(let r=0;r<2;r++)for(let c=0;c<3;c++){const m=bx(.03,.8,1.4,0xffffff,-5.9,2.4-r*.95,.6+c*1.48,0,i);GLS(m.material);SP[i].it[r*3+c]={o:m}}}
+{const i=mk('かべに はってある プリントは 何まい？','まい',grid(2,4,'だん','れつ'),{y:0,p:0,w:4.8,h:2.4,t:[3.6,1.95,-4.9]});
+bx(4.6,2.2,.04,0xcfae7a,3.6,1.95,-4.97,0,i);
+for(let r=0;r<2;r++)for(let c=0;c<4;c++){const x=2.25+c*1.05,y=2.45-r;SP[i].it[r*4+c]={o:bx(.62,.78,.03,[0xffffff,0xfff4c2,0xdff0ff,0xffe0e6][(r+c)%4],x,y,-4.93,0,i)};bx(.5,.1,.035,K[(r*2+c)%5],x,y+.25,-4.93,0,i)}}
+
+// ロッカーの中: マジックペン(8本入りケース×3) / つみき(6こ入りはこ×3)。えらぶと その行のとびらが とうめいに なる(ひらかない)
+{const i=mk('ロッカーの マジックペンは ぜんぶで 何本？','本',one(8,3,'1ケースに','ケース'),{y:-1.57,p:.05,w:3.1,h:.95,t:[5.74,1.5,-2.65]});SP[i].lk=LI;SP[i].op=[3,4,5];
+for(let c=0;c<3;c++){const g=CELL[3+c];LD[3+c].h=1;mm(BG(.22,.1,.64),0x3c4a56,0,-.17,0,g,i);
+for(let k=0;k<8;k++){const z=-.28+k*.08;SP[i].it[c*8+k]={o:mm(new T.CylinderGeometry(.024,.024,.26,10),K[(k+c)%5],0,.01,z,g,i)};mm(new T.CylinderGeometry(.027,.027,.07,10),0xffffff,0,.1,z,g,i)}}}
+{const i=mk('ロッカーの はこの つみきは ぜんぶで 何こ？','こ',one(6,3,'1はこに','はこ'),{y:-1.57,p:.05,w:3.1,h:.95,t:[5.74,1,-2.65]});SP[i].lk=LI;SP[i].op=[6,7,8];
+for(let c=0;c<3;c++){const g=CELL[6+c];LD[6+c].h=1;mm(BG(.34,.05,.7),0xc89b5a,0,-.19,0,g,i);
+for(let k=0;k<6;k++)SP[i].it[c*6+k]={o:mm(BG(.14,.14,.14),K[(k+c*2)%5],0,-.105+(k/3|0)*.15,-.2+(k%3)*.2,g,i)}}}
+// 小さい机1(右のかべ): 花びん3つ × 花5本(はっぱは なし。花が ひとつずつ はっきり 見える)
+{const i=mk('かびんの おはなは ぜんぶで 何本？','本',one(5,3,'1びんに','びん'),{y:-1.57,p:.15,w:2.4,h:1.5,t:[5.7,1,.1]});
+const tb=(w,h,d,c,x,y,z)=>bx(w,h,d,c,x,y,z,0,i);tb(.6,.05,1.5,0xb98a55,5.68,.69,.1);[[5.42,-.6],[5.42,.8],[5.94,-.6],[5.94,.8]].forEach(([x,z])=>tb(.05,.665,.05,0x8a6a40,x,.3325,z));
+/* 花のかたち: しずく形の花びらを ゆるく反らせ、外がわ8まい + 内がわ7まい(半まいずらして かさねる) + 中心のドームと わ。+z をおもてに つくり、へや がわ(-x)へ むける */
+const pt=(L,w,tl)=>{const s=new T.Shape();s.moveTo(0,0);s.bezierCurveTo(w*.9,L*.1,w*1.1,L*.72,w*.38,L*.97);s.quadraticCurveTo(0,L*1.05,-w*.38,L*.97);s.bezierCurveTo(-w*1.1,L*.72,-w*.9,L*.1,0,0);const g=new T.ShapeGeometry(s,10),q=g.attributes.position;
+for(let v=0;v<q.count;v++)q.setZ(v,3.4*q.getY(v)**2);return g.rotateX(tl)},
+rg=(n,L,w,tl,of,zz)=>{const ps=[],ix=[];let o=0;for(let a=0;a<n;a++){const g=pt(L,w,tl).rotateZ(of+a*2*Math.PI/n).translate(0,0,zz),q=g.attributes.position;for(let v=0;v<q.count;v++)ps.push(q.getX(v),q.getY(v),q.getZ(v));for(let k=0;k<g.index.count;k++)ix.push(g.index.getX(k)+o);o+=q.count}
+const G=new T.BufferGeometry();G.setAttribute('position',new T.Float32BufferAttribute(ps,3));G.setIndex(ix);G.computeVertexNormals();return G};
+const PO=rg(8,.042,.028,.32,0,0),PN=rg(7,.028,.021,.7,.4,.005),CD=new T.SphereGeometry(.012,16,10).scale(1,1,.6).translate(0,0,.008),CR=new T.TorusGeometry(.0105,.0032,6,16).translate(0,0,.011);
+const FL=[[0xf48fb1,0xf5b82b,0xffd0e0],[0xf9d23c,0xb5651d,0xfff0a0],[0xf4973a,0xe0b02a,0xffc890],[0x9ba6f2,0xf7c92b,0xd6dcff],[0xe65b6c,0xf7c92b,0xff9fab]],V3=T.Vector3;
+for(let c=0;c<3;c++){const zc=-.4+c*.5;sm(new T.CylinderGeometry(.06,.08,.2,16),[0x8ec7e8,0xf2a6b5,0xb7dca0][c],5.68,.815,zc,i);
+for(let k=0;k<5;k++){const dz=(k-2)*.092,h=[.28,.35,.41,.35,.28][k],xo=k%2*-.03,dv=new V3(xo,h,dz),st=sm(new T.CylinderGeometry(.0055,.0055,dv.length(),6),0x4f9d5f,5.68+xo/2,.915+h/2,zc+dz/2,i);st.quaternion.setFromUnitVectors(new V3(0,1,0),dv.clone().normalize());
+const g=new T.Group(),n=new V3(-.6,.5,.62+dz*2).normalize(),[c1,c2,c3]=FL[(k+c)%5],pm=(G,col)=>{mm(G,col,0,0,0,g,i).material.side=T.DoubleSide};
+g.position.set(5.68+xo,.915+h,zc+dz);g.quaternion.setFromUnitVectors(new V3(0,0,1),n);g.rotateZ(k*.9+c*.6);scene.add(g);
+pm(PO,c1);pm(PN,c3);pm(CD,c2);pm(CR,0x8a5a1c);SP[i].it[c*5+k]={o:g}}
+/* 花たばぜんたいの タップ判定(見えない箱): 花びらの すきまや よこ向きでも 押しやすくする */
+bx(.3,.68,.48,0xffffff,5.68,1.06,zc,0,i).material.visible=false}}
+// 長机の下(右のかべ・花びんの机の下): かご3つ × さかな4ひき。ひくい 目の高さから のぞくと 見える(4ひき・12ひきは「ひき」と読むので 読みが ゆれない)
+{const i=mk('かごの さかなは ぜんぶで 何びき？','ひき',one(4,3,'1かごに','かご'),{y:-1.57,p:.85,w:1.8,h:.7,t:[5.68,.05,.1]});
+const mg=a=>{const P=[],N=[],X=[];let o=0;a.forEach(g=>{const q=g.attributes.position,n=g.attributes.normal;for(let v=0;v<q.count;v++){P.push(q.getX(v),q.getY(v),q.getZ(v));N.push(n.getX(v),n.getY(v),n.getZ(v))}for(let k=0;k<g.index.count;k++)X.push(g.index.getX(k)+o);o+=q.count});const G=new T.BufferGeometry();G.setAttribute('position',new T.Float32BufferAttribute(P,3));G.setAttribute('normal',new T.Float32BufferAttribute(N,3));G.setIndex(X);return G},
+sp=(r,sx,sy,sz,x,y,z)=>new T.SphereGeometry(r,20,14).scale(sx,sy,sz).translate(x,y,z),dk=c=>new T.Color(c).multiplyScalar(.78).getHex();
+/* さかなは かごの中で よこだおし(ななめ)に ならべる。あたまは ぜんぶ おくがわ(+z)。さかなのかたち(あたまが +x): 体 + 白いおなか + 2つに わかれた おびれ + せびれ + 左右の目。体は 左右(z)に うすく */
+const FB=sp(1,.068,.036,.022,0,0,0),FV=sp(1,.062,.022,.0235,0,-.017,0),
+FT=(()=>{const s=new T.Shape();s.moveTo(.004,0);s.bezierCurveTo(-.02,.006,-.04,.03,-.056,.036);s.quadraticCurveTo(-.044,0,-.056,-.036);s.bezierCurveTo(-.04,-.03,-.02,-.006,.004,0);return new T.ShapeGeometry(s,8).translate(-.062,0,0)})(),
+FD=(()=>{const s=new T.Shape();s.moveTo(-.022,0);s.quadraticCurveTo(-.012,.03,.016,.036);s.quadraticCurveTo(.012,.016,.024,0);s.closePath();return new T.ShapeGeometry(s,8).translate(-.004,.03,0)})(),
+EW=mg([sp(.0085,1,1,1,.05,.008,.0185),sp(.0085,1,1,1,.05,.008,-.0185)]),EP=mg([sp(.0052,1,1,1,.0535,.008,.0235),sp(.0052,1,1,1,.0535,.008,-.0235)]),
+FC=[0x4f8fd8,0xf28a3a,0xe0484f,0x3fae8c,0xf2c230];
+for(let c=0;c<3;c++){const zc=-.4+c*.5;
+sm(new T.CylinderGeometry(.22,.185,.07,28,1,true),0xc9a36a,5.68,.035,zc,i).material.side=T.DoubleSide;sm(new T.CylinderGeometry(.185,.185,.012,28),0xb98a55,5.68,.006,zc,i);
+sm(new T.TorusGeometry(.22,.011,6,28),0xa77e45,5.68,.07,zc,i).rotation.x=Math.PI/2;sm(new T.TorusGeometry(.2035,.006,5,28),0xb18548,5.68,.035,zc,i).rotation.x=Math.PI/2;
+for(let k=0;k<4;k++){const g=new T.Group(),fr=k<2,col=FC[(k+c)%5],pm=(G,cc,ds)=>{const m=mm(G,cc,0,0,0,g,i);if(ds)m.material.side=T.DoubleSide};
+g.rotation.order='YXZ';g.rotation.y=-Math.PI/2+(k-1.5)*.07;g.rotation.x=fr?.8:-.8;g.scale.setScalar(.85);g.position.set(5.68+(fr?-.075:.075),fr?.052:.056,zc+(k%2?.085:-.085));scene.add(g);
+pm(FB,col);pm(FV,0xf3efe2);pm(FT,dk(col),1);pm(FD,dk(col),1);pm(EW,0xffffff);pm(EP,0x1d2226);SP[i].it[c*4+k]={o:g}}
+/* かごぜんたいの タップ判定(見えない箱) */
+bx(.5,.3,.5,0xffffff,5.68,.15,zc,0,i).material.visible=false}}
+// 長机(左のかべ・まどの下)と その下: えんぴつたて4つ × えんぴつ5本(5×4) / うわばき6ぐみ × 2こ(2×6)。つくえの 下も のぞいて みよう
+{const X=-5.65,i=mk('えんぴつたての えんぴつは ぜんぶで 何本？','本',one(5,4,'1コップに','コップ'),{y:1.57,p:.3,w:2.5,h:.7,t:[X,.85,2.4]});
+const tb=(w,h,d,c,x,y,z)=>bx(w,h,d,c,x,y,z,0,i);tb(.6,.05,2.6,0xb98a55,X,.69,2.4);[[-5.9,1.15],[-5.9,3.65],[-5.4,1.15],[-5.4,3.65]].forEach(([x,z])=>tb(.05,.665,.05,0x8a6a40,x,.3325,z));
+const PC=[0xe8505b,0x3f7fd6,0xf2c230,0x44ad78,0xf08a2c];
+for(let c=0;c<4;c++){const zc=1.5+c*.6;sm(new T.CylinderGeometry(.062,.05,.1,18),[0x8ec7e8,0xf2a6b5,0xb7dca0,0xf5d36b][c],X,.765,zc,i);
+for(let k=0;k<5;k++){const g=new T.Group();g.position.set(X,.77,zc);g.rotation.x=(k-2)*.2;scene.add(g);
+mm(new T.CylinderGeometry(.0075,.0075,.2,8),PC[(k+c)%5],0,.11,0,g,i);mm(new T.ConeGeometry(.0075,.03,8),0xe8c9a0,0,.225,0,g,i);mm(new T.ConeGeometry(.0027,.01,6),0x333333,0,.2425,0,g,i);SP[i].it[c*5+k]={o:g}}
+bx(.16,.36,.5,0xffffff,X,.88,zc,0,i).material.visible=false}}
+{const X=-5.65,i=mk('うわばきは ぜんぶで 何こ？','こ',one(2,6,'1ぐみに','ぐみ'),{y:1.57,p:.95,w:2.6,h:.8,t:[X,.05,2.4]});
+const SC=[0x3f7fd6,0xe8505b,0x44ad78,0xf2c230,0x9b6fd1,0xf08a2c];
+for(let c=0;c<6;c++){const zc=1.4+c*.4;for(let k=0;k<2;k++){const g=new T.Group();g.position.set(X,0,zc+(k?.065:-.065));scene.add(g);
+mm(BG(.26,.022,.1),0xf4f4f4,0,.011,0,g,i);mm(BG(.15,.06,.096),0xfafafa,-.045,.052,0,g,i);mm(new T.SphereGeometry(1,14,10).scale(.07,.04,.048),SC[c],.065,.04,0,g,i);mm(BG(.06,.014,.07),0x38414a,-.07,.083,0,g,i);SP[i].it[c*2+k]={o:g}}
+bx(.34,.14,.26,0xffffff,X,.07,zc,0,i).material.visible=false}}
+// 小さい机2の下(奥のかべ): ぎゅうにゅうケース2つ × 6本(6×2)
+{const i=mk('ぎゅうにゅうは ぜんぶで 何本？','本',one(6,2,'1ケースに','ケース'),{y:0,p:1.05,w:1.8,h:.7,t:[3,.08,-4.5]});
+for(let c=0;c<2;c++){const x=2.65+c*.7;bx(.38,.02,.3,0x2f7fd1,x,.01,-4.5,0,i);[[.38,.1,.014,0,.15],[.38,.1,.014,0,-.15],[.014,.1,.3,.19,0],[.014,.1,.3,-.19,0]].forEach(([w,h,d,dx,dz])=>bx(w,h,d,0x2f7fd1,x+dx,.07,-4.5+dz,0,i));
+for(let k=0;k<6;k++){const g=new T.Group();g.position.set(x+((k%3)-1)*.105,0,-4.5+(k/3|0?.068:-.068));scene.add(g);
+mm(BG(.09,.14,.09),0xffffff,0,.09,0,g,i);mm(BG(.092,.035,.092),0x2f6fdf,0,.075,0,g,i);mm(BG(.05,.012,.09),0xd9e6f5,0,.166,0,g,i);SP[i].it[c*6+k]={o:g}}
+bx(.42,.2,.32,0xffffff,x,.1,-4.5,0,i).material.visible=false}}
+// 小さい机2(奥のかべ): かご4つ × ボール3こ
+{const i=mk('かごの ボールは ぜんぶで 何こ？','こ',one(3,4,'1かごに','かご'),{y:0,p:.55,w:2.4,h:1.3,t:[3,.75,-4.5]});
+const tb=(w,h,d,c,x,y,z)=>bx(w,h,d,c,x,y,z,0,i);tb(1.7,.05,.6,0xb98a55,3,.595,-4.5);[[2.2,-4.75],[2.2,-4.25],[3.8,-4.75],[3.8,-4.25]].forEach(([x,z])=>tb(.05,.57,.05,0x8a6a40,x,.285,z));
+for(let c=0;c<4;c++){const x=2.5+c*.33;mm(new T.CylinderGeometry(.15,.12,.1,18,1,true),0xc9a36a,x,.67,-4.5,scene,i).material.side=T.DoubleSide;mm(new T.TorusGeometry(.15,.012,6,20),0xa77e45,x,.72,-4.5,scene,i).rotation.x=Math.PI/2;
+[[-.065,.705],[.065,.705],[0,.815]].forEach(([dx,y],k)=>{SP[i].it[c*3+k]={o:sm(new T.SphereGeometry(.065,16,12),K[(k+c)%5],x+dx,y,-4.5,i)}})}}
+// 壁面けいじ(右のかべ): 緑のフェルトに 星3だん×4れつ
+{const i=mk('かべの かざりの ほしは 何こ？','こ',grid(3,4,'だん','れつ'),{y:-1.57,p:0,w:2.6,h:1.8,t:[5.9,1.75,2.05]});
+bx(.03,1.5,2.2,0xc9a46a,5.985,1.75,2.05,0,i);bx(.02,1.36,2.06,0x3f7d63,5.97,1.75,2.05,0,i);
+const ss=new T.Shape();for(let k=0;k<10;k++){const a=k*Math.PI/5+Math.PI/2,r=k%2?.06:.14;k?ss.lineTo(Math.cos(a)*r,Math.sin(a)*r):ss.moveTo(Math.cos(a)*r,Math.sin(a)*r)}ss.closePath();const sg=new T.ShapeGeometry(ss);
+for(let r=0;r<3;r++)for(let c=0;c<4;c++){const m=mm(sg,K[(r*2+c)%5],5.95,1.75+(1-r)*.45,2.05+(c-1.5)*.5,scene,i);m.rotation.y=-Math.PI/2;m.material.side=T.DoubleSide;SP[i].it[r*4+c]={o:m}}}
+// ドア(右のかべ・ひきど): アルミわく + 木のしたいた + ガラス2だん×4れつ + 学級ふだ
+{const i=mk('ドアの ガラスは 何まい？','まい',grid(2,4,'だん','れつ'),{y:-1.57,p:0,w:2.2,h:2.9,t:[5.9,1.35,3.95]});
+const D=(w,h,d,c,x,y,z)=>bx(w,h,d,c,x,y,z,0,i),AL=0x9aa1a6;
+D(.1,.08,1.5,AL,5.95,2.19,3.95);D(.1,2.2,.07,AL,5.95,1.1,3.22);D(.1,2.2,.07,AL,5.95,1.1,4.68);D(.04,1.04,1.3,AL,5.94,1.6,3.95);D(.05,1,1.3,0xd8c49a,5.925,.52,3.95);D(.05,.06,1.3,AL,5.925,1.05,3.95);D(.02,.16,.06,0x6b737a,5.895,.8,4.5);
+for(let r=0;r<2;r++)for(let c=0;c<4;c++)SP[i].it[r*4+c]={o:D(.02,.46,.29,0xcfe6f2,5.915,1.87-r*.54,3.95+(c-1.5)*.325)};
+const sg=D(.03,.3,.9,0xffffff,5.97,2.5,3.95);sg.material.map=tx(256,80,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.strokeStyle='#2f6fdf';x.lineWidth=6;x.strokeRect(3,3,w-6,h-6);x.fillStyle='#23323f';x.font='bold 40px sans-serif';x.textAlign='center';x.fillText('2ねん 1くみ',w/2,54)});sg.material.needsUpdate=true}
+
+// 教室のうしろの かべ: ふだんは 見えない(手前がわの カメラからは かべが とうめい)。ぐるっと まわして うしろに くると 出てくる
+const BW=new T.Group();scene.add(BW);let BWon=false;pl(12,3.2,0xe6f1ec,0,1.6,5,0,Math.PI);const d3=new T.DirectionalLight(0xffffff,.4);d3.position.set(-1,4,-8);scene.add(d3);
+// うしろの けいじばん: 画用紙 3だん×4れつ
+{const i=mk('うしろの けいじばんの がようしは 何まい？','まい',grid(3,4,'だん','れつ'),{y:Math.PI,p:0,w:4,h:1.9,t:[-2.2,1.9,4.95]});SP[i].bw=1;
+const B=(w,h,d,c,x,y,z)=>mm(BG(w,h,d),c,x,y,z,BW,i);
+B(3.9,1.7,.03,0xc9a46a,-2.2,1.9,4.985);const tt=B(2,.22,.02,0xffffff,-2.2,2.6,4.96);tt.material.map=tx(256,28,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#e0484f';x.font='bold 22px sans-serif';x.textAlign='center';x.fillText('みんなの さくひん',w/2,22)});tt.material.needsUpdate=true;
+for(let r=0;r<3;r++)for(let c=0;c<4;c++){const x=-2.2-(c-1.5)*.85,y=2.18-r*.42;SP[i].it[r*4+c]={o:B(.62,.36,.02,[0xffffff,0xfff4c2,0xdff0ff,0xffe0e6,0xe3f5d8][(r+c)%5],x,y,4.955)};B(.14,.14,.01,K[(r*2+c)%5],x,y,4.943)}}
+// カレンダー: 今月(たんまつの 日づけ)。ます = 7ようび × しゅう
+{const dt=new Date(),Mo=dt.getMonth(),f0=new Date(dt.getFullYear(),Mo,1).getDay(),nd=new Date(dt.getFullYear(),Mo+1,0).getDate(),R=Math.ceil((f0+nd)/7),cx=2.6,cy=1.85,hh=R*.26+.62,top=cy+hh/2;
+const i=mk('カレンダーの ますは ぜんぶで 何こ？','こ',grid(R,7,'しゅう','ようび'),{y:Math.PI,p:0,w:2.6,h:hh+.2,t:[cx,cy,4.95]});SP[i].bw=1;
+const B=(w,h,d,c,x,y,z)=>mm(BG(w,h,d),c,x,y,z,BW,i),WD='日月火水木金土';
+B(2.3,hh,.03,0x9aa1a6,cx,cy,4.985);const hd=B(2.2,.5,.02,0xffffff,cx,top-.29,4.96);
+hd.material.map=tx(440,100,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#23323f';x.font='bold 48px sans-serif';x.textAlign='center';x.fillText((Mo+1)+'月',w/2,48);x.font='bold 26px sans-serif';for(let c=0;c<7;c++){x.fillStyle=c?c==6?'#2f6fdf':'#23323f':'#e0484f';x.fillText(WD[c],w/2+(c-3)*60,90)}});hd.material.needsUpdate=true;
+for(let r=0;r<R;r++)for(let c=0;c<7;c++){const d=r*7+c-f0+1,ok=d>=1&&d<=nd,m=B(.28,.24,.02,0xffffff,cx-(c-3)*.3,top-.58-(r+.5)*.26,4.96);
+m.material.map=tx(64,56,(x,w,h)=>{x.fillStyle=!ok?'#e4e4e4':d==dt.getDate()?'#fff0a0':'#fff';x.fillRect(0,0,w,h);if(ok){x.fillStyle=c?c==6?'#2f6fdf':'#23323f':'#e0484f';x.font='bold 34px sans-serif';x.textAlign='center';x.fillText(d,w/2,42)}});m.material.needsUpdate=true;SP[i].it[r*7+c]={o:m}}}
+scene.updateMatrixWorld(true);
+SP.forEach(s=>{s.c=new T.Vector3(...s.cp.t);s.it.forEach(q=>{const b=new T.Box3().setFromObject(q.o),a=[b.min,b.max];q.c=b.getCenter(new T.Vector3());q.k=[0,1].flatMap(i=>[0,1].flatMap(j=>[0,1].map(k=>new T.Vector3(a[i].x,a[j].y,a[k].z))))})});
+// カメラ(動的な視点)
+const V={y:-1,p:.8,d:15,t:new T.Vector3(0,1.3,-.5)},OV={y:.35,p:.22,d:11.5,t:[0,1.3,-.5]},TOP={y:0,p:1.4,d:13,t:[0,0,.5]};let fl=null;
+const fly=c=>{sfx('whoosh');fl={a:{y:V.y,p:V.p,d:V.d,t:V.t.clone()},b:{y:c.y,p:c.p,d:c.d,t:new T.Vector3(...c.t)},s:performance.now()}};
+new ResizeObserver(()=>{const w=$('vw').clientWidth,h=$('vw').clientHeight;if(w&&h){rd.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}}).observe($('vw'));
+const yel={key:'',t0:0,n:0,fin:0};
+// ヒントのわっか: ならびの向きにそろえた角丸の長方形(楕円でなくてよい)。となりのわっかと かさならないよう すきまをとり、赤い番号は わっかの 先頭がわの そとに おく
+function rings(s,gs,P,W,H){const r=13,pad=6,G=gs.map(g=>({c:g.map(j=>P(s.it[j].c)),p:g.flatMap(j=>s.it[j].k.map(P))}));
+let dx=0,dy=0;G.forEach(({c})=>{let x=c[c.length-1][0]-c[0][0],y=c[c.length-1][1]-c[0][1];const l=Math.hypot(x,y)||1;x/=l;y/=l;if(x*dx+y*dy<0){x=-x;y=-y}dx+=x;dy+=y});
+const l=Math.hypot(dx,dy);if(l<.01){dx=1;dy=0}else{dx/=l;dy/=l}if(Math.abs(dx)>=Math.abs(dy)?dx<0:dy<0){dx=-dx;dy=-dy}
+const nx=-dy,ny=dx;
+G.forEach(q=>{let a=1e9,b=-1e9,c=1e9,d=-1e9;q.p.forEach(([x,y])=>{const u=x*dx+y*dy,v=x*nx+y*ny;a=Math.min(a,u);b=Math.max(b,u);c=Math.min(c,v);d=Math.max(d,v)});q.u0=a-pad;q.u1=b+pad;q.v0=c;q.v1=d;q.a=c-pad;q.b=d+pad});
+const o=G.slice().sort((p,q)=>p.v0+p.v1-q.v0-q.v1);for(let m=1;m<o.length;m++){const A=o[m-1],B=o[m],t=(A.v1+B.v0)/2;A.b=Math.min(A.b,t-4);B.a=Math.max(B.a,t+4)}
+const R=G.map(q=>{if(q.b-q.a<14){const m=(q.a+q.b)/2;q.a=m-7;q.b=m+7}const cu=(q.u0+q.u1)/2,cv=(q.a+q.b)/2,hw=(q.u1-q.u0)/2,hh=(q.b-q.a)/2,x=dx*cu+nx*cv,y=dy*cu+ny*cv,e=hw+r+3;
+return{x,y,hw,hh,rr:Math.min(18,hh*.8),th:Math.atan2(dy,dx)*180/Math.PI,bx:Math.max(r+3,Math.min(W-r-3,x-dx*e)),by:Math.max(r+3,Math.min(H-r-3,y-dy*e))}});
+for(let t=0;t<8;t++)for(let i=0;i<R.length;i++)for(let j=i+1;j<R.length;j++){const A=R[i],B=R[j];let ex=B.bx-A.bx,ey=B.by-A.by,d=Math.hypot(ex,ey);if(d<2*r+4){if(d<.01){ex=0;ey=1;d=1}const f=(2*r+4-d)/2/d;A.bx-=ex*f;A.by-=ey*f;B.bx+=ex*f;B.by+=ey*f}}
+return R}
+let cur=-1,gi=0,hint=0,show=false,ok1=false,ok2=false,on=true,AC,hv=-1,foc=false;const done=new Set(),fit=c=>Math.max(c.h,c.w/cam.aspect)/(2*Math.tan(cam.fov*Math.PI/360))*1.3;
+// 番号の じゅん: 教室の ざひょうでは なく「画面に 見えている いち」で きめる(児童の目線)。
+// グループ(わっか)は 左→右、よこならびの ときは 上→下。グループの 中は 左→右(たてならびは 上→下)。まとまりが 2だん以上なら 上の だんから 読む
+function ord(s,gs,P){const rg=a=>Math.max(...a)-Math.min(...a),av=a=>a.reduce((x,y)=>x+y,0)/a.length,
+band=(a,k,m,t)=>{a.sort((p,q)=>p[k]-q[k]);const B=[];a.forEach((q,n)=>{if(!n||q[k]-a[n-1][k]>t)B.push([]);B[B.length-1].push(q)});return B.flatMap(b=>b.sort((p,q)=>p[m]-q[m]))},
+G=gs.map(g=>{const a=g.map(j=>{const q=s.it[j],c=P(q.c),p=q.k.map(P),xs=p.map(v=>v[0]),ys=p.map(v=>v[1]);return{j,x:c[0],y:c[1],w:rg(xs),h:rg(ys)}}),
+wide=rg(a.map(q=>q.x))>=rg(a.map(q=>q.y)),o=wide?band(a,'y','x',.5*Math.min(...a.map(q=>q.h))):band(a,'x','y',.5*Math.min(...a.map(q=>q.w)));
+return{j:o.map(q=>q.j),x:av(a.map(q=>q.x)),y:av(a.map(q=>q.y))}});
+G.sort(rg(G.map(g=>g.x))>=rg(G.map(g=>g.y))?(p,q)=>p.x-q.x:(p,q)=>p.y-q.y);return G.map(g=>g.j)}
+// 番号の じゅんは 「えらんだ ときの 正面の 見え方」で いちど だけ きめて 固定する(あとで まわしても かわらない)
+function fx(s){const c=s.cp,d=fit(c),W=$('vw').clientWidth,H=$('vw').clientHeight,t=new T.Vector3(...c.t),tc=new T.PerspectiveCamera(cam.fov,cam.aspect,cam.near,cam.far);
+tc.position.set(t.x+d*Math.sin(c.y)*Math.cos(c.p),t.y+d*Math.sin(c.p),t.z+d*Math.cos(c.y)*Math.cos(c.p));tc.lookAt(t);tc.updateMatrixWorld();
+const P=v=>{const q=v.clone().project(tc);return[(q.x+1)/2*W,(1-q.y)/2*H]};s.od=s.gr.map(g=>ord(s,g.gs,P))}
+function ov(){const W=$('vw').clientWidth,H=$('vw').clientHeight,P=v=>{const p=v.clone().project(cam);return[(p.x+1)/2*W,(1-p.y)/2*H]};let h='';
+done.forEach(i=>{if(foc||SP[i].bw&&!BWon)return;const[x,y]=P(SP[i].c);h+=`<g transform="translate(${x} ${y})"><circle r="14" fill="#2e9e57" stroke="#fff" stroke-width="2"/><text y="6" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">✓</text></g>`});
+if(cur>=0&&show){const s=SP[cur],gs=s.od?s.od[gi]:ord(s,s.gr[gi].gs,P),R=rings(s,gs,P,W,H);
+R.forEach(q=>{h+=`<rect x="${-q.hw}" y="${-q.hh}" width="${q.hw*2}" height="${q.hh*2}" rx="${q.rr}" transform="translate(${q.x} ${q.y}) rotate(${q.th})" fill="rgba(47,111,223,.12)" stroke="#2f6fdf" stroke-width="3.5"/>`});
+if(hint>1)R.forEach((q,n)=>{h+=`<g transform="translate(${q.bx} ${q.by})"><circle r="13" fill="#e0484f" stroke="#fff" stroke-width="2"/><text y="6" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">${n+1}</text></g>`});
+if(hint>2){const now=performance.now(),key=cur+'/'+gi,N=gs.reduce((a,g)=>a+g.length,0),ST=N>12?220:N>8?260:300;if(yel.key!=key){yel.key=key;yel.t0=now;yel.n=0;yel.fin=0}
+let k=0,t=350;gs.forEach((g,n)=>{if(n)t+=260;g.forEach(j=>{const el=now-yel.t0-t;t+=ST;k++;if(el<0)return;if(k>yel.n){yel.n=k;sfx('count',k,N)}const[x,y]=P(s.it[j].c),p=Math.min(1,el/200),sc=p<1?1+2.70158*Math.pow(p-1,3)+1.70158*Math.pow(p-1,2):1;h+=`<g transform="translate(${x} ${y}) scale(${sc})"><text y="5" text-anchor="middle" font-size="15" font-weight="700" fill="#5a4300" stroke="#f7c92b" stroke-width="5" paint-order="stroke">${k}</text></g>`})});
+if(!yel.fin&&now-yel.t0>t){yel.fin=1;sfx('done');if(TTS)TTS.say(`ぜんぶで ${N}${s.u}。`,{n:9})}}}
+if(!(cur>=0&&show&&hint>2))yel.key='';
+$('ov').innerHTML=h}
+function ap(s){s.ms.forEach(m=>{const t=m.material,o=s.f*(m.userData.k==null?1:m.userData.k),tr=o<1;if(t.transparent!=tr){t.transparent=tr;t.needsUpdate=true}t.opacity=o;m.visible=s.f>.03})}
+function loop(){requestAnimationFrame(loop);fanTick();lkTick();
+if(fl){const k=Math.min(1,(performance.now()-fl.s)/1100),e=k<.5?2*k*k:1-Math.pow(2-2*k,2)/2,{a,b}=fl;V.y=a.y+Math.atan2(Math.sin(b.y-a.y),Math.cos(b.y-a.y))*e;V.p=a.p+(b.p-a.p)*e;V.d=a.d+(b.d-a.d)*e;V.t.lerpVectors(a.t,b.t,e);if(k==1)fl=null}
+SP.forEach(s=>{if(s.f!=s.ft){s.f=Math.abs(s.ft-s.f)<.03?s.ft:s.f+(s.ft-s.f)*.2;ap(s)}});const cy=V.t.y+V.d*Math.sin(V.p);cam.position.set(V.t.x+V.d*Math.sin(V.y)*Math.cos(V.p),foc||fl?cy:Math.max(.4,cy),V.t.z+V.d*Math.cos(V.y)*Math.cos(V.p));cam.lookAt(V.t);rd.render(scene,cam);ov()}
+// 操作: ドラッグで回転 / ホイールで拡大縮小 / タップで場所を選ぶ
+const rc=new T.Raycaster(),m2=new T.Vector2();let dn=null;
+function hitAt(e){const r=cv.getBoundingClientRect();m2.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);rc.setFromCamera(m2,cam);const h=rc.intersectObjects(pk.filter(m=>m.visible&&!m.userData.np&&(BWon||!SP[m.userData.s].bw)),false)[0];return h?h.object.userData.s:-1}
+function hov(i){if(i==hv)return;if(hv>=0)SP[hv].ms.forEach(m=>m.material.emissive.setHex(0));hv=i;if(i>=0){sfx('tick');SP[i].ms.forEach(m=>m.material.emissive.setHex(0x5a4a00))}cv.style.cursor=i>=0?'pointer':'grab'}
+const ptr=new Map();let pz=null;
+cv.onpointerdown=e=>{if(e.pointerType=='mouse')ptr.clear();ptr.set(e.pointerId,[e.clientX,e.clientY]);cv.setPointerCapture(e.pointerId);
+if(ptr.size==2){const[a,b]=[...ptr.values()];pz={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,v:V.d};dn=null;fl=null}
+else if(ptr.size==1)dn={x:e.clientX,y:e.clientY,yw:V.y,p:V.p,m:0}};
+cv.onpointermove=e=>{if(!ptr.has(e.pointerId)){hov(foc?-1:hitAt(e));return}ptr.set(e.pointerId,[e.clientX,e.clientY]);
+if(pz&&ptr.size>=2){const[a,b]=[...ptr.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(d>8)V.d=Math.max(foc?1.2:2.5,Math.min(16,pz.v*pz.d/d));return}
+if(dn){const dx=e.clientX-dn.x,dy=e.clientY-dn.y;if(dn.m||Math.hypot(dx,dy)>5){dn.m=1;fl=null;V.y=dn.yw-dx*.008;V.p=Math.max(foc?-1.5:-.4,Math.min(foc?1.5:1.45,dn.p+dy*.006))}}};
+cv.onpointerup=cv.onpointercancel=e=>{const was=pz;ptr.delete(e.pointerId);if(ptr.size<2)pz=null;if(was){dn=null;return}
+if(dn&&!dn.m&&e.type=='pointerup'){const i=hitAt(e);if(i>=0&&!(foc&&i==cur))pick(i)}dn=null};
+cv.addEventListener('wheel',e=>{e.preventDefault();fl=null;V.d=Math.max(foc?1.2:2.5,Math.min(16,V.d*(1+e.deltaY*(e.ctrlKey?.01:.001))))},{passive:false});
+// 学習の流れ
+const HT=['<span class="cb">あおい</span> まるが 1つぶんだよ。','<span class="cr">あかい</span> 数は まるの かず(いくつぶん)だよ。','<span class="cy">きいろい</span> 数で ぜんぶを かぞえよう。'];
+// 効果音: WebAudioで その場で つくる(音ファイルなし)。おと OFF や、さいしょの タッチ前は ならさない
+let fxMS,fxUA=0;const fxPT=[0,2,4,7,9,12,14,16,19,21,24],
+fxCtx=()=>{if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();fxMS=AC.createDynamicsCompressor();const g=AC.createGain();g.gain.value=.9;fxMS.connect(g);g.connect(AC.destination)}if(AC.state=='suspended')AC.resume();return AC},
+fxTone=(f,t0=0,d=.16,o={})=>{const c=fxCtx(),t=c.currentTime+t0,q=c.createOscillator(),g=c.createGain();q.type=o.type||'sine';q.frequency.setValueAtTime(f,t);if(o.to)q.frequency.exponentialRampToValueAtTime(o.to,t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(o.v||.15,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);q.connect(g);g.connect(fxMS);q.start(t);q.stop(t+d+.03)},
+fxNoise=(t0,d,f0,f1,v)=>{const c=fxCtx(),t=c.currentTime+t0,n=c.sampleRate*d|0,b=c.createBuffer(1,n,c.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=Math.random()*2-1;const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=b;f.type='bandpass';f.Q.value=1.2;f.frequency.setValueAtTime(f0,t);f.frequency.exponentialRampToValueAtTime(f1,t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+d*.3);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(fxMS);s.start(t)},
+fxTable={
+pick:()=>{fxTone(392,0,.1,{to:588,type:'triangle',v:.2});fxTone(784,.07,.16,{v:.1})},
+whoosh:()=>fxNoise(0,.5,500,2200,.06),
+back:()=>{fxTone(660,0,.1,{to:440,type:'triangle',v:.16});fxTone(440,.08,.16,{to:330,type:'triangle',v:.14})},
+ring:()=>{fxTone(523,0,.25,{v:.12});fxTone(784,.06,.3,{v:.1});fxTone(1046,.12,.3,{v:.07})},
+badge:()=>{fxTone(660,0,.1,{type:'triangle',v:.17});fxTone(880,.1,.16,{type:'triangle',v:.17})},
+count:(k,N)=>{const f=392*2**(fxPT[N<=11?k-1:Math.round((k-1)*10/(N-1))]/12);fxTone(f,0,.2,{type:'triangle',v:.2});fxTone(f*2,0,.1,{v:.05})},
+done:()=>{fxTone(1046,0,.12,{v:.12});fxTone(1318,.1,.12,{v:.12});fxTone(1568,.2,.35,{v:.14})},
+flip:()=>{fxTone(900,0,.04,{type:'square',v:.05});fxTone(620,.05,.05,{type:'square',v:.05})},
+ok:()=>[523,659,784,1046].forEach((f,i)=>fxTone(f,i*.09,i>2?.3:.14,{type:'triangle',v:.17})),
+ng:()=>{fxTone(240,0,.16,{type:'triangle',v:.14,to:200});fxTone(190,.17,.24,{type:'triangle',v:.14,to:150})},
+hm:()=>fxTone(330,0,.14,{type:'triangle',v:.1,to:270}),
+ok2:()=>{[523,659,784,1046,1318].forEach((f,i)=>fxTone(f,i*.08,i>3?.4:.14,{type:'triangle',v:.17}));fxNoise(.35,.4,3000,6000,.03)},
+all:()=>{[523,659,784,1046,784,1046,1318].forEach((f,i)=>fxTone(f,i*.11,i>5?.55:.14,{type:'triangle',v:.17}));fxTone(1046,.66,.55,{v:.08});fxTone(1568,.66,.55,{v:.06})},
+key:()=>fxTone(1300,0,.03,{type:'square',v:.025}),
+blip:()=>fxTone(880,0,.09,{v:.12}),
+tick:()=>fxTone(1600,0,.025,{v:.03}),
+click:()=>fxTone(700,0,.06,{type:'triangle',v:.12})};
+/* ===== よみあげ(音声) =====
+   ① YOMI.read(text): 数字・しき・かんじ・カタカナ・読みに ゆれの ある ことばを「ぜんぶ ひらがな」に して かえす
+   ② TTS: Web Speech API。さいしょの タッチで むおんの ウォームアップ → 2かいめから すぐ しゃべれる。
+      ・sfx が なりおわってから しゃべる(効果音と かさならない)
+      ・タッチ・キー入力で すぐ とまる(こたえを うつ ジャマを しない)
+      ・同じ ぶんの くりかえしは みじかく / ながい ぶんは 先頭の 2文まで */
+let VO=1,sfxEnd=0;try{VO=localStorage.getItem('kk_vo')=='0'?0:1}catch(e){}
+const YOMI=(()=>{
+const O=['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'],
+TH=['','せん','にせん','さんぜん','よんせん','ごせん','ろくせん','ななせん','はっせん','きゅうせん'],
+HU=['','ひゃく','にひゃく','さんびゃく','よんひゃく','ごひゃく','ろっぴゃく','ななひゃく','はっぴゃく','きゅうひゃく'],
+TT=['','ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ','とお'],
+dg=s=>[...s].map(d=>d=='0'?'ぜろ':O[d]).join(''),
+/* 0〜9999 を ひらがなに(4=よん 7=なな 9=きゅう に そろえる)。それ いじょうは 1けたずつ */
+plain=n=>n>9999?dg(String(n)):n===0?'ぜろ':TH[n/1000%10|0]+HU[n/100%10|0]+((n/10%10|0)?((n/10%10|0)>1?O[n/10%10|0]:'')+'じゅう':'')+O[n%10],
+/* ほ→ぽ/ぼ  ひ→ぴ/び */
+sv=(r,m)=>({ほ:['ぽ','ぼ'],ひ:['ぴ','び']}[r[0]]||[r[0],r[0]])[m]+r.slice(1),
+/* g: k=いっ・ろっ・はっ・じゅっ(こ/かい) p=k+ぽ/ぼ(ほん/ひき) s=いっ・はっ・じゅっ のみ(せっと/さつ/しゅう) N=かわらない T=ひとつ・ふたつ
+   h=1 の とき「ひと」(ひとはこ・ひとかご) */
+CT=[['ほん|ぽん|ぼん|本','ほん','p'],['ひき|ぴき|びき|匹','ひき','p'],
+['こ|個','こ','k'],['かい|回','かい','k'],
+['せっと|セット','せっと','s'],['さつ|冊','さつ','s'],['しゅう|週','しゅう','s'],
+['まい|枚','まい','N'],['だい|台','だい','N'],['れつ|列','れつ','N'],['だん|段','だん','N'],['ぎょう|行','ぎょう','N'],['ようび|曜日','ようび','N'],['ぶん|分','ぶん','N'],
+['はこ|箱','はこ','N',1],['かご','かご','N',1],['びん|瓶','びん','N',1],['こっぷ|コップ','こっぷ','N',1],['けーす|ケース','けーす','N',1],
+['ぐみ|くみ|組','くみ','N',1],['ふくろ|袋','ふくろ','N',1],['さら|皿','さら','N',1],['ぱっく|パック','ぱっく','N',1],['つ','つ','T']],
+TK={};CT.forEach(([ks,r,g,h])=>ks.split('|').forEach(k=>TK[k]={r,g,h}));
+const RX=Object.keys(TK).sort((a,b)=>b.length-a.length).join('|'),
+GEM={k:[1,6,8],p:[1,6,8],s:[1,8]},
+/* 数 n(null=「なん」)+ 単位 c → ひらがな */
+cnt=(n,c)=>{const g=c.g;
+if(g=='T')return n==null?'いくつ':n>=1&&n<=10?TT[n]:plain(n)+'こ';
+if(n==null)return 'なん'+(g=='p'?sv(c.r,1):c.r);
+if(c.h&&n===1)return 'ひと'+c.r;
+let s=plain(n),gm=0,v3=0,r=c.r;
+if(g!='N'&&n<=9999){const o=n%10,t=n/10%10|0,h=n/100%10|0;
+ if(o){if(GEM[g].includes(o)){s=s.replace(/(いち|ろく|はち)$/,m=>({いち:'いっ',ろく:'ろっ',はち:'はっ'}[m]));gm=1}else if(o==3&&g=='p')v3=1}
+ else if(t){s=s.replace(/じゅう$/,'じゅっ');gm=1}
+ else if(h&&g!='s'){s=s.replace(/ゃく$/,'ゃっ');gm=1}}
+if(g=='p')r=gm?sv(r,0):v3?sv(r,1):r;
+return s+r},
+/* 読みに ゆれの ある ことば(ながい ものから 先に あてる)。ここに たすだけで ぜんぶの ばめんに きく */
+W=[['かけ算','かけざん'],['わり算','わりざん'],['たし算','たしざん'],['ひき算','ひきざん'],['九九','くく'],
+['何人','なんにん'],['友だち','ともだち'],['入れる','いれる'],['入り','いり'],
+['数','かず'],['何','なに'],['見','み'],['中','なか'],['絵','え'],['文','ぶん'],['算','さん'],
+['本','ほん'],['個','こ'],['枚','まい'],['匹','ひき'],['箱','はこ'],['瓶','びん'],['組','くみ'],['列','れつ'],['段','だん'],['台','だい'],
+['週','しゅう'],['曜日','ようび'],['袋','ふくろ'],['足','そく'],['行','ぎょう'],['分','ぶん'],['回','かい'],['冊','さつ'],['皿','さら']],
+WD={日:'にち',月:'げつ',火:'か',水:'すい',木:'もく',金:'きん',土:'ど'},
+NQ=new RegExp('([何○])('+RX+')','g'),DR=new RegExp('(\\d+)('+RX+')?','g'),
+Y={eq:'わ', /* ＝ の よみ。「わ」=「は」(「は」だと 「は」と よむ エンジンが ある)。「いこーる」に かえても よい */
+kata:true, /* カタカナも ひらがなに そろえる(ながい ぼいんの ー は のこす) */
+read(src){let t=String(src==null?'':src);
+ t=t.replace(/<[^>]*>/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/[．]/g,'.').replace(/[，]/g,',');
+ t=t.replace(/(\d),(?=\d{3}(?!\d))/g,'$1').replace(/(\d)[ヶヵ]/g,'$1こ').replace(/(\d)ケ(?!ース)/g,'$1こ').replace(/づつ|ずづ|づづ/g,'ずつ');
+ /* しきの きごう */
+ t=t.replace(/\s*[×＊*]\s*/g,' かける ').replace(/\s*÷\s*/g,' わる ').replace(/\s*[＋+]\s*/g,' たす ').replace(/\s*[−－]\s*/g,' ひく ').replace(/\s*[＝=]\s*/g,' '+Y.eq+' ');
+ t=t.replace(/[⇄↔]/g,' と ').replace(/[→▶▷◀◁✓✔]/g,' ');
+ /* 「何こ」「○こずつ」→ なんこ / 「□」→ しかく */
+ t=t.replace(NQ,(m,q,c)=>cnt(null,TK[c])).replace(/○/g,'まる').replace(/[□▢]/g,'しかく');
+ /* 数 + 単位 → 音便まで ひらがな */
+ t=t.replace(/(\d+)\.(\d+)/g,(m,a,b)=>plain(+a)+'てん'+dg(b));
+ t=t.replace(DR,(m,d,c)=>c?cnt(+d,TK[c]):plain(+d));
+ /* ようび */
+ t=t.replace(/([日月火水木金土])(?:曜日|曜|ようび)/g,(m,d)=>WD[d]+'ようび');
+ W.forEach(([a,b])=>{t=t.split(a).join(b)});
+ /* きごう・かっこ */
+ t=t.replace(/[「」『』"“”]/g,'').replace(/[（(]/g,'、').replace(/[）)]/g,'').replace(/[：:]/g,'、').replace(/[／/・]/g,' ').replace(/…/g,'、').replace(/[〜~]/g,'');
+ if(Y.kata)t=t.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
+ t=t.replace(/\s+/g,' ').trim();
+ /* 作る ときの ミスを コンソールで しらせる(かんじ・すうじ・アルファベットが のこった) */
+ const left=t.match(/[\u4e00-\u9fff々A-Za-z0-9]/g);if(left&&typeof console!='undefined')console.warn('[yomi] ひらがなに できなかった もじ:',[...new Set(left)].join(''),'←',src);
+ return t}};
+return Y})();
+const fxDur={pick:.25,whoosh:.5,back:.3,ring:.45,badge:.3,count:.22,done:.5,flip:.12,ok:.5,ng:.45,hm:.15,ok2:.75,all:1.5,key:.04,blip:.1,tick:.03,click:.08};
+const TTS=(()=>{
+const ss=window.speechSynthesis;if(!ss||!window.SpeechSynthesisUtterance)return null;
+let voice=null,hold=null,pend=0,tk=0,warmed=0,last='',lastT=0;
+const T={na:false,rate:.9,pitch:1.05,onvoice:null,
+/* 日本語の こえを えらぶ(きれいな じゅん)。一つも なければ na=true(ボタンを かくす)。ざっと よみこみ前(0こ)は ようすみ */
+pickVoice(){const vs=ss.getVoices();if(vs.length){const ja=vs.filter(v=>/^ja([-_]|$)/i.test(v.lang));
+ if(!ja.length){T.na=true;voice=null}else{T.na=false;voice=null;
+  for(const re of [/nanami|ななみ/i,/kyoko|きょうこ/i,/o-?ren/i,/google.*(日本語|japanese)/i,/haruka|ayumi|sayaka/i]){voice=ja.find(v=>re.test(v.name));if(voice)break}
+  voice=voice||ja.find(v=>v.localService)||ja[0]}}
+ if(T.onvoice)T.onvoice()},
+mk(s){const u=new SpeechSynthesisUtterance(s);u.lang='ja-JP';if(voice)u.voice=voice;u.rate=T.rate;u.pitch=T.pitch;return u},
+/* むおんの ウォームアップ: 1回目の タッチで 音量0の「あ」を よませて エンジンと こえを おこしておく(さいしょの 発話の おくれを へらす) */
+warm(){if(warmed)return;warmed=1;try{T.pickVoice();const u=T.mk('あ');u.volume=0;u.rate=2;ss.speak(u)}catch(e){}},
+/* しゃべる。o.n=いくつの 文まで / o.d=おくらせる ms / o.again=同じ文でも ぜんぶ よむ(「きく」ボタン) / o.force=よみあげ OFF でも よむ */
+say(raw,o={}){if(!(o.force||VO)||T.na||!raw)return;
+ const S=String(raw).replace(/<[^>]*>/g,'').match(/[^。！？!?]+[。！？!?]*/g)||[];
+ const full=S.slice(0,o.n||2).join('').trim();if(!full)return;
+ const now=performance.now();let t=full;if(!o.again&&full===last&&now-lastT<2e4)t=S[0].trim();last=full;lastT=now;
+ const y=YOMI.read(t);if(!y)return;
+ const my=++tk;pend=1;if(hold){hold=null;try{ss.cancel()}catch(e){}}
+ setTimeout(()=>{if(my!==tk)return;pend=0;
+  const go=u=>{hold=u;u.onend=()=>{if(hold===u)hold=null};
+   u.onerror=e=>{if(hold===u)hold=null;
+    /* オンラインの こえが ネットで しっぱいしたら、本体の こえに かえて 1回だけ やりなおす */
+    const lv=!u._r&&e&&/network|synthesis|unavailable/.test(e.error||'')&&u.voice&&!u.voice.localService&&ss.getVoices().find(v=>/^ja([-_]|$)/i.test(v.lang)&&v.localService);
+    if(lv){voice=lv;const r=T.mk(y);r._r=1;go(r)}};
+   try{if(ss.paused)ss.resume();ss.speak(u)}catch(e){hold=null}};
+  go(T.mk(y))},Math.max(o.d||0,sfxEnd-now)+90)},
+/* しゃべっている さいちゅう(か よやく中)だけ とめる。ウォームアップは そのまま */
+stop(){if(hold||pend){tk++;pend=0;hold=null;try{ss.cancel()}catch(e){}}}};
+T.pickVoice();if(ss.addEventListener)ss.addEventListener('voiceschanged',T.pickVoice);else ss.onvoiceschanged=T.pickVoice;
+document.addEventListener('visibilitychange',()=>{if(document.hidden){T.stop();warmed=0}});
+return T})();
+['pointerdown','touchend','click','keydown'].forEach(e=>addEventListener(e,()=>{fxUA=1;try{fxCtx()}catch(_){}if(TTS&&VO)TTS.warm()},true));
+/* 見まわす操作では案内を止めない。答えの入力に移ったときだけ止める。
+   問題やフィードバックの切替は TTS.say、OFF は TTS.stop が処理する。 */
+addEventListener('input',e=>{if(TTS&&e.target.matches('input,textarea,select'))TTS.stop()},true);
+function sfx(n,a,b){if(!on||!fxUA)return;try{fxTable[n](a,b);sfxEnd=Math.max(sfxEnd,performance.now()+(fxDur[n]||.1)*1e3)}catch(e){}}
+const z2h=v=>v.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).trim();
+/* 画面の ことばを だすと 同時に よみあげる。3つめの 引数 v: false=よまない / 文字列=その 文を よむ(画面と ちがう 読みあげ用) / 省略=画面の ことば */
+function vs(el,k,v){if(v===false||!TTS)return;const c=typeof v=='string';TTS.say(c?v:el.textContent,{n:c?9:k=='ok'?3:2})}
+function say(t,k,v){const m=$('msg');m.textContent=t;m.className=k+'-t';vs(m,k,v)}
+function sayH(h,k,v){const m=$('msg');m.innerHTML=h;m.className=k+'-t';vs(m,k,v)}
+/* たて・よこ どちらでも いい もんだい: ヒントを おす まえは どちらの しきも せいかい。ヒントを おした あと(たて⇄よこ を おした ときも)は、いま 見せている むきの しきだけ せいかい。ほかの むきの しきを かいたら、そちらへ じどうで きりかえる */
+const NT0=$('nt').textContent;
+function ntUpd(){const s=cur>=0?SP[cur]:null;if(!s||s.gr.length<2){$('nt').textContent=NT0;return}const d=s.gr[gi].dir;$('nt').textContent=hint>0?`いまの ヒントは ${d}に まとめて いるよ。${d}の しきで こたえよう。「たて⇄よこ」で かえられるよ。`:NT0}
+function pick(i){const same=i==cur;cur=i;foc=true;$('bk').hidden=false;hov(-1);SP.forEach((s,j)=>s.ft=j==i||j==SP[i].lk?1:0);const s=SP[i];fly({...s.cp,d:fit(s.cp)});fx(s);sfx('pick');if(same)return;gi=0;hint=0;show=false;ok1=ok2=false;ntUpd();$('idle').hidden=true;$('work').hidden=false;$('ttl').textContent=s.n;$('tg').hidden=$('nt').hidden=s.gr.length<2;document.querySelectorAll('.n').forEach(e=>e.value='');say('','w');if(TTS)TTS.say(s.n,{n:1});$('why').hidden=true;if(!matchMedia('(pointer:coarse)').matches)$('e1').focus({preventScroll:true})}
+let LV=1;try{LV=+localStorage.getItem('kk_lv')||1}catch(e){}
+const nz=v=>z2h(v).replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96)).replace(/\s/g,'');
+/* 「だん」と「れつ」は どちらでも ○ */
+const nw=v=>{const t=nz(v);return /^(だん|れつ|段|列)$/.test(t)?'だん/れつ':t};const wsay=(t,k,v)=>{$('wm').textContent=t;$('wm').className=k+'-t';vs($('wm'),k,v)};
+// せつめいの レベル: 1=ぜんぶ えらぶ / 2=あなあき(えらぶ) / 3=あなあき(かく) / 4=じぶんの ことばで かく
+/* LV1 の ごとうごとの ひとこと(せいかいの ことばは いわない) */
+const WM={sw:'1つぶんの 数と いくつぶんの 数が、しきと おなじ じゅんに なっているかな？ 絵を 見て たしかめよう。',un:'「いくつぶん」は まとまりの 数だよ。まとまりの なまえを 絵で たしかめよう。',zen:'1つぶんの 数は、ぜんぶの 数とは ちがうよ。絵を 見て 1つぶんを かぞえよう。'};
+function why(){const s=SP[cur],q=s.gr[gi],{a,b}=q,u=s.u,c=a*b,w=$('why');w.hidden=false;w4=0;let h=`<p><b>なぜ <span class="cb">${a}</span>×<span class="cr">${b}</span> の しきに なるのかな？</b> `;
+/* LV1: ぜんぶの せんたくしに「ずつ」と「ぶん」を いれる(「ずつ」さがしだけでは とけない)。
+   せいかい=1つぶんの 数が さき・まとまりの なまえ。ごとう=sw(1つぶんと いくつぶんが ぎゃく) / un(「ぶん」の まえが まとまりでなく 1つの たんい) 。
+   sw が ほかの むきの せいかいと おなじ 文に なる もんだい(つくえ: れつ×れつ)は、ずつ=ぜんぶ の zen に さしかえる */
+if(LV==1){const zu=n=>`<span class="cb">${n}${u}ずつ</span>`,bn=(n,g)=>`<span class="cr">${n}${g}ぶん</span>`,fm=`<span class="cb">${a}</span>×<span class="cr">${b}</span>`,sj=s.gr.some(x=>x!==q&&x.per==q.per&&x.a==b&&x.b==a),
+o=shuf([[1,`${q.per} ${zu(a)}、${bn(b,q.g)} あるから、${fm}`,''],sj?[0,`${q.per} ${zu(c)}、${bn(b,q.g)} あるから、${fm}`,'zen']:[0,`${q.per} ${zu(b)}、${bn(a,q.g)} あるから、${fm}`,'sw'],[0,`${q.per} ${zu(a)}、${bn(b,u)} あるから、${fm}`,'un']]);
+h+='せつめいに なっているのは どれ？</p>'+o.map(([k,t,w])=>`<button class="opt" data-ok="${k}" data-w="${w}">${t}</button>`).join('')}
+else if(LV==4)h+='じぶんの ことばで せつめいを かいてみよう。</p><textarea id="wt" class="bl" rows="3" placeholder="「ずつ」や「ぶん」を つかって かいてね"></textarea><button id="wc">これで いい</button>';
+else{const g=q.g,og=s.gr.map(x=>x.g).filter(x=>x!=g),WP=[...new Set(SP.flatMap(t=>t.gr.map(x=>x.g)))],bs=[...new Set([g,...og,...({'だん':['れつ'],'れつ':['だん']}[g]||[])])],ws=shuf([...bs,...shuf(WP.filter(x=>!bs.includes(x)))].slice(0,4)),ns=shuf([...new Set([a,b,c,a+b])]),
+bl=(n,w,r)=>LV==2?`<select class="bl${w?' bw':''}${r?' b'+r:''}" data-a="${n}"><option value="">□</option>${(w?ws:ns).map(v=>`<option>${v}</option>`).join('')}</select>`:`<input class="bl${w?' bw':''}${r?' b'+r:''}" data-a="${n}" ${w?'':'inputmode="numeric" '}maxlength="${w?5:3}" autocomplete="off">`;
+h+=(LV==2?'□に はいる 数を えらんで、せつめいを かんせい させよう。':'□に 数を かいて、せつめいを かんせい させよう。')+`</p><p class="sen">1${bl(g,1)}に ${bl(a,0,'a')}<span class="cb">${u}ずつ</span>、${bl(b,0,'b')}${bl(g,1)}<span class="cr">ぶん</span> あるから、${bl(a,0,'a')}×${bl(b,0,'b')}${LV==3?`＝${bl(c,0,'c')}<span class="cy">${u}</span>`:''}</p><button id="wc">これで いい</button>`}
+w.innerHTML=h+'<p id="wm"></p>'}
+function fin(){ok2=true;const was=done.has(cur);done.add(cur);sfx(was?'ok':done.size==SP.length?'all':'ok2');$('cnt').textContent=done.size+' / '+SP.length;const q=SP[cur].gr[gi];/* おてほんの 文: 「1かごに 8こずつ、3かごぶん あるから、8×3」 */
+wsay(was?'せいかい！ こちらの 見かたでも せつめい できたね。':done.size==SP.length?'ぜんぶ みつけたよ！ ほかにも きょうしつの 中で さがしてみよう。':'せいかい！ 友だちに じぶんの ことばでも せつめいしてみよう。','ok',
+`せいかい！ ${LV==4?'たとえば、':''}${q.per} ${q.a}${SP[cur].u}ずつ、${q.b}${q.g}ぶん あるから、${q.a}×${q.b}。`+(!was&&done.size==SP.length?' ぜんぶ みつけたよ！':''))}
+/* ===== レベル4の はんてい: できるだけ いろいろな いいかたを せいかいに する =====
+   むずかしく ならないように「1つぶんの 数(a)」と「いくつぶんの 数(b)」を ことばの つかいかたから さがす。
+   ■1つぶんの 数(a)と みなす:  a+「ずつ」(8本ずつ・8こずつ・はちほんずつ・ふたつずつ・づつ)
+        / a+この もんだいの たんい(8本入り・1ケースに8本・8本の ケース)/ aが・aを・aの(8が 3つ・8を 3かい たす)
+        / 「1つぶんの 数は 8」/ 8+8+8 (aを bかい たす)
+   ■いくつぶんの 数(b)と みなす: bの あとに ことばが ある(3ケースぶん・3ケース・3つ・3かい・3ぶん・3れつ)
+        / 「いくつぶんは 3」「まとまりの 数は 3」。ただし「3本ぶん」(「ぶん」の まえが 1つぶんの たんい)は だめ
+   ■かん数字・ぜんかく数字・ひらがなの 数(はち・みっつ・はっぽん)・カタカナ・かんじの たんい(箱・列)も OK
+   ■じゅんじょは じゆう(「3ケースぶん、8本ずつ」も OK)。「ずつ」が なくても OK(あとで「ずつも つかおう」と ひとこと)。
+     ZR=true に すると「ずつ」を ひっす に もどせる
+   ■ダメに するのは: 数が ちがう/aと bの いれかえ(3本ずつ、8ケースぶん)/「8ケースずつ」/「3本ぶん」/bが ない/ずつ の まえに 数が ない
+   2かい まちがえたら、数を ふせた みほんを だす */
+const ZR=false;
+let w4=0;
+window.kk4log=()=>{try{return JSON.parse(localStorage.getItem('kk_l4')||'[]')}catch(e){return[]}}; /* せんせい用: コンソールで kk4log() → 児童の にゅうりょく ログ(さいご200けん) */
+const KN={一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,〇:0},
+kn=v=>v.replace(/([一二三四五六七八九]?)十([一二三四五六七八九]?)|[一二三四五六七八九〇]/g,(m,x,y)=>m.includes('十')?String((x?KN[x]:1)*10+(y?KN[y]:0)):String(KN[m])),
+UNI=[['本','ほん'],['個','こ'],['枚','まい'],['匹','ひき'],['箱','はこ'],['瓶','びん'],['組','くみ'],['列','れつ'],['段','だん'],['台','だい'],['週','しゅう'],['曜日','ようび'],['袋','ふくろ'],['足','そく'],['行','ぎょう'],['分','ぶん']],
+NUM={じゅう:10,じゅっ:10,きゅう:9,はち:8,はっ:8,ろく:6,ろっ:6,なな:7,しち:7,よん:4,さん:3,いち:1,いっ:1,に:2,ご:5,ひとつ:1,ふたつ:2,みっつ:3,よっつ:4,いつつ:5,むっつ:6,ななつ:7,やっつ:8,ここのつ:9},
+CT='(?=(?:ほん|ぽん|ぼん|こ|まい|ひき|ぴき|びき|せっと|ずつ|ぶん|つ|けーす|はこ|ばこ|びん|かご|こっぷ|ぐみ|くみ|だい|れつ|だん|しゅう|ようび|にち|ならび|ぎょう|ふくろ|そく|さつ|かい|ばい|ぱっく))',
+ITEM={ほん:'(?:ほん|ぽん|ぼん)',まい:'まい',こ:'こ(?!っぷ)',ひき:'(?:ひき|びき|ぴき)',せっと:'(?:せっと|くみ|ぐみ)'},
+GEN='(?:まとまり|かたまり|ぐるーぷ|ふくろ|ぱっく|けーす|ばこ|はこ|びん|かご|こっぷ|ぐみ|くみ|だい|れつ|だん|ぎょう|ならび|しゅう|ようび|にち)',
+norm=v=>{let t=kn(z2h(v)).replace(/[ヶヵ]/g,'こ').replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
+UNI.forEach(([k,h])=>{t=t.split(k).join(h)});
+t=t.replace(/づ[つづ]|ずづ/g,'ずつ').replace(/ひとつ|ふたつ|みっつ|よっつ|いつつ|むっつ|ななつ|やっつ|ここのつ/g,m=>NUM[m]+'つ')
+.replace(new RegExp('(じゅう|じゅっ|きゅう|はち|はっ|ろく|ろっ|なな|しち|よん|さん|いち|いっ)'+CT,'g'),m=>NUM[m])
+.replace(new RegExp('(に|ご)'+CT,'g'),(m,w,o,s0)=>/[ぁ-んー一-龥]/.test(s0[o-1]||'')?m:NUM[m]);
+return t.replace(/(\d)\s+(?=\d)/g,'$1|').replace(/\s+/g,'')}
+/* 返り値 {m:ふごうかく の ひとこと(せいかいは ''), zu:「ずつ」を つかったか} */
+function chk4(raw,s,q){const t=norm(raw),{a,b}=q,zu=t.includes('ずつ'),U=ITEM[norm(s.u)]||norm(s.u),per=new Set,cnt=new Set;let bad=0,ub=0;
+for(const m of t.matchAll(/(\d+)([^\d|]{0,5}?)ずつ/g)){const g=m[2];if(g&&!new RegExp('^'+U).test(g)&&new RegExp('^'+GEN).test(g))bad=1;else per.add(+m[1])}
+for(const m of t.matchAll(new RegExp('(\\d+)(?='+U+')','g')))per.add(+m[1]);
+for(const m of t.matchAll(/(\d+)(?=[がをの])/g))per.add(+m[1]);
+for(const m of t.matchAll(/(?:1つぶん|1ぶん|いちぶん)(?:の?(?:数|かず))?(?:は|が|を|で|=|＝|:|：)?(\d+)/g))per.add(+m[1]);
+for(const m of t.matchAll(/(?:いくつぶん|まとまりの?(?:数|かず)|ぶんの?(?:数|かず))(?:は|が|を|で|=|＝|:|：)?(\d+)/g))cnt.add(+m[1]);
+for(const m of t.matchAll(/\d+/g)){if(+m[0]!=b)continue;const f=t.slice(m.index+m[0].length,m.index+m[0].length+9);
+if(new RegExp('^'+U+'ぶん').test(f)){ub=1;continue}
+if(/^[ぁ-んー一-龥々]/.test(f)&&!/^ずつ/.test(f))cnt.add(b)}
+if(new RegExp('(?:^|\\D)'+a+'(?:[+＋]'+a+'){'+(b-1)+'}(?!\\d)').test(t)){per.add(a);cnt.add(b)}
+const no=m=>({m,zu});
+/* ふごうかくの りゆうを しらべて、ひとこと アドバイスを だす(かずは ばらさない) */
+const c=a*b,R=(n,x)=>new RegExp('(?:^|\\D)'+n+x),ex=`「${q.per} ○${s.u}ずつ、○${q.g}ぶん あるから」`;
+if(/(.)\1{3,}/.test(t))return no(`ことばが つながって いないみたい。${ex}のように 文で かいてみよう。`);
+if(/÷|わりざん|わって|をわる|でわる/.test(t))return no('ここは わり算では なくて、かけ算の せつめいだよ。おなじ 数ずつ はいった まとまりが いくつぶん あるかを かいてみよう。');
+const eq=t.match(/[×x＊*]\d+[=＝](\d+)/);if(eq&&+eq[1]!=c)return no('しきの こたえが ちがうみたい。もういちど けいさんして たしかめよう。');
+if(/[+＋]|たす|たし|そくす|ぷらす/.test(t)&&!/ずつ|ぶん|かい|ど/.test(t)&&!new RegExp('(?:'+a+'[+＋]){'+(b-1)+'}'+a).test(t))return no('2つの 数を たすのでは ないよ。かけ算は おなじ 数を なんども たす ことだよ。どの 数を なんかい たすのかな？');
+if(R(c,'[^\\d|]{0,5}?ずつ').test(t))return no('「ずつ」の まえに かいた 数は、ぜんぶの 数だよ。1つぶんの 数を かいてみよう。');
+if(ZR&&!zu)return no('「ずつ」という ことばを つかって かいてみよう。');
+if(!per.has(a)){
+if(bad)return no('「ずつ」の まえは、1つぶんの 数と たんいだよ。まとまりの なまえでは ないよ。');
+if(per.has(b))return no('「ずつ」の まえと「ぶん」の まえが ぎゃくに なっているみたい。かけ算は「1つぶんの 数」×「いくつぶん」の じゅんだよ。絵を 見て 1つぶんを たしかめよう。');
+if(per.size)return no(zu?'「ずつ」の まえの 数は、1つぶんの 数だよ。絵を 見て 1つぶんを たしかめよう。':'1つぶんの 数が ちがうみたい。絵を 見て 1つぶんを たしかめよう。');
+return no(zu?'「ずつ」の まえに、1つぶんの 数を すうじで かいてみよう。':'「ずつ」という ことばを つかって、1つぶんの 数を かいてみよう。')}
+if(!cnt.has(b)){
+if(ub)return no('「ぶん」の まえは、まとまりの なまえだよ。絵を 見て たしかめよう。');
+if(!new RegExp('(?:^|\\D)'+b+'(?!\\d)').test(t))return no(`「${b}」の 数も つかって かいてみよう。`);
+return no(`「${b}」は なにの いくつぶん かな？ 「${b}ぶん」や まとまりの なまえを つかって かいてみよう。`)}
+return no('')}
+function wchk(){if(ok2||cur<0)return;const s=SP[cur],q=s.gr[gi];
+if(LV==4){const t=z2h($('wt').value);if(t.replace(/\s/g,'').length<3){sfx('hm');wsay('すこし かいてみよう。','w');return}
+const r=chk4(t,s,q);try{const L=JSON.parse(localStorage.getItem('kk_l4')||'[]');L.push([cur,gi,t,r.m||'OK']);localStorage.setItem('kk_l4',JSON.stringify(L.slice(-200)))}catch(e){}if(r.m){w4++;sfx('ng');wsay(r.m+(w4>=2?` ヒント:「${q.per} ○${s.u}ずつ、○${q.g}ぶん あるから」の ように かけるよ。`:''),'w');return}
+fin();if(!r.zu)$('wm').textContent+=' 「ずつ」も つかうと、もっと よく つたわるよ。';return}
+const B=[...document.querySelectorAll('#why .bl')];if(B.some(e=>!nz(e.value))){sfx('hm');wsay('□を ぜんぶ うめてね。','w');return}
+let bad=0;B.forEach(e=>{const g=nw(e.value)==nw(e.dataset.a);e.classList.toggle('ng',!g);e.classList.toggle('ok',g);if(!g)bad++});
+if(bad){sfx('ng');wsay('あかい ところを もういちど 見なおそう。「ずつ」の 数が さきに くるよ。まとまりの なまえは 絵を 見て きめよう。','w')}else fin()}
+function chk(){if(cur<0||ok1)return;const v=[...document.querySelectorAll('.n')].map(e=>z2h(e.value));
+if(v.some(t=>!/^\d+$/.test(t))){sfx('hm');say('□に 数を いれてね。','w');return}
+const[x,y,z]=v.map(Number),s=SP[cur],ms=s.gr.map((q,j)=>q.a==x&&q.b==y&&x*y==z?j:-1).filter(j=>j>=0);
+if(ms.length&&hint>0&&!ms.includes(gi)){gi=ms[0];show=true;sfx('flip');say(`${s.gr[gi].dir}に まとまりを 見つけたんだね！ ヒントも ${s.gr[gi].dir}に きりかえたよ。もういちど「これで いい」を おしてね。`,'w');ntUpd();return}
+const k=ms.length?(ms.includes(gi)?gi:ms[0]):-1;
+if(k>=0){ok1=true;gi=k;show=true;hint=Math.max(hint,2);const o=s.gr[1-k];sfx('ok');sayH(`せいかい！ <span class="cb">${x}</span>×<span class="cr">${y}</span>＝<span class="cy">${z}</span>。ぜんぶで <span class="cy">${z}${s.u}</span>。`+(o?` ${o.dir}に 見ると <span class="cb">${o.a}</span>×<span class="cr">${o.b}</span>＝<span class="cy">${z}</span> とも かけるよ。`:''),'ok',`せいかい！ ${x}×${y}＝${z}。 ぜんぶで ${z}${s.u}。 なぜ ${x}×${y}の しきに なるのかな？`);why()}
+else{sfx('ng');if(x*y==z&&s.gr.some(q=>q.a==y&&q.b==x)){show=true;hint=Math.max(hint,1);say('「1つぶんの 数 × いくつぶん」の じゅんに かくよ。あおい まるの 中は いくつかな？','w')}
+else say(x*y!=z?'かけ算の こたえを もういちど たしかめよう。':z!=s.gr[0].a*s.gr[0].b?'かけ算は できているけれど、ぜんぶの 数が ちがうみたい。絵の 数を もういちど たしかめよう。':s.gr.length>1?'ぜんぶの 数は あってるよ。たてか よこの ならびを 見て、おなじ 数ずつに わけてみよう。':'ぜんぶの 数は あってるよ。おなじ 数ずつ はいっている まとまりを 見つけて、しきを つくろう。','w')}}
+$('why').onclick=e=>{if(ok2)return;const o=e.target.closest('.opt');if(o){if(o.dataset.ok=='1'){o.classList.add('ok');fin()}else{o.classList.add('ng');sfx('ng');wsay(WM[o.dataset.w]||WM.sw,'w')}return}if(e.target.id=='wc')wchk()};
+$('why').onkeydown=e=>{if(e.key=='Enter'&&e.target.tagName=='INPUT')wchk()};
+$('lv').value=LV;$('lv').onchange=()=>{LV=+$('lv').value;try{localStorage.setItem('kk_lv',LV)}catch(e){}sfx('click');if(cur>=0&&ok1){ok2=false;why()}};
+const go=d=>pick((cur+d+SP.length)%SP.length);
+document.addEventListener('keydown',e=>{if(/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)||cur<0)return;if(e.key=='ArrowRight')go(1);if(e.key=='ArrowLeft')go(-1)});
+$('chk').onclick=chk;$('pv').onclick=()=>go(-1);$('nx').onclick=()=>go(1);
+$('hb').onclick=()=>{if(cur<0)return;hint=Math.min(3,hint+1);show=true;sfx(hint==1?'ring':hint==2?'badge':'click');if(hint>2)yel.key='';sayH(HT[hint-1],'w',hint>2?false:void 0);ntUpd()};
+$('tg').onclick=()=>{sfx('flip');gi=(gi+1)%SP[cur].gr.length;show=true;hint=Math.max(hint,1);say(`${SP[cur].gr[gi].dir}に まとめて 見たよ。`,'w',false);ntUpd();if(ok1){ok2=false;why()}};
+const all=c=>{sfx('back');foc=false;SP.forEach(s=>s.ft=1);$('bk').hidden=true;fly(c)};$('bk').onclick=()=>all(OV);document.addEventListener('keydown',e=>{if(e.key=='Escape'&&foc)all(OV)});
+/* いろの ヒント ON/OFF: 青(1つぶん)・赤(いくつぶん)・黄(ぜんぶ)の 色を、せつめいの 文・しきの ます・まとめの 文で まとめて きりかえる */
+let CH=1;try{CH=localStorage.getItem('kk_ch')=='0'?0:1}catch(e){}
+const chSet=()=>{document.body.classList.toggle('nch',!CH);$('lb').textContent='いろの ヒント '+(CH?'ON':'OFF');$('lb').setAttribute('aria-pressed',CH?'true':'false')};
+$('lb').onclick=()=>{CH=CH?0:1;try{localStorage.setItem('kk_ch',CH)}catch(e){}chSet();sfx('click')};chSet();
+$('sb').onclick=()=>{on=!on;$('sb').textContent='おと '+(on?'ON':'OFF');sfx('blip')};
+/* よみあげ: ON/OFF は ほぞん。声が 使えない たんまつ(日本語の 声なし・非対応)では ボタンごと かくす */
+function voUI(){const ok=!!TTS&&!TTS.na;$('vb').hidden=!ok;$('rd').hidden=!ok||!VO;$('ri').hidden=!ok||!VO;$('vb').textContent='よみあげ '+(VO?'ON':'OFF');$('vb').setAttribute('aria-pressed',VO?'true':'false')}
+$('vb').onclick=()=>{VO=VO?0:1;try{localStorage.setItem('kk_vo',VO)}catch(e){}voUI();if(VO){TTS.warm();TTS.say('よみあげを はじめるよ。',{n:1})}else TTS.stop();sfx('blip')};
+$('rd').onclick=()=>{if(cur<0||!TTS)return;const w=$('why').hidden?'':($('wm')?$('wm').textContent:''),m=w||$('msg').textContent;TTS.say(SP[cur].n+' '+m,{n:4,again:1})};
+if(TTS)TTS.onvoice=voUI;voUI();
+document.querySelectorAll('.n').forEach(e=>{e.inputMode='numeric';e.maxLength=3;e.autocomplete='off';e.oninput=()=>sfx('key');e.onkeydown=ev=>{if(ev.key=='Enter')chk()}});
+/* 表紙: タップで はじまる(この タッチが おと・よみあげの さいしょの タッチを かねる) */
+const INTRO=$('idle').textContent;
+$('ri').onclick=()=>{if(TTS)TTS.say(INTRO,{n:4,again:1})};
+{const cvr=$('cover'),st=()=>{if(cvr.dataset.d)return;cvr.dataset.d=1;cvr.classList.add('out');setTimeout(()=>cvr.remove(),500);sfx('pick');if(TTS)TTS.say(INTRO,{n:4,again:1})};cvr.onclick=st;$('go0').focus({preventScroll:true})}
+$('cnt').textContent='0 / '+SP.length;fly(OV);loop();
+</script></body></html>
