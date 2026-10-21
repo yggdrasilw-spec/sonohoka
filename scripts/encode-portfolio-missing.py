@@ -38,8 +38,10 @@ def encode(file):
         lower = directory / f'caption-{index}.png'
         band(data['title'], caption).save(lower)
         clip = directory / f'clip-{index}.mp4'
-        run(['-ss', str(start), '-i', str(directory / 'source.webm'), '-loop', '1', '-i', str(lower),
-             '-filter_complex', '[0:v]fps=20,pad=1280:720:0:0:color=0x152a43,tpad=stop_mode=clone:stop_duration=1[base];[base][1:v]overlay=0:640,format=yuv420p[v]',
+        span = data.get('sourceDurations', data['durations'])[index]
+        speed = duration / span
+        run(['-ss', str(start), '-t', str(span), '-i', str(directory / 'source.webm'), '-loop', '1', '-i', str(lower),
+             '-filter_complex', f'[0:v]setpts={speed}*(PTS-STARTPTS),fps=20,pad=1280:720:0:0:color=0x152a43,tpad=stop_mode=clone:stop_duration=1[base];[base][1:v]overlay=0:640,format=yuv420p[v]',
              '-map', '[v]', '-an', '-t', str(duration), '-c:v', 'libx264', '-preset', 'fast', '-crf', '24', '-threads', '2', str(clip)])
     manifest = directory / 'concat.txt'
     manifest.write_text('\n'.join(f"file 'clip-{i}.mp4'" for i in range(5)), encoding='utf-8')
@@ -47,7 +49,7 @@ def encode(file):
     run(['-f', 'concat', '-safe', '0', '-i', str(manifest), '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
          '-t', '9.5', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '64k', '-shortest', '-movflags', '+faststart', str(output)])
     poster = Image.new('RGB', (1280, 720))
-    poster_index = 0 if data['id'] == 47 else 4 if data['id'] in {20, 23, 27, 41, 42, 72} else 2
+    poster_index = data.get('posterIndex', 0 if data['id'] == 47 else 4 if data['id'] in {20, 23, 27, 41, 42, 72} else 2)
     poster.paste(Image.open(directory / f'frame-0{poster_index}.png'), (0, 0))
     poster.paste(band(data['title'], data['captions'][0 if poster_index == 0 else 2 if poster_index == 4 else 1]), (0, 640))
     poster.save(output.with_suffix('.png'), optimize=True)
