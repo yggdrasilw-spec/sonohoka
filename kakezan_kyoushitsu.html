@@ -377,7 +377,7 @@ blip:()=>fxTone(880,0,.09,{v:.12}),
 tick:()=>fxTone(1600,0,.025,{v:.03}),
 click:()=>fxTone(700,0,.06,{type:'triangle',v:.12})};
 /* ===== よみあげ(音声) =====
-   ① YOMI.read(text): 数字・しき・かんじ・カタカナ・読みに ゆれの ある ことばを「ぜんぶ ひらがな」に して かえす
+   ① YOMI.read(text): 数字・しき・かんじを読みへ変換。「は」で始まる語の発音補正はカタカナで残す
    ② TTS: Web Speech API。さいしょの タッチで むおんの ウォームアップ → 2かいめから すぐ しゃべれる。
       ・sfx が なりおわってから しゃべる(効果音と かさならない)
       ・タッチ・キー入力で すぐ とまる(こたえを うつ ジャマを しない)
@@ -443,6 +443,8 @@ read(src){let t=String(src==null?'':src);
  /* きごう・かっこ */
  t=t.replace(/[「」『』"“”]/g,'').replace(/[（(]/g,'、').replace(/[）)]/g,'').replace(/[：:]/g,'、').replace(/[／/・]/g,' ').replace(/…/g,'、').replace(/[〜~]/g,'');
  if(Y.kata)t=t.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
+ /* 助詞の「は」と区別して発音させる。ひらがな化の後で、対象の単語だけカタカナにする。 */
+ t=t.replace(/はね|はこ|はな|はっぱ|はじめる/g,w=>({はね:'ハネ',はこ:'ハコ',はな:'ハナ',はっぱ:'ハッパ',はじめる:'ハジメル'})[w]);
  t=t.replace(/\s+/g,' ').trim();
  /* 作る ときの ミスを コンソールで しらせる(かんじ・すうじ・アルファベットが のこった) */
  const left=t.match(/[\u4e00-\u9fff々A-Za-z0-9]/g);if(left&&typeof console!='undefined')console.warn('[yomi] ひらがなに できなかった もじ:',[...new Set(left)].join(''),'←',src);
