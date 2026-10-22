@@ -101,3 +101,11 @@
 `node scripts/qa-portfolio-kana.cjs --capture-poster` で実画面の静止画 `media/portfolio-kana-feedback-lab.png` を更新し、カードの検索・分類、PC/390px/320px、画像、リンクからの起動、配布物ハッシュとESモジュールのMIMEを確認する。通常の再検証は同コマンドの引数なし。`node scripts/qa-portfolio.cjs` で作品集全体も確認する。ローカルの検証・プレビューサーバーは `.mjs` をJavaScriptとして配信する。
 
 2026-10-17：かな研究室を86字のお手本と手書き認識後の比較フローへ更新。認識モジュールとモデルJSON・重みも同期対象に含める。SHA-256はテキストの改行をLFに正規化し、バイナリはそのまま計算する。
+
+## 2026年10月22日の九九教材追加
+
+教材番号92「かけざんの ぼうけん（1〜9のだん）」を2年生・算数に追加。`Downloads/kuku_1to9.html` と同一内容を `kuku_1to9.html` に登録。具体物のまとまり、アレイ図、色ヒントと5段階の練習を紹介する。掲載数89本、動画88本、非公開教材の静止画1本。
+
+実ブラウザで5の段を選び、5こずつ2回増やしてアレイ図・色ヒントへ切り替える操作を録画した。字幕付き9.5秒のH.264/AAC動画とPNGは `media/portfolio-92-intro.*`。再収録は `node scripts/capture-portfolio-92.cjs`（Windowsでは必要に応じて `PLAYWRIGHT_BROWSERS_PATH=C:/Users/user/AppData/Local/ms-playwright`）、書き出しは `python scripts/encode-portfolio-missing.py 92`。元録画・編集区間は `.portfolio-work/demo-92/`、採用区間と字幕は `scripts/portfolio-demos-92.json` に保存する。
+
+`node scripts/qa-portfolio-92.cjs` で9段の起動・九九表81式・練習解答・PC/390px/320px・カード検索・学年・ポスター・モーダル再生と末尾シークを確認。作品集全体は `node scripts/qa-portfolio.cjs --videos`。
