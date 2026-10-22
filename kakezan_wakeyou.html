@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>かけ算を わけよう</title>
+<style>
+:root{--bg:#eef3f6;--card:#fff;--ink:#26323a;--sub:#6c7a84;--line:#c9d6de;--c1:#f5a83b;--c1bg:#fdeccb;--t1:#b36200;--c2:#2f9fd0;--c2bg:#d4ecf8;--t2:#0b6d98;--btn:#e3ecf1;--on:#26323a;--onink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161d22;--card:#212b32;--ink:#eaf0f3;--sub:#9fb0ba;--line:#3b4a54;--c1:#f7b755;--c1bg:#4a3a1c;--t1:#ffc470;--c2:#4db4e2;--c2bg:#183e52;--t2:#7cc9ee;--btn:#2d3a43;--on:#eaf0f3;--onink:#161d22}}
+:root[data-theme="dark"]{--bg:#161d22;--card:#212b32;--ink:#eaf0f3;--sub:#9fb0ba;--line:#3b4a54;--c1:#f7b755;--c1bg:#4a3a1c;--t1:#ffc470;--c2:#4db4e2;--c2bg:#183e52;--t2:#7cc9ee;--btn:#2d3a43;--on:#eaf0f3;--onink:#161d22}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"UD デジタル 教科書体 N","Hiragino Maru Gothic ProN","Yu Gothic",system-ui,sans-serif;line-height:1.5}
+main{min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) clamp(340px,36vw,440px);align-items:start;gap:10px;padding:10px}
+aside{display:flex;flex-direction:column;justify-content:center;gap:10px;min-height:calc(100dvh - 20px)}
+.card{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:12px;margin:0;animation:rise .8s cubic-bezier(.2,1.5,.4,1) both}
+aside .card:nth-child(1){animation-delay:.2s}aside .card:nth-child(2){animation-delay:.35s}
+@keyframes rise{from{opacity:0;transform:translateY(28px) scale(.94)}to{opacity:1;transform:none}}
+.fig{min-width:0;min-height:0;padding:8px;position:sticky;top:10px;height:calc(100dvh - 20px);display:flex;flex-direction:column}
+.diagram-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;border-radius:12px}
+.diagram-scroll:focus-visible{outline:3px solid var(--c2);outline-offset:-3px}
+.diagram-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 2px 2px;flex-shrink:0}
+#zoomHelp{font-size:13px;margin:0;flex-basis:100%}
+.fig.enlarged #fig{width:900px;height:auto;max-height:none}
+.factor{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fig #hc{margin-top:8px;border:0;border-top:2px solid var(--line);border-radius:0;padding:8px 2px 2px;animation:none}
+#fig{width:100%;height:100%;display:block;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.cell{cursor:pointer}
+.cell rect{stroke:var(--line);stroke-width:1;transition:fill .4s}
+.cell circle{transition:fill .4s}
+.cell.p1 rect{fill:var(--c1bg)}.cell.p1 circle{fill:var(--c1)}
+.cell.p2 rect{fill:var(--c2bg)}.cell.p2 circle{fill:var(--c2)}
+.t1{color:var(--t1)}.t2{color:var(--t2)}
+.pn{display:inline-block;font-variant-numeric:tabular-nums}
+.eq{font-size:clamp(18px,4.4vh,28px);font-weight:700;text-align:center;line-height:1.45}
+.eq2{font-size:clamp(18px,4vh,26px);font-weight:700;text-align:center}
+.ans{margin:6px auto 0;width:fit-content;background:var(--on);color:var(--onink);border-radius:16px;padding:4px 18px;font-size:clamp(22px,5.4vh,34px);font-weight:700}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:6px 0}
+.lab{flex-basis:100%;font-size:14px;color:var(--sub)}
+button{font:inherit;font-weight:700;color:var(--ink);background:var(--btn);border:2px solid var(--line);border-radius:14px;min-width:42px;height:44px;padding:0 10px;cursor:pointer;box-shadow:0 4px 0 var(--line);touch-action:manipulation;
+transition:transform .22s cubic-bezier(.3,1.8,.5,1),box-shadow .22s,background-color .3s,color .3s,border-color .3s}
+@media (hover:hover){button:hover{transform:translateY(-2px) scale(1.06)}}
+button:active{transform:translateY(3px) scale(.93);box-shadow:0 1px 0 var(--line);transition-duration:.06s}
+button:focus-visible,input:focus-visible{outline:3px solid var(--c2);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--on);color:var(--onink);border-color:var(--on)}
+.mute{font-size:20px;padding:0}
+.num{font-size:28px;font-weight:700;min-width:1.6ch;text-align:center}
+.x{font-size:24px;font-weight:700}
+input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--c1)}
+.cut{font-size:20px;font-weight:700;color:var(--ink)}
+.hint{font-size:13px;color:var(--sub);margin:2px 0 0}
+@media (max-width:760px),(max-aspect-ratio:1/1){main{grid-template-columns:1fr}aside{min-height:0}.fig{position:static;height:auto}.diagram-scroll{flex:none;max-height:50dvh}#fig{height:auto}}
+@media (prefers-reduced-motion:reduce){.card{animation:none}button{transition:none}}
+:root{--hb:#2f6fdf;--hr:#e0484f;--hy:#f7c92b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--hb:#6ea6ff;--hr:#ff7a80}}
+:root[data-theme="dark"]{--hb:#6ea6ff;--hr:#ff7a80}
+#cells{transition:opacity .4s}#hint{pointer-events:none}
+.hz{transform-box:fill-box;transform-origin:center;opacity:0;animation:hp .5s cubic-bezier(.3,1.7,.5,1) forwards}
+.hz.st{opacity:1;animation:none}
+@keyframes hp{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:none}}
+.cb{color:var(--hb)}.cr{color:var(--hr)}.cy{background:var(--hy);color:#3a2c00;padding:0 6px;border-radius:6px}
+.hm{font-size:clamp(15px,2.9vh,20px);font-weight:700;line-height:1.7;margin:4px 0 0;min-height:3.4em}
+.hm .cy{display:inline-block;animation:yy .6s ease-out both}
+@keyframes yy{40%{transform:scale(1.35)}}
+.hb1{color:var(--t1)}.hb2{color:var(--t2)}
+@media (prefers-reduced-motion:reduce){.hz{opacity:1;animation:none}#cells{transition:none}.hm .cy{animation:none}}
+</style>
+</head>
+<body>
+<main>
+<div class="card fig" id="figureCard"><div class="diagram-scroll" id="diagramScroll" tabindex="0" role="region" aria-label="アレイ図。大きくした図は上下左右に動かせます"><svg id="fig" role="img" aria-label="アレイ図"><g id="cells"></g><g id="deco"></g><g id="fx"></g><g id="hint"></g></svg></div>
+<div class="diagram-tools"><button class="mute" id="mute" aria-label="おとを けす">🔊</button><button id="zoom" aria-pressed="false" aria-controls="diagramScroll">ずを おおきく</button><p id="zoomHelp" hidden>おおきくした ずは、ゆびや スクロールで うごかせるよ。</p></div></div>
+
+<aside>
+<div class="card">
+  <div class="eq" id="eq1"><span class="pn" id="e0"></span> ＝ <span class="pn t1" id="e1"></span> ＋ <span class="pn t2" id="e2"></span></div>
+  <div class="eq2" id="eq2">＝ <span class="pn t1" id="p1"></span> ＋ <span class="pn t2" id="p2"></span> ＝ <span class="pn" id="ps"></span></div>
+  <div class="ans" id="ans">こたえ　<span class="pn" id="aa"></span>×<span class="pn" id="ab"></span> ＝ <span class="pn" id="ar"></span></div>
+</div>
+
+<div class="card">
+  <div class="row"><span class="lab">かける かず</span>
+    <span class="factor" role="group" aria-label="まえの数"><button data-s="a-" aria-label="まえの数を減らす">－</button><span class="num pn" id="na"></span><button data-s="a+" aria-label="まえの数を増やす">＋</button></span>
+    <span class="x">×</span>
+    <span class="factor" role="group" aria-label="あとの数"><button data-s="b-" aria-label="あとの数を減らす">－</button><span class="num pn" id="nb"></span><button data-s="b+" aria-label="あとの数を増やす">＋</button></span>
+  </div>
+  <div class="row"><span class="lab">わける ほう</span>
+    <button id="ma" aria-pressed="true"><span class="pn" id="mat"></span></button><button id="mb" aria-pressed="false"><span class="pn" id="mbt"></span></button>
+  </div>
+  <div class="row"><span class="lab">きりかた　<span class="cut"><span class="pn t1" id="ck"></span> と <span class="pn t2" id="cn"></span></span></span>
+    <button data-s="k-" aria-label="きる位置を戻す">◀</button>
+    <input type="range" id="sl" min="1" max="6" step="1" value="5" aria-label="きる位置">
+    <button data-s="k+" aria-label="きる位置を進める">▶</button>
+  </div>
+  <p class="hint">ずの ○ を タップしても、そこで きれるよ。</p>
+</div>
+<div class="card" id="hc">
+  <div class="row"><span class="lab">なぜ その しきに なるの？</span>
+    <button id="hb">ヒント</button>
+    <button id="h0" aria-pressed="true"></button><button class="hb1" id="h1" aria-pressed="false"></button><button class="hb2" id="h2" aria-pressed="false"></button>
+  </div>
+  <p class="hm" id="hm"></p>
+</div>
+</aside>
+</main>
+
+<script>
+/* ===== ばね(スプリング)アニメーション ===== */
+const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+class P{constructor(x=0,k=200,c=17){this.x=this.t=x;this.v=0;this.k=k;this.c=RM?c*1.8:c}
+ step(d){this.v+=(this.k*(this.t-this.x)-this.c*this.v)*d;this.x+=this.v*d}
+ get still(){return Math.abs(this.t-this.x)<.002&&Math.abs(this.v)<.02}}
+const go=(p,t,inst)=>{p.t=t;if(inst)p.x=t};
+
+/* ===== 効果音(Web Audio で合成) ===== */
+let ac=null,mst=null,nb=null,muted=false,lastTick=0;
+try{muted=localStorage.getItem('wk_mute')==='1'}catch(e){}
+function unlock(){try{if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();mst=ac.createGain();mst.gain.value=.6;
+ const cp=ac.createDynamicsCompressor();mst.connect(cp);cp.connect(ac.destination)}
+ if(ac.state==='suspended')ac.resume()}catch(e){}}
+addEventListener('pointerdown',unlock,{passive:true,capture:true});addEventListener('keydown',unlock,{passive:true,capture:true});
+const PENT=[0,2,4,7,9],note=(i,b=330)=>b*Math.pow(2,(PENT[i%5]+12*Math.floor(i/5))/12);
+function tone(f,{d=.18,type='sine',v=.22,at=0,to=0}={}){
+ if(!ac||muted)return;const t=ac.currentTime+at,o=ac.createOscillator(),g=ac.createGain();
+ o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.005);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+ o.connect(g);g.connect(mst);o.start(t);o.stop(t+d+.03)}
+function swoosh({d=.25,f0=500,f1=2500,v=.15,at=0,q=1.4}={}){
+ if(!ac||muted)return;
+ if(!nb){nb=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const a=nb.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}
+ const t=ac.currentTime+at,s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+ s.buffer=nb;f.type='bandpass';f.Q.value=q;f.frequency.setValueAtTime(f0,t);f.frequency.exponentialRampToValueAtTime(f1,t+d);
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+d*.25);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+ s.connect(f);f.connect(g);g.connect(mst);s.start(t);s.stop(t+d+.03)}
+const pluck=(f,at=0,v=.2)=>{tone(f,{d:.34,v,at});tone(f*2,{d:.12,type:'triangle',v:v*.3,at})};
+const sThunk=(at=.1)=>tone(150,{d:.16,to:62,v:.26,at});
+const sCut=k=>{swoosh({d:.16,f0:3800,f1:700,v:.17,q:2});tone(1800,{d:.04,type:'square',v:.05});pluck(note(k+2,260),.02,.24);sThunk(.1)};
+const sTick=k=>{const n=performance.now();if(n-lastTick<35)return;lastTick=n;pluck(note(k+2,260),0,.16);tone(2200,{d:.025,type:'square',v:.035})};
+const sGrow=n=>{swoosh({d:.2,f0:500,f1:2200,v:.1});for(let i=0;i<Math.min(n,7);i++)pluck(note(i+2),i*.05,.15);if(!n)pluck(note(4),0,.18)};
+const sShrink=n=>{swoosh({d:.25,f0:2400,f1:400,v:.12});for(let i=0;i<Math.min(Math.max(n,1),5);i++)tone(note(7-i,330),{d:.14,type:'triangle',v:.12,at:i*.05})};
+const sMode=()=>{swoosh({d:.38,f0:500,f1:3000,v:.16,q:1.1});pluck(note(5),.06,.2);pluck(note(8),.16,.2);sThunk(.3)};
+const sNo=()=>tone(190,{d:.13,to:120,type:'square',v:.09});
+const sBoing=()=>{tone(200,{d:.24,to:440,v:.2});tone(400,{d:.2,to:800,type:'triangle',v:.06})};
+const sDing=at=>{pluck(note(10),at,.16);pluck(note(12),at+.08,.12)};
+$=id=>document.getElementById(id);
+function muteUI(){const b=$('mute');b.textContent=muted?'🔇':'🔊';b.setAttribute('aria-label',muted?'おとを だす':'おとを けす')}
+muteUI();
+
+/* ===== 状態と図形 ===== */
+const S={a:7,b:6,mode:'a',k:5};
+const C=30,G=18,R=11,LM=120,TM=24,NS='http://www.w3.org/2000/svg';
+const el=(t,at,par)=>{const e=document.createElementNS(NS,t);for(const k in at)e.setAttribute(k,at[k]);par&&par.appendChild(e);return e};
+const fig=$('fig'),cellsG=$('cells'),deco=$('deco'),fxG=$('fx'),sl=$('sl');
+const nOf=()=>S.mode==='a'?S.a:S.b;
+const clampK=()=>{S.k=Math.min(Math.max(S.k,1),nOf()-1)};
+const brace=L=>{const h=L/2,e=Math.min(10,L/4);return `M0 ${-h}Q8 ${-h} 8 ${-h+e}L8 ${-e}Q8 0 16 0Q8 0 8 ${e}L8 ${h-e}Q8 ${h} 0 ${h}`};
+const vw=new P(0,120,20),vh=new P(0,120,20);
+const cells=new Map(),parts=[];
+let downCell=null;
+
+function mkBrace(col){
+ const g=el('g',{},deco),path=el('path',{fill:'none',stroke:'var(--sub)','stroke-width':2,'stroke-linecap':'round'},g);
+ const lb=el('text',{y:8,'text-anchor':'middle','font-size':24,'font-weight':700,fill:`var(${col})`},deco);
+ return {g,path,lb,txt:'',w:30,cx:new P(0),cy:new P(0),L:new P(0,190,15),th:new P(0,150,10),lx:new P(0),lc:new P(0),ls:new P(0,260,13)}}
+const B0=mkBrace('--ink'),B1=mkBrace('--t1'),B2=mkBrace('--t2'),braces=[B0,B1,B2];
+const cl={g:el('g',{},deco),cx:new P(0),cy:new P(0),len:new P(0,170,16),th:new P(0,140,11),gl:new P(0,120,9)};
+cl.line=el('line',{stroke:'var(--sub)','stroke-dasharray':'5 6','stroke-linecap':'round'},cl.g);
+
+function mk(i,j,x,y,p){
+ const g=el('g',{class:'cell p'+p,transform:`translate(${x+C/2} ${y+C/2}) scale(0)`},cellsG);el('rect',{x:-C/2,y:-C/2,width:C,height:C,rx:4},g);const d=el('circle',{r:R},g);
+ const c={key:i+','+j,i,j,g,dot:d,p,pt:p,x:new P(x,190,17),y:new P(y,190,17),sc:new P(0,260,12),rot:new P(RM?0:-140,170,9),ds:new P(1,320,11),wake:0,woke:true,dying:false};
+ c.sc.t=1;c.rot.t=0;g._c=c;cells.set(c.key,c);return c}
+function kill(c,now){c.dying=true;c.g.style.pointerEvents='none';c.sc.t=0;c.rot.t=c.rot.x+(Math.random()<.5?-1:1)*(RM?0:160);c.wake=now+(RM?0:Math.random()*150);c.woke=false}
+
+function placeBrace(b,o,inst){
+ go(b.cx,o.cx,inst);go(b.cy,o.cy,inst);go(b.L,o.L,false);go(b.th,o.th,inst);
+ if(o.txt!==b.txt){b.txt=o.txt;b.lb.textContent=o.txt;b.w=b.lb.getComputedTextLength()||o.txt.length*15;if(!inst)b.ls.x=1.35}
+ go(b.lx,o.pos==='L'?LM-34-b.w/2:o.pos==='R'?o.cx+26+b.w/2:o.cx,inst);
+ go(b.lc,o.pos==='B'?o.cy+36:o.cy,inst);b.ls.t=1}
+
+function layout(kind){
+ const {a,b,mode,k}=S,ma=mode==='a',now=performance.now(),init=kind==='init',n=nOf();
+ const W=b*C+(ma?0:G),H=a*C+(ma?G:0);
+ go(vw,LM+W+(ma?120:12),init);go(vh,TM+H+(ma?12:70),init);
+ let born=0,killed=0;
+ for(const c of [...cells.values()])if((c.i>=a||c.j>=b)&&!c.dying){kill(c,now);killed++}
+ for(let i=0;i<a;i++)for(let j=0;j<b;j++){
+  const idx=ma?i:j,p=idx<k?1:2,x=LM+j*C+(!ma&&j>=k?G:0),y=TM+i*C+(ma&&i>=k?G:0);
+  let c=cells.get(i+','+j);
+  if(!c){c=mk(i,j,x,y,p);c.wake=RM?now:now+(init?120+(i+j)*34:Math.min(born,14)*26);c.woke=false;born++}
+  else{
+   if(c.dying){c.dying=false;c.g.style.pointerEvents='';c.sc.t=1;c.rot.t=0;c.wake=now;c.woke=false}
+   const ch=Math.abs(c.x.t-x)>.5||Math.abs(c.y.t-y)>.5||c.pt!==p;
+   c.x.t=x;c.y.t=y;c.pt=p;
+   if(ch){c.wake=RM?now:now+(kind==='mode'?(i+j)*10:Math.min(Math.abs(idx-(k-.5)),12)*14);c.woke=false}
+  }
+  c.g.setAttribute('data-idx',idx);
+ }
+ const L1=k*C,L2=(n-k)*C,hy=TM+H+8;
+ placeBrace(B0,{cx:LM-8,cy:TM+H/2,L:H,th:180,txt:`${a}×${b}`,pos:'L'},init);
+ if(ma){const x=LM+W+8;
+  placeBrace(B1,{cx:x,cy:TM+L1/2,L:L1,th:0,txt:`${k}×${b}`,pos:'R'},init);
+  placeBrace(B2,{cx:x,cy:TM+L1+G+L2/2,L:L2,th:0,txt:`${a-k}×${b}`,pos:'R'},init);
+ }else{
+  placeBrace(B1,{cx:LM+L1/2,cy:hy,L:L1,th:90,txt:`${a}×${k}`,pos:'B'},init);
+  placeBrace(B2,{cx:LM+L1+G+L2/2,cy:hy,L:L2,th:90,txt:`${a}×${b-k}`,pos:'B'},init);
+ }
+ const ccx=ma?LM+W/2:LM+k*C+G/2,ccy=ma?TM+k*C+G/2:TM+H/2,clen=(ma?W:H)+14;
+ go(cl.cx,ccx,init);go(cl.cy,ccy,init);go(cl.len,clen,false);go(cl.th,ma?0:90,init);cl.gl.t=.6;
+ if(kind==='k'){cl.gl.x=1.1;burst(ccx,ccy,clen,ma)}
+ return {born,killed}}
+
+function burst(cx,cy,len,ma){
+ if(RM)return;
+ for(let q=0;q<14&&parts.length<90;q++){
+  const side=q%2?1:-1,off=(Math.random()-.5)*(len-16),sp=60+Math.random()*110,sj=(Math.random()-.5)*50;
+  const e=el('circle',{r:2.5+Math.random()*2.5,fill:side<0?'var(--c1)':'var(--c2)'},fxG);
+  parts.push({e,x:ma?cx+off:cx,y:ma?cy:cy+off,vx:ma?sj:side*sp,vy:ma?side*sp:sj,t:0,life:.45+Math.random()*.4,r:+e.getAttribute('r')})}}
+
+/* ===== 文字のアニメーション ===== */
+function pop(e,dir=0){if(RM||!e.animate)return;
+ e.animate(dir?[{transform:`translateY(${dir*55}%) scale(.7)`,opacity:.2},{transform:'none',opacity:1}]:[{transform:'scale(1.45)'},{transform:'scale(1)'}],
+  {duration:dir?380:430,easing:'cubic-bezier(.3,1.7,.5,1)'})}
+function setT(e,t,dir=0){t=String(t);if(e.textContent===t)return;e.textContent=t;pop(e,dir)}
+// Keep every displayed equation true, including animation frames.
+function roll(e,v){if(e._t===v)return;e._t=v;setT(e,v)}
+function texts(d){
+ const {a,b,mode,k}=S,n=nOf(),ma=mode==='a';
+ const p1=ma?k*b:a*k,p2=ma?(a-k)*b:a*(b-k);
+ setT($('e0'),`${a}×${b}`);setT($('e1'),ma?`${k}×${b}`:`${a}×${k}`);setT($('e2'),ma?`${a-k}×${b}`:`${a}×${b-k}`);
+ roll($('p1'),p1);roll($('p2'),p2);roll($('ps'),p1+p2);
+ const was=$('ar')._t;setT($('aa'),a);setT($('ab'),b);roll($('ar'),a*b);
+ if(was!==undefined&&was!==a*b&&!RM)$('ans').animate([{transform:'scale(1)'},{transform:'scale(1.18) rotate(-2deg)'},{transform:'scale(1)'}],{duration:520,easing:'ease-out'});
+ setT($('na'),a,d.key==='a'?d.d:0);setT($('nb'),b,d.key==='b'?d.d:0);
+ setT($('mat'),`${a}を わける`);setT($('mbt'),`${b}を わける`);
+ $('ma').setAttribute('aria-pressed',ma);$('mb').setAttribute('aria-pressed',!ma);
+ setT($('ck'),k);setT($('cn'),n-k)}
+
+/* ===== 更新 ===== */
+function update(kind,d={},src){
+ clampK();const r=layout(kind);texts(d);hReset();
+ sl.max=nOf()-1;sl.value=S.k;sl.setAttribute('aria-valuetext',`${S.k} と ${nOf()-S.k}に わける`);
+ fig.setAttribute('aria-label',`${S.a}こずつ ${S.b}れつの アレイ図。${$('e0').textContent}は ${$('e1').textContent}と ${$('e2').textContent}に わけられます`);
+ if(kind==='k')src==='cell'?sCut(S.k):sTick(S.k);
+ else if(kind==='mode')sMode();
+ else if(kind==='size'){d.d>0?sGrow(r.born):sShrink(r.killed);sDing(.5)}
+ wake()}
+function boing(){const now=performance.now();sBoing();
+ for(const c of cells.values())if(!c.dying){c.sc.x=1.12;if(!RM)c.rot.v+=(Math.random()-.5)*320}
+ cl.gl.x=1.1;wake()}
+function pickK(nk,src){nk=Math.min(Math.max(nk,1),nOf()-1);if(nk===S.k){boing();return}S.k=nk;update('k',{},src)}
+function shake(b){sNo();if(!RM&&b.animate)b.animate([{transform:'translateX(0)'},{transform:'translateX(-7px)'},{transform:'translateX(6px)'},{transform:'translateX(-3px)'},{transform:'none'}],{duration:320})}
+function setMode(m){if(S.mode===m)return;S.mode=m;S.k=Math.max(1,nOf()-2);clampK();
+ const bt=$(m==='a'?'ma':'mb');if(!RM)bt.animate([{transform:'scale(.85)'},{transform:'scale(1.12)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'});
+ update('mode',{},'cell')}
+
+document.addEventListener('click',e=>{
+ const g=e.target.closest('[data-idx]');if(g){pickK(+g.dataset.idx+1,'cell');return}
+ const b=e.target.closest('button');if(!b)return;
+ if(b.id==='mute'){muted=!muted;try{localStorage.setItem('wk_mute',muted?'1':'0')}catch(_){}muteUI();unlock();if(!muted)pluck(note(5),0,.2);return}
+ const s=b.dataset.s;if(!s)return;
+ const dd=s[1]==='+'?1:-1;
+ if(s[0]==='k'){const nk=S.k+dd;if(nk<1||nk>nOf()-1){shake(b);return}S.k=nk;update('k',{},'btn');return}
+ const key=s[0],old=S[key],nv=Math.min(12,Math.max(2,old+dd));
+ if(nv===old){shake(b);return}
+ S[key]=nv;update('size',{key,d:dd})});
+$('ma').onclick=()=>setMode('a');$('mb').onclick=()=>setMode('b');
+
+sl.oninput=()=>pickK(Math.round(+sl.value),'slider');
+$('zoom').onclick=()=>{const enlarged=$('figureCard').classList.toggle('enlarged');$('zoom').setAttribute('aria-pressed',enlarged);$('zoom').textContent=enlarged?'ずを もとに もどす':'ずを おおきく';$('zoomHelp').hidden=!enlarged};
+// Keep the explanation next to the array on narrow screens.
+const compact=matchMedia('(max-width:760px),(max-aspect-ratio:1/1)');
+function placeHint(){(compact.matches?$('figureCard'):document.querySelector('aside')).appendChild($('hc'))}
+compact.addEventListener('change',placeHint);placeHint();
+
+/* ○ に触ると ぷるっとする */
+document.addEventListener('pointerover',e=>{const g=e.target.closest('.cell'),c=g&&g._c;if(c&&!c.dying&&e.pointerType==='mouse'){c.ds.t=1.25;wake()}});
+document.addEventListener('pointerout',e=>{const g=e.target.closest('.cell'),c=g&&g._c;if(c&&!c.dying){c.ds.t=1;wake()}});
+document.addEventListener('pointerdown',e=>{const g=e.target.closest('.cell'),c=g&&g._c;if(c&&!c.dying){downCell=c;c.sc.t=.86;c.ds.t=.7;wake()}});
+const rel=()=>{if(downCell&&!downCell.dying){downCell.sc.t=1;downCell.ds.t=1;wake()}downCell=null};
+document.addEventListener('pointerup',rel);document.addEventListener('pointercancel',rel);
+
+/* ===== アニメーションループ(動きが止まったら自動で休む) ===== */
+let last=0,running=false;
+function wake(){if(!running){running=true;last=performance.now();requestAnimationFrame(tick)}}
+function tick(now){
+ const dt=Math.min(.034,(now-last)/1000);last=now;let act=false;
+ const stp=(...ps)=>{for(const p of ps){p.step(dt/2);p.step(dt/2);if(!p.still)act=true}};
+ for(const c of [...cells.values()]){
+  if(now<c.wake){act=true;continue}
+  if(!c.woke){c.woke=true;if(!c.dying){
+   if(c.p!==c.pt){c.p=c.pt;c.g.setAttribute('class','cell p'+c.p);c.ds.x=.35;c.sc.x=Math.max(c.sc.x,1)*1.14}
+   if(!RM)c.rot.v+=(Math.random()-.5)*220}}
+  stp(c.x,c.y,c.sc,c.rot,c.ds);
+  const s=Math.max(0,c.sc.x);
+  c.g.setAttribute('transform',`translate(${(c.x.x+C/2).toFixed(2)} ${(c.y.x+C/2).toFixed(2)}) rotate(${c.rot.x.toFixed(2)}) scale(${s.toFixed(3)})`);
+  c.dot.setAttribute('transform',`scale(${Math.max(0,c.ds.x).toFixed(3)})`);
+  if(c.dying&&c.sc.x<.03){c.g.remove();cells.delete(c.key)}}
+ for(const b of braces){
+  stp(b.cx,b.cy,b.L,b.th,b.lx,b.lc,b.ls);
+  b.g.setAttribute('transform',`translate(${b.cx.x.toFixed(2)} ${b.cy.x.toFixed(2)}) rotate(${b.th.x.toFixed(2)})`);
+  b.path.setAttribute('d',brace(Math.max(2,b.L.x)));
+  b.lb.setAttribute('transform',`translate(${b.lx.x.toFixed(2)} ${b.lc.x.toFixed(2)}) scale(${Math.max(0,b.ls.x).toFixed(3)})`)}
+ stp(cl.cx,cl.cy,cl.len,cl.th,cl.gl);
+ cl.g.setAttribute('transform',`translate(${cl.cx.x.toFixed(2)} ${cl.cy.x.toFixed(2)}) rotate(${cl.th.x.toFixed(2)})`);
+ const h=Math.max(0,cl.len.x)/2;
+ cl.line.setAttribute('x1',-h);cl.line.setAttribute('x2',h);
+ cl.line.setAttribute('opacity',Math.min(1,Math.max(0,cl.gl.x)).toFixed(2));
+ cl.line.setAttribute('stroke-width',(1.5+Math.max(0,cl.gl.x)*2).toFixed(2));
+ stp(vw,vh);fig.setAttribute('viewBox',`0 0 ${vw.x.toFixed(1)} ${vh.x.toFixed(1)}`);
+ for(let i=parts.length-1;i>=0;i--){const q=parts[i];q.t+=dt;const u=q.t/q.life;
+  if(u>=1){q.e.remove();parts.splice(i,1);continue}
+  const f=Math.pow(.03,dt);q.vx*=f;q.vy*=f;q.x+=q.vx*dt;q.y+=q.vy*dt;
+  q.e.setAttribute('cx',q.x.toFixed(1));q.e.setAttribute('cy',q.y.toFixed(1));
+  q.e.setAttribute('r',(q.r*(1-u*u)).toFixed(2));q.e.setAttribute('opacity',(1-u*u).toFixed(2));act=true}
+ if(act)requestAnimationFrame(tick);else running=false}
+
+/* ===== ヒント: 青=ずつ(1つぶん) 赤=いくつぶん(れつの数) 黄=ぜんぶ ===== */
+const hg=$('hint'),H={s:0,t:0},HB=['ヒント','つぎへ ▶','つぎへ ▶','おわり'];
+const pcs=()=>{const{a,b,mode,k}=S;return mode==='a'?[[0,a,0,b],[0,k,0,b],[k,a,0,b]]:[[0,a,0,b],[0,a,0,k],[0,a,k,b]]};
+const XX=j=>LM+j*C+(S.mode==='b'&&j>=S.k?G:0),YY=i=>TM+i*C+(S.mode==='a'&&i>=S.k?G:0);
+const hz=(t,at,st,d)=>{const e=el(t,at,hg);e.setAttribute('class',st?'hz st':'hz');if(!st)e.style.animationDelay=d+'s';return e};
+function bdg(cx,cy,n,fill,ink,st,d,snd){const g=hz('g',{},st,d);
+ el('circle',{cx,cy,r:9,fill,stroke:'#fff','stroke-width':1.5},g);
+ el('text',{x:cx,y:cy+4.5,'text-anchor':'middle','font-size':n>99?9:12,'font-weight':700,fill:ink},g).textContent=n;
+ if(!st&&snd)pluck(note(n%10+2),d,.13)}
+function hReset(){H.s=0;hRender()}
+function hRender(){
+ const P=pcs(),s=H.s,[r0,r1,c0,c1]=P[H.t],R=r1-r0,Nc=c1-c0,N=R*Nc,hm=$('hm');
+ hg.textContent='';cellsG.style.opacity=s?0.35:1;
+ P.forEach((q,i)=>{const b=$('h'+i);b.textContent=(i?'':'ぜんぶ ')+`${q[1]-q[0]}×${q[3]-q[2]}`;b.setAttribute('aria-pressed',i===H.t)});
+ $('hb').textContent=HB[s];
+ if(!s){hm.innerHTML='<span class="hint">「ヒント」を おすと、なぜ その しきに なるのか みせるよ。</span>';return}
+ for(let j=c0;j<c1;j++)hz('rect',{x:XX(j)+1.5,y:YY(r0)+1.5,width:C-3,height:YY(r1-1)+C-YY(r0)-3,rx:9,fill:'rgba(47,111,223,.15)',stroke:'var(--hb)','stroke-width':3.5},s>1,(j-c0)*.12);
+ for(let i=0;i<R;i++)bdg(XX(c0)+C/2,YY(r0+i)+C/2,i+1,'var(--hb)','#fff',s>1,.2+Nc*.12+i*.2,s===1);
+ if(s>1)for(let j=c0;j<c1;j++)bdg(XX(j)+C/2,YY(r0)-9.5,j-c0+1,'var(--hr)','#fff',s>2,(j-c0)*.3,s===2);
+ let T=0;
+ if(s>2){const st=Math.min(.14,3.5/N);let n=0;T=.3+N*st;
+  for(let j=c0;j<c1;j++)for(let i=r0;i<r1;i++){n++;bdg(XX(j)+C/2,YY(i)+C/2,n,'var(--hy)','#4a3800',false,.3+(n-1)*st,n<=40)}}
+ hm.innerHTML=[0,
+ `<span class="cb">あおい わく</span>が 1つぶん(1れつ)。1れつに <b class="cb">${R}</b>こ ずつ ならんでいるよ。`,
+ `<span class="cr">あかい 数</span>は れつの かず。<b class="cb">${R}</b>ずつの れつが <b class="cr">${Nc}</b>つ あるね。`,
+ `<span class="cy">きいろい 数</span>で ぜんぶを かぞえよう。<b class="cb">${R}</b>ずつの れつが <b class="cr">${Nc}</b>つ あるから、しきは <b class="cb">${R}</b>×<b class="cr">${Nc}</b>。ぜんぶで <b class="cy" style="animation-delay:${T}s">${N}</b>`][s];
+ if(!RM&&hm.animate)hm.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:350,easing:'ease-out'})}
+$('hb').onclick=()=>{H.s=(H.s+1)%4;hRender()};
+[0,1,2].forEach(i=>$('h'+i).onclick=()=>{H.t=i;H.s=1;hRender()});
+
+sl.max=nOf()-1;sl.value=S.k;
+update('init');
+</script>
+</body>
+</html>
