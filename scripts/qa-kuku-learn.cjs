@@ -117,8 +117,13 @@ async function main() {
     assert(await page.locator('#bRead').isEnabled());
     assert.match(await page.locator('#msg').innerText(), /さいせいできません/);
     await page.locator('#readSpeed').focus();await page.keyboard.press('End');
-    assert.equal(await page.locator('#readSpeedValue').innerText(),'2.5倍');
-    await page.keyboard.press('Home');
+    assert.equal(await page.locator('#readSpeedValue').innerText(),'3.5倍');
+    await page.locator('#bRead').click();
+    assert(Math.abs(await page.evaluate(()=>window.spoken.at(-1).rate)-3.5)<.00001);
+    await page.locator('#bStop').click();
+    await page.reload();await page.locator('#startBtn').click();await page.locator('.unit-card').first().click();await page.locator('#bPrac').click();
+    assert.equal(await page.locator('#readSpeedValue').innerText(),'3.5倍','maximum speed survives reload');
+    await page.locator('#readSpeed').focus();await page.keyboard.press('Home');
     assert.equal(await page.locator('#readSpeedValue').innerText(),'0.5倍');
     await page.keyboard.press('ArrowRight');
     assert.equal(await page.locator('#readSpeedValue').innerText(),'0.6倍');
