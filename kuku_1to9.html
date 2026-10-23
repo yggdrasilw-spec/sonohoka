@@ -196,10 +196,44 @@ body.learn .rw.learned{background:#edf6ed}
 body.learn .row-listen{gap:12px}
 .chant-reading{display:none}
 body.learn .chant-reading{display:block;font-size:clamp(18px,3.2vw,32px);line-height:1.5}
-body.learn .rw .rt2{display:none}
+body.learn #tb.l1 .rt2{display:none}
+body.learn #tb:not(.l1) .chant-reading{display:none}
+body.learn #tb.l2 .rt2{display:block;font-size:inherit}
+.learn-levels{display:none;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 8px}
+body.learn .learn-levels{display:flex}
+.learn-levels button{font-size:16px;padding:7px 15px}
+.learn-levels button[aria-pressed="true"]{background:#ff9a2e;color:#fff;box-shadow:0 4px 0 #d06f0c}
 body.learn .rw span:first-child{flex-basis:40%}
 @media(max-width:760px){body.learn #tb{flex:0 0 auto}}
 @media(max-width:540px){body.learn .rw{gap:4px;padding:6px;font-size:24px}body.learn .row-listen{flex-wrap:wrap;gap:0}body.learn .learned-control{flex-basis:58px;font-size:13px}body.learn .rw span:first-child{flex:0 0 100%}body.learn .chant-reading{flex:0 0 100%;font-size:22px} .lesson-tabs button{padding:8px 14px}}
+/* Chromebookのブラウザ内の高さを使い、操作欄と9行を一画面に収める。 */
+@media(min-width:900px) and (min-height:520px){
+  body.prac{height:100dvh;min-height:0;padding:6px 0;display:grid;grid-template-columns:minmax(260px,2fr) minmax(450px,3fr);grid-template-rows:38px auto auto auto 28px minmax(0,1fr) auto;grid-template-areas:"title tabs" "controls controls" "levels levels" "note note" "message message" "table table" "footer footer";gap:4px 8px;align-items:center;overflow:auto}
+  body.prac #ttl{grid-area:title;justify-self:center;font-size:26px;margin:0;padding:2px 24px}
+  body.prac .lesson-tabs{grid-area:tabs;justify-self:center;margin:0;gap:8px}
+  body.prac .lesson-tabs button{font-size:18px;padding:5px 20px}
+  body.prac .learn-controls,body.prac .question-controls{grid-area:controls;margin:0;gap:14px;font-size:16px}
+  body.prac .learn-controls button{font-size:18px;padding:6px 18px}
+  body.prac select{padding:5px}
+  body.prac .learn-levels{grid-area:levels;margin:0}
+  body.prac .learn-levels button{padding:5px 16px}
+  body.prac .learn-note{grid-area:note;margin:0;padding:0 8px;font-size:14px;line-height:1.4}
+  body.prac #msg{grid-area:message;margin:0;font-size:18px;line-height:1.3;min-height:0}
+  body.prac #prac{grid-area:table;width:98vw;max-width:1200px;height:100%;min-height:0;margin:0;justify-self:center;align-items:stretch;flex-wrap:nowrap}
+  body.prac #tb{display:flex;flex-direction:column;min-height:0;height:100%}
+  body.prac #tb.l5{display:none}
+  body.prac #tb h2{font-size:22px;padding:2px;flex:0 0 auto;line-height:1.2}
+  body.prac .rw{flex:1;min-height:0;padding:0 8px;font-size:clamp(18px,3.6vh,30px);gap:8px}
+  body.prac .row-listen{height:100%}
+  body.learn #tb{width:min(1120px,96vw);flex:0 1 1120px}
+  body.learn .chant-reading{font-size:clamp(18px,3.4vh,28px);line-height:1.2}
+  body.learn .learned-control{flex:0 0 112px;flex-direction:row;justify-content:center;gap:6px;font-size:14px;min-height:28px}
+  body.prac .btns{grid-area:footer;margin:0;gap:8px;justify-self:center}
+  body.prac .btns button{font-size:16px;padding:6px 14px}
+  body.prac #qc{justify-content:center;gap:10px;min-height:0}
+  body.prac #q{font-size:clamp(36px,7vh,64px)}
+  body.prac #ch button{font-size:clamp(24px,4.5vh,36px);padding:6px 12px}
+}
 </style>
 </head>
 <body class="s-title">
@@ -224,6 +258,12 @@ body.learn .rw span:first-child{flex-basis:40%}
 <div class="learn-controls"><button id="bRead">▶ だんを とおして きく</button><button id="bStop" disabled>■ とめる</button>
 <label>よむ はやさ <select id="readSpeed"><option value="0.6">ゆっくり</option><option value="0.85" selected>ふつう</option><option value="1">すこし はやく</option><option value="1.2">はやく</option></select></label>
 <label><input id="readRepeat" type="checkbox"> くりかえす</label></div>
+<div class="learn-levels" role="group" aria-label="おぼえようの レベル">
+<button type="button" data-learn-level="1" aria-pressed="true">レベル1：よみかた つき</button>
+<button type="button" data-learn-level="2" aria-pressed="false">レベル2：ふりがな なし</button>
+<button type="button" data-learn-level="3" aria-pressed="false">レベル3：しきだけ</button>
+<button type="button" data-learn-level="4" aria-pressed="false">レベル4：こたえを かくす</button>
+</div>
 <p class="learn-note">「おぼえた」に チェックした しきは、とおして よむときに とばすよ。</p>
 <div class="question-controls"><label>もんだいの じゅんばん <select id="questionOrder"><option value="forward">じゅんばん</option><option value="reverse">ぎゃくじゅん</option><option value="random">ランダム</option></select></label></div>
 <div id="exp"></div>
@@ -771,7 +811,7 @@ try{
 }catch{}
 const isLearned=i=>(learned[D]||[]).includes(i);
 function saveLearned(){try{localStorage.setItem(learnedKey,JSON.stringify(learned));return true}catch{return false}}
-let lessonMode="build",chantRun=0,chantPlaying=false;
+let lessonMode="build",learnLevel=1,chantRun=0,chantPlaying=false;
 function stopChant(){
   chantRun++;chantPlaying=false;
   if(window.speechSynthesis)speechSynthesis.cancel();
@@ -815,7 +855,7 @@ function buildTb(){
   let h=`<h2>${D}のだんの 九九</h2>`;
   for(let i=1;i<=9;i++){
     const [a,b]=ORAL[D][i-1].split(" "),p=D*i;
-    h+=`<div class="rw${isLearned(i)?" learned":""}" data-i="${i}"><button class="row-listen" type="button" aria-label="${a}${b}を きく"><span class="expr"><b class="a">${D}</b>×<b class="b">${i}</b>＝<b class="r">${p}</b></span><span class="chant-reading">${a}${b}</span><span class="rt2">${rb(KJ[D-1]+KJ[i-1]+(p<10?"が":""),a)} ${rb(p,b)}</span></button><label class="learned-control"><input type="checkbox" data-learned="${i}" aria-label="${D}かける${i}を おぼえた" ${isLearned(i)?"checked":""}>おぼえた</label></div>`;
+    h+=`<div class="rw${isLearned(i)?" learned":""}" data-i="${i}"><button class="row-listen" type="button" aria-label="${D}かける${i}を きく"><span class="expr"><b class="a">${D}</b>×<b class="b">${i}</b>＝<b class="r">${p}</b></span><span class="chant-reading">${a}${b}</span><span class="rt2">${rb(KJ[D-1]+KJ[i-1]+(p<10?"が":""),a)} ${rb(p,b)}</span></button><label class="learned-control"><input type="checkbox" data-learned="${i}" aria-label="${D}かける${i}を おぼえた" ${isLearned(i)?"checked":""}>おぼえた</label></div>`;
   }
   $("tb").innerHTML=h;
 }
@@ -830,6 +870,12 @@ $("tb").onchange=e=>{
   const saved=saveLearned();
   $("msg").textContent=(box.checked?"チェックした しきを とばして よむよ。":"この しきも いっしょに よむよ。")+(saved?"":" このブラウザでは チェックを ほぞんできません。");
 };
+function setLearnLevel(l){
+  stopChant();learnLevel=l;$("tb").className="l"+l;
+  document.querySelectorAll("[data-learn-level]").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.learnLevel===l)));
+  $("msg").textContent=["","よみかたを みながら、きいて となえよう。","ふりがな なしで、となえてみよう。","しきを みて、九九の よみかたで となえよう。","こたえを おもいだして、となえよう。"][l];
+}
+document.querySelectorAll("[data-learn-level]").forEach(b=>b.onclick=()=>setLearnLevel(+b.dataset.learnLevel));
 function setLv(l){
   stopChant();tm.forEach(clearTimeout);tm=[];
   lv=l;$("tb").className="l"+l;
@@ -875,8 +921,7 @@ function setLessonMode(next){
   [["bBuild","build"],["bPrac","learn"],["bQuiz","quiz"]].forEach(([id,m])=>$(id).setAttribute("aria-selected",String(next===m)));
   if(next==="quiz")setLv(lv);
   else if(next==="learn"){
-    $("tb").className="";$("q").innerHTML="";$("ch").innerHTML="";
-    $("msg").textContent="ひょうを みながら、なんども きいて となえよう。";
+    $("q").innerHTML="";$("ch").innerHTML="";setLearnLevel(learnLevel);
   }else rebuild(n);
 }
 $("bBuild").onclick=()=>setLessonMode("build");
