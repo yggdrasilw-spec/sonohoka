@@ -13,7 +13,7 @@ const root=path.resolve(__dirname,'..'),dir=path.join(root,'.portfolio-work/demo
   const marks=[],durations=[1,1.6,1.8,2,3.1];
   for(let i=0;i<5;i++){
    marks.push(Date.now()/1000);
-   if(i===1){await p.locator('#progress').focus();await p.keyboard.press('ArrowRight')}
+   if(i===1)await p.locator('#listen').click();
    if(i===2)await p.locator('#play').click();
    await p.waitForTimeout(i===2?350:150);await p.screenshot({path:path.join(dir,`frame-0${i}.png`)});
    await p.waitForTimeout(Math.max(0,durations[i]*1000-(Date.now()/1000-marks[i])*1000+80));
@@ -23,7 +23,7 @@ const root=path.resolve(__dirname,'..'),dir=path.join(root,'.portfolio-work/demo
   const ff=cp.spawnSync('python',['-c','import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())'],{encoding:'utf8'}).stdout.trim();
   const probe=cp.spawnSync(ff,['-hide_banner','-i',path.join(dir,'source.webm')],{encoding:'utf8'}).stderr;
   const m=probe.match(/Duration: (\d+):(\d+):([\d.]+)/);assert(m,probe);const duration=+m[1]*3600+ +m[2]*60+ +m[3];
-  const data={id:94,title:'九九のたすけ舟',url:'kakezan_rescue.html',source:'source.webm',captions:['九九をわすれても、答えをつくれる','知っている「3×7」に、3こを1つ分たす','21＋3＝24。図と式をつなげて考える'],posterIndex:4,segments:marks.map(t=>Math.max(0,t-(end-duration))),sourceDurations:marks.map((t,i)=>(marks[i+1]||end)-t),durations,errors};
+  const data={id:94,title:'九九のたすけ舟',url:'kakezan_rescue.html',source:'source.webm',captions:['わすれても、さわって答えをつくれる','3こをいれる。ことばと図でたしかめる','21＋3＝24。１つぶん、ふえたね！'],posterIndex:4,segments:marks.map(t=>Math.max(0,t-(end-duration))),sourceDurations:marks.map((t,i)=>(marks[i+1]||end)-t),durations,errors};
   fs.writeFileSync(path.join(dir,'storyboard.json'),JSON.stringify(data,null,2)+'\n');fs.writeFileSync(path.join(root,'scripts/portfolio-demos-94.json'),JSON.stringify(data,null,2)+'\n');console.log('CAPTURE PASS');
  }finally{await browser.close();server.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
