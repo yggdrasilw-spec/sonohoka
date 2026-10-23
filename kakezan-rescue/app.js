@@ -104,7 +104,7 @@ function render(){
  const key=[mode,axis,cut,shown,p===0?'start':done?'done':'moving',playing].join(':');if(key!==uiKey){uiKey=key;renderWords(done,shown)}$('progress').value=Math.round(clamp(p)*1000);
 }
 function renderWords(done,shown){
- const known=s=>`<span class="known">${s}</span>`,accent=s=>`<span class="accent">${s}</span>`,ans=done?`<span class="answer">${a*b}</span>`:'？';let eq='';
+ const known=s=>`<span class="known${/^\d+$/.test(s)?' quantity':''}">${s}</span>`,accent=s=>`<span class="accent${/^\d+$/.test(s)?' quantity':''}">${s}</span>`,ans=done?`<span class="answer answer-slot">${a*b}</span>`:'<span class="answer-slot">？</span>';let eq='';
  const [x,y]=partials(),first=axis==='b'?`${a} × ${cut}`:`${cut} × ${b}`,second=axis==='b'?`${a} × ${b-cut}`:`${a-cut} × ${b}`;
  if(mode===0)eq=p===0?known(`${a} × ${b-1} ＝ ${a*(b-1)}`):`${known(a*(b-1))} ＋ ${accent(a)} ＝ ${ans}`;
  if(mode===1)eq=p===0?known(`${a} × ${b+1} ＝ ${a*(b+1)}`):`${known(a*(b+1))} − ${accent(a)} ＝ ${ans}`;
