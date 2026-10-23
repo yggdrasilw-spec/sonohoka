@@ -77,6 +77,10 @@ input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--c1)}
 .samurai-sprite{overflow:hidden;image-rendering:pixelated;pointer-events:none}
 .samurai-action{pointer-events:none}
 #figureCard.cutting #cutPreview,#figureCard.cutting #cutNow{visibility:hidden}
+.law-panel summary{font-weight:700;cursor:pointer;min-height:44px;padding:8px 0}
+.law-equation{font-size:clamp(17px,2.1vw,22px);font-weight:700;overflow-wrap:anywhere;margin:10px 0}
+.law-diagram{display:block;width:100%;max-height:210px;margin:8px 0}
+.law-panel .cut-tools{margin:6px 0}.law-panel p{margin:8px 0}
 @keyframes cutin{0%{opacity:0;translate:-100% 0}18%,65%{opacity:1;translate:0 0}100%{opacity:0;translate:100% 0}}
 @keyframes hero{0%{opacity:0;translate:-160px 0}18%,65%{opacity:1;translate:0 0}100%{opacity:0;translate:90px 0}}
 @media(max-width:760px),(max-aspect-ratio:1/1){.diagram-stage{height:auto}#samuraiFx img{left:0;max-width:90vw}#samuraiFx strong{right:5%;top:35%}}
@@ -109,10 +113,23 @@ input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--c1)}
     <input type="range" id="sl" min="1" max="6" step="1" value="5" aria-label="きる位置">
     <button data-s="k+" aria-label="きる位置を進める">▶</button>
   </div>
-  <div class="cut-tools"><button id="uncut" aria-pressed="false">きる前に もどす</button><button id="pen" aria-pressed="true" hidden>ペン ON</button></div>
+  <div class="cut-tools" role="group" aria-label="きる前と あとの図"><button id="uncut" aria-pressed="false">きる前の図</button><button id="aftercut" aria-pressed="true">きった後の図</button><button id="pen" aria-pressed="true" hidden>ペン ON</button></div>
   <p class="hint" id="cutStatus" role="status">ずの ○ を タップしても、そこで きれるよ。</p>
   <div class="cut-tools" role="group" aria-label="ひょうじと えんしゅつ"><button id="formulas" aria-pressed="true">パーツの式 ON</button><button id="showTotals" aria-pressed="false">図の合計 OFF</button><button id="effects" aria-pressed="true">侍の演出 ON</button></div>
 </div>
+<details class="card law-panel" id="lawPanel">
+ <summary>図と しきを つなぐ</summary>
+ <p class="hint">今の分け方で、まとめたり、分けたりして考えよう。</p>
+ <div class="cut-tools" role="group" aria-label="しきの考え方"><button id="lawAdd" aria-pressed="true">あわせる（＋）</button><button id="lawSubtract" aria-pressed="false">のこす（−）</button></div>
+ <svg id="lawDiagram" class="law-diagram" role="img"></svg>
+ <p id="lawMeaning"></p>
+ <button id="lawReverse" aria-pressed="false">しきの 左右を いれかえる</button>
+ <p class="law-equation" id="lawNumbers"></p>
+ <p class="hint" id="lawResult"></p>
+ <details><summary>○・□・△で あらわすと？</summary><p class="law-equation" id="lawSymbols"></p><p class="hint" id="lawKey"></p></details>
+ <p class="hint">同じ数をかけるとき、分けて計算しても、まとめて計算しても同じ。これを「分配法則」といいます。＝の左右は、同じ数を表しています。</p>
+ <p class="hint">「結合法則」は、３つの数をかけるときの まとまり方のきまりです。例：（２×３）×４＝２×（３×４）。この図で数を分けるきまりとは、区別して考えよう。</p>
+</details>
 <div class="card" id="hc">
   <div class="row"><span class="lab">なぜ その しきに なるの？</span>
     <button id="hb">ヒント</button>
@@ -404,7 +421,7 @@ function viewUI(){
  for(const b of [B1,B2]){b.g.style.display=V.split&&V.formulas?'':'none';b.lb.style.display=V.split&&V.formulas?'':'none'}
  cl.g.style.display=V.split?'':'none';$('eq1').hidden=!V.split;$('eq2').hidden=!V.split;
  for(const id of ['h1','h2'])$(id).hidden=!V.split||!V.formulas;
- $('uncut').textContent=V.split?'きる前に もどす':'きる前の図';$('uncut').setAttribute('aria-pressed',!V.split);
+ $('uncut').setAttribute('aria-pressed',!V.split);$('aftercut').setAttribute('aria-pressed',V.split);
  $('pen').hidden=V.split;$('pen').textContent=V.pen?'ペン ON':'ペン OFF';$('pen').setAttribute('aria-pressed',V.pen);
  canvas.hidden=V.split||!V.pen;fitCanvas();
  $('cutNow').hidden=V.split||!V.ready;
@@ -413,9 +430,36 @@ function viewUI(){
  const g=$('cutPreview');g.textContent='';if(!V.split&&V.ready){const ma=S.mode==='a',x=LM+(ma?0:S.k*C),y=TM+(ma?S.k*C:0);
   el('line',{x1:x,y1:y,x2:x+(ma?S.b*C:0),y2:y+(ma?0:S.a*C),stroke:'#c83f31','stroke-width':4,'stroke-dasharray':'9 5'},g);
  }
- drawTotals();positionCutButton();
+ drawTotals();positionCutButton();renderLaw();
 }
-$('uncut').onclick=()=>{if(V.busy)return;V.split=false;V.ready=false;clearInk();update('uncut');};
+function showCutView(split){if(V.busy||V.split===split)return;V.split=split;V.ready=!split;clearInk();update(split?'restore':'uncut')}
+$('uncut').onclick=()=>showCutView(false);
+$('aftercut').onclick=()=>showCutView(true);
+const lawView={subtract:false,reverse:false};
+function renderLaw(){
+ const {a,b,k,mode}=S,ma=mode==='a',n=ma?a:b,r=n-k,common=ma?b:a,sub=lawView.subtract;
+ const op=sub?' − ':' ＋ ',first=sub?n:k;
+ const whole=ma?`（${first}${op}${r}）×${common}`:`${common}×（${first}${op}${r}）`;
+ const parts=ma?`${first}×${common}${op}${r}×${common}`:`${common}×${first}${op}${common}×${r}`;
+ const symbolicWhole=ma?`（○${op}□）×△`:`△×（○${op}□）`;
+ const symbolicParts=ma?`○×△${op}□×△`:`△×○${op}△×□`;
+ const equation=(left,right)=>lawView.reverse?`${right} ＝ ${left}`:`${left} ＝ ${right}`;
+ $('lawNumbers').textContent=equation(whole,parts);$('lawSymbols').textContent=equation(symbolicWhole,symbolicParts);
+ $('lawKey').textContent=`○＝${first}、□＝${r}、△＝${common}。同じ記号は、同じ数だよ。`;
+ $('lawMeaning').textContent=sub?'ぜんぶから、あおい部分をひくと、オレンジの部分がのこる。':'オレンジと あおい部分をあわせると、ぜんぶになる。';
+ $('lawResult').textContent=sub?`ぜんぶ ${a*b}こ − あお ${r*common}こ ＝ のこり ${k*common}こ`:`オレンジ ${k*common}こ ＋ あお ${r*common}こ ＝ ぜんぶ ${a*b}こ`;
+ $('lawAdd').setAttribute('aria-pressed',!sub);$('lawSubtract').setAttribute('aria-pressed',sub);$('lawReverse').setAttribute('aria-pressed',lawView.reverse);
+ const diagram=$('lawDiagram');diagram.textContent='';diagram.setAttribute('viewBox',`0 0 ${b*18+8} ${a*18+8}`);
+ diagram.setAttribute('aria-label',`${a*b}このうち、オレンジ${k*common}こ、あお${r*common}こ。${sub?'あおい部分をひき、オレンジの部分をのこす。':'２つの部分をあわせる。'}`);
+ for(let i=0;i<a;i++)for(let j=0;j<b;j++){const blue=(ma?i:j)>=k;
+  const g=el('g',{'data-part':blue?'2':'1','data-removed':sub&&blue},diagram);
+  el('rect',{x:4+j*18,y:4+i*18,width:16,height:16,rx:3,fill:blue?'var(--c2bg)':'var(--c1bg)',stroke:blue?'var(--c2)':'var(--c1)','stroke-dasharray':sub&&blue?'2 2':'none',opacity:sub&&blue?.5:1},g);
+  if(sub&&blue)el('path',{d:`M${7+j*18} ${17+i*18}l10 -10`,stroke:'var(--t2)','stroke-width':2},g);
+  else el('circle',{cx:12+j*18,cy:12+i*18,r:4,fill:blue?'var(--c2)':'var(--c1)'},g);
+ }
+}
+$('lawAdd').onclick=()=>{lawView.subtract=false;renderLaw()};$('lawSubtract').onclick=()=>{lawView.subtract=true;renderLaw()};
+$('lawReverse').onclick=()=>{lawView.reverse=!lawView.reverse;renderLaw()};
 $('pen').onclick=()=>{V.pen=!V.pen;clearInk();viewUI()};
 $('formulas').onclick=()=>{V.formulas=!V.formulas;if(!V.formulas){H.t=0;hRender()}viewUI()};
 $('showTotals').onclick=()=>{V.totals=!V.totals;viewUI()};$('effects').onclick=()=>{V.effects=!V.effects;viewUI()};
