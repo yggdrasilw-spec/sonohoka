@@ -6,7 +6,7 @@
     subtract: {row:0,title:'うしろから、引く',left:'引かれる',right:'引く',a:7,b:2,op:'−',description:'みぎの人が、ひだりの人の 体の ロープを 引く。',beats:['体に まいた ロープを 持つ。','ロープを しっかり にぎる。','ロープを ぐっと 引く。','ひだりの人が、引かれる。']},
     multiply: {row:1,title:'うしろから、水を かける',left:'かけられる',right:'かける',a:4,b:3,op:'×',description:'みぎの人が、ひだりの人に 水でっぽうで 水を かける。',beats:['水でっぽうを かまえる。','みぎから ひだりへ、水を 出す。','ひだりの人に、水が かけられる。','水を かけたね。']},
     divide: {row:2,title:'うしろから、風船を わる',left:'わられる',right:'わる',a:8,b:2,op:'÷',description:'みぎの人が チョップして、ひだりの人の 頭の 風船を わる。',beats:['頭の 上に、風船。','風船に 向かって、チョップ。','ぱん！ 風船が わられる。','風船を わったね。']},
-    add: {row:3,title:'うしろから、ルーを たす',left:'たされる',right:'たす',a:4,b:3,op:'＋',description:'みぎの人が、ひだりの人の カレーに ルーを たす。',beats:['カレーを 食べようと しているね。','うしろから お玉を のばす。','カレーに ルーを たす。','ルーを たして もらったね。']}
+    add: {row:3,title:'うしろから、ルーを たす',left:'たされる',right:'たす',a:4,b:3,op:'＋',description:'みぎの人が、ひだりの人の カレーに ルーを たす。',beats:['お皿の上は、ライスだけ。','ライスに ルーを 注ぎはじめる。','同じ お皿に、ルーが ふえていく。','ルーを たして もらったね。']}
   };
   let sceneKey='push', mode='people', frame=0, timer=null, questionIndex=0, answered=false, tried=false, attempts=0, correct=0;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -23,7 +23,7 @@
     svg.querySelector('.arrow-head').setAttribute('points',points.map(p=>`${p.x},${p.y}`).join(' '));
   });
   const arc=$('arc'), length=arc.getTotalLength();
-  const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp`;
+  const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp${row===3?'?v=rice-first-v2':''}`;
   Object.values(scenes).forEach(s=>{for(let n=0;n<4;n++){const image=new Image();image.src=asset(s.row,n);}});
   function stop(){clearTimeout(timer);timer=null;$('play').textContent='▶ うごかす';$('play').setAttribute('aria-pressed','false');}
   function renderFrame(){
@@ -31,7 +31,7 @@
     $('caption').textContent=scene.beats[frame];
     const p=arc.getPointAtLength(length*(reduced.matches?.5:Math.min(frame/3,.90)));$('traveler').setAttribute('cx',p.x);$('traveler').setAttribute('cy',p.y);
   }
-  function schedule(){timer=setTimeout(()=>{frame=(frame+1)%4;renderFrame();schedule();},Number($('speed').value)*(frame===3?2:1));}
+  function schedule(){timer=setTimeout(()=>{if(sceneKey==='add'&&frame===3){stop();return;}frame=(frame+1)%4;renderFrame();schedule();},Number($('speed').value)*(frame===3?2:1));}
   function render(){
     stop();frame=0;const s=scenes[sceneKey];
     document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===sceneKey)));
@@ -57,7 +57,7 @@
   document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(sceneKey==='push'&&(mode==='numbers'||mode==='apply'))mode='people';questionIndex=0;render();}));
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;if(mode==='apply'&&sceneKey==='push')sceneKey='multiply';questionIndex=0;render();}));
   document.addEventListener('practice-topic-changed',e=>{if(e.detail!=='all')sceneKey=e.detail;document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===e.detail)));});
-  $('play').addEventListener('click',()=>{if(timer){stop();return;}$('play').textContent='Ⅱ とめる';$('play').setAttribute('aria-pressed','true');schedule();});
+  $('play').addEventListener('click',()=>{if(timer){stop();return;}if(sceneKey==='add'&&frame===3){frame=0;renderFrame();}$('play').textContent='Ⅱ とめる';$('play').setAttribute('aria-pressed','true');schedule();});
   $('step').addEventListener('click',()=>{stop();frame=(frame+1)%4;renderFrame();});
   $('restart').addEventListener('click',()=>{stop();frame=0;renderFrame();});
   $('speed').addEventListener('change',()=>{if(timer){clearTimeout(timer);schedule();}});

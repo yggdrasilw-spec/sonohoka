@@ -50,6 +50,9 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
   await page.setViewportSize({width:390,height:844});await page.locator('[data-scene="multiply"]').click();await page.screenshot({path:path.join(out,'mobile.png'),fullPage:true});
   await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>Math.abs(Number(document.getElementById('traveler').getAttribute('cx'))-550)<1);const start=await page.locator('#traveler').getAttribute('cx');await page.locator('#step').click();assert.equal(await page.locator('#traveler').getAttribute('cx'),start,'reduced motion arrow stays still');
   await page.getByRole('button',{name:'① 人で見る'}).focus();await page.keyboard.press('Enter');assert.equal(await page.locator('[data-mode="people"]').getAttribute('aria-pressed'),'true');
+  await page.locator('[data-scene="add"]').click();assert.match(await page.locator('#caption').innerText(),/ライスだけ/);
+  await page.locator('#play').click();await page.waitForTimeout(2000);assert.equal(await page.locator('#frame-count').innerText(),'4 / 4 コマ');assert.equal(await page.locator('#play').getAttribute('aria-pressed'),'false','curry remains after adding');
+  await page.locator('#play').click();assert.equal(await page.locator('#frame-count').innerText(),'1 / 4 コマ','curry replay restarts deliberately');await page.locator('#play').click();
   assert.deepEqual(errors,[]);assert.deepEqual(badResponses,[]);
   console.log(JSON.stringify({frames,questions,viewports:[1280,375,390,768],arrow:'right to left',alignment:'people and numbers match',errors,badResponses},null,2));
  }finally{await browser.close();server.close();}
