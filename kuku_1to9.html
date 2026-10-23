@@ -180,6 +180,9 @@ body.cont #bMode{display:none}
 .lesson-tabs [aria-selected="true"]{background:#ff9a2e;color:#fff;box-shadow:0 4px 0 #d06f0c}
 .learn-controls,.question-controls{display:none;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:6px 12px;font-size:18px;font-weight:700}
 body.learn .learn-controls,body.quiz .question-controls{display:flex}
+.speed-control{display:flex;align-items:center;gap:8px}
+#readSpeed{width:clamp(120px,16vw,190px);height:28px;accent-color:#ff9a2e;cursor:pointer}
+#readSpeedValue{min-width:3.7em;font-variant-numeric:tabular-nums}
 select{font:inherit;padding:8px;border:2px solid #b58b55;border-radius:10px;background:#fff;color:#5a3a1a}
 body:not(.quiz) .lv{display:none}
 body.learn #qc{display:none}
@@ -256,7 +259,7 @@ body.learn .rw span:first-child{flex-basis:40%}
 <button id="bQuiz" role="tab" aria-selected="false" aria-controls="prac">もんだい</button>
 </div>
 <div class="learn-controls"><button id="bRead">▶ だんを とおして きく</button><button id="bStop" disabled>■ とめる</button>
-<label>よむ はやさ <select id="readSpeed"><option value="0.6">ゆっくり</option><option value="0.85" selected>ふつう</option><option value="1">すこし はやく</option><option value="1.2">はやく</option></select></label>
+<label class="speed-control">よむ はやさ <input id="readSpeed" type="range" min="0.5" max="2.5" step="0.1" value="1" aria-label="よむ はやさ" aria-valuetext="1.0倍"><output id="readSpeedValue" for="readSpeed">1.0倍</output></label>
 <label><input id="readRepeat" type="checkbox"> くりかえす</label></div>
 <div class="learn-levels" role="group" aria-label="おぼえようの レベル">
 <button type="button" data-learn-level="1" aria-pressed="true">レベル1：よみかた つき</button>
@@ -802,7 +805,14 @@ function setColorHint(on){
 }
 $("bHint").onclick=()=>setColorHint(!document.body.classList.contains("hint"));
 document.addEventListener("keydown",e=>{if(e.defaultPrevented||inP()||document.body.classList.contains("s-title")||document.body.classList.contains("s-toc")||e.target.closest("button,input,select"))return;if(e.key=="ArrowRight")add();if(e.key=="ArrowLeft")undo(1)});
-/* おぼえよう：読み終わりを待って次の式へ。切り替え時は古いコールバックを無効にする。 */
+/* おぼえよう：段全体を1つの音声にして唱える。切り替え時は古いコールバックを無効にする。 */
+const speedKey="kuku-1to9-speed-v1";
+try{const saved=Number(localStorage.getItem(speedKey));if(Number.isFinite(saved)&&saved>=.5&&saved<=2.5)$("readSpeed").value=String(saved)}catch{}
+function showSpeed(){
+  const label=Number($("readSpeed").value).toFixed(1)+"倍";
+  $("readSpeedValue").textContent=label;$("readSpeed").setAttribute("aria-valuetext",label);
+}
+showSpeed();
 const learnedKey="kuku-1to9-learned-v1";
 let learned={};
 try{
@@ -825,26 +835,43 @@ function startChant(){
   if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){$("msg").textContent="このブラウザでは こえが つかえません。ひょうを みて となえよう。";return}
   voice=true;toggle($("bVoice"),true);
   const run=chantRun;chantPlaying=true;$("bRead").disabled=true;$("bStop").disabled=false;
-  function next(index){
+  let text="";
+  const parts=queue.map(i=>{
+    if(text)text+="、";
+    const start=text.length;text+=YOMI(i).replace(/ /g,"");return {i,start};
+  });
+  function read(){
     if(run!==chantRun||lessonMode!=="learn")return;
-    if(index>=queue.length){
-      if($("readRepeat").checked)return next(0);
-      stopChant();$("msg").textContent="さいごまで きけたね！ もういちど いっしょに となえよう。";return;
-    }
-    const i=queue[index];
-    document.querySelectorAll(".rw").forEach(r=>r.classList.toggle("cur",+r.dataset.i===i));
-    $("msg").textContent=`${D}のだん　${index+1} / ${queue.length}　いっしょに となえよう`;
-    const u=new SpeechSynthesisUtterance(YOMI(i).replace(/ /g,""));
+    // 境界イベントがない音声では、読む対象の行全体を示す。
+    document.querySelectorAll(".rw").forEach(r=>r.classList.toggle("cur",queue.includes(+r.dataset.i)));
+    $("msg").textContent=`${D}のだん　${queue.length}しき　いっしょに となえよう`;
+    const u=new SpeechSynthesisUtterance(text);
     u.lang="ja-JP";u.rate=Number($("readSpeed").value);u.pitch=1.15;
-    u.onend=()=>next(index+1);
+    u.onboundary=e=>{
+      if(run!==chantRun||!Number.isInteger(e.charIndex))return;
+      let current=parts[0].i;
+      for(const part of parts){if(part.start>e.charIndex)break;current=part.i}
+      document.querySelectorAll(".rw").forEach(r=>r.classList.toggle("cur",+r.dataset.i===current));
+    };
+    u.onend=()=>{
+      if(run!==chantRun||lessonMode!=="learn")return;
+      if($("readRepeat").checked)return read();
+      stopChant();$("msg").textContent="さいごまで きけたね！ もういちど いっしょに となえよう。";
+    };
     u.onerror=()=>{if(run!==chantRun)return;stopChant();$("msg").textContent="こえを さいせいできませんでした。もういちど おしてね。"};
     speechSynthesis.speak(u);
   }
-  next(0);
+  read();
 }
 $("bRead").onclick=startChant;
 $("bStop").onclick=()=>{stopChant();$("msg").textContent="とめたよ。もういちど はじめから きけるよ。"};
-$("readSpeed").onchange=()=>{if(chantPlaying)startChant()};
+$("readSpeed").oninput=showSpeed;
+$("readSpeed").onchange=()=>{
+  showSpeed();try{localStorage.setItem(speedKey,$("readSpeed").value)}catch{}
+  // ドラッグ中は表示だけ更新し、指を離して確定したときに新しい倍率で読み直す。
+  if(chantPlaying)startChant();
+};
+
 /* もんだいモード */
 let lv=1,qn=0,qi=1,ord=[],lk=false;
 function shuffled(values){

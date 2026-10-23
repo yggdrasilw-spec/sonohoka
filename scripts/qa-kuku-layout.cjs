@@ -57,10 +57,8 @@ async function main(){
     for(let l=1;l<=4;l++){
       await page.locator(`[data-learn-level="${l}"]`).click();
       await page.locator('#bRead').click();
-      for(let i=1;i<=9;i++){
-        assert.equal(await page.locator('.rw.cur').getAttribute('data-i'),String(i));
-        await page.evaluate(()=>window.spoken.at(-1).onend());
-      }
+      assert.equal(await page.evaluate(()=>window.spoken.at(-1).text.split('、').length),9);
+      await page.evaluate(()=>window.spoken.at(-1).onend());
       assert(await page.locator('#bRead').isEnabled());
     }
     for(const width of [390,320]){

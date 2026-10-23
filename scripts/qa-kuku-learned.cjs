@@ -23,18 +23,15 @@ async function main(){
     for(const i of [1,4,9])await box(i).check();
     assert.equal(await page.evaluate(()=>window.spoken.length),0,'checkbox never triggers speech');
     await page.locator('#bRead').click();
-    const seen=[];
-    while(await page.locator('#bRead').isDisabled()){
-      seen.push(Number(await page.locator('.rw.cur').getAttribute('data-i')));
-      await page.evaluate(()=>window.spoken.at(-1).onend());
-      assert(seen.length<=9);
-    }
-    assert.deepEqual(seen,[2,3,5,6,7,8]);
+    assert.equal(await page.evaluate(()=>window.spoken.length),1);
+    assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),'ニニンガシ、ニサンガロク、ニゴジュウ、ニロクジュウニ、ニシチジュウシ、ニハチジュウロク');
+    await page.evaluate(()=>window.spoken.at(-1).onend());
+    assert(await page.locator('#bRead').isEnabled());
     await page.reload();await enter(2);
     for(const i of [1,4,9])assert(await box(i).isChecked(),'persist '+i);
     await box(1).uncheck();
     await page.locator('#bRead').click();
-    assert.equal(await page.locator('.rw.cur').getAttribute('data-i'),'1');
+    assert.equal(await page.evaluate(()=>window.spoken.at(-1).text.split('、')[0]),'ニイチガニ');
     const count=await page.evaluate(()=>window.spoken.length);
     await box(1).check();
     await page.evaluate(()=>window.spoken.at(-1).onend());

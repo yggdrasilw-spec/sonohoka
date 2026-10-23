@@ -31,22 +31,29 @@ async function main() {
     assert((await page.locator('#tb').boundingBox()).width > 900);
     assert.equal(await page.locator('.chant-reading').first().innerText(), 'にいちがに');
     await page.locator('#bRead').click();
-    for(let i=1;i<=9;i++) {
-      assert.equal(await page.locator('.rw.cur').getAttribute('data-i'), String(i));
-      await page.evaluate(() => window.spoken.at(-1).onend());
+    assert.equal(await page.evaluate(() => window.spoken.length),1,'one utterance per dan');
+    assert.equal(await page.evaluate(() => window.spoken[0].text),
+      ['ニイチガニ','ニニンガシ','ニサンガロク','ニシガハチ','ニゴジュウ','ニロクジュウニ','ニシチジュウシ','ニハチジュウロク','ニクジュウハチ'].join('、'));
+    for(let i=1;i<=9;i++){
+      await page.evaluate(i=>{const u=window.spoken.at(-1);const parts=u.text.split('、');u.onboundary({charIndex:parts.slice(0,i-1).reduce((n,t)=>n+t.length+1,0)});},i);
+      assert.equal(await page.locator('.rw.cur').getAttribute('data-i'),String(i));
     }
-    assert.deepEqual(await page.evaluate(() => window.spoken.map(u=>u.text)),
-      ['ニイチガニ','ニニンガシ','ニサンガロク','ニシガハチ','ニゴジュウ','ニロクジュウニ','ニシチジュウシ','ニハチジュウロク','ニクジュウハチ']);
+    await page.evaluate(() => window.spoken.at(-1).onend());
     assert(await page.locator('#bRead').isEnabled());
     assert(await page.locator('#bStop').isDisabled());
-    await page.locator('#readSpeed').selectOption('0.6');
+    await page.locator('#readSpeed').evaluate(el=>{el.value='0.6';el.dispatchEvent(new Event('input'));el.dispatchEvent(new Event('change'));});
     await page.locator('#readRepeat').check();
     await page.locator('#bRead').click();
     assert(Math.abs(await page.evaluate(() => window.spoken.at(-1).rate)-.6)<.00001);
-    await page.locator('#readSpeed').selectOption('1.2');
-    assert(Math.abs(await page.evaluate(() => window.spoken.at(-1).rate)-1.2)<.00001);
-    for(let i=0;i<9;i++) await page.evaluate(() => window.spoken.at(-1).onend());
-    assert.equal(await page.locator('.rw.cur').getAttribute('data-i'), '1');
+    const beforeDrag=await page.evaluate(()=>window.spoken.length);
+    await page.locator('#readSpeed').evaluate(el=>{el.value='2.0';el.dispatchEvent(new Event('input'));});
+    assert.equal(await page.locator('#readSpeedValue').innerText(),'2.0倍');
+    assert.equal(await page.evaluate(()=>window.spoken.length),beforeDrag,'drag only updates the displayed rate');
+    await page.locator('#readSpeed').dispatchEvent('change');
+    assert.equal(await page.evaluate(()=>window.spoken.length),beforeDrag+1,'release restarts once');
+    assert(Math.abs(await page.evaluate(() => window.spoken.at(-1).rate)-2)<.00001);
+    await page.evaluate(() => window.spoken.at(-1).onend());
+    assert.equal(await page.locator('.rw.cur').count(),9);
     await page.locator('#bStop').click();
     let before = await page.evaluate(() => window.spoken.length);
     await page.evaluate(() => window.spoken.at(-1).onend());
@@ -57,6 +64,7 @@ async function main() {
     await page.evaluate(() => window.spoken.at(-1).onend());
     assert.equal(await page.evaluate(() => window.spoken.length), before, 'tab switch stops recitation');
     assert(await page.locator('#qc').isVisible());
+    if(!process.argv.includes('--speech-only')){
     // Each ordering is independent of the five scaffold levels; each round visits all nine facts.
     for(const level of [1,3,5]) {
       await page.locator(`.lv[data-l="${level}"]`).click();
@@ -83,6 +91,7 @@ async function main() {
     await page.waitForTimeout(2300);
     assert.equal(await page.locator('#ch button').count(), 0);
     assert(await page.locator('#tb').isVisible(), 'learn restores the full table after level 5');
+    }
     for(const width of [1280,768,390,320]) {
       await page.setViewportSize({width,height:900});
       for(const tab of ['bPrac','bQuiz']) {
@@ -103,10 +112,18 @@ async function main() {
     await page.locator('.unit-card').filter({hasText:'9のだん'}).click();
     await page.locator('#bPrac').click();
     await page.locator('#bRead').click();
-    assert.equal(await page.evaluate(() => window.spoken.at(-1).text), 'クイチガク');
+    assert.equal(await page.evaluate(() => window.spoken.at(-1).text.split('、')[0]), 'クイチガク');
     await page.evaluate(() => window.spoken.at(-1).onerror());
     assert(await page.locator('#bRead').isEnabled());
     assert.match(await page.locator('#msg').innerText(), /さいせいできません/);
+    await page.locator('#readSpeed').focus();await page.keyboard.press('End');
+    assert.equal(await page.locator('#readSpeedValue').innerText(),'2.5倍');
+    await page.keyboard.press('Home');
+    assert.equal(await page.locator('#readSpeedValue').innerText(),'0.5倍');
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('#readSpeedValue').innerText(),'0.6倍');
+    await page.reload();await page.locator('#startBtn').click();await page.locator('.unit-card').first().click();await page.locator('#bPrac').click();
+    assert.equal(await page.locator('#readSpeedValue').innerText(),'0.6倍','speed survives reload');
     assert.deepEqual(errors, []);
     const fallback = await browser.newPage();
     await fallback.addInitScript(() => Object.defineProperty(window,'speechSynthesis',{value:undefined}));
@@ -114,7 +131,7 @@ async function main() {
     await fallback.locator('#startBtn').click();await fallback.locator('.unit-card').first().click();
     await fallback.locator('#bPrac').click();await fallback.locator('#bRead').click();
     assert.match(await fallback.locator('#msg').innerText(), /こえが つかえません/);
-    console.log('PASS: recitation, speed, repeat, cancellation, navigation, speech errors/fallback, three orders at three levels, desktop/mobile layouts. Native pronunciation remains device-dependent.');
+    console.log('PASS: whole-dan recitation, boundary highlighting, slider display/keyboard/persistence, speed on release, repeat, cancellation, navigation, speech errors/fallback, desktop/mobile layouts.'+(process.argv.includes('--speech-only')?'':' Three orders at three levels verified.')+' Native pronunciation remains device-dependent.');
   } finally {await browser.close();server.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
