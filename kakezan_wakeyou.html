@@ -74,10 +74,11 @@ input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--c1)}
 #samuraiFx.active{display:block}#samuraiFx .cutin{position:absolute;left:0;right:0;top:22%;height:48%;background:linear-gradient(110deg,#102938ed,#176b82ed,transparent);transform:skewY(-5deg);animation:cutin .75s both}
 #samuraiFx img{position:absolute;height:min(78vh,620px);max-width:80vw;object-fit:contain;left:12%;bottom:7%;animation:hero .75s both}
 #samuraiFx strong{position:absolute;right:12%;top:42%;font-size:clamp(34px,7vw,90px);color:#fff5be;text-shadow:3px 4px #17394c;animation:cutin .75s both}
-.blade-flash{position:absolute;width:150%;height:7px;background:#fff4ab;box-shadow:0 0 14px 5px #ffc760;left:-25%;top:50%;transform:rotate(-28deg) scaleX(0);animation:blade .55s .18s both}
+.samurai-sprite{overflow:hidden;image-rendering:pixelated;pointer-events:none}
+.samurai-action{pointer-events:none}
+#figureCard.cutting #cutPreview,#figureCard.cutting #cutNow{visibility:hidden}
 @keyframes cutin{0%{opacity:0;translate:-100% 0}18%,65%{opacity:1;translate:0 0}100%{opacity:0;translate:100% 0}}
 @keyframes hero{0%{opacity:0;translate:-160px 0}18%,65%{opacity:1;translate:0 0}100%{opacity:0;translate:90px 0}}
-@keyframes blade{0%{transform:rotate(-28deg) scaleX(0)}25%,60%{transform:rotate(-28deg) scaleX(1)}100%{opacity:0;transform:rotate(-28deg) scaleX(1)}}
 @media(max-width:760px),(max-aspect-ratio:1/1){.diagram-stage{height:auto}#samuraiFx img{left:0;max-width:90vw}#samuraiFx strong{right:5%;top:35%}}
 @media(prefers-reduced-motion:reduce){#samuraiFx{display:none!important}}
 </style>
@@ -121,7 +122,7 @@ input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--c1)}
 </div>
 </aside>
 </main>
-<div id="samuraiFx" aria-hidden="true"><div class="cutin"></div><img src="media/wakeyou-samurai.png" alt=""><strong>いざ、わける！</strong><div class="blade-flash"></div></div>
+<div id="samuraiFx" aria-hidden="true"><div class="cutin"></div><img src="media/wakeyou-samurai.png" alt=""><strong>いざ、わける！</strong></div>
 
 <script>
 /* ===== ばね(スプリング)アニメーション ===== */
@@ -444,16 +445,59 @@ canvas.addEventListener('pointerup',e=>{if(!stroke||stroke.id!==e.pointerId)retu
 });
 canvas.addEventListener('pointercancel',()=>{clearInk()});canvas.addEventListener('lostpointercapture',()=>{clearInk()});
 function samuraiSound(){if(!ac||muted||!swordBuffer)return;const source=ac.createBufferSource();source.buffer=swordBuffer;source.connect(mst);swordVoices.add(source);source.onended=()=>swordVoices.delete(source);source.start()}
+// Preload both atlases. A missing image still leaves the visible cutting line usable.
+const samuraiSheets={};
+for(const direction of ['horizontal','vertical']){const image=new Image();image.src=`media/wakeyou-samurai-slash-${direction}-v1.png`;
+ samuraiSheets[direction]={image,ready:false};image.decode().then(()=>{samuraiSheets[direction].ready=true}).catch(()=>{});
+}
+const cutPause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function samuraiDash(commit){
+ const ma=S.mode==='a',direction=ma?'horizontal':'vertical',sheet=samuraiSheets[direction];
+ const x=LM+(ma?0:S.k*C),y=TM+(ma?S.k*C:0),len=(ma?S.b:S.a)*C,size=C*2.8;
+ const layer=el('g',{class:'samurai-action','aria-hidden':'true','data-direction':direction,'data-phase':'prepare'},fig);
+ // Keep the line in SVG coordinates so zooming, scrolling and resizing track the diagram.
+ const trail=el('line',{x1:x,y1:y,x2:x,y2:y,stroke:'#fff4ad','stroke-width':5,'stroke-linecap':'round',style:'filter:drop-shadow(0 0 2px #db6a10)'},layer);
+ const sprite=sheet.ready?el('svg',{class:'samurai-sprite',width:size,height:size},layer):null;
+ if(sprite)el('image',{href:sheet.image.src,width:sheet.image.naturalWidth,height:sheet.image.naturalHeight},sprite);
+ let start,sounded=false,committed=false;
+ return new Promise(resolve=>{
+  function frame(now){
+   if(start===undefined)start=now;const t=now-start;
+   // Show anticipation, a fast straight dash, then braking and a short fade.
+   const progress=Math.max(0,Math.min(1,(t-180)/340));
+   const index=t<60?0:t<120?1:t<180?2:t<300?3:t<410?4:t<520?5:t<650?6:7;
+   layer.dataset.phase=t<180?'prepare':t<520?'dash':'finish';
+   if(t>=180&&!sounded){sounded=true;samuraiSound()}
+   if(sprite){const w=sheet.image.naturalWidth,h=sheet.image.naturalHeight,col=index%4,row=Math.floor(index/4);
+    const sx=Math.floor(col*w/4),sy=Math.floor(row*h/2),sw=Math.floor((col+1)*w/4)-sx,sh=Math.floor((row+1)*h/2)-sy;
+    sprite.setAttribute('viewBox',`${sx} ${sy} ${sw} ${sh}`);sprite.dataset.frame=index;
+    sprite.setAttribute('x',x+(ma?progress*len:0)-size*.54);
+    sprite.setAttribute('y',Math.max(0,y+(ma?0:progress*len)-size*.61));
+    sprite.style.opacity=t<700?1:Math.max(0,1-(t-700)/180);
+   }
+   trail.setAttribute('x2',x+(ma?progress*len:0));trail.setAttribute('y2',y+(ma?0:progress*len));
+   // Split only after the blade has traversed the entire selected line.
+   if(progress===1&&!committed){committed=true;commit();trail.style.opacity=0}
+   if(t<880)requestAnimationFrame(frame);else{layer.remove();resolve()}
+  }
+  requestAnimationFrame(frame);
+ });
+}
 async function performCut(){
  if(V.busy||V.split||!V.ready)return;clearInk();const animated=V.effects&&!RM;V.busy=true;
- const controls=[...document.querySelectorAll('button,input')].filter(e=>e.id!=='mute');controls.forEach(e=>e.disabled=true);
- unlock();if(V.effects&&!muted)await loadSword();
- const commit=()=>{V.split=true;V.ready=false;if(V.effects)samuraiSound();update('cut');const ma=S.mode==='a',cx=ma?LM+S.b*C/2:LM+S.k*C+G/2,cy=ma?TM+S.k*C+G/2:TM+S.a*C/2,len=(ma?S.b:S.a)*C;
-  if(V.effects){burst(cx,cy,len,ma);if(!RM){const slash=el('line',{x1:ma?LM:cx,y1:ma?cy:TM,x2:ma?LM+len:cx,y2:ma?cy:TM+len,stroke:'#e8a322','stroke-width':5,'stroke-linecap':'round','stroke-dasharray':len},fxG);
-   slash.animate([{strokeDashoffset:len,opacity:1},{strokeDashoffset:0,opacity:1,offset:.45},{strokeDashoffset:0,opacity:0}],{duration:550,easing:'ease-out'}).finished.then(()=>slash.remove()).catch(()=>slash.remove())}}
+ const controls=[...document.querySelectorAll('button,input')].filter(e=>e.id!=='mute').map(e=>[e,e.disabled]);controls.forEach(([e])=>e.disabled=true);
+ unlock();
+ const commit=()=>{V.split=true;V.ready=false;update('cut');const ma=S.mode==='a',cx=ma?LM+S.b*C/2:LM+S.k*C+G/2,cy=ma?TM+S.k*C+G/2:TM+S.a*C/2,len=(ma?S.b:S.a)*C;
+  if(V.effects)burst(cx,cy,len,ma);
  };
- const done=()=>{V.busy=false;controls.forEach(e=>e.disabled=false);$('samuraiFx').classList.remove('active');$('uncut').focus();$('cutStatus').textContent=`わけても ぜんぶで ${S.a*S.b}こ。${$('e1').textContent} と ${$('e2').textContent} に わかれたね。`};
- if(animated){$('samuraiFx').classList.add('active');setTimeout(commit,280);setTimeout(done,800)}else{commit();done()}
+ try{
+  if(animated){$('samuraiFx').classList.add('active');
+   await cutPause(750);$('samuraiFx').classList.remove('active');$('figureCard').classList.add('cutting');await samuraiDash(commit);
+  }else{if(V.effects)samuraiSound();commit()}
+ }finally{
+  V.busy=false;controls.forEach(([e,disabled])=>e.disabled=disabled);$('samuraiFx').classList.remove('active');$('figureCard').classList.remove('cutting');$('uncut').focus({preventScroll:true});
+  $('cutStatus').textContent=`わけても ぜんぶで ${S.a*S.b}こ。${$('e1').textContent} と ${$('e2').textContent} に わかれたね。`;
+ }
 }
 $('cutNow').onclick=performCut;
 $('cutNow').addEventListener('pointerup',e=>{if(e.pointerType==='touch'||e.pointerType==='pen'){e.preventDefault();performCut()}});
