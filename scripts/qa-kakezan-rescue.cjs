@@ -10,6 +10,9 @@ const out=path.resolve(__dirname,'../.portfolio-work/kakezan-rescue');fs.mkdirSy
   await page.addInitScript(()=>{window.spoken=[];window.activeSpeech=null;window.cancelCalls=0;Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],cancel(){window.cancelCalls++;window.activeSpeech=null},speak(u){window.spoken.push({text:u.text,lang:u.lang,rate:u.rate});window.activeSpeech=u;u.onstart?.()},get speaking(){return !!window.activeSpeech}}});window.finishSpeech=()=>{const u=window.activeSpeech;window.activeSpeech=null;u?.onend?.()}});
   const url=`http://127.0.0.1:${server.address().port}/sonohoka/kakezan_rescue.html`;await page.goto(url);
   assert.equal(await page.evaluate(()=>spoken.length),0,'no unsolicited narration on load');assert((await page.locator('body').innerText()).length<190,'keep the starting screen short');
+  assert(await page.locator('#rescueIntro').isVisible());assert(!(await page.locator('#lesson').isVisible()));assert.equal(await page.locator('.strategy[aria-pressed="true"]').count(),0);assert.equal(await page.locator('.strategy').count(),5);assert((await page.locator('#problemPrompt').innerText()).includes('わすれちゃった'));assert((await page.locator('.five-ways').innerText()).includes('５つ'));
+  await page.locator('#introListen').click();const question=await page.evaluate(()=>spoken.at(-1).text);assert(question.includes('さん かける はちの こたえを、わすれちゃった'));assert(question.includes('いつつ'));assert(!question.includes('にじゅうよん'),'do not reveal the answer in the question');
+  await page.locator('[data-mode="0"]').click();assert(!(await page.locator('#rescueIntro').isVisible()));assert(await page.locator('#lesson').isVisible());
   await page.locator('#listen').click();let speech=await page.evaluate(()=>spoken.at(-1));assert.equal(speech.lang,'ja-JP');assert(speech.rate<1);assert(speech.text.includes('さん かける ななは、にじゅういち'));assert(!/[×＝＋]/.test(speech.text));
   const before=await page.evaluate(()=>spoken.length);await page.setViewportSize({width:1280,height:768});await page.waitForTimeout(80);assert.equal(await page.evaluate(()=>spoken.length),before,'resize does not narrate');
   await page.locator('#play').click();await page.waitForTimeout(1200);assert.equal(await page.locator('#topAnswer').innerText(),'24');
@@ -38,7 +41,7 @@ const out=path.resolve(__dirname,'../.portfolio-work/kakezan-rescue');fs.mkdirSy
     }
    }return {cases,cuts,failures};
   });assert.deepEqual(report.failures,[]);
-  await page.reload();await page.locator('#sound').click();
+  await page.reload();await page.locator('#sound').click();await page.locator('[data-mode="0"]').click();
   // Direct manipulation moves exactly with the pointer, followed by a spring to the slot.
   const drag=await page.evaluate(()=>{const rect=document.querySelector('#handles [role="button"] rect'),r=rect.getBBox(),m=document.querySelector('#board').getScreenCTM(),q=new DOMPoint(r.x+r.width/2,r.y+r.height/2).matrixTransform(m);window.stableDot=document.querySelector('#dots circle[data-col="7"]');return {x:q.x,y:q.y,dx:95*m.a,original:+stableDot.getAttribute('cx')}});
   await page.mouse.move(drag.x,drag.y);await page.mouse.down();await page.mouse.move(drag.x-drag.dx*.5,drag.y,{steps:10});assert(Math.abs((await page.evaluate(()=>+stableDot.getAttribute('cx')))-(drag.original-47.5))<.2,'pointer and object travel match');assert(await page.evaluate(()=>stableDot.isConnected));
@@ -49,14 +52,14 @@ const out=path.resolve(__dirname,'../.portfolio-work/kakezan-rescue');fs.mkdirSy
   await page.locator('[data-mode="3"]').click();await page.locator('.handle').focus();await page.keyboard.press('Home');assert.equal(await page.locator('#cut').inputValue(),'1');await page.keyboard.press('End');assert.equal(await page.locator('#cut').inputValue(),'7');
   const h=await page.locator('.cut-grip').boundingBox();await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(h.x-100,h.y+h.height/2,{steps:10});await page.mouse.up();assert(+await page.locator('#cut').inputValue()<7,'cut drag');
   for(const [width,height]of [[1366,768],[1024,600],[768,1024],[390,844],[320,568]]){
-   await page.setViewportSize({width,height});await page.reload();await page.locator('#sound').click();
+   await page.setViewportSize({width,height});await page.reload();await page.locator('#sound').click();await page.screenshot({path:path.join(out,`question-${width}.png`),fullPage:true});assert(await page.locator('#rescueIntro').isVisible());await page.locator('[data-mode="0"]').click();
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    await page.screenshot({path:path.join(out,`child-${width}.png`),fullPage:true});
    if(width>=1000)assert(await page.locator('#strategies').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight),'desktop controls fit on screen');
    await page.locator('[data-mode="3"]').click();await page.screenshot({path:path.join(out,`split-${width}.png`),fullPage:true});
    await page.locator('#a').selectOption('9');await page.locator('#b').selectOption('9');await page.locator('[data-mode="4"]').click();await page.locator('.slow summary').click();await page.locator('#progress').fill('1000');assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   }
-  await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await page.locator('#play').click();assert.equal(await page.locator('#topAnswer').innerText(),'24');
+  await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await page.locator('[data-mode="0"]').click();await page.locator('#play').click();assert.equal(await page.locator('#topAnswer').innerText(),'24');await page.locator('#next').click();assert(await page.locator('#rescueIntro').isVisible());assert.equal(await page.locator('#topAnswer').innerText(),'？');assert.equal(await page.locator('.strategy[aria-pressed="true"]').count(),0);
   assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({...report,viewports:5,speech:'sequence/cancel/mute/replay',errors},null,2));console.log('PASS',JSON.stringify({...report,viewports:5,errors}));
  }finally{await browser.close();server.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

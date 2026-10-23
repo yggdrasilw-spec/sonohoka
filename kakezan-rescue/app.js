@@ -2,7 +2,7 @@
 (()=>{
 const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',voice=window.RescueVoice;
 const methods=[{name:'たす',icon:'＋'},{name:'ひく',icon:'−'},{name:'くるっ',icon:'↻'},{name:'わける',icon:'✂'},{name:'かぞえる',icon:'●●'}];
-let a=3,b=8,mode=0,axis='b',cut=4,p=0,visual=0,raf=0,playing=false,gesture=null,scene,uiKey='',spokenComplete=false,committedCount=0;
+let a=3,b=8,mode=0,axis='b',cut=4,p=0,visual=0,raf=0,playing=false,gesture=null,scene,uiKey='',spokenComplete=false,committedCount=0,choosing=true;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),clamp=n=>Math.max(0,Math.min(1,n));
 function el(tag,attrs,parent,text){const node=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))node.setAttribute(k,v);if(text!==undefined)node.textContent=text;parent.append(node);return node}
 const attr=(node,values)=>{for(const [k,v]of Object.entries(values))node.setAttribute(k,v)};
@@ -28,11 +28,13 @@ function setBubble(text){if($('description').textContent!==text)$('description')
 function stop(){cancelAnimationFrame(raf);raf=0;playing=false}
 function release(){if(gesture){const id=gesture.id;gesture=null;if($('board').hasPointerCapture(id))$('board').releasePointerCapture(id)}$('board').classList.remove('dragging')}
 function announceResult(){if(spokenComplete)return;spokenComplete=true;voice.say(resultSpeech(),{append:true,mark:'result'})}
-function select(i,read=true){stop();release();voice.cancel();mode=i;p=visual=0;committedCount=0;spokenComplete=false;configure();build();render();if(read)voice.say(introSpeech(),{mark:'known'})}
+function challengeSpeech(){return `${multiply(a,b)}の こたえを、わすれちゃった！ どうする？ さあ、たすけてあげよう！ たすけかたは、ぜんぶで、いつつだよ。どれで、たすける？`}
+function showChallenge(read=false){stop();release();voice.cancel();choosing=true;p=visual=0;committedCount=0;spokenComplete=false;document.body.classList.add('choosing');document.body.classList.remove('done');$('rescueIntro').hidden=false;$('lesson').hidden=true;$('problemPrompt').textContent='こたえを わすれちゃった！';$('helpChoice').textContent='どれで たすける？';$('topAnswer').textContent='？';configure();if(read)voice.say(challengeSpeech(),{mark:'question'})}
+function select(i,read=true){stop();release();voice.cancel();choosing=false;document.body.classList.remove('choosing');$('rescueIntro').hidden=true;$('lesson').hidden=false;$('problemPrompt').textContent='わすれた 九九を たすけよう！';$('helpChoice').textContent='ほかの たすけかたも ためせるよ';mode=i;p=visual=0;committedCount=0;spokenComplete=false;configure();build();render();if(read)voice.say(introSpeech(),{mark:'known'})}
 function configure(){
  if(mode===0&&b===1)mode=1;if(mode===3&&a===1&&b===1)mode=4;
  if(axis==='a'&&a===1)axis='b';if(axis==='b'&&b===1)axis='a';cut=Math.max(1,Math.min(cut,(axis==='b'?b:a)-1));
- document.querySelectorAll('.strategy').forEach((button,i)=>{button.setAttribute('aria-pressed',i===mode);button.disabled=i===0&&b===1||i===3&&a===1&&b===1;button.title=button.disabled?'ほかの やりかたで ためそう':''});
+ document.querySelectorAll('.strategy').forEach((button,i)=>{button.setAttribute('aria-pressed',!choosing&&i===mode);button.disabled=i===0&&b===1||i===3&&a===1&&b===1;button.title=button.disabled?'ほかの やりかたで ためそう':''});
  $('splitTools').hidden=mode!==3;$('splitA').disabled=a===1;$('splitB').disabled=b===1;
  $('splitA').setAttribute('aria-pressed',axis==='a');$('splitB').setAttribute('aria-pressed',axis==='b');$('cut').max=Math.max(1,(axis==='b'?b:a)-1);$('cut').value=cut;uiKey='';$('speechStatus').textContent='';
 }
@@ -118,14 +120,15 @@ $('board').onpointerup=e=>endGesture(e);$('board').onpointercancel=e=>endGesture
 for(const id of ['a','b'])for(let i=1;i<=9;i++){const option=document.createElement('option');option.value=i;option.textContent=i;$(id).append(option)}$('a').value=a;$('b').value=b;
 methods.forEach((method,i)=>{const button=document.createElement('button');button.className='strategy';button.dataset.mode=i;button.setAttribute('aria-label',['１つ前の 九九から たす','１つ後の 九九から ひく','かける数と かけられる数を 入れかえる','２つの かけ算に わける','同じ数を １つぶんずつ たす'][i]);button.innerHTML=`<span class="icon" aria-hidden="true">${method.icon}</span><strong>${method.name}</strong>`;button.onclick=()=>select(i);$('strategies').append(button)});
 $('play').onclick=act;$('reset').onclick=()=>select(mode);$('listen').onclick=()=>{if(!voice.enabled){voice.enable(true);$('sound').setAttribute('aria-pressed','true');$('sound').textContent='こえ ON'}voice.say(p>=1?resultSpeech():mode===4&&counted()?`${number(a*counted())}こに なったね。つぎの ${pieces(a)}を、たしてみよう。`:p===0?introSpeech():actionSpeech(),{mark:'replay'})};
-$('sound').onclick=()=>{const enabled=voice.enable(!voice.enabled);$('sound').setAttribute('aria-pressed',enabled);$('sound').textContent=enabled?'こえ ON':'こえ OFF';if(enabled)$('listen').click()};
+$('introListen').onclick=()=>{if(!voice.enabled){voice.enable(true);$('sound').setAttribute('aria-pressed','true');$('sound').textContent='こえ ON'}voice.say(challengeSpeech(),{mark:'question'})};
+$('sound').onclick=()=>{const enabled=voice.enable(!voice.enabled);$('sound').setAttribute('aria-pressed',enabled);$('sound').textContent=enabled?'こえ ON':'こえ OFF';if(enabled)$(choosing?'introListen':'listen').click()};
 $('progress').oninput=e=>{stop();voice.cancel();p=visual=+e.target.value/1000;committedCount=Math.min(b,Math.floor(p*b+1e-6));spokenComplete=false;render()};$('progress').onchange=()=>{if(p>=1)announceResult()};
-for(const id of ['a','b'])$(id).onchange=()=>{a=+$('a').value;b=+$('b').value;cut=Math.max(1,Math.floor((axis==='b'?b:a)/2));select(mode)};
-function nextProblem(){let next;do next=10*(1+Math.floor(Math.random()*9))+1+Math.floor(Math.random()*9);while(next===a*10+b);a=Math.floor(next/10);b=next%10;$('a').value=a;$('b').value=b;cut=Math.max(1,Math.floor(b/2));select(mode)}
+for(const id of ['a','b'])$(id).onchange=()=>{a=+$('a').value;b=+$('b').value;cut=Math.max(1,Math.floor((axis==='b'?b:a)/2));showChallenge(true)};
+function nextProblem(){let next;do next=10*(1+Math.floor(Math.random()*9))+1+Math.floor(Math.random()*9);while(next===a*10+b);a=Math.floor(next/10);b=next%10;$('a').value=a;$('b').value=b;cut=Math.max(1,Math.floor(b/2));showChallenge(true)}
 $('random').onclick=nextProblem;$('next').onclick=nextProblem;
 for(const [id,dir]of [['splitA','a'],['splitB','b']])$(id).onclick=()=>{axis=dir;cut=Math.max(1,Math.floor((axis==='a'?a:b)/2));select(mode)};
 $('cut').oninput=e=>setCut(+e.target.value);$('cut').onchange=()=>voice.say(p>=1?resultSpeech():partsSpeech(),{mark:'parts'});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();release();p=visual=clamp(visual);render()}});
-let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{build();render()})});
-select(0,false);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();release();p=visual=clamp(visual);if(!choosing)render()}});
+let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!choosing){build();render()}})});
+showChallenge();
 })();
