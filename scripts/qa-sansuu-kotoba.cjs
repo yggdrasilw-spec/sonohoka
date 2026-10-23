@@ -35,7 +35,8 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
   }
   await page.locator('[data-scene="multiply"]').click();await page.locator('[data-mode="numbers"]').click();
   assert.equal(await page.locator('#left-number').innerText(),'4');assert.equal(await page.locator('#right-number').innerText(),'3');
-  const direction=await page.evaluate(()=>{const a=document.getElementById('arc');return {start:a.getPointAtLength(0).x,end:a.getPointAtLength(a.getTotalLength()).x,marker:a.getAttribute('marker-end')}});assert(direction.start>direction.end);assert.equal(direction.marker,'url(#arrow-tip)');
+  const arrows=await page.locator('.semantic-arrow').evaluateAll(ss=>ss.map(svg=>{const a=svg.querySelector('path'),len=a.getTotalLength(),start=a.getPointAtLength(0),end=a.getPointAtLength(len),mid=a.getPointAtLength(len/2),head=[...svg.querySelector('.arrow-head').points].map(p=>({x:p.x,y:p.y}));return {start:{x:start.x,y:start.y},end:{x:end.x,y:end.y},mid:{x:mid.x,y:mid.y},head,ry:Number(svg.dataset.radiusY)}}));
+  for(const a of arrows){assert(a.start.x>a.end.x);assert(Math.abs(a.mid.x-550)<.1);assert(Math.abs(a.mid.y-(a.end.y-a.ry))<.1);const [tip,b1,b2]=a.head;assert.equal(tip.x,a.end.x);assert(tip.y>a.end.y);assert.equal((b1.x+b2.x)/2,tip.x);assert(b1.y<a.end.y&&b2.y<a.end.y,'shaft overlaps head along end tangent');}
   await page.locator('#play').click();await page.waitForTimeout(420);assert.notEqual(await page.locator('#frame-count').innerText(),'1 / 4 コマ');
   await page.locator('[data-scene="divide"]').click();await page.waitForTimeout(800);assert.equal(await page.locator('#frame-count').innerText(),'1 / 4 コマ','scene switch cancels playback');
   await page.locator('#step').click();assert.equal(await page.locator('#frame-count').innerText(),'2 / 4 コマ');await page.locator('#restart').click();assert.equal(await page.locator('#frame-count').innerText(),'1 / 4 コマ');

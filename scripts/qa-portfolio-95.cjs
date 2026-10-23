@@ -21,7 +21,7 @@ const {serve}=require('./portfolio-demo-inspect.cjs');
    await p.screenshot({path:path.resolve(__dirname,`../.portfolio-work/demo-95/modal-${width}.png`)});
    await p.locator('.media-modal-close').click();await p.waitForFunction(()=>!document.querySelector('#mediaModal video').getAttribute('src'));
    assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-   const app=await p.request.get(base+'sansuu_kotoba.html');assert(app.ok());assert((await app.text()).includes('arrow-tip'));
+   const app=await p.request.get(base+'sansuu_kotoba.html');assert(app.ok());assert((await app.text()).includes('semantic-arrow'));
    console.log('PASS',width,base,meta);await p.close();
   }
   assert.deepEqual(errors,[]);

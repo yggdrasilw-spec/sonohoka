@@ -10,6 +10,18 @@
   };
   let sceneKey='push', mode='people', frame=0, timer=null, questionIndex=0, answered=false, tried=false, attempts=0, correct=0;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  // Like the clock's direction arrows: derive the head from the arc's endpoint
+  // and tangent. The shaft overlaps the filled head, leaving no kink or gap.
+  document.querySelectorAll('.semantic-arrow').forEach(svg=>{
+    const cx=550,rx=250,cy=Number(svg.dataset.centerY),ry=Number(svg.dataset.radiusY);
+    const scale=Number(svg.dataset.shaft)/10;
+    const end={x:cx-rx,y:cy},u={x:0,y:1},normal={x:-u.y,y:u.x};
+    const tip={x:end.x+20*scale*u.x,y:end.y+20*scale*u.y};
+    const base={x:end.x-9*scale*u.x,y:end.y-9*scale*u.y};
+    const points=[tip,{x:base.x+17*scale*normal.x,y:base.y+17*scale*normal.y},{x:base.x-17*scale*normal.x,y:base.y-17*scale*normal.y}];
+    svg.querySelector('path').setAttribute('d',`M ${cx+rx} ${cy} A ${rx} ${ry} 0 0 0 ${end.x} ${end.y}`);
+    svg.querySelector('.arrow-head').setAttribute('points',points.map(p=>`${p.x},${p.y}`).join(' '));
+  });
   const arc=$('arc'), length=arc.getTotalLength();
   const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp`;
   Object.values(scenes).forEach(s=>{for(let n=0;n<4;n++){const image=new Image();image.src=asset(s.row,n);}});
@@ -17,7 +29,7 @@
   function renderFrame(){
     const scene=scenes[sceneKey];$('frame').src=asset(scene.row,frame);$('frame-count').textContent=`${frame+1} / 4 コマ`;
     $('caption').textContent=scene.beats[frame];
-    const p=arc.getPointAtLength(length*(reduced.matches?.5:frame/3));$('traveler').setAttribute('cx',p.x);$('traveler').setAttribute('cy',p.y);
+    const p=arc.getPointAtLength(length*(reduced.matches?.5:Math.min(frame/3,.90)));$('traveler').setAttribute('cx',p.x);$('traveler').setAttribute('cy',p.y);
   }
   function schedule(){timer=setTimeout(()=>{frame=(frame+1)%4;renderFrame();schedule();},Number($('speed').value)*(frame===3?2:1));}
   function render(){
