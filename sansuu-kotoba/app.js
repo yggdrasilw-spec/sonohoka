@@ -29,6 +29,8 @@
     $('left-person').textContent=s.left+'人';$('right-person').textContent=s.right+'人';
     $('number-panel').hidden=sceneKey==='push'||mode==='people';$('mapping').hidden=mode==='quiz';$('quiz').hidden=mode!=='quiz';
     if(sceneKey!=='push'){$('left-number').textContent=s.a;$('right-number').textContent=s.b;$('operator').textContent=s.op;$('left-term').textContent=s.left+'数';$('right-term').textContent=s.right+'数';}
+    $('basic-content').hidden=mode==='apply';$('application').hidden=mode!=='apply';
+    if(mode==='apply'){$('scene-title').textContent='文の意味を たしかめよう';$('scene-kicker').textContent='ことばを使って、計算の関係を読もう';document.dispatchEvent(new CustomEvent('practice-enter',{detail:sceneKey}));}
     if(mode==='quiz'){newQuestion();}
     renderFrame();
   }
@@ -40,8 +42,9 @@
     $('hint-text').textContent='矢印の 先は「される側」。根元は「する側」。みぎから ひだりへ、はたらきかけるよ。';
     $('score').textContent=attempts?`${attempts}問中 ${correct}問、はじめに できた`:'左右の ばしょを 見てみよう';
   }
-  document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(sceneKey==='push'&&mode==='numbers')mode='people';questionIndex=0;render();}));
-  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;questionIndex=0;render();}));
+  document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(sceneKey==='push'&&(mode==='numbers'||mode==='apply'))mode='people';questionIndex=0;render();}));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;if(mode==='apply'&&sceneKey==='push')sceneKey='multiply';questionIndex=0;render();}));
+  document.addEventListener('practice-topic-changed',e=>{if(e.detail!=='all')sceneKey=e.detail;document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===e.detail)));});
   $('play').addEventListener('click',()=>{if(timer){stop();return;}$('play').textContent='Ⅱ とめる';$('play').setAttribute('aria-pressed','true');schedule();});
   $('step').addEventListener('click',()=>{stop();frame=(frame+1)%4;renderFrame();});
   $('restart').addEventListener('click',()=>{stop();frame=0;renderFrame();});
