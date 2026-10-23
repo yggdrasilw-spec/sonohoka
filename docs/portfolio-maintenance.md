@@ -137,3 +137,11 @@ Downloadsの提供原本は変更していない（SHA256: `486F89C4746DB5B6FB39
 音源はWeb Audioで読み込み、切断時に再生し、ミュート時には再生中の音も停止する。録画の起点はカットイン中の実フレームで補正する（scripts/align-portfolio-93.py）。
 
 2026-10-23：切断確定ボタンを図の中へ移動。横の選択線は右端の7px先、縦の選択線は下端の7px先に表示。SVG座標を画面座標へ変換して追従し、ボタン自体は44px以上の高さを維持する。狭い画面では図の余白を調整し、図の拡大時にも線とボタンの位置関係を保つ。
+
+## 2026年10月23日：九九のたすけ舟
+
+教材番号94を算数・2年／3年（主学年2年）に追加。`kakezan_rescue.html` と `kakezan-rescue/` が本体。前後の九九、交換、両因数の分解、累加の5つの作戦をおはじきの図と式でつなぐ。再生／停止、スライダー、図のドラッグ、分け目の変更、まとまりのタップ、効果音の切替に対応する。全81式について395通りの作戦、648通りの分け方を機械検証。実児童での理解や定着への効果は未測定。
+
+掲載数91本、動画90本、非公開教材の静止画1本。紹介動画は「3×7に3を1つ分足す」実操作を9.5秒で紹介。再収録は `node scripts/capture-portfolio-94.cjs`、書き出しは `python scripts/encode-portfolio-missing.py 94`。元録画と編集区間は `.portfolio-work/demo-94/`、字幕・採用区間は `scripts/portfolio-demos-94.json`。配布先は `media/portfolio-94-intro.mp4` と同名PNG。
+
+`node scripts/qa-kakezan-rescue.cjs` で全式・図の個数・分割・回転後の配置・操作切替・ドラッグ・5画面幅を確認。`node scripts/qa-portfolio-94.cjs` でカード検索／学年／リンク／動画再生と末尾シークを確認し、`--public` では公開ファイルのハッシュも比較する。作品集全体は `node scripts/qa-portfolio.cjs --videos`。
