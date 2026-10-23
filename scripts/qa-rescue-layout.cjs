@@ -6,14 +6,14 @@ const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runt
    await p.setViewportSize({width,height});await p.goto(url);await p.locator('#sound').click();await p.locator('#sfx').click();
    const result=await p.evaluate(async()=>{
     const $=id=>document.getElementById(id),failures=[],selectors=['#lesson','.guide','.bubble','#description','#listen','.diagram-frame','#board','.math','#equation','.transport','#reset','#play','#next','.slow','nav','#strategies','.problem','#topAnswer'];let frames=0;
-    const rect=e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]};
+    const rect=e=>{if(e.id==='topAnswer')return [e.offsetLeft,e.offsetTop,e.offsetWidth,e.offsetHeight];const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]};
     function visibleBounds(label){if(document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth)failures.push({label,error:'document overflow',h:document.documentElement.scrollHeight,H:innerHeight});for(const sel of ['header','.problem',document.body.classList.contains('choosing')?'#rescueIntro':'#lesson','#strategies']){const r=document.querySelector(sel).getBoundingClientRect();if(r.top<-.5||r.bottom>innerHeight+.5)failures.push({label,sel,error:'off screen',rect:rect(document.querySelector(sel))})}}
     visibleBounds('question');
     for(const mode of [0,1,2,3,4]){
      document.querySelector(`[data-mode="${mode}"]`).click();await new Promise(r=>setTimeout(r,500));
      const original=selectors.map(sel=>rect(document.querySelector(sel))),bubble=$('description').getBoundingClientRect();
      function stable(label){visibleBounds(label);selectors.forEach((sel,i)=>{const actual=rect(document.querySelector(sel));if(actual.some((n,k)=>Math.abs(n-original[i][k])>.2))failures.push({mode,label,sel,error:'layout shift',original:original[i],actual})});const d=$('description');if(d.scrollHeight>d.clientHeight+1)failures.push({mode,label,error:'description clipped',height:d.clientHeight,scroll:d.scrollHeight});const e=$('equation');if(e.scrollHeight>e.clientHeight+1||e.scrollWidth>e.clientWidth+1)failures.push({mode,label,error:'equation clipped'});frames++}
-     stable('before');$('play').click();for(let i=0;i<36;i++){await new Promise(requestAnimationFrame);stable('animation-'+i)}await new Promise(r=>setTimeout(r,700));stable('after');
+     stable('before');$('play').click();for(let i=0;i<36;i++){await new Promise(requestAnimationFrame);stable('animation-'+i)}await new Promise(r=>setTimeout(r,700));stable('after');for(let i=0;i<40;i++){await new Promise(requestAnimationFrame);stable('answer-popup-'+i)}
      if(mode===4){for(let i=0;i<7;i++)$('play').click();await new Promise(r=>setTimeout(r,1200));stable('count-complete')}
      const slow=document.querySelector('.slow');slow.open=true;stable('slider-open');slow.open=false;stable('slider-close');
      if(mode===3){$('splitA').click();await new Promise(r=>setTimeout(r,100));const now=selectors.map(sel=>rect(document.querySelector(sel)));for(let i=0;i<now.length;i++)if(now[i].some((n,k)=>Math.abs(n-original[i][k])>.2))failures.push({mode,error:'axis changed layout',sel:selectors[i]})}

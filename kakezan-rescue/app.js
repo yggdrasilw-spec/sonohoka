@@ -3,11 +3,12 @@
 const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',voice=window.RescueVoice,sfx=window.RescueEffects;
 const methods=[{name:'たす',icon:'＋'},{name:'ひく',icon:'−'},{name:'くるっ',icon:'↻'},{name:'わける',icon:'✂'},{name:'かぞえる',icon:'●●'}];
 let a=3,b=8,mode=0,axis='b',cut=4,p=0,visual=0,raf=0,playing=false,gesture=null,scene,uiKey='',spokenComplete=false,committedCount=0,choosing=true;
+let answerShown=false,finalePending=false,finaleEpoch=0,resumeFinale=false;const finaleTimers=new Set();
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),clamp=n=>Math.max(0,Math.min(1,n));
 const entrances=new Set(),flourishes=new Set();
 function animate(node,frames,options,collection=flourishes){if(reduced.matches)return;const animation=node.animate(frames,options);collection.add(animation);animation.onfinish=()=>collection.delete(animation);return animation}
 function clearEntrance(){for(const animation of entrances)animation.cancel();entrances.clear()}
-function clearPresentation(){clearEntrance();for(const animation of flourishes)animation.cancel();flourishes.clear();$('fx').replaceChildren();sfx.cancel()}
+function clearPresentation(resetAnswer=true){cancelFinale(resetAnswer);clearEntrance();for(const animation of flourishes)animation.cancel();flourishes.clear();$('fx').replaceChildren();sfx.cancel()}
 function enterScene(){if(reduced.matches)return;for(const {node,row,c}of scene.dots)animate(node,[{transform:'translateY(14px) scale(.35)',opacity:0},{transform:'translateY(-3px) scale(1.12)',opacity:1,offset:.72},{transform:'none',opacity:1}],{duration:370,delay:Math.min(220,c*22+row*12),easing:'cubic-bezier(.2,.75,.3,1)',fill:'backwards'},entrances);for(const {node,c}of scene.plates)animate(node,[{opacity:0},{opacity:1}],{duration:240,delay:Math.min(c*20,180),fill:'backwards'},entrances)}
 function landing(target){
  sfx.play(target===0?'tap':'land');if(target===0||reduced.matches)return;
@@ -30,16 +31,26 @@ function introSpeech(){return [
 function actionText(){return [`${a}こを １つぶん、たすよ。`,`${a}こを １つぶん、とるよ。`,'くるっ！ かずは かわるかな？','ぱかっ！ ２つに わかれたね。',`${a}こずつ、たしていこう。`][mode]}
 function actionSpeech(){return [`${pieces(a)}を、ひとつぶん、たすよ。`,`${pieces(a)}を、ひとつぶん、とるよ。`,'くるっと、まわすよ。','ぱかっ。ふたつに、わけるよ。',''][mode]}
 function resultSpeech(){const [x,y]=partials();return [
- `${number(a*(b-1))}に、${number(a)}を たして、${number(a*b)}。だから、${multiply(a,b)}は、${number(a*b)}。`,
- `${number(a*(b+1))}から、${number(a)}を ひいて、${number(a*b)}。だから、${multiply(a,b)}は、${number(a*b)}。`,
+ `${number(a*(b-1))}に、${number(a)}を たして、${number(a*b)}。`,
+ `${number(a*(b+1))}から、${number(a)}を ひいて、${number(a*b)}。`,
  `${pieces(b)}ずつが、${groups(a)}ぶんに なったね。${multiply(b,a)}は、${number(a*b)}。おはじきの かずは、おなじだね。`,
- `${axis==='b'?multiply(a,cut):multiply(cut,b)}は、${number(x)}。${axis==='b'?multiply(a,b-cut):multiply(a-cut,b)}は、${number(y)}。${number(x)}と、${number(y)}を たして、${number(a*b)}。`,
- `${number(a)}を、${number(b)}かい たしたね。だから、${multiply(a,b)}は、${number(a*b)}。`][mode]}
+ `${number(x)}と、${number(y)}を たして、${number(a*b)}。`,
+ `${number(a)}を、${number(b)}かい たすと、${number(a*b)}。`][mode]}
 function partsSpeech(){const [x,y]=partials();return `${axis==='b'?multiply(a,cut):multiply(cut,b)}は、${number(x)}。${axis==='b'?multiply(a,b-cut):multiply(a-cut,b)}は、${number(y)}。ふたつの こたえを、たしてみよう。`}
 function setBubble(text){if($('description').textContent!==text)$('description').textContent=text}
 function stop(){cancelAnimationFrame(raf);raf=0;playing=false}
 function release(){if(gesture){const id=gesture.id;gesture=null;if($('board').hasPointerCapture(id))$('board').releasePointerCapture(id)}$('board').classList.remove('dragging')}
-function announceResult(){if(spokenComplete)return;spokenComplete=true;sfx.play('finish');animate(document.querySelector('.friend'),[{transform:'rotate(-6deg)'},{transform:'translateY(-7px) rotate(5deg)',offset:.4},{transform:'rotate(-5deg)'}],{duration:520,easing:'ease-out'});voice.say(resultSpeech(),{append:true,mark:'result'})}
+function cancelFinale(resetAnswer=true){finaleEpoch++;for(const timer of finaleTimers)clearTimeout(timer);finaleTimers.clear();finalePending=false;resumeFinale=false;for(const animation of $('topAnswer').getAnimations())animation.cancel();if(resetAnswer){answerShown=false;$('topAnswer').classList.remove('revealed')}}
+function later(delay,callback){const token=finaleEpoch,timer=setTimeout(()=>{finaleTimers.delete(timer);if(token===finaleEpoch&&!choosing&&p>=1&&!document.hidden)callback()},delay);finaleTimers.add(timer)}
+function revealAnswer(){if(choosing||p<1||answerShown||document.hidden)return;answerShown=true;finalePending=false;for(const timer of finaleTimers)clearTimeout(timer);finaleTimers.clear();$('topAnswer').textContent=a*b;$('topAnswer').classList.add('revealed');$('next').hidden=false;setBubble(`${a*b}！\nわすれても、つくれたね。`);sfx.play('finish');animate($('topAnswer'),[{transform:'scale(.55)'},{transform:'translateY(-3px) scale(1.42)',offset:.45},{transform:'scale(1)'}],{duration:620,easing:'cubic-bezier(.2,.9,.3,1)'});animate(document.querySelector('.friend'),[{transform:'rotate(-6deg)'},{transform:'translateY(-7px) rotate(5deg)',offset:.4},{transform:'rotate(-5deg)'}],{duration:520,easing:'ease-out'})}
+function silentFinale(){voice.cancel();cancelFinale();finalePending=true;$('topAnswer').textContent='？';$('next').hidden=true;const token=finaleEpoch;later(350,()=>setBubble(`だから ${a} × ${b} は……`));later(1050,()=>{if(token===finaleEpoch)revealAnswer()})}
+function announceResult(replay=false){if(spokenComplete&&!replay)return;spokenComplete=true;cancelFinale();finalePending=true;$('topAnswer').textContent='？';$('next').hidden=true;const token=finaleEpoch,valid=callback=>()=>{if(token===finaleEpoch&&!choosing&&p>=1&&!document.hidden)callback()};
+ const fallback=valid(()=>{if(!answerShown)silentFinale()}),accepted=voice.sequence([
+  {text:resultSpeech(),mark:'result-reason',onerror:fallback},
+  {text:`だから、${multiply(a,b)}は。`,mark:'result-therefore',onstart:valid(()=>setBubble(`だから ${a} × ${b} は……`)),onerror:fallback},
+  {text:`${number(a*b)}。`,mark:'result-answer',pauseBefore:700,onstart:valid(revealAnswer),onerror:fallback}
+ ],{append:!replay});if(!accepted)silentFinale();else later(25000,()=>{if(!answerShown)silentFinale()});
+}
 function challengeSpeech(){return `${multiply(a,b)}の こたえを、わすれちゃった！ どうする？ さあ、たすけてあげよう！ たすけかたは、ぜんぶで、いつつだよ。どれで、たすける？`}
 function showChallenge(read=false){stop();release();clearPresentation();voice.cancel();choosing=true;p=visual=0;committedCount=0;spokenComplete=false;document.body.classList.add('choosing');document.body.classList.remove('done');$('rescueIntro').hidden=false;$('lesson').hidden=true;$('problemPrompt').textContent='こたえを わすれちゃった！';$('helpChoice').textContent='どれで たすける？';$('topAnswer').textContent='？';configure();if(read){sfx.play('tap');voice.say(challengeSpeech(),{mark:'question'})}}
 function select(i,read=true){stop();release();clearPresentation();voice.cancel();choosing=false;document.body.classList.remove('choosing');$('rescueIntro').hidden=true;$('lesson').hidden=false;$('problemPrompt').textContent='わすれた 九九を たすけよう！';$('helpChoice').textContent='ほかの たすけかたも ためせるよ';mode=i;p=visual=0;committedCount=0;spokenComplete=false;configure();build();render();enterScene();if(read){sfx.play('appear');voice.say(introSpeech(),{mark:'known'})}}
@@ -74,7 +85,7 @@ function build(){
   const hx=vertical?pos:cx+b*space/2+28,hy=vertical?Math.min(334,cy+a*space/2+25):pos,hitRadius=Math.max(25,24*760/$('board').getBoundingClientRect().width);
   el('circle',{cx:hx,cy:hy,r:hitRadius,fill:'transparent','pointer-events':'all'},grip);el('circle',{cx:hx,cy:hy,r:25,class:'cut-grip'},grip);el('text',{x:hx,y:hy+7,'text-anchor':'middle','pointer-events':'none'},grip,vertical?'↔':'↕');
   grip.onpointerdown=e=>{e.preventDefault();e.stopPropagation();stop();clearEntrance();sfx.play('grab');voice.cancel();gesture={id:e.pointerId,type:'cut'};$('board').setPointerCapture(e.pointerId)};
-  grip.onkeydown=e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)){e.preventDefault();setCut(e.key==='Home'?1:e.key==='End'?(axis==='b'?b:a)-1:cut+(['ArrowRight','ArrowDown'].includes(e.key)?1:-1));$('handles').querySelector('.handle').focus()}};
+  grip.onkeydown=e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)){e.preventDefault();setCut(e.key==='Home'?1:e.key==='End'?(axis==='b'?b:a)-1:cut+(['ArrowRight','ArrowDown'].includes(e.key)?1:-1));$('handles').querySelector('.handle').focus();if(p>=1)announceResult()}};
  }
  scene.caption=el('text',{x:380,y:377,'text-anchor':'middle'},$('annotations'));
  const halfWidth=mode<2?Math.max(245,cols*space/2+110):Math.max(175,Math.max(cols,a)*space/2+65),halfHeight=mode===2?185:Math.max(mode===3?160:mode===4?155:105,a*space/2+45);
@@ -111,8 +122,8 @@ function renderWords(done,shown){
  if(mode===2)eq=p===0?`${a} × ${b} ＝ ？`:`${known(`${b} × ${a}`)} ＝ ${ans}`;
  if(mode===3)eq=`<span class="small-equation">${known(first)} ＋ ${accent(second)}</span>${known(x)} ＋ ${accent(y)} ＝ ${ans}`;
  if(mode===4)eq=shown===0?`${a} × ${b} ＝ ？`:shown===1?`${a} ＝ ${a}`:`${known(a*(shown-1))} ＋ ${accent(a)} ＝ ${done?ans:a*shown}`;
- if($('equation').innerHTML!==eq)$('equation').innerHTML=eq;$('topAnswer').textContent=done?a*b:'？';document.body.classList.toggle('done',done);$('next').hidden=!done;
- if(done)setBubble([`${a}こ ふえて、${a*b}こ！\nわすれても、つくれたね。`,`${a}こ とって、${a*b}こ！\n１つぶん へらせたね。`,`${b}こずつ ${a}つぶん！\nかずは おなじだね。`,'２つの こたえを たせば いいね！',`${a}を ${b}かい たして、${a*b}！`][mode]);
+ if($('equation').innerHTML!==eq)$('equation').innerHTML=eq;$('topAnswer').textContent=done&&answerShown?a*b:'？';document.body.classList.toggle('done',done);$('next').hidden=!(done&&answerShown);
+ if(done&&answerShown)setBubble(`${a*b}！\nわすれても、つくれたね。`);else if(done&&!finalePending)setBubble([`${a}こ ふえて、${a*b}こ！\nわすれても、つくれたね。`,`${a}こ とって、${a*b}こ！\n１つぶん へらせたね。`,`${b}こずつ ${a}つぶん！\nかずは おなじだね。`,'２つの こたえを たせば いいね！',`${a}を ${b}かい たして、${a*b}！`][mode]);
  else if(mode===4&&shown)setBubble(`${a*shown}こに なったね。\nつぎの ${a}こを タッチ！`);else setBubble(p===0?initialText():actionText());
  $('play').textContent=done?'もういちど':mode===4?`${a}こを たす`:playing?'とめる':[`${a}こを いれる`,`${a}こを とる`,'くるっと まわす','ぱかっと わける'][mode];
  $('diagramDesc').textContent=done?`${a} かける ${b} は ${a*b}。`:`${a}こずつの まとまり。${mode===4?'ひかる まとまりを １つずつ タッチ。':mode<2?'オレンジの まとまりを うごかせるよ。':'下の ボタンでも うごかせるよ。'}`;
@@ -128,21 +139,22 @@ function setCut(value){const next=Math.max(1,Math.min(value,(axis==='b'?b:a)-1))
 function point(e){return new DOMPoint(e.clientX,e.clientY).matrixTransform($('board').getScreenCTM().inverse())}
 $('board').onpointerdown=e=>{if(mode>2||e.button!==0)return;const q=point(e);if(mode<2){const r=scene.hit.getBBox();if(q.x<r.x||q.x>r.x+r.width||q.y<r.y||q.y>r.y+r.height)return}e.preventDefault();stop();clearPresentation();sfx.play('grab');voice.say(actionSpeech(),{mark:'action'});spokenComplete=false;gesture={id:e.pointerId,type:'move',x:q.x,start:clamp(visual)};p=visual=gesture.start;$('board').setPointerCapture(e.pointerId);$('board').classList.add('dragging');render()};
 $('board').onpointermove=e=>{if(!gesture||gesture.id!==e.pointerId)return;const q=point(e);if(gesture.type==='cut'){setCut(Math.round(axis==='b'?(q.x-scene.cx)/scene.space+b/2:(q.y-scene.cy)/scene.space+a/2));return}visual=p=clamp(gesture.start+(q.x-gesture.x)/(mode<2?95:180)*(mode===0?-1:1));render()};
-function endGesture(e,cancelled=false){if(!gesture||gesture.id!==e.pointerId)return;const type=gesture.type;gesture=null;$('board').classList.remove('dragging');if($('board').hasPointerCapture(e.pointerId))$('board').releasePointerCapture(e.pointerId);if(type==='cut'){voice.say(p>=1?resultSpeech():partsSpeech(),{mark:'parts'});return}const target=cancelled?Math.round(p):p>.55?1:0;spring(target,target===1?announceResult:()=>voice.cancel())}
+function endGesture(e,cancelled=false){if(!gesture||gesture.id!==e.pointerId)return;const type=gesture.type;gesture=null;$('board').classList.remove('dragging');if($('board').hasPointerCapture(e.pointerId))$('board').releasePointerCapture(e.pointerId);if(type==='cut'){if(p>=1)announceResult();else voice.say(partsSpeech(),{mark:'parts'});return}const target=cancelled?Math.round(p):p>.55?1:0;spring(target,target===1?announceResult:()=>voice.cancel())}
 $('board').onpointerup=e=>endGesture(e);$('board').onpointercancel=e=>endGesture(e,true);$('board').onlostpointercapture=e=>{if(gesture)endGesture(e,true)};
 for(const id of ['a','b'])for(let i=1;i<=9;i++){const option=document.createElement('option');option.value=i;option.textContent=i;$(id).append(option)}$('a').value=a;$('b').value=b;
 methods.forEach((method,i)=>{const button=document.createElement('button');button.className='strategy';button.dataset.mode=i;button.setAttribute('aria-label',['１つ前の 九九から たす','１つ後の 九九から ひく','かける数と かけられる数を 入れかえる','２つの かけ算に わける','同じ数を １つぶんずつ たす'][i]);button.innerHTML=`<span class="icon" aria-hidden="true">${method.icon}</span><strong>${method.name}</strong>`;button.onclick=()=>select(i);$('strategies').append(button)});
-$('play').onclick=act;$('reset').onclick=()=>select(mode);$('listen').onclick=()=>{if(!voice.enabled){voice.enable(true);$('sound').setAttribute('aria-pressed','true');$('sound').textContent='こえ ON'}voice.say(p>=1?resultSpeech():mode===4&&counted()?`${number(a*counted())}こに なったね。つぎの ${pieces(a)}を、たしてみよう。`:p===0?introSpeech():actionSpeech(),{mark:'replay'})};
+$('play').onclick=act;$('reset').onclick=()=>select(mode);$('listen').onclick=()=>{if(!voice.enabled){voice.enable(true);$('sound').setAttribute('aria-pressed','true');$('sound').textContent='こえ ON'}if(p>=1){announceResult(true);return}voice.say(mode===4&&counted()?`${number(a*counted())}こに なったね。つぎの ${pieces(a)}を、たしてみよう。`:p===0?introSpeech():actionSpeech(),{mark:'replay'})};
 $('introListen').onclick=()=>{if(!voice.enabled){voice.enable(true);$('sound').setAttribute('aria-pressed','true');$('sound').textContent='こえ ON'}voice.say(challengeSpeech(),{mark:'question'})};
-$('sound').onclick=()=>{const enabled=voice.enable(!voice.enabled);$('sound').setAttribute('aria-pressed',enabled);$('sound').textContent=enabled?'こえ ON':'こえ OFF';if(enabled)$(choosing?'introListen':'listen').click()};
+$('sound').onclick=()=>{const pending=finalePending,enabled=voice.enable(!voice.enabled);$('sound').setAttribute('aria-pressed',enabled);$('sound').textContent=enabled?'こえ ON':'こえ OFF';if(enabled)$(choosing?'introListen':'listen').click();else if(pending)silentFinale()};
 $('sfx').onclick=()=>{const enabled=sfx.enable(!sfx.enabled);$('sfx').setAttribute('aria-pressed',enabled);$('sfx').textContent=enabled?'おと ON':'おと OFF';if(enabled)sfx.play('tap')};
 $('progress').oninput=e=>{stop();clearPresentation();voice.cancel();p=visual=+e.target.value/1000;committedCount=Math.min(b,Math.floor(p*b+1e-6));spokenComplete=false;render()};$('progress').onchange=()=>{if(p>=1)announceResult()};
 for(const id of ['a','b'])$(id).onchange=()=>{a=+$('a').value;b=+$('b').value;cut=Math.max(1,Math.floor((axis==='b'?b:a)/2));showChallenge(true)};
 function nextProblem(){let next;do next=10*(1+Math.floor(Math.random()*9))+1+Math.floor(Math.random()*9);while(next===a*10+b);a=Math.floor(next/10);b=next%10;$('a').value=a;$('b').value=b;cut=Math.max(1,Math.floor(b/2));showChallenge(true)}
 $('random').onclick=nextProblem;$('next').onclick=nextProblem;
 for(const [id,dir]of [['splitA','a'],['splitB','b']])$(id).onclick=()=>{axis=dir;cut=Math.max(1,Math.floor((axis==='a'?a:b)/2));select(mode)};
-$('cut').oninput=e=>setCut(+e.target.value);$('cut').onchange=()=>voice.say(p>=1?resultSpeech():partsSpeech(),{mark:'parts'});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();release();clearPresentation();p=visual=clamp(visual);if(!choosing)render()}});
+$('cut').oninput=e=>setCut(+e.target.value);$('cut').onchange=()=>{if(p>=1)announceResult();else voice.say(partsSpeech(),{mark:'parts'})};
+document.addEventListener('visibilitychange',()=>{if(document.hidden){const pending=finalePending;stop();release();clearPresentation(false);resumeFinale=pending;p=visual=clamp(visual);if(!choosing)render()}else if(resumeFinale&&!choosing&&p>=1){resumeFinale=false;silentFinale()}});
+window.addEventListener('pagehide',()=>cancelFinale(false));
 let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!choosing){build();render()}})});
 showChallenge();
 })();

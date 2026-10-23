@@ -9,7 +9,7 @@ const root=path.resolve(__dirname,'..'),dir=path.join(root,'.portfolio-work/demo
  try{
   const ctx=await browser.newContext({viewport:{width:1280,height:820},recordVideo:{dir,size:{width:1280,height:820}}});
   const p=await ctx.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
-  await p.goto(`http://127.0.0.1:${server.address().port}/sonohoka/kakezan_rescue.html`);await p.waitForTimeout(300);
+  await p.goto(`http://127.0.0.1:${server.address().port}/sonohoka/kakezan_rescue.html`);await p.locator('#sound').click();await p.waitForTimeout(300);
   const marks=[],durations=[1,1.6,1.8,2,3.1];
   for(let i=0;i<5;i++){
    marks.push(Date.now()/1000);
