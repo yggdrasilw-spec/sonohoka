@@ -123,3 +123,15 @@ Downloadsの提供原本は変更していない（SHA256: `486F89C4746DB5B6FB39
 実ブラウザで5の段を選び、5こずつ2回増やしてアレイ図・色ヒントへ切り替える操作を録画した。字幕付き9.5秒のH.264/AAC動画とPNGは `media/portfolio-92-intro.*`。再収録は `node scripts/capture-portfolio-92.cjs`（Windowsでは必要に応じて `PLAYWRIGHT_BROWSERS_PATH=C:/Users/user/AppData/Local/ms-playwright`）、書き出しは `python scripts/encode-portfolio-missing.py 92`。元録画・編集区間は `.portfolio-work/demo-92/`、採用区間と字幕は `scripts/portfolio-demos-92.json` に保存する。
 
 `node scripts/qa-portfolio-92.cjs` で9段の起動・九九表81式・練習解答・PC/390px/320px・カード検索・学年・ポスター・モーダル再生と末尾シークを確認。作品集全体は `node scripts/qa-portfolio.cjs --videos`。
+
+## 2026年10月23日：かけ算をわけよう・手描きカット
+
+切る前の一枚のアレイ図に戻す操作を追加。透明キャンバスへの手描き線をSVG座標へ変換し、ほぼ縦／横の直線を最寄りの内部境界に合わせて選択する。短い線・外周・斜線・ジグザグは確定しない。スライダーと方向ボタンでも選択できる。拡大図をスクロールしたいときは「ペン OFF」にする。
+
+「ここで切る！」で約0.8秒の侍カットイン、選択位置の斬線、指定音源 `se_sword10.mp3`（同一バイトの `media/wakeyou-sword.mp3`）と二群への分離を表示。演出中の重複操作は無効化し、動きを減らす設定ではカットインを省く。パーツの式／図に重ねる合計数／侍演出／音をそれぞれ切替可能。未分割は全体の個数、分割後は各群の個数を重ね、切断前後の総数は同じままにする。
+
+侍は組み込み画像生成で作成した透過PNG `media/wakeyou-samurai.png`。CSSの帯・斬線・文字と組み合わせる。対戦相手や負傷の表現は含めない。紹介動画を同じ手描き→カット→表示切替の実操作で更新。再収録・書き出しは `node scripts/capture-portfolio-93.cjs`、`python scripts/encode-portfolio-missing.py 93`。
+
+`node scripts/qa-wakeyou-cut.cjs` はマウス／タッチの縦横選択、無効線、演出の操作ロック、式と数値の切替、動きを減らす設定、5幅の表示、484条件の分割前後の個数と配置を検証する。従来の網羅検証は `node scripts/qa-kakezan-wakeyou.cjs`。実児童での印象や学習効果は未測定。
+
+音源はWeb Audioで読み込み、切断時に再生し、ミュート時には再生中の音も停止する。録画の起点はカットイン中の実フレームで補正する（scripts/align-portfolio-93.py）。
