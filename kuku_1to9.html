@@ -175,6 +175,31 @@ body.s-title #lesson,body.s-toc #lesson,body:not(.s-title) #sTitle,body:not(.s-t
 @keyframes shim{0%{transform:translateX(-46px);opacity:0}30%{opacity:.9}100%{transform:translateX(52px);opacity:0}}
 .tw,.shim{transform-box:fill-box}.tw.l{transform-origin:100% 50%}.tw.r{transform-origin:0 50%}
 body.cont #bMode{display:none}
+/* 唱えて覚える画面と、確かめる問題を分ける */
+.lesson-tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:12px 8px}
+.lesson-tabs [aria-selected="true"]{background:#ff9a2e;color:#fff;box-shadow:0 4px 0 #d06f0c}
+.learn-controls,.question-controls{display:none;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:6px 12px;font-size:18px;font-weight:700}
+body.learn .learn-controls,body.quiz .question-controls{display:flex}
+select{font:inherit;padding:8px;border:2px solid #b58b55;border-radius:10px;background:#fff;color:#5a3a1a}
+body:not(.quiz) .lv{display:none}
+body.learn #qc{display:none}
+body.learn #tb{width:min(960px,96vw);flex:0 1 960px}
+body.learn #tb h2{font-size:clamp(22px,3vw,32px);padding:8px}
+body.learn .rw{font-size:clamp(20px,3.5vw,36px);min-height:58px;padding:8px;gap:12px}
+.row-listen{display:flex;align-items:center;gap:4px;flex:1;min-width:0;font:inherit;padding:0;border-radius:6px;background:transparent;box-shadow:none;color:inherit}
+.row-listen:active{transform:none;box-shadow:none}
+.learn-note{display:none}body.learn .learn-note{display:block;text-align:center;padding:4px 12px;font-size:16px;line-height:1.5}
+.learned-control{display:none}
+body.learn .learned-control{display:flex;flex:0 0 82px;flex-direction:column;align-items:center;gap:4px;font-size:15px;cursor:pointer}
+.learned-control input{width:24px;height:24px;accent-color:#21864b;cursor:pointer}
+body.learn .rw.learned{background:#edf6ed}
+body.learn .row-listen{gap:12px}
+.chant-reading{display:none}
+body.learn .chant-reading{display:block;font-size:clamp(18px,3.2vw,32px);line-height:1.5}
+body.learn .rw .rt2{display:none}
+body.learn .rw span:first-child{flex-basis:40%}
+@media(max-width:760px){body.learn #tb{flex:0 0 auto}}
+@media(max-width:540px){body.learn .rw{gap:4px;padding:6px;font-size:24px}body.learn .row-listen{flex-wrap:wrap;gap:0}body.learn .learned-control{flex-basis:58px;font-size:13px}body.learn .rw span:first-child{flex:0 0 100%}body.learn .chant-reading{flex:0 0 100%;font-size:22px} .lesson-tabs button{padding:8px 14px}}
 </style>
 </head>
 <body class="s-title">
@@ -191,8 +216,18 @@ body.cont #bMode{display:none}
 <p class="toc-foot">具体物をかえても、アレイ図にしても、同じ九九を考えられるよ。</p></section>
 <main id="lesson">
 <h1 id="ttl">かけざん　5のだん</h1>
+<div class="lesson-tabs" role="tablist" aria-label="まなびかた">
+<button id="bBuild" role="tab" aria-selected="true" aria-controls="st">つくる</button>
+<button id="bPrac" role="tab" aria-selected="false" aria-controls="prac">おぼえよう</button>
+<button id="bQuiz" role="tab" aria-selected="false" aria-controls="prac">もんだい</button>
+</div>
+<div class="learn-controls"><button id="bRead">▶ だんを とおして きく</button><button id="bStop" disabled>■ とめる</button>
+<label>よむ はやさ <select id="readSpeed"><option value="0.6">ゆっくり</option><option value="0.85" selected>ふつう</option><option value="1">すこし はやく</option><option value="1.2">はやく</option></select></label>
+<label><input id="readRepeat" type="checkbox"> くりかえす</label></div>
+<p class="learn-note">「おぼえた」に チェックした しきは、とおして よむときに とばすよ。</p>
+<div class="question-controls"><label>もんだいの じゅんばん <select id="questionOrder"><option value="forward">じゅんばん</option><option value="reverse">ぎゃくじゅん</option><option value="random">ランダム</option></select></label></div>
 <div id="exp"></div>
-<div id="msg"></div>
+<div id="msg" role="status" aria-live="polite"></div>
 <div id="cap"></div>
 <div id="legend" aria-label="色ヒントの見方"><span class="lg-a">青：1つぶん</span><span class="lg-b">赤：いくつ分</span><span class="lg-r">黄：ぜんぶ</span></div>
 <svg id="st" viewBox="0 0 1000 440">
@@ -211,7 +246,6 @@ body.cont #bMode{display:none}
 <span id="objBtns" style="display:contents"></span>
 <button id="bReset">はじめから</button>
 <button id="bHint" type="button" aria-pressed="false" class="off">🎨 色ヒント OFF</button>
-<button id="bPrac">れんしゅう</button>
 <button class="pr lv" data-l="1">レベル1</button><button class="pr lv" data-l="2">レベル2</button><button class="pr lv" data-l="3">レベル3</button><button class="pr lv" data-l="4">レベル4</button><button class="pr lv" data-l="5">レベル5</button>
 <button id="bSnd">🔊 おと</button>
 <button id="bVoice">🗣 こえ</button>
@@ -269,7 +303,7 @@ function crinkle(t,d){
 function say(t){
   if(!voice||!window.speechSynthesis||!t)return;
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.rate=.85;u.pitch=1.15;speechSynthesis.speak(u);
+  const u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.rate=Number($("readSpeed").value);u.pitch=1.15;speechSynthesis.speak(u);
 }
 function later(f,ms){tm.push(setTimeout(f,ms))}
 /* きらきら */
@@ -665,7 +699,7 @@ function toggleMode(){
     later(()=>S.slice(0,n).forEach(row=>row.forEach(g=>g.classList.remove("sphere"))),1300);
     $("msg").textContent="";
   }
-  setTimeout(()=>{if(n)upd(n)},1650);
+  later(()=>{if(n&&!inP())upd(n)},1650);
 }
 const toggle=(b,f)=>b.classList.toggle("off",!f);
 /* いまの個数のまま描き直す(具体物・だんを切り替えたとき) */
@@ -708,6 +742,7 @@ function objUI(){
   }
 }
 function setDan(d){
+  stopChant();
   tm.forEach(clearTimeout);tm=[];bz=0;
   if(window.speechSynthesis)speechSynthesis.cancel();
   D=d;objectType=DAN[d][0];dims();clearStage();n=0;initTable();
@@ -715,34 +750,93 @@ function setDan(d){
   $("ttl").textContent=document.title=`かけざん　${D}のだん`;
   objUI();
   $("exp").innerHTML=ex(0);$("msg").textContent=idle();
-  buildTb();if(inP())setLv(lv);
+  buildTb();if(lessonMode==="quiz")setLv(lv);
 }
 $("bAdd").onclick=add;$("bUndo").onclick=()=>undo(1);$("bReset").onclick=reset;$("bMode").onclick=toggleMode;
 $("bSnd").onclick=e=>{snd=!snd;toggle(e.currentTarget,snd)};
-$("bVoice").onclick=e=>{voice=!voice;toggle(e.currentTarget,voice);if(!voice&&window.speechSynthesis)speechSynthesis.cancel()};
+$("bVoice").onclick=e=>{voice=!voice;toggle(e.currentTarget,voice);if(!voice)stopChant()};
 function setColorHint(on){
   document.body.classList.toggle("hint",on);
   const b=$("bHint");b.classList.toggle("off",!on);b.setAttribute("aria-pressed",String(on));
   b.textContent=on?"🎨 色ヒント ON":"🎨 色ヒント OFF";
 }
 $("bHint").onclick=()=>setColorHint(!document.body.classList.contains("hint"));
-document.addEventListener("keydown",e=>{if(inP())return;if(e.key=="ArrowRight")add();if(e.key=="ArrowLeft")undo(1)});
-/* れんしゅうモード */
+document.addEventListener("keydown",e=>{if(e.defaultPrevented||inP()||document.body.classList.contains("s-title")||document.body.classList.contains("s-toc")||e.target.closest("button,input,select"))return;if(e.key=="ArrowRight")add();if(e.key=="ArrowLeft")undo(1)});
+/* おぼえよう：読み終わりを待って次の式へ。切り替え時は古いコールバックを無効にする。 */
+const learnedKey="kuku-1to9-learned-v1";
+let learned={};
+try{
+  const saved=JSON.parse(localStorage.getItem(learnedKey));
+  for(let d=1;d<=9;d++)if(Array.isArray(saved?.[d]))learned[d]=[...new Set(saved[d].filter(i=>Number.isInteger(i)&&i>=1&&i<=9))];
+}catch{}
+const isLearned=i=>(learned[D]||[]).includes(i);
+function saveLearned(){try{localStorage.setItem(learnedKey,JSON.stringify(learned));return true}catch{return false}}
+let lessonMode="build",chantRun=0,chantPlaying=false;
+function stopChant(){
+  chantRun++;chantPlaying=false;
+  if(window.speechSynthesis)speechSynthesis.cancel();
+  $("bRead").disabled=false;$("bStop").disabled=true;
+  document.querySelectorAll(".rw.cur").forEach(r=>r.classList.remove("cur"));
+}
+function startChant(){
+  stopChant();
+  const queue=Array.from({length:9},(_,i)=>i+1).filter(i=>!isLearned(i));
+  if(!queue.length){$("msg").textContent="ぜんぶに チェックが ついているよ。ききたい しきの チェックを はずしてね。";return}
+  if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){$("msg").textContent="このブラウザでは こえが つかえません。ひょうを みて となえよう。";return}
+  voice=true;toggle($("bVoice"),true);
+  const run=chantRun;chantPlaying=true;$("bRead").disabled=true;$("bStop").disabled=false;
+  function next(index){
+    if(run!==chantRun||lessonMode!=="learn")return;
+    if(index>=queue.length){
+      if($("readRepeat").checked)return next(0);
+      stopChant();$("msg").textContent="さいごまで きけたね！ もういちど いっしょに となえよう。";return;
+    }
+    const i=queue[index];
+    document.querySelectorAll(".rw").forEach(r=>r.classList.toggle("cur",+r.dataset.i===i));
+    $("msg").textContent=`${D}のだん　${index+1} / ${queue.length}　いっしょに となえよう`;
+    const u=new SpeechSynthesisUtterance(YOMI(i).replace(/ /g,""));
+    u.lang="ja-JP";u.rate=Number($("readSpeed").value);u.pitch=1.15;
+    u.onend=()=>next(index+1);
+    u.onerror=()=>{if(run!==chantRun)return;stopChant();$("msg").textContent="こえを さいせいできませんでした。もういちど おしてね。"};
+    speechSynthesis.speak(u);
+  }
+  next(0);
+}
+$("bRead").onclick=startChant;
+$("bStop").onclick=()=>{stopChant();$("msg").textContent="とめたよ。もういちど はじめから きけるよ。"};
+$("readSpeed").onchange=()=>{if(chantPlaying)startChant()};
+/* もんだいモード */
 let lv=1,qn=0,qi=1,ord=[],lk=false;
+function shuffled(values){
+  const a=values.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a;
+}
 const rb=(t,r)=>`<ruby>${t}<rt>${r}</rt></ruby>`,inP=()=>document.body.classList.contains("prac");
 function buildTb(){
   let h=`<h2>${D}のだんの 九九</h2>`;
   for(let i=1;i<=9;i++){
     const [a,b]=ORAL[D][i-1].split(" "),p=D*i;
-    h+=`<div class="rw" data-i="${i}"><span class="expr"><b class="a">${D}</b>×<b class="b">${i}</b>＝<b class="r">${p}</b></span><span class="rt2">${rb(KJ[D-1]+KJ[i-1]+(p<10?"が":""),a)} ${rb(p,b)}</span></div>`;
+    h+=`<div class="rw${isLearned(i)?" learned":""}" data-i="${i}"><button class="row-listen" type="button" aria-label="${a}${b}を きく"><span class="expr"><b class="a">${D}</b>×<b class="b">${i}</b>＝<b class="r">${p}</b></span><span class="chant-reading">${a}${b}</span><span class="rt2">${rb(KJ[D-1]+KJ[i-1]+(p<10?"が":""),a)} ${rb(p,b)}</span></button><label class="learned-control"><input type="checkbox" data-learned="${i}" aria-label="${D}かける${i}を おぼえた" ${isLearned(i)?"checked":""}>おぼえた</label></div>`;
   }
   $("tb").innerHTML=h;
 }
-$("tb").onclick=e=>{const r=e.target.closest(".rw");if(r){A();say(YOMI(+r.dataset.i))}};
+$("tb").onclick=e=>{const r=e.target.closest(".row-listen")?.closest(".rw");if(r){stopChant();A();say(YOMI(+r.dataset.i))}};
+$("tb").onchange=e=>{
+  const box=e.target.closest("input[data-learned]");if(!box)return;
+  stopChant();
+  const i=Number(box.dataset.learned),values=new Set(learned[D]||[]);
+  if(box.checked)values.add(i);else values.delete(i);
+  learned[D]=[...values].sort((a,b)=>a-b);
+  box.closest(".rw").classList.toggle("learned",box.checked);
+  const saved=saveLearned();
+  $("msg").textContent=(box.checked?"チェックした しきを とばして よむよ。":"この しきも いっしょに よむよ。")+(saved?"":" このブラウザでは チェックを ほぞんできません。");
+};
 function setLv(l){
+  stopChant();tm.forEach(clearTimeout);tm=[];
   lv=l;$("tb").className="l"+l;
   document.querySelectorAll(".lv").forEach(b=>b.classList.toggle("on",b.dataset.l==l));
-  ord=[1,2,3,4,5,6,7,8,9];if(l>2)ord.sort(()=>Math.random()-.5);
+  ord=[1,2,3,4,5,6,7,8,9];
+  if($("questionOrder").value==="reverse")ord.reverse();
+  if($("questionOrder").value==="random")ord=shuffled(ord);
   qn=0;ask();
 }
 function ask(){
@@ -750,7 +844,7 @@ function ask(){
   $("q").innerHTML=lv===5?`<span class="oral">「${ORAL[D][qi-1].split(" ")[0].replace(/が$/,"")}」は？</span>`:`<b class="a">${D}</b> × <b class="b">${qi}</b> ＝ <b class="r">？</b>`;
   document.querySelectorAll(".rw").forEach(r=>r.classList.toggle("cur",r.dataset.i==qi));
   const o=new Set([D*qi]);while(o.size<4)o.add(D*(1+Math.floor(Math.random()*9)));
-  $("ch").innerHTML=[...o].sort(()=>Math.random()-.5).map(v=>`<button data-v="${v}">${v}</button>`).join("");
+  $("ch").innerHTML=shuffled([...o]).map(v=>`<button data-v="${v}">${v}</button>`).join("");
   $("msg").textContent=`レベル${lv}　${qn+1}もんめ`;
 }
 $("ch").onclick=e=>{
@@ -763,7 +857,7 @@ $("ch").onclick=e=>{
   $("q").innerHTML=`<b class="a">${D}</b> × <b class="b">${qi}</b> ＝ <b class="r bump">${D*qi}</b>`;
   say(YOMI(qi));
   later(()=>{
-    if(!inP())return;
+    if(lessonMode!=="quiz")return;
     if(++qn<9)return ask();
     [523,659,784,1047].forEach((f,j)=>tone(f,j*.14,.35,"square",.12));
     $("msg").textContent=`レベル${lv} クリア！ ぜんぶ できたね！`;
@@ -772,17 +866,36 @@ $("ch").onclick=e=>{
   },2200);
 };
 document.querySelectorAll(".lv").forEach(b=>b.onclick=()=>{A();setLv(+b.dataset.l)});
-$("bPrac").onclick=()=>{
-  const p=document.body.classList.toggle("prac");
-  $("bPrac").textContent=p?"つくる":"れんしゅう";
-  if(window.speechSynthesis)speechSynthesis.cancel();
-  if(p)setLv(lv);else $("msg").textContent=n?D+"×"+n+"＝"+D*n:idle();
-};
+function setLessonMode(next){
+  stopChant();tm.forEach(clearTimeout);tm=[];bz=0;
+  lessonMode=next;
+  document.body.classList.toggle("prac",next!=="build");
+  document.body.classList.toggle("learn",next==="learn");
+  document.body.classList.toggle("quiz",next==="quiz");
+  [["bBuild","build"],["bPrac","learn"],["bQuiz","quiz"]].forEach(([id,m])=>$(id).setAttribute("aria-selected",String(next===m)));
+  if(next==="quiz")setLv(lv);
+  else if(next==="learn"){
+    $("tb").className="";$("q").innerHTML="";$("ch").innerHTML="";
+    $("msg").textContent="ひょうを みながら、なんども きいて となえよう。";
+  }else rebuild(n);
+}
+$("bBuild").onclick=()=>setLessonMode("build");
+$("bPrac").onclick=()=>setLessonMode("learn");
+$("bQuiz").onclick=()=>setLessonMode("quiz");
+$("questionOrder").onchange=()=>setLv(lv);
+const tabs=["bBuild","bPrac","bQuiz"].map($);
+tabs.forEach((tab,i)=>tab.onkeydown=e=>{
+  const j=e.key==="ArrowRight"?(i+1)%3:e.key==="ArrowLeft"?(i+2)%3:e.key==="Home"?0:e.key==="End"?2:-1;
+  if(j>=0){e.preventDefault();tabs[j].focus();tabs[j].click()}
+});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)stopChant()});
+window.addEventListener("pagehide",stopChant);
 /* 表紙・目次・画面の切り替え */
 const ORDER=[5,2,3,4,6,7,8,9,1];
 function go(sc){
+  setLessonMode("build");
   const b=document.body;b.classList.remove("s-title","s-toc","prac");if(sc!=="lesson")b.classList.add("s-"+sc);
-  $("bPrac").textContent="れんしゅう";tm.forEach(clearTimeout);tm=[];if(window.speechSynthesis)speechSynthesis.cancel();
+  tm.forEach(clearTimeout);tm=[];if(window.speechSynthesis)speechSynthesis.cancel();
   document.title=sc==="lesson"?`かけざん　${D}のだん`:"かけざんの ぼうけん";window.scrollTo(0,0);
 }
 function buildCover(){
@@ -795,7 +908,7 @@ function buildToc(){
   const g=$("unitGrid");g.innerHTML="";
   ORDER.forEach((d,i)=>{
     const b=document.createElement("button");b.className="unit-card";b.style.animationDelay=(.05+i*.07)+"s";b.style.setProperty("--h",d*38);
-    b.innerHTML=`<span class="num">${d}</span><span class="copy"><span class="emoji">${OBJ[DAN[d][0]].ico}</span><strong>${d}のだん</strong><small>${d}つずつ<br>れんしゅうする</small></span>`;
+    b.innerHTML=`<span class="num">${d}</span><span class="copy"><span class="emoji">${OBJ[DAN[d][0]].ico}</span><strong>${d}のだん</strong><small>${d}つずつ<br>まなぶ</small></span>`;
     b.onclick=()=>{A();tone(660,0,.12,"sine",.15);tone(880,.09,.16,"sine",.15);go("lesson");setDan(d)};
     g.appendChild(b);
   });
