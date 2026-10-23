@@ -68,7 +68,7 @@ input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--c1)}
 #drawLayer{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}#drawLayer[hidden]{display:none}
 #cutPreview,#totals{pointer-events:none}#totals text{font-size:34px;font-weight:900;fill:var(--ink);stroke:var(--card);stroke-width:9px;paint-order:stroke;stroke-linejoin:round}
 .cut-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.cut-tools button{height:auto;min-height:44px;padding:6px 12px}
-#cutNow{background:#b63d27;color:white;border-color:#8c291c;font-size:20px}button:disabled{opacity:.45;cursor:default}
+#cutNow{position:absolute;z-index:2;background:#b63d27;color:white;border-color:#8c291c;font-size:17px;white-space:nowrap;height:44px;padding:0 10px;box-shadow:0 3px 0 #8c291c;transition:none}#cutNow:hover{transform:none}button:disabled{opacity:.45;cursor:default}
 #cutStatus{min-height:1.5em}body.hide-formulas #eq1,body.hide-formulas #eq2{display:none}
 #samuraiFx{position:fixed;inset:0;pointer-events:none;z-index:20;overflow:hidden;display:none}
 #samuraiFx.active{display:block}#samuraiFx .cutin{position:absolute;left:0;right:0;top:22%;height:48%;background:linear-gradient(110deg,#102938ed,#176b82ed,transparent);transform:skewY(-5deg);animation:cutin .75s both}
@@ -108,7 +108,7 @@ input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--c1)}
     <input type="range" id="sl" min="1" max="6" step="1" value="5" aria-label="きる位置">
     <button data-s="k+" aria-label="きる位置を進める">▶</button>
   </div>
-  <div class="cut-tools"><button id="uncut" aria-pressed="false">きる前に もどす</button><button id="pen" aria-pressed="true" hidden>ペン ON</button><button id="cutNow" hidden>ここで切る！</button></div>
+  <div class="cut-tools"><button id="uncut" aria-pressed="false">きる前に もどす</button><button id="pen" aria-pressed="true" hidden>ペン ON</button></div>
   <p class="hint" id="cutStatus" role="status">ずの ○ を タップしても、そこで きれるよ。</p>
   <div class="cut-tools" role="group" aria-label="ひょうじと えんしゅつ"><button id="formulas" aria-pressed="true">パーツの式 ON</button><button id="showTotals" aria-pressed="false">図の合計 OFF</button><button id="effects" aria-pressed="true">侍の演出 ON</button></div>
 </div>
@@ -205,7 +205,12 @@ function placeBrace(b,o,inst){
 function layout(kind){
  const {a,b,mode,k}=S,ma=mode==='a',now=performance.now(),init=kind==='init',n=nOf();
  const gap=V.split?G:0,W=b*C+(ma?0:gap),H=a*C+(ma?gap:0);
- go(vw,LM+W+(ma?120:12),init);go(vh,TM+H+(ma?12:70),init);
+ let right=ma?120:12,bottom=ma?12:70;
+ if(!V.split&&V.ready){const w=Math.max(180,fig.clientWidth),h=Math.max(100,fig.clientHeight),wide=innerWidth>760&&innerWidth>innerHeight;
+  if(ma)right=Math.max(right,150*(LM+W+12)/Math.max(54,w-150),wide?150*(TM+H+12)/h:0);
+  else bottom=Math.max(bottom,60*(LM+W+12)/w,wide?60*(TM+H+12)/Math.max(40,h-60):0);
+ }
+ go(vw,LM+W+right,init);go(vh,TM+H+bottom,init);
  let born=0,killed=0;
  for(const c of [...cells.values()])if((c.i>=a||c.j>=b)&&!c.dying){kill(c,now);killed++}
  for(let i=0;i<a;i++)for(let j=0;j<b;j++){
@@ -262,10 +267,10 @@ function texts(d){
 
 /* ===== 更新 ===== */
 function update(kind,d={},src){
+ if(!V.split&&['k','mode'].includes(kind))V.ready=true;
  clampK();const r=layout(kind);texts(d);hReset();
  sl.max=nOf()-1;sl.value=S.k;sl.setAttribute('aria-valuetext',`${S.k} と ${nOf()-S.k}に わける`);
  fig.setAttribute('aria-label',`${S.a}こずつ ${S.b}れつの アレイ図。${V.split?'わけた図':'きる前の図'}。${$('e0').textContent}${V.totals?'、ぜんぶで'+S.a*S.b+'こ':''}`);
- if(!V.split&&['k','mode'].includes(kind))V.ready=true;
  viewUI();
  if(kind==='k'&&V.split)src==='cell'?sCut(S.k):sTick(S.k);
  else if(kind==='mode')sMode();
@@ -340,7 +345,7 @@ function tick(now){
   const f=Math.pow(.03,dt);q.vx*=f;q.vy*=f;q.x+=q.vx*dt;q.y+=q.vy*dt;
   q.e.setAttribute('cx',q.x.toFixed(1));q.e.setAttribute('cy',q.y.toFixed(1));
   q.e.setAttribute('r',(q.r*(1-u*u)).toFixed(2));q.e.setAttribute('opacity',(1-u*u).toFixed(2));act=true}
- drawTotals();
+ drawTotals();positionCutButton();
  if(act)requestAnimationFrame(tick);else running=false}
 
 /* ===== ヒント: 青=ずつ(1つぶん) 赤=いくつぶん(れつの数) 黄=ぜんぶ ===== */
@@ -376,10 +381,16 @@ $('hb').onclick=()=>{H.s=(H.s+1)%4;hRender()};
 
 /* ===== 切る前の図・手描き選択・侍カット ===== */
 const canvas=$('drawLayer'),ctx=canvas.getContext('2d');let stroke=null;
+const cutButton=document.createElement('button');cutButton.id='cutNow';cutButton.hidden=true;cutButton.textContent='ここで切る！';canvas.parentElement.appendChild(cutButton);
+function positionCutButton(){if(cutButton.hidden)return;const m=fig.getScreenCTM();if(!m)return;const ma=S.mode==='a',q=new DOMPoint(LM+(ma?S.b*C:S.k*C),TM+(ma?S.k*C:S.a*C)).matrixTransform(m),r=canvas.parentElement.getBoundingClientRect();
+ const bw=cutButton.offsetWidth,bh=cutButton.offsetHeight;
+ const x=ma?q.x-r.left+7:Math.max(2,Math.min(r.width-bw-2,q.x-r.left-bw/2)),y=ma?Math.max(2,Math.min(r.height-bh-2,q.y-r.top-bh/2)):q.y-r.top+7;
+ cutButton.style.left=x+'px';cutButton.style.top=y+'px';
+}
 function clearInk(){ctx.clearRect(0,0,canvas.width,canvas.height);stroke=null}
 function fitCanvas(){const r=canvas.getBoundingClientRect(),d=devicePixelRatio||1;if(!r.width||!r.height)return;
  const w=Math.round(r.width*d),h=Math.round(r.height*d);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;clearInk()}}
-new ResizeObserver(fitCanvas).observe($('fig'));
+new ResizeObserver(()=>{fitCanvas();if(!V.split&&V.ready){layout('resize');wake()}positionCutButton()}).observe($('fig'));
 function drawTotals(){
  const g=$('totals');g.textContent='';if(!V.totals)return;
  for(const part of V.split?[1,2]:[0]){const cs=[...cells.values()].filter(c=>!c.dying&&(!part||c.pt===part));if(!cs.length)continue;
@@ -401,7 +412,7 @@ function viewUI(){
  const g=$('cutPreview');g.textContent='';if(!V.split&&V.ready){const ma=S.mode==='a',x=LM+(ma?0:S.k*C),y=TM+(ma?S.k*C:0);
   el('line',{x1:x,y1:y,x2:x+(ma?S.b*C:0),y2:y+(ma?0:S.a*C),stroke:'#c83f31','stroke-width':4,'stroke-dasharray':'9 5'},g);
  }
- drawTotals();
+ drawTotals();positionCutButton();
 }
 $('uncut').onclick=()=>{if(V.busy)return;V.split=false;V.ready=false;clearInk();update('uncut');};
 $('pen').onclick=()=>{V.pen=!V.pen;clearInk();viewUI()};
