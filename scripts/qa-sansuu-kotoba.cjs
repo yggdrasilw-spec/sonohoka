@@ -23,7 +23,7 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
    }
    if(scene!=='push'){
     await page.locator('[data-mode="numbers"]').click();assert.equal(await page.locator('#left-term').innerText(),terms[scene][0]);assert.equal(await page.locator('#right-term').innerText(),terms[scene][1]);
-    const aligned=await page.evaluate(()=>{const c=id=>{const r=document.getElementById(id).getBoundingClientRect();return r.x+r.width/2};return Math.abs(c('left-number')-c('left-person'))<1&&Math.abs(c('right-number')-c('right-person'))<1});assert(aligned,'people and numbers keep same x positions');
+    const aligned=await page.evaluate(()=>{const c=id=>{const r=document.getElementById(id).getBoundingClientRect();return r.x+r.width/2};const r=document.getElementById('morph-equation').getBoundingClientRect();return Math.abs(r.x+r.width*.3-c('left-person'))<1&&Math.abs(r.x+r.width*.8-c('right-person'))<1});assert(aligned,'people and numbers keep same x positions');
    }
    await page.locator('[data-mode="quiz"]').click();
    assert.equal(await page.locator('#mapping').isHidden(),true);
@@ -37,7 +37,7 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
   assert.equal(await page.locator('#left-number').innerText(),'4');assert.equal(await page.locator('#right-number').innerText(),'3');
   const arrows=await page.locator('.semantic-arrow').evaluateAll(ss=>ss.map(svg=>{const a=svg.querySelector('path'),len=a.getTotalLength(),start=a.getPointAtLength(0),end=a.getPointAtLength(len),mid=a.getPointAtLength(len/2),head=[...svg.querySelector('.arrow-head').points].map(p=>({x:p.x,y:p.y}));return {start:{x:start.x,y:start.y},end:{x:end.x,y:end.y},mid:{x:mid.x,y:mid.y},head,ry:Number(svg.dataset.radiusY)}}));
   for(const a of arrows){assert(a.start.x>a.end.x);assert(Math.abs(a.mid.x-550)<.1);assert(Math.abs(a.mid.y-(a.end.y-a.ry))<.1);const [tip,b1,b2]=a.head;assert.equal(tip.x,a.end.x);assert(tip.y>a.end.y);assert.equal((b1.x+b2.x)/2,tip.x);assert(b1.y<a.end.y&&b2.y<a.end.y,'shaft overlaps head along end tangent');}
-  await page.locator('#play').click();await page.waitForTimeout(420);assert.notEqual(await page.locator('#frame-count').innerText(),'1 / 4 コマ');
+  await page.locator('[data-mode="people"]').click();await page.locator('#play').click();await page.waitForTimeout(420);assert.notEqual(await page.locator('#frame-count').innerText(),'1 / 4 コマ');
   await page.locator('[data-scene="divide"]').click();await page.waitForTimeout(800);assert.equal(await page.locator('#frame-count').innerText(),'1 / 4 コマ','scene switch cancels playback');
   await page.locator('#step').click();assert.equal(await page.locator('#frame-count').innerText(),'2 / 4 コマ');await page.locator('#restart').click();assert.equal(await page.locator('#frame-count').innerText(),'1 / 4 コマ');
   await page.locator('[data-scene="multiply"]').click();await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});
