@@ -34,10 +34,23 @@
     const digits=clamp((bridgeTime-2200)/1100),fade=clamp((bridgeTime-3300)/1400),symbol=clamp((bridgeTime-4700)/700);
     document.querySelector('.visual').style.setProperty('--people-opacity',1-fade);
     document.querySelector('.visual').style.setProperty('--number-opacity',digits);
-    document.querySelector('.visual').style.setProperty('--term-opacity',fade);
+    const termChange=clamp((bridgeTime-3500)/450);
+    // Emphasize the word change on the same timeline, so pause and steps freeze it too.
+    const emphasis=reduced.matches?0:Math.sin(Math.PI*clamp((bridgeTime-3500)/1700));
+    const visual=document.querySelector('.visual');
+    visual.style.setProperty('--term-opacity',termChange);
+    visual.style.setProperty('--term-old-opacity',1-termChange);
+    visual.style.setProperty('--term-pop',1+emphasis*.45);
+    visual.style.setProperty('--term-glow',emphasis);
+    visual.classList.toggle('terms-changed',bridgeTime>=3500);
+    for(const side of ['left','right']){
+      $(`${side}-person`).setAttribute('aria-hidden',String(termChange>=.5));
+      $(`morph-${side}-term`).setAttribute('aria-hidden',String(termChange<.5));
+    }
     document.querySelector('.visual').style.setProperty('--operator-opacity',symbol);
     $('frame-count').textContent=`${bridgeSteps.filter(t=>t<=bridgeTime).length} / 8 ステップ`;
-    $('caption').textContent=bridgeTime<2200?s.beats[frame]:bridgeTime<3300?'同じ ばしょに、数が かさなるよ。':bridgeTime<4700?'人から 数へ。矢印と ばしょは 同じだね。':`${s.left}数は ${s.a}。${s.right}数は ${s.b}。`;
+    $('caption').classList.toggle('term-change-cue',bridgeTime>=3300);
+    $('caption').textContent=bridgeTime<2200?s.beats[frame]:bridgeTime<3300?'同じ ばしょに、数が かさなるよ。':bridgeTime<4700?'ことばも へんしん！「人」→「数」':`「人」が「数」に なったね！ ${s.left}数・${s.right}数。`;
     $('stage').setAttribute('aria-label',bridgeTime<3300?s.description:`左の${s.left}数は${s.a}、右の${s.right}数は${s.b}。矢印は右から左へ。`);
   }
   function startBridge(){
@@ -59,13 +72,22 @@
     stop();frame=0;bridgeTime=0;const s=scenes[sceneKey];
     document.querySelector('.visual').classList.toggle('number-mode',mode==='numbers');
     $('morph-equation').toggleAttribute('hidden',mode!=='numbers');$('morph-status').hidden=mode!=='numbers';$('morph-status').textContent='';
-    for(const side of ['left','right']){$(`morph-${side}-term`).hidden=mode!=='numbers';$(`morph-${side}-term`).textContent=s[side]+'数';}
+    $('caption').classList.remove('term-change-cue');
+    for(const side of ['left','right']){
+      const term=$(`morph-${side}-term`);term.hidden=mode!=='numbers';
+      const suffix=document.createElement('b');suffix.className='term-suffix';suffix.textContent='数';
+      term.replaceChildren(document.createTextNode(s[side]),suffix);
+      $(`${side}-person`).removeAttribute('aria-hidden');
+    }
     $('step').textContent=mode==='numbers'?'１ステップ すすむ':'１コマ すすむ';
     document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===sceneKey)));
     document.querySelectorAll('[data-mode]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.mode===mode));b.disabled=sceneKey==='push'&&b.dataset.mode==='numbers';});
     $('scene-title').textContent=s.title;$('stage').setAttribute('aria-label',s.description);
     $('scene-kicker').textContent=mode==='people'?'まずは、人で たしかめよう':mode==='numbers'?'同じ ばしょで、人から 数へ':'ことばと 矢印を 思い出そう';
-    $('left-person').textContent=s.left+'人';$('right-person').textContent=s.right+'人';
+    for(const side of ['left','right']){
+      const suffix=document.createElement('b');suffix.className='person-suffix';suffix.textContent='人';
+      $(`${side}-person`).replaceChildren(document.createTextNode(s[side]),suffix);
+    }
     $('number-panel').hidden=sceneKey==='push'||mode!=='quiz';$('mapping').hidden=mode==='quiz';$('quiz').hidden=mode!=='quiz';
     if(sceneKey!=='push'){$('morph-left').textContent=s.a;$('morph-right').textContent=s.b;$('morph-operator').textContent=s.op;}
     if(sceneKey!=='push'){$('left-number').textContent=s.a;$('right-number').textContent=s.b;$('operator').textContent=s.op;$('left-term').textContent=s.left+'数';$('right-term').textContent=s.right+'数';}
