@@ -77,6 +77,6 @@
   $('practice-hint').addEventListener('click',()=>{if(!answered)assisted=true;reveal();audio.play('hint');audio.speak(current.explain,$('application-diagram'));});
   $('practice-next').addEventListener('click',next);
   $('practice-topic').addEventListener('change',()=>{fillDeck();next();});
-  document.addEventListener('practice-enter',e=>{const topic=e.detail==='push'?'all':e.detail;$('practice-topic').value=topic;fillDeck();next(false);});
+  document.addEventListener('practice-enter',e=>{const topic=Object.hasOwn(samples,e.detail)?e.detail:'all';$('practice-topic').value=topic;fillDeck();next(false);});
   document.addEventListener('practice-read',()=>{if(current)read();});
 })();

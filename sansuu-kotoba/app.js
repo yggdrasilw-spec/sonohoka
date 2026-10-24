@@ -5,6 +5,11 @@
   const blocks=window.LessonBlocks;
   const scenes = {
     push: {row:4,title:'うしろから、おす',left:'おされる',right:'おす',description:'みぎの人が、ひだりの人の せなかを おす。',beats:['手を せなかに 近づける。','せなかに 手を あてる。','うしろから 前へ、ぐっと おす。','おされた人が、前へ 一歩。']},
+    poke: {row:5,title:'かたを、やさしく つつく',left:'つつかれる',right:'つつく',description:'みぎの人が、ひだりの人の かたを やさしく つつく。',beats:['かたに 指を 近づける。','指を、かたの すぐ近くへ。','かたを、かるく 一度だけ ちょん。','つつかれた人が、えがおで ふりむく。']},
+    pat: {row:6,title:'頭を、やさしく なでる',left:'なでられる',right:'なでる',description:'みぎの人が、ひだりの人の 頭を やさしく なでる。',beats:['頭の 上に、手を 近づける。','かみの 上に、そっと 手を おく。','頭を、やさしく なでる。','なでられた人が、うれしそう。']},
+    fan: {row:7,title:'うちわで、あおぐ',left:'あおがれる',right:'あおぐ',description:'みぎの人が、うちわで ひだりの人を あおぐ。',beats:['うちわを かまえる。','うちわで、風を おくる。','あおがれた人が、風を うける。','うちわを とめる。すずしかったね。']},
+    call: {row:8,title:'うしろから、よぶ',left:'よばれる',right:'よぶ',description:'みぎの人が、ひだりの人を よぶ。',beats:['手を 上げて、よびかけよう。','声を かけて、よぶ。','よばれた人が、ふりむく。','声が とどいたね。ふたりとも えがお。']},
+    light: {row:9,title:'ライトで、てらす',left:'てらされる',right:'てらす',description:'みぎの人が、ライトで ひだりの人の 服を てらす。',beats:['服に むけて、ライトを かまえる。','ライトを つけて、服を てらす。','てらされた 服に、光が あたる。','ライトを けすと、光が きえる。']},
     subtract: {row:0,title:'うしろから、引く',left:'引かれる',right:'引く',a:7,b:2,op:'−',description:'みぎの人が、ひだりの人の 体の ロープを 引く。',beats:['体に まいた ロープを もつ。','ロープを しっかり にぎる。','ロープを ぐっと 引く。','ひだりの人が、引かれる。']},
     multiply: {row:1,title:'うしろから、水を かける',left:'かけられる',right:'かける',a:4,b:3,op:'×',description:'みぎの人が、ひだりの人に 水でっぽうで 水を かける。',beats:['水でっぽうを かまえる。','みぎから ひだりへ、水を 出す。','ひだりの人に、水が かけられる。','水を かけたね。']},
     divide: {row:2,title:'うしろから、風船を わる',left:'わられる',right:'わる',a:8,b:2,op:'÷',description:'みぎの人が チョップして、ひだりの人の 頭の 風船を わる。',beats:['頭の 上に、風船。','風船に むかって、チョップ。','ぱん！ 風船が わられる。','風船を わったね。']},
@@ -18,6 +23,7 @@
   const bridgeSteps=[0,650,1300,1950,2800,3800,4800,5600], bridgeEnd=5600;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const isBlocks=()=>mode==='numbers'&&numberView==='blocks';
+  const isOther=(key=sceneKey)=>!scenes[key].op;
   const endTime=()=>isBlocks()?blocks.end:bridgeEnd;
   const stepTimes=()=>isBlocks()?blocks.steps(sceneKey,scenes[sceneKey]):bridgeSteps;
   const cueTimes=()=>isBlocks()?blocks.cues(sceneKey,scenes[sceneKey]):[2200,3950,5600];
@@ -34,7 +40,7 @@
     svg.querySelector('.arrow-head').setAttribute('points',points.map(p=>`${p.x},${p.y}`).join(' '));
   });
   const arc=$('arc'), length=arc.getTotalLength();
-  const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp${row===3?'?v=rice-first-v2':'?v=hires-v2'}`;
+  const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp${row===3?'?v=rice-first-v2':row>=5?'?v=other-v1':'?v=hires-v2'}`;
   Object.values(scenes).forEach(s=>{for(let n=0;n<4;n++){const image=new Image();image.src=asset(s.row,n);}});
   function playButton(icon,label){$('play').textContent=icon;$('play').setAttribute('aria-label',label);$('play').title=label;}
   function stop(silence=true){if(timerType==='raf')cancelAnimationFrame(timer);else clearTimeout(timer);timer=null;if(silence)audio.cancel();playButton(mode==='numbers'&&bridgeTime>=endTime()?'🔄':'▶️',mode==='numbers'?(bridgeTime>=endTime()?'もういちど':isBlocks()?'ブロックに かえる':'数に かえる'):'うごかす');$('play').setAttribute('aria-pressed','false');}
@@ -149,8 +155,8 @@
       $(`${side}-person`).removeAttribute('aria-hidden');
     }
     $('step').setAttribute('aria-label',mode==='numbers'?'１ステップ すすむ':'１コマ すすむ');$('step').title=$('step').getAttribute('aria-label');
-    document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===sceneKey)));
-    document.querySelectorAll('[data-mode]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.mode===mode));b.disabled=sceneKey==='push'&&b.dataset.mode==='numbers';});
+    updateSceneSelection();
+    document.querySelectorAll('[data-mode]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.mode===mode));b.disabled=isOther()&&['numbers','apply'].includes(b.dataset.mode);});
     $('scene-title').textContent=s.title;$('stage').setAttribute('aria-label',s.description);
     $('scene-kicker').textContent=mode==='people'?'まずは、人で たしかめよう':mode==='numbers'?'同じ ばしょで、人から 数へ':'ことばと やじるしを 思い出そう';
     if(isBlocks()){$('scene-kicker').textContent='人から ブロックへ。数のうごきを 見よう';$('scene-title').textContent=`ブロックで ${ {add:'たし算',subtract:'ひき算',multiply:'かけ算',divide:'わり算'}[sceneKey]}`;}
@@ -158,9 +164,9 @@
       const suffix=document.createElement('b');suffix.className='person-suffix';suffix.textContent='人';
       $(`${side}-person`).replaceChildren(document.createTextNode(s[side]),suffix);
     }
-    $('number-panel').hidden=sceneKey==='push'||mode!=='quiz';$('mapping').hidden=mode==='quiz';$('quiz').hidden=mode!=='quiz';
-    if(sceneKey!=='push'){$('morph-left').textContent=s.a;$('morph-right').textContent=s.b;$('morph-operator').textContent=s.op;}
-    if(sceneKey!=='push'){$('left-number').textContent=s.a;$('right-number').textContent=s.b;$('operator').textContent=s.op;$('left-term').textContent=s.left+'数';$('right-term').textContent=s.right+'数';}
+    $('number-panel').hidden=isOther()||mode!=='quiz';$('mapping').hidden=mode==='quiz';$('quiz').hidden=mode!=='quiz';
+    if(!isOther()){$('morph-left').textContent=s.a;$('morph-right').textContent=s.b;$('morph-operator').textContent=s.op;}
+    if(!isOther()){$('left-number').textContent=s.a;$('right-number').textContent=s.b;$('operator').textContent=s.op;$('left-term').textContent=s.left+'数';$('right-term').textContent=s.right+'数';}
     $('basic-content').hidden=mode==='apply';$('application').hidden=mode!=='apply';
     if(mode==='apply'){$('scene-title').textContent='文のいみを たしかめよう';$('scene-kicker').textContent='ことばをつかって、計算のかんけいを読もう';document.dispatchEvent(new CustomEvent('practice-enter',{detail:sceneKey}));}
     if(mode==='quiz'){newQuestion();}
@@ -168,17 +174,35 @@
     if(mode==='numbers')renderBridge();stop();
   }
   function newQuestion(){
-    answered=false;tried=false;const s=scenes[sceneKey],target=questionIndex%2===0?'left':'right',word=s[target]+(sceneKey==='push'?'人':'数');
+    answered=false;tried=false;const s=scenes[sceneKey],target=questionIndex%2===0?'left':'right',word=s[target]+(isOther()?'人':'数');
     $('question').textContent=`「${word}」は、どっち？`;$('feedback').textContent='';$('hint-text').hidden=true;
-    document.querySelectorAll('[data-answer]').forEach(b=>{b.classList.remove('correct');b.setAttribute('aria-label',sceneKey==='push'?(b.dataset.answer==='left'?'ひだりの人':'みぎの人'):`${b.dataset.answer==='left'?'ひだり':'みぎ'}の ${b.dataset.answer==='left'?s.a:s.b}`);b.textContent=(b.dataset.answer==='left'?'⬅️ ':'➡️ ')+(sceneKey==='push'?(b.dataset.answer==='left'?'ひだりの人':'みぎの人'):(b.dataset.answer==='left'?s.a:s.b));});
+    document.querySelectorAll('[data-answer]').forEach(b=>{b.classList.remove('correct');b.setAttribute('aria-label',isOther()?(b.dataset.answer==='left'?'ひだりの人':'みぎの人'):`${b.dataset.answer==='left'?'ひだり':'みぎ'}の ${b.dataset.answer==='left'?s.a:s.b}`);b.textContent=(b.dataset.answer==='left'?'⬅️ ':'➡️ ')+(isOther()?(b.dataset.answer==='left'?'ひだりの人':'みぎの人'):(b.dataset.answer==='left'?s.a:s.b));});
     $('left-term').textContent='？';$('right-term').textContent='？';
     $('hint-text').textContent='やじるしの 先は「されるがわ」。ねもとは「するがわ」。みぎから ひだりへ、はたらきかけるよ。';
     $('score').textContent=attempts?`${attempts}もんのうち ${correct}もん、はじめに できた`:'左右の ばしょを 見てみよう';
   }
-  document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(sceneKey==='push'&&(mode==='numbers'||mode==='apply'))mode='people';questionIndex=0;render();audio.play('tap');}));
-  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{audio.activate();mode=b.dataset.mode;if(mode==='apply'&&sceneKey==='push')sceneKey='multiply';questionIndex=0;render();if(mode==='numbers')startBridge();else if(mode==='quiz')audio.speak($('question').textContent,$('question'));else if(mode==='apply')document.dispatchEvent(new Event('practice-read'));}));
+  function updateSceneSelection(){
+    document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===sceneKey)));
+    $('other-scenes-open').setAttribute('aria-pressed',String(isOther()));
+  }
+  $('other-scenes-open').addEventListener('click',()=>{stop();$('other-scenes').showModal();$('other-scenes-open').setAttribute('aria-expanded','true');});
+  $('other-scenes-close').addEventListener('click',()=>$('other-scenes').close());
+  $('other-scenes').addEventListener('close',()=>{$('other-scenes-open').setAttribute('aria-expanded','false');$('other-scenes-open').focus();});
+  $('other-scenes').addEventListener('keydown',e=>{
+    if(e.key!=='Tab')return;
+    const buttons=[...$('other-scenes').querySelectorAll('button')],first=buttons[0],last=buttons.at(-1);
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  });
+  $('other-scenes').addEventListener('click',e=>{
+    if(e.target!==$('other-scenes'))return;
+    const r=e.target.getBoundingClientRect();
+    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();
+  });
+  document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(isOther()&&(mode==='numbers'||mode==='apply'))mode='people';questionIndex=0;render();audio.play('tap');if($('other-scenes').open)$('other-scenes').close();}));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{audio.activate();mode=b.dataset.mode;questionIndex=0;render();if(mode==='numbers')startBridge();else if(mode==='quiz')audio.speak($('question').textContent,$('question'));else if(mode==='apply')document.dispatchEvent(new Event('practice-read'));}));
   document.querySelectorAll('[data-number-view]').forEach(b=>b.addEventListener('click',()=>{stop();numberView=b.dataset.numberView;render();startBridge();}));
-  document.addEventListener('practice-topic-changed',e=>{if(e.detail!=='all')sceneKey=e.detail;document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===e.detail)));});
+  document.addEventListener('practice-topic-changed',e=>{if(e.detail!=='all')sceneKey=e.detail;updateSceneSelection();});
   $('play').addEventListener('click',()=>{audio.activate();if(timer){stop();return;}if(mode==='numbers'){startBridge();return;}if(sceneKey==='add'&&frame===3){frame=0;renderFrame();}playButton('⏸️','とめる');$('play').setAttribute('aria-pressed','true');playFrameSound();schedule();});
   $('step').addEventListener('click',()=>{audio.activate();stop();if(mode==='numbers'){bridgeTime=stepTimes().find(t=>t>bridgeTime)??endTime();renderBridge();stop();const cue=cueTimes().filter(t=>t<=bridgeTime).at(-1);if(cue!==undefined)bridgeCue(cue);else playFrameSound();return;}frame=(frame+1)%4;renderFrame();playFrameSound();});
   $('restart').addEventListener('click',()=>{stop();bridgeCues.clear();if(mode==='numbers'){bridgeTime=0;renderBridge();stop();return;}frame=0;renderFrame();});
@@ -195,7 +219,7 @@
     if(!ok){if(!tried){attempts++;tried=true;}$('feedback').textContent='やじるしを たどって、もういちど。';$('hint-text').hidden=false;audio.play('retry');audio.speak($('feedback').textContent,$('feedback'));return;}
     if(!tried){attempts++;correct++;}answered=true;b.classList.add('correct');
     $('feedback').textContent=target==='left'?'そう！ やじるしの 先が「されるがわ」。':'そう！ やじるしの ねもとが「するがわ」。';
-    $('mapping').hidden=false;if(sceneKey!=='push'){$('left-term').textContent=s.left+'数';$('right-term').textContent=s.right+'数';}
+    $('mapping').hidden=false;if(!isOther()){$('left-term').textContent=s.left+'数';$('right-term').textContent=s.right+'数';}
     $('score').textContent=`${attempts}もんのうち ${correct}もん、はじめに できた`;
     audio.play('correct');audio.speak($('feedback').textContent,$('feedback'));
   }));

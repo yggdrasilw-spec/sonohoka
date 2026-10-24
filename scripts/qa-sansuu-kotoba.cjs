@@ -11,12 +11,13 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
   const page=await browser.newPage({viewport:{width:1280,height:1000}});
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)badResponses.push(r.url())});
   await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);await page.locator('#voice-toggle').click();
+  async function selectScene(scene){const button=page.locator(`[data-scene="${scene}"]`);if(!await button.isVisible())await page.locator('#other-scenes-open').click();await button.click();}
   await page.locator('#frame').evaluate(img=>img.decode());
   assert.equal(await page.locator('[data-mode="numbers"]').isDisabled(),true);
   const terms={subtract:['引かれる数','引く数'],multiply:['かけられる数','かける数'],divide:['わられる数','わる数'],add:['たされる数','たす数']};
   let frames=0,questions=0;
   for(const scene of ['push',...Object.keys(terms)]){
-   await page.locator(`[data-scene="${scene}"]`).click();
+   await selectScene(scene);
    for(let f=0;f<4;f++){
     const n=await page.locator('#frame').evaluate(async img=>{await img.decode();return img.naturalWidth;});assert(n>=760,`${scene}: high-resolution frame`);frames++;
     await page.locator('#step').click();
@@ -44,7 +45,7 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
   for(const width of [375,390,768]){
    await page.setViewportSize({width,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`no horizontal overflow ${width}`);
    for(const scene of ['push',...Object.keys(terms)]){
-    await page.locator(`[data-scene="${scene}"]`).click();const bounds=await page.locator('#mapping').evaluate(el=>[...el.querySelectorAll('strong')].map(x=>({client:x.clientWidth,scroll:x.scrollWidth})));assert(bounds.every(x=>x.scroll<=x.client),`labels fit ${width} ${scene}`);
+    await selectScene(scene);const bounds=await page.locator('#mapping').evaluate(el=>[...el.querySelectorAll('strong')].map(x=>({client:x.clientWidth,scroll:x.scrollWidth})));assert(bounds.every(x=>x.scroll<=x.client),`labels fit ${width} ${scene}`);
    }
   }
   await page.setViewportSize({width:390,height:844});await page.locator('[data-scene="multiply"]').click();await page.screenshot({path:path.join(out,'mobile.png'),fullPage:true});
