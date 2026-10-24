@@ -234,6 +234,7 @@ function defaultMessage() {
 function btn(label,fn,options={}) {const b=document.createElement('button');b.textContent=label;b.type='button';b.disabled=!!tx||!!options.disabled;if(options.id)b.id=options.id;if(options.primary)b.className='primary';if(options.pressed!==undefined)b.setAttribute('aria-pressed',options.pressed);b.onclick=fn;return b;}
 function render() {
  if(type()==='beads')ensureBeadColors(S);
+ $('soilReferences').hidden=S.stage!==1;if(S.stage!==1)$('soilReferences').open=false;
  document.querySelector('.lesson').dataset.stage=S.stage;
  document.querySelector('.lesson').dataset.kind=type();
  $('scenes').replaceChildren(...names.map((name,i)=>{const b=btn(name,()=>go(i));b.disabled=false;b.innerHTML='<small>'+String(i+1).padStart(2,'0')+'</small>'+name;if(S.stage===i)b.setAttribute('aria-current','step');return b;}));
