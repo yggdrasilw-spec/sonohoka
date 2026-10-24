@@ -1,7 +1,12 @@
 'use strict';
 (() => {
   const end=20100,actionStart=6200,actionEnd=16000,countStart=16600,countEnd=19600;
-  const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>{const t=clamp(x);return t*t*(3-2*t);},mix=(a,b,t)=>a+(b-a)*t;
+  // Quick travel with a readable settle at either end. Keep the shared progress
+  // for the glove, its contents and the rope so they stay in contact.
+  const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>{const t=clamp(x);return t<.5?8*t**4:1-(-2*t+2)**4/2;},mix=(a,b,t)=>a+(b-a)*t;
+  // Preserve all teaching/step landmarks, but spend less real time travelling.
+  // Counting and the pause before it remain slower than the hand action.
+  const playbackRate=time=>time<actionStart?1.8:time<actionEnd?4:time<countStart?1.8:1.5;
   const answer=(key,s)=>key==='add'?s.a+s.b:key==='subtract'?s.a-s.b:key==='multiply'?s.a*s.b:s.a/s.b;
   const countTimes=(key,s)=>Array.from({length:answer(key,s)},(_,i)=>countStart+(i+1)*(countEnd-countStart)/answer(key,s));
   function count(key,s,time){return countTimes(key,s).filter(t=>time>=t-.01).length;}
@@ -175,5 +180,5 @@
     svg.dataset.sourceCount=String(units.filter(u=>u.location==='source').length);svg.dataset.heldCount=String(units.filter(u=>u.location==='hand').length);svg.dataset.placedCount=String(units.filter(u=>u.location==='box').length);
     return {caption:caption(key,s,time),description:caption(key,s,time)};
   }
-  window.LessonBlocks={end,steps,cues,render,cue,caption,count,answer,geometry};
+  window.LessonBlocks={end,steps,cues,render,cue,caption,count,answer,geometry,playbackRate};
 })();

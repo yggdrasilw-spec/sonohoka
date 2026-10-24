@@ -46,7 +46,6 @@
   }
   function rolePart(side,text,word){return {text,target:document.querySelector(`.person-label.${side==='left'?'receiver':'actor'}`),onStart:()=>focusCharacter(side,word)};}
   function readRoles(){const s=scenes[sceneKey];return audio.sequence([
-    {text:s.description,target:$('caption')},
     rolePart('left',`ひだりは、${s.left}人。`,s.left+'人'),
     rolePart('right',`みぎは、${s.right}人。`,s.right+'人')
   ]);}
@@ -58,16 +57,9 @@
   document.addEventListener('lesson-speech-clear',clearCharacterFocus);
   function bridgeCue(at){
     if(bridgeCues.has(at))return;bridgeCues.add(at);
-    const s=scenes[sceneKey];
-    if(isBlocks()&&at!==0){audio.play(at===blocks.end?'correct':at===3950?'transform':'tap');audio.speak(blocks.cue(sceneKey,s,at),$('caption'));return;}
-    if(at===0)readRoles();
-    else if(at===2200){audio.play('hint');audio.speak('同じばしょに、数がかさなるよ。',$('caption'));}
-    else if(at===3950){audio.play('transform');audio.sequence([
-      {text:'ことばも へんしん！',target:$('caption')},
-      rolePart('left',`${s.left}人から、${s.left}数。`,s.left+'数'),
-      rolePart('right',`${s.right}人から、${s.right}数。`,s.right+'数')
-    ]);}
-    else if(at===5600){audio.play('correct');readNumberRoles();}
+    if(at===0)return;
+    if(isBlocks()){audio.play(at===blocks.end?'correct':at===3950?'transform':'tap');return;}
+    audio.play(at===2200?'hint':at===3950?'transform':'correct');
   }
   function renderBridge(){
     const s=scenes[sceneKey],clamp=x=>Math.max(0,Math.min(1,x));
@@ -109,14 +101,13 @@
     playButton('⏸️','とめる');$('play').setAttribute('aria-pressed','true');
     let previous=performance.now();
     function tick(){
-      const now=performance.now(),delta=(now-previous)*350/Number($('speed').value);previous=now;
-      if(!audio.speaking){
-        const next=bridgeTime+delta,at=cueTimes().find(t=>!bridgeCues.has(t)&&t>bridgeTime&&t<=next);
-        const oldFrame=frame;bridgeTime=Math.min(endTime(),at??next);renderBridge();
-        if(frame!==oldFrame&&frame===2)audio.play(sceneKey);
-        if(at!==undefined)bridgeCue(at);
-        if(bridgeTime>=endTime()){stop(false);$('morph-status').textContent='できたね。「もういちど」で見直せます。';return;}
-      }
+      const now=performance.now(),rate=isBlocks()?blocks.playbackRate(bridgeTime):1.8;
+      const delta=(now-previous)*350/Number($('speed').value)*rate;previous=now;
+      const next=bridgeTime+delta,at=cueTimes().find(t=>!bridgeCues.has(t)&&t>bridgeTime&&t<=next);
+      const oldFrame=frame;bridgeTime=Math.min(endTime(),at??next);renderBridge();
+      if(frame!==oldFrame&&frame===2)audio.play(sceneKey);
+      if(at!==undefined)bridgeCue(at);
+      if(bridgeTime>=endTime()){stop(false);$('morph-status').textContent='できたね。「もういちど」で見直せます。';return;}
       timer=requestAnimationFrame(tick);
     }
     renderBridge();if(bridgeTime===0)bridgeCue(0);timerType='raf';timer=requestAnimationFrame(tick);
@@ -126,8 +117,9 @@
     $('caption').textContent=scene.beats[frame];
     const p=arc.getPointAtLength(length*(reduced.matches?.5:Math.min(frame/3,.90)));$('traveler').setAttribute('cx',p.x);$('traveler').setAttribute('cy',p.y);
   }
-  function narrateFrame(){if(frame===2)audio.play(sceneKey);audio.speak(scenes[sceneKey].beats[frame],$('caption'));}
-  function schedule(){timerType='timeout';timer=setTimeout(()=>{if(audio.speaking){schedule();return;}if(sceneKey==='add'&&frame===3){stop(false);return;}frame=(frame+1)%4;renderFrame();narrateFrame();schedule();},Number($('speed').value)*(frame===3?2:1));}
+  function playFrameSound(){if(frame===2)audio.play(sceneKey);}
+  // Brief anticipation, two snappy action frames, then time to see the result.
+  function schedule(){timerType='timeout';timer=setTimeout(()=>{if(sceneKey==='add'&&frame===3){stop(false);return;}frame=(frame+1)%4;renderFrame();playFrameSound();schedule();},Number($('speed').value)*[.9,.6,.6,2][frame]);}
   function render(){
     stop();frame=0;bridgeTime=0;bridgeCues.clear();const s=scenes[sceneKey];
     document.querySelector('.visual').classList.toggle('number-mode',mode==='numbers');
@@ -171,11 +163,11 @@
     $('score').textContent=attempts?`${attempts}もんのうち ${correct}もん、はじめに できた`:'左右の ばしょを 見てみよう';
   }
   document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(sceneKey==='push'&&(mode==='numbers'||mode==='apply'))mode='people';questionIndex=0;render();audio.play('tap');}));
-  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{audio.activate();mode=b.dataset.mode;if(mode==='apply'&&sceneKey==='push')sceneKey='multiply';questionIndex=0;render();if(mode==='numbers')startBridge();else if(mode==='quiz')audio.speak($('question').textContent,$('question'));else if(mode==='apply')document.dispatchEvent(new Event('practice-read'));else readRoles();}));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{audio.activate();mode=b.dataset.mode;if(mode==='apply'&&sceneKey==='push')sceneKey='multiply';questionIndex=0;render();if(mode==='numbers')startBridge();else if(mode==='quiz')audio.speak($('question').textContent,$('question'));else if(mode==='apply')document.dispatchEvent(new Event('practice-read'));}));
   document.querySelectorAll('[data-number-view]').forEach(b=>b.addEventListener('click',()=>{stop();numberView=b.dataset.numberView;render();startBridge();}));
   document.addEventListener('practice-topic-changed',e=>{if(e.detail!=='all')sceneKey=e.detail;document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===e.detail)));});
-  $('play').addEventListener('click',()=>{audio.activate();if(timer){stop();return;}if(mode==='numbers'){startBridge();return;}if(sceneKey==='add'&&frame===3){frame=0;renderFrame();}playButton('⏸️','とめる');$('play').setAttribute('aria-pressed','true');if(mode==='people'&&frame===0)readRoles();else narrateFrame();schedule();});
-  $('step').addEventListener('click',()=>{audio.activate();stop();if(mode==='numbers'){bridgeTime=stepTimes().find(t=>t>bridgeTime)??endTime();renderBridge();stop();const cue=cueTimes().filter(t=>t<=bridgeTime).at(-1);if(cue!==undefined)bridgeCue(cue);else narrateFrame();return;}frame=(frame+1)%4;renderFrame();narrateFrame();});
+  $('play').addEventListener('click',()=>{audio.activate();if(timer){stop();return;}if(mode==='numbers'){startBridge();return;}if(sceneKey==='add'&&frame===3){frame=0;renderFrame();}playButton('⏸️','とめる');$('play').setAttribute('aria-pressed','true');playFrameSound();schedule();});
+  $('step').addEventListener('click',()=>{audio.activate();stop();if(mode==='numbers'){bridgeTime=stepTimes().find(t=>t>bridgeTime)??endTime();renderBridge();stop();const cue=cueTimes().filter(t=>t<=bridgeTime).at(-1);if(cue!==undefined)bridgeCue(cue);else playFrameSound();return;}frame=(frame+1)%4;renderFrame();playFrameSound();});
   $('restart').addEventListener('click',()=>{stop();bridgeCues.clear();if(mode==='numbers'){bridgeTime=0;renderBridge();stop();return;}frame=0;renderFrame();});
   $('speed').addEventListener('change',()=>{if(timer&&mode!=='numbers'){clearTimeout(timer);schedule();}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
@@ -195,6 +187,6 @@
     audio.play('correct');audio.speak($('feedback').textContent,$('feedback'));
   }));
   document.addEventListener('lesson-audio-stop',()=>stop());
-  document.addEventListener('lesson-read',()=>{stop();if(mode==='apply'){document.dispatchEvent(new Event('practice-read'));return;}if(isBlocks()&&bridgeTime>=2200){audio.speak(blocks.caption(sceneKey,scenes[sceneKey],bridgeTime),$('caption'));return;}if(mode==='people'||mode==='numbers'&&bridgeTime<3950){readRoles();return;}if(mode==='numbers'){readNumberRoles();return;}audio.speak($('question').textContent,$('question'));});
+  document.addEventListener('lesson-read',()=>{stop();if(mode==='apply'){document.dispatchEvent(new Event('practice-read'));return;}if(mode==='people'||mode==='numbers'&&bridgeTime<3950){readRoles();return;}if(mode==='numbers'){readNumberRoles();return;}audio.speak($('question').textContent,$('question'));});
   render();
 })();
