@@ -17,7 +17,7 @@ const exercises = [
 ];
 const KEY = 'heikin-narasu-v1';
 let S, history = [], tx = null, frame = 0, token = 0, selected = null, destination = null, hint = 0, message = '', drag = null;
-let soilAuto=false,soilPaused=false,soilTimer=0;
+let soilAuto=false,soilPaused=false,soilTimer=0,diagramDemo=false;
 let settings = {speed:matchMedia('(prefers-reduced-motion: reduce)').matches?'reduced':'normal',speech:true,numbers:true,line:false};
 const sum = a => a.reduce((x,y)=>x+y,0);
 const copy = x => JSON.parse(JSON.stringify(x));
@@ -35,13 +35,15 @@ function fresh(stage=0, values, extra={}) {
  const defaults = stage===0?[5,4,1,2]:stage===1?soilSets[0]:stage===5?exercises[0].values:waterSets[0];
  S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...extra};
  history=[];selected=null;destination=null;hint=0;message='';
+ $('totalPanel').open=false;$('answer').value='';
 }
 function persist() {try{localStorage.setItem(KEY,JSON.stringify({state:S,history:history.slice(-60),settings}));}catch{}}
 function tell(text) {message=text;render();}
-function cancel() {token++;cancelAnimationFrame(frame);clearTimeout(soilTimer);soilAuto=false;soilPaused=false;tx=null;selected=null;destination=null;if('speechSynthesis' in window)speechSynthesis.cancel();}
+function cancel() {token++;cancelAnimationFrame(frame);clearTimeout(soilTimer);soilAuto=false;soilPaused=false;diagramDemo=false;tx=null;selected=null;destination=null;if('speechSynthesis' in window)speechSynthesis.cancel();}
 function checkpoint() {history.push(copy(S));if(history.length>100)history.shift();}
 function go(stage) {
  cancel();
+ $('totalPanel').open=false;$('answer').value='';
  if(stage===3 && S.stage===2){S.stage=3;S.jugPhase='collect';S.collected=[];S.step=0;history=[];hint=0;message='';}
  else if(stage===4 && (S.stage===2||S.stage===3)){S.stage=4;S.values=S.original.slice();S.jug=0;S.bucket=0;S.step=0;S.solved=false;S.diagram=0;history=[];hint=0;message='';}
  else fresh(stage);
@@ -78,7 +80,7 @@ function runAnimation(duration){
   if(!tx.paused && tx.last)tx.elapsed+=Math.min(now-tx.last,80);
   tx.last=now;tx.progress=Math.min(tx.elapsed/duration,1);
   renderBoard();renderTotals();
-  if(tx.progress>=1){const next=tx.next;checkpoint();S=next;tx=null;message=completionMessage();render();persist();if(S.stage===1)scheduleSoil();return;}
+  if(tx.progress>=1){const next=tx.next;checkpoint();S=next;tx=null;message=completionMessage();render();persist();if(S.stage===1)scheduleSoil();else if(diagramDemo)continueDiagramDemo();return;}
   frame=requestAnimationFrame(tick);
  }
  frame=requestAnimationFrame(tick);
@@ -155,19 +157,43 @@ function view() {
 }
 function demonstrate() {
  if(tx)return;
- if(S.stage===4){giveHint();return;}
+ if(S.stage>=4){
+  S.diagram=0;
+  if(allEqual()&&S.original.some(v=>v!==average())){
+   checkpoint();S.values=S.original.slice();S.jug=0;S.bucket=0;
+   if(type()==='beads'){delete S.beadColors;ensureBeadColors(S);}
+  }
+  diagramDemo=true;continueDiagramDemo();return;
+ }
  if(S.stage===3){if(S.jugPhase==='collect'){const i=S.values.findIndex(v=>v>0);if(i>=0)collect(i);}else distribute(false);return;}
  const a=average(),hi=S.values.findIndex(v=>v>a),lo=S.values.findIndex(v=>v<a);
  if(allEqual())return tell(completionMessage());
  if(hi>=0&&lo>=0)transfer(hi,lo,type()==='beads'?1:Math.min(S.values[hi]-a,a-S.values[lo],50));
 }
+function continueDiagramDemo(){
+ if(!diagramDemo||S.stage<4||tx)return;
+ const a=average(),hi=S.values.findIndex(v=>v>a),lo=S.values.findIndex(v=>v<a);
+ if(hi<0||lo<0){diagramDemo=false;tell('図で ならせたね。全部の量はそのままで、同じ量ずつになったよ。');return;}
+ transfer(hi,lo,type()==='beads'?1:Math.min(S.values[hi]-a,a-S.values[lo]));
+ message=type()==='beads'?'図のヒント：多い棒から 少ない棒へ、玉をうつすよ。':'図のヒント：多いコップから 少ないコップへ、水を注ぐよ。';
+ render();
+}
 function giveHint() {
  if(tx)return;
- hint=Math.min(3,hint+1);const a=average();
- if(S.stage>=4){const total=sum(S.original);tell(hint===1?'全部の量を 足そう。空のコップも1こだよ。':hint===2?'合計は '+total+' '+unit()+'。'+S.original.length+'こに 同じ量ずつ分けよう。':total+' ÷ '+S.original.length+' ＝ '+fmt(a)+'。図でも たしかめよう。');}
+ hint=Math.min(3,hint+1);
+ if(S.stage>=4&&type()==='water'){
+  const total=sum(S.original),n=S.original.length;
+  const totalQuestion=(S.stage===4||S.practice===2)&&S.step===0;
+  const hints=[
+   '全部の量を足してから、コップの数で等しく分けよう。空のコップも1こだよ。',
+   totalQuestion?S.original.join(' ＋ ')+' を計算してみよう。':'合計は '+total+' mL。'+n+'このコップに 同じ量ずつ分けよう。',
+   (totalQuestion?'全部の量は '+total+' mL。次にコップの数を考えよう。':total+' ÷ '+n+' で、1こ分を求めよう。')+'「図が動くヒント」でも確かめられるよ。'
+  ];
+  tell(hints[hint-1]);
+ }
  else if(hint===1)tell('多いところは どこかな？');
  else if(hint===2)tell('少ないところに うつしてみよう。全部の量は 変わらないよ。');
- else tell('この点線の高さに そろえてみよう。');
+ else {if(S.stage>=4)S.diagram=0;tell('この点線の高さに そろえてみよう。');}
 }
 function answer(event) {
  event.preventDefault();if(tx||S.solved)return;
@@ -175,7 +201,7 @@ function answer(event) {
  const value=Number(raw),total=sum(S.original),n=S.original.length,a=average();
  const target=S.stage===4||S.practice===2?(S.step===0?total:S.step===1?n:a):a;
  if(value!==target){tell(S.step===0&&(S.stage===4||S.practice===2)?'元の量を 全部 足してみよう。':S.step===1&&(S.stage===4||S.practice===2)?'空のコップも入れて、コップの数を数えよう。':value===total?'それは全部の量だね。コップの数で わると、1こ分になるよ。':'合計 ÷ 個数で たしかめよう。「図でたしかめる」も使えるよ。');return;}
- checkpoint();if((S.stage===4||S.practice===2)&&S.step<2){S.step++;message='そうだね！ 次を考えよう。';}else{S.solved=true;message='できたね！ '+total+' ÷ '+n+' ＝ '+fmt(a)+' '+unit()+'。';}render();persist();if(!S.solved)$('answer').focus();
+ checkpoint();$('answer').value='';if((S.stage===4||S.practice===2)&&S.step<2){S.step++;hint=0;message='そうだね！ 次を考えよう。';}else{S.solved=true;message='できたね！ '+total+' ÷ '+n+' ＝ '+fmt(a)+' '+unit()+'。';}render();persist();if(!S.solved)$('answer').focus();
 }
 function next() {
  if(tx)return;
@@ -229,13 +255,16 @@ function render() {
  }
  $('undo').disabled=!tx&&!history.length;$('reset').disabled=false;$('hint').disabled=!!tx;$('demo').disabled=!!tx;
  for(const id of ['undo','hint','demo'])$(id).hidden=S.stage===1;
+ $('hint').textContent=hint?'ヒント '+hint+' / 3':'ヒント';
+ $('demo').textContent=S.stage>=4?'図が動くヒント':'おてほんを ひとつ';
  $('reset').textContent=S.stage===1?'↻ もう一度 見る':'はじめの形';
  $('pause').hidden=!tx&&!soilAuto;$('pause').textContent=tx?.paused||soilPaused?'▶ 再開':'Ⅱ 一時停止';
  document.querySelector('.guide').hidden=S.stage===1;
  $('next').disabled=!!tx;$('next').textContent=S.stage===2&&S.waterIndex<3?'コップを ふやす →':S.stage===5?'つぎの問題 →':'つぎへ →';
- $('totalPanel').open=S.stage>=3||$('totalPanel').open;
+ if(S.stage===3)$('totalPanel').open=true;
  const f=$('answerForm');const hasInput=S.stage===4||(S.stage===5&&type()!=='beads');f.hidden=!hasInput||S.solved;
- if(hasInput){const staged=S.stage===4||S.practice===2;$('answerLabel').textContent=staged?(S.step===0?'全部で 何mL？':S.step===1?'何このコップに 分ける？':'1こ分は 何mL？'):'ならすと、1こ分は 何mL？';$('answer').value='';}
+ $('answer').disabled=!!tx;$('answerForm').querySelector('button').disabled=!!tx;
+ if(hasInput){const staged=S.stage===4||S.practice===2;$('answerLabel').textContent=staged?(S.step===0?'全部で 何mL？':S.step===1?'何このコップに 分ける？':'1こ分は 何mL？'):'ならすと、1こ分は 何mL？';}
 }
 function renderMath() {
  const m=$('math');m.replaceChildren();const total=sum(S.original),n=S.original.length,a=average();
@@ -253,7 +282,7 @@ function renderTotals() {
 function renderBoard() {
  const v=view(),kind=type();
  $('board').setAttribute('viewBox',kind==='water'?'0 0 960 460':'0 0 960 380');
- const context={state:S,visual:v,tx,selected,destination,average:average(),hintLine:settings.line||hint>=3||allEqual(),numbers:settings.numbers,drag};
+ const context={state:S,visual:v,tx,selected,destination,average:average(),hintLine:(S.stage>=4?hint>=3||allEqual():settings.line||hint>=3||allEqual()),numbers:settings.numbers,drag};
  $('board').innerHTML=NarasuRender[kind](context);
 }
 // Stable delegated handlers survive SVG redraws and work with touch, mouse and keyboard.
@@ -288,5 +317,5 @@ $('resumeNo').onclick=()=>{$('resume').close();fresh();render();persist();};
 $('resume').addEventListener('cancel',()=>persist());
 render();
 // Exposed read-only snapshots make conservation and interrupted moves verifiable.
-window.Narasu={snapshot:()=>copy({state:S,visual:view(),busy:!!tx,paused:!!tx?.paused,soilAuto,soilPaused,history:history.length,selected,destination}),validateInput:validSaved};
+window.Narasu={snapshot:()=>copy({state:S,visual:view(),busy:!!tx,paused:!!tx?.paused,soilAuto,soilPaused,diagramDemo,hint,history:history.length,selected,destination}),validateInput:validSaved};
 })();
