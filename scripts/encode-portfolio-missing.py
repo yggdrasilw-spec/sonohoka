@@ -41,17 +41,22 @@ def encode(file):
         span = data.get('sourceDurations', data['durations'])[index]
         speed = duration / span
         marker_mask = 'drawbox=x=0:y=0:w=12:h=12:color=0x080b18:t=fill,' if data.get('maskMarker') else ''
+        crop = 'crop=' + ':'.join(str(value) for value in data['crop']) + ',' if data.get('crop') else ''
         run(['-ss', str(start), '-t', str(span), '-i', str(directory / 'source.webm'), '-loop', '1', '-i', str(lower),
-             '-filter_complex', f'[0:v]{marker_mask}setpts={speed}*(PTS-STARTPTS),fps=20,scale=1280:640:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:0:color=0x152a43,tpad=stop_mode=clone:stop_duration=1[base];[base][1:v]overlay=0:640,format=yuv420p[v]',
+             '-filter_complex', f'[0:v]{marker_mask}{crop}setpts={speed}*(PTS-STARTPTS),fps=20,scale=1280:640:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:0:color=0x152a43,tpad=stop_mode=clone:stop_duration=1[base];[base][1:v]overlay=0:640,setsar=1,format=yuv420p[v]',
              '-map', '[v]', '-an', '-t', str(duration), '-c:v', 'libx264', '-preset', 'fast', '-crf', '24', '-threads', '2', str(clip)])
     manifest = directory / 'concat.txt'
     manifest.write_text('\n'.join(f"file 'clip-{i}.mp4'" for i in range(5)), encoding='utf-8')
     output = ROOT / 'media' / f"portfolio-{data['id']}-intro.mp4"
     run(['-f', 'concat', '-safe', '0', '-i', str(manifest), '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
          '-t', '9.5', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '64k', '-shortest', '-movflags', '+faststart', str(output)])
-    poster = Image.new('RGB', (1280, 720))
+    poster = Image.new('RGB', (1280, 720), '#152a43' if data.get('crop') else 'black')
     poster_index = data.get('posterIndex', 0 if data['id'] == 47 else 4 if data['id'] in {20, 23, 27, 41, 42, 72} else 2)
-    screenshot = ImageOps.contain(Image.open(directory / f'frame-0{poster_index}.png'), (1280, 640), Image.Resampling.LANCZOS)
+    screenshot = Image.open(directory / f'frame-0{poster_index}.png')
+    if data.get('crop'):
+        width, height, x, y = data['crop']
+        screenshot = screenshot.crop((x, y, x + width, y + height))
+    screenshot = ImageOps.contain(screenshot, (1280, 640), Image.Resampling.LANCZOS)
     if data.get('maskMarker'):
         ImageDraw.Draw(screenshot).rectangle((0, 0, 12, 12), fill='#080b18')
     poster.paste(screenshot, ((1280 - screenshot.width) // 2, 0))
