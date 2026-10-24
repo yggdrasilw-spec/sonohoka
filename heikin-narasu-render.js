@@ -8,22 +8,14 @@ function stone(x,y,w,h,index,kind){
  return `<path data-grain="${kind}" d="M${x+2} ${y+1}L${x+w-4} ${y}L${x+w} ${y+5}L${x+w-2} ${y+h-2}L${x+4} ${y+h}L${x} ${y+h-5}Z" fill="${colors[index%4]}" stroke="#77502e" stroke-width="1.2"/>`;
 }
 function soil({state,visual,average}){
- const s=visual.soil,left=150,right=850,base=306,scale=32,sub=(right-left)/(state.values.length*8),gw=sub-2,gh=27;
- const line=base-average*scale,blade=left+s.position*sub;
- const pilePoint=i=>({x:blade+5+Math.floor(i/4)*sub,y:line-(i%4+1)*scale+3});
+ const s=visual.soil,left=170,right=790,base=306,scale=32,sub=(right-left)/(state.values.length*8),gw=sub-2,gh=27;
+ const line=base-average*scale,blade=left+s.vehicle.x*sub;
  let out=`<path d="M${left} ${base+4}H${right}" stroke="#856640" stroke-width="4"/><line class="hintLine" x1="${left}" x2="${right}" y1="${line}" y2="${line}"/>`;
- out+=text(480,30,'左から 右へ →','muted');
- for(let j=0;j<s.heights.length;j++)for(let k=0;k<s.heights[j];k++)out+=stone(left+j*sub+1,base-(k+1)*scale+3,gw,gh,j+k,'ground');
- for(let i=0;i<s.pile;i++){const p=pilePoint(i);out+=stone(p.x,p.y,gw,gh,i,'pile');}
- if(s.flying){
-  const p=M.ease((s.fraction-.12)/.76);
-  for(let i=0;i<s.flying;i++){
-   const ground={x:left+s.index*sub+1,y:base-(s.delta>0?s.old-i: s.old+i+1)*scale+3};
-   const heap=pilePoint(s.pile+i),from=s.delta>0?ground:heap,to=s.delta>0?heap:ground;
-   out+=stone(from.x+(to.x-from.x)*p,from.y+(to.y-from.y)*p-18*Math.sin(p*Math.PI),gw,gh,i,'flying');
-  }
- }
- out+=`<g data-sweep-x="${blade}" transform="translate(${blade-112},${line-67})">
+ const captions={back:'いったん バックするよ',away:'土の山を よけて 奥へ',bypass:'奥を通って 右側へ',turn:'向きを 変えるよ',return:'反対側から ならすよ'};
+ out+=text(480,30,captions[s.kind]||(s.vehicle.dir===1?'左から 右へ →':'← 右から 左へ'),'muted');
+ let ground='';for(const g of s.grains)ground+=`<g data-grain-id="${g.id}" data-grid-x="${g.x}" data-grid-y="${g.y}">${stone(left+g.x*sub+1,base-(g.y+1)*scale+3,gw,gh,g.id,'ground')}</g>`;
+ const depth=s.vehicle.depth,dir=s.vehicle.dir,shrink=1-.2*depth;
+ const machine=`<g data-sweep-x="${blade}" data-direction="${dir}" data-depth="${depth}" data-motion="${s.kind}" transform="translate(${blade},${line-67-65*depth}) scale(${dir*shrink*Math.max(.12,s.vehicle.turn)},${shrink}) translate(-112,0)">
  <path d="M8 27H75V54H8Z" fill="#e4a824" stroke="#6b501c" stroke-width="3"/>
  <path d="M25 0H56L67 29H25Z" fill="#f4c653" stroke="#6b501c" stroke-width="3"/>
  <path d="M31 6H51L58 23H31Z" fill="#b9e0eb" stroke="#685a30" stroke-width="2"/>
@@ -32,8 +24,8 @@ function soil({state,visual,average}){
  <path d="M74 38L103 52M75 27L103 41" stroke="#b98217" stroke-width="7"/>
  <path d="M107 25Q97 42 105 69L115 69L115 27Z" fill="#8f9ca1" stroke="#455d68" stroke-width="3"/>
  </g>`;
- out+=text(480,351,`地面の土を すてずに、前へ 押していくよ。`,'muted');
- out+=text(760,66,`押している土 ${s.pile}こ`,'muted');
+ out+=depth>.15?machine+ground:ground+machine;
+ out+=text(480,351,'横に 押す。下が 空いたら、落ちて たまる。','muted');
  return out;
 }
 function water({state,visual,tx,selected,destination,hintLine}){
@@ -58,7 +50,10 @@ function water({state,visual,tx,selected,destination,hintLine}){
   if(surfacePoints.length>=2&&amount>0)svg+=`<path data-waterline="${key}" d="M${Math.min(...surfacePoints.map(p=>p.x))} ${liquid.surface}H${Math.max(...surfacePoints.map(p=>p.x))}" stroke="#06799d" stroke-width="2.4"/>`;
   svg+=`<g transform="translate(${cx},${cy}) rotate(${angle})"><path d="M${-w/2} ${-h}V0H${w/2}V${-h}" fill="none" stroke="#486f82" stroke-width="3.5" stroke-linecap="round"/>`;
   if(key==='jug')svg+=`<path d="M${w/2+2} ${-h+35}Q${w/2+64} ${-h+20} ${w/2+32} -58H${w/2+2}M${-w/2} ${-h+20}L${-w/2-15} ${-h}H${-w/2}" fill="none" stroke="#486f82" stroke-width="4"/>`;
-  else for(const mark of [0,100,200,300])svg+=`<path d="M${-w/2} ${-h*mark/cap}h8" stroke="#486f82" stroke-width="1.8"/>`;
+  if(key==='jug'&&state.jugPhase==='divide')for(let i=1;i<n;i++){
+   const y=-h*i/n;svg+=`<path data-division-mark="${i}" d="M${-w/2+3} ${y}H${w/2-3}" stroke="#815c20" stroke-width="2.5" stroke-dasharray="7 4"/>`;
+  }
+  if(key!=='jug')for(const mark of [0,100,200,300])svg+=`<path d="M${-w/2} ${-h*mark/cap}h8" stroke="#486f82" stroke-width="1.8"/>`;
   return svg+'</g></g>';
  }
  for(let i=0;i<n;i++){
@@ -72,6 +67,7 @@ function water({state,visual,tx,selected,destination,hintLine}){
  if(jug){const s=specs.jug;
   if(moving!=='jug')out+=vessel('jug',s,visual.jug);
   else out+=`<path d="M754 200V370H860V200" fill="none" stroke="#bacbd0" stroke-dasharray="5 6" stroke-width="2"/>`;
+  if(state.jugPhase==='divide'&&moving!=='jug')out+=text(s.x,181,`${n}等分の目印`,'muted');
   out+=text(s.x,407,`${visual.jug} mL`)+text(s.x,435,`水差し：容量 ${s.capacity} mL`,'muted')+text(s.x,457,'コップとは別の縮尺','muted');
  }
  if(pose){

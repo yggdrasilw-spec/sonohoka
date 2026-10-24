@@ -5,7 +5,7 @@ const $ = id => document.getElementById(id);
 const M=window.NarasuMotion;
 const names = ['玉','土','水','水差し','式','練習'];
 const waterSets = [[180,60],[180,60,120],[200,80,160,40],[200,50,150,100,100]];
-const soilSets = [[5,4,1,2],[6,2,1,3],[4,2,5,1],[4,2,4,2,3],[6,1,4,2,3,2]];
+const soilSets = [[5,4,1,2],[6,2,1,3],[1,5,5,1],[4,2,4,2,3],[6,1,4,2,3,2]];
 const exercises = [
  {type:'beads',values:[4,2,3],text:'玉を うつして、同じ高さにしよう。'},
  {type:'water',values:[160,80],text:'2この水を ならすと、1こ分は何mL？'},
@@ -47,7 +47,7 @@ function startSoil(){soilAuto=true;soilPaused=false;scheduleSoil();render();}
 function scheduleSoil(){
  clearTimeout(soilTimer);if(!soilAuto||soilPaused||S.stage!==1||tx)return;
  if(allEqual()){soilAuto=false;message='高いところの土を、低いところへ。たいらにすることを「ならす」というよ。';render();return;}
- soilTimer=setTimeout(()=>{if(!soilAuto||soilPaused||S.stage!==1)return;const before=copy(S),next=copy(S);next.values=next.values.map(()=>average());next.bucket=0;next.vehicle=S.values.length;tx={kind:'soilSweep',before,next,progress:0,elapsed:0,last:0,paused:false};message='左から右へ。高い土を押して、低いところに入れるよ。';render();runAnimation(settings.speed==='reduced'?400:settings.speed==='slow'?18000:9500);},settings.speed==='reduced'?100:650);
+ soilTimer=setTimeout(()=>{if(!soilAuto||soilPaused||S.stage!==1)return;const before=copy(S),next=copy(S),plan=M.soilPlan(S.values);next.values=next.values.map(()=>average());next.bucket=0;next.vehicle=S.values.length;next.soilGrains=plan.final;next.soilVehicle=M.soilFrame(plan,1).vehicle;tx={kind:'soilSweep',plan,before,next,progress:0,elapsed:0,last:0,paused:false};message='土を横に押すと、下が空いた土は落ちるよ。端で押せなくなったら、奥を通って反対からならすよ。';render();runAnimation(settings.speed==='reduced'?400:settings.speed==='slow'?28000:16000);},settings.speed==='reduced'?100:650);
 }
 function undo() {if(tx){cancel();message='動きを取り消したよ。';}else if(history.length){cancel();S=history.pop();message='ひとつ前に もどしたよ。';}hint=0;render();persist();}
 function refValue(state, ref) {return typeof ref==='number'?state.values[ref]:state[ref];}
@@ -85,7 +85,7 @@ function visual() {
  changeRef(v,tx.from,-removed);changeRef(v,tx.to,arrived);v.transit=removed-arrived;return v;
 }
 function completionMessage() {
- if(S.stage===3){if(S.jugPhase==='divide'&&!S.jug)return 'どのコップも '+fmt(average())+' mL。このように ならした量を「平均」といいます。';if(S.jugPhase==='divide')return '全部 集まったね。もとの '+S.values.length+'このコップに 分けよう。';return '水差しに '+S.jug+' mL 集まったよ。';}
+ if(S.stage===3){if(S.jugPhase==='divide'&&!S.jug)return 'どのコップも '+fmt(average())+' mL。このように ならした量を「平均」といいます。';if(S.jugPhase==='divide')return '全部 集まったね。横線で '+S.values.length+'等分した量を、コップに分けよう。';return '水差しに '+S.jug+' mL 集まったよ。';}
  if(allEqual())return S.stage===1?'高いところの土を、低いところへ。たいらにすることを「ならす」というよ。':'どこも '+fmt(average())+' '+unit()+'。ならせたね！ 全部の量は 変わらないよ。';
  if(S.stage===1)return S.bucket?'けずった土は バケットの中。低いところへ 運ぶよ。':'低いところが 上がったね。次の高いところへ 向かうよ。';
  return 'うつせたね。多いところと 少ないところを 見てみよう。';
@@ -124,20 +124,20 @@ function distribute(all) {
  render();runAnimation((settings.speed==='slow'?4000:settings.speed==='reduced'?160:2400)*next.values.length);
 }
 function soilView(){
- const v=copy(S),a=average(),pieces=8,count=S.values.length*pieces;
- const position=Math.min(count-.000001,tx?tx.progress*count:count),index=Math.floor(position),fraction=position-index;
- const heights=S.values.flatMap(q=>Array(pieces).fill(q));let pile=Math.round(S.bucket*pieces),flying=0;
- for(let j=0;j<index;j++){pile+=heights[j]-a;heights[j]=a;}
- const old=heights[index],delta=old-a;
- if(fraction>=.12){if(delta>0){heights[index]=a;flying=delta;}else if(delta<0){pile+=delta;flying=-delta;}}
- if(fraction>=.88){if(delta>0)pile+=delta;else if(delta<0)heights[index]=a;flying=0;}
+ const v=copy(S),pieces=8,count=S.values.length*pieces;
+ const soil=tx?.plan?M.soilFrame(tx.plan,tx.progress):{
+  grains:S.soilGrains||S.values.flatMap((h,i)=>Array.from({length:pieces},(_,j)=>Array.from({length:h},(_,y)=>({x:i*pieces+j,y}))).flat()).map((g,id)=>({...g,id})),
+  vehicle:S.soilVehicle||{x:allEqual()?count+1:0,depth:0,dir:1,turn:1},kind:'drive',progress:allEqual()?1:0,position:allEqual()?count+1:0
+ };
+ const heights=Array(count).fill(0);
+ soil.grains.forEach(g=>heights[Math.max(0,Math.min(count-1,Math.floor(g.x)))]++);
  v.values=Array.from({length:S.values.length},(_,i)=>sum(heights.slice(i*pieces,(i+1)*pieces))/pieces);
- v.bucket=pile/pieces;v.transit=flying/pieces;v.soil={heights,pile,flying,index,fraction,delta,old,position,progress:tx?tx.progress:1};return v;
+ v.bucket=0;v.transit=0;v.soil={...soil,heights,pile:0,flying:0};return v;
 }
 // Distribution animates one cup at a time, so each visible amount still adds to the total.
 const transferVisual=visual;
 function view() {
- if(S.stage===1){if(tx?.kind==='soilSweep')return soilView();const v=copy(S);v.transit=0;v.soil={heights:S.values.flatMap(q=>Array(8).fill(q)),pile:Math.round(S.bucket*8),flying:0,position:allEqual()?S.values.length*8:0,progress:allEqual()?1:0};return v;}
+ if(S.stage===1)return soilView();
  if(!tx||tx.to!=='all')return transferVisual();
  const v=copy(tx.before),n=v.values.length,q=tx.amount/n;
  const position=tx.progress*n,index=Math.min(n-1,Math.floor(position)),fraction=position-index;
@@ -179,7 +179,7 @@ function defaultMessage() {
  if(S.stage===0)return '高い棒から 低い棒へ。いちばん上の玉を うつそう。';
  if(S.stage===1)return 'ブルドーザーが 地面を「ならす」ところを 見てみよう。';
  if(S.stage===2)return 'コップを2つ選んで、同じ量にしてみよう。';
- if(S.stage===3)return S.jugPhase==='collect'?'コップを1つずつ選んで、水差しに集めよう。':'もとのコップに、同じ量ずつ分けよう。';
+ if(S.stage===3)return S.jugPhase==='collect'?'コップを1つずつ選んで、水差しに集めよう。':'水差しの横線は、コップの数で等しく分けた目印だよ。同じ量ずつ分けよう。';
  if(S.stage===4)return '元の量のカードを見て、順に計算しよう。';
  return exercises[S.practice].text;
 }
@@ -238,7 +238,7 @@ function renderMath() {
 }
 function renderTotals() {
  const v=view(),ground=sum(v.values),held=v.bucket+v.jug,transit=v.transit||0;
- if(S.stage===1){$('totalText').textContent='土のかたまり：はじめ '+sum(S.original)*8+'こ ／ 地面 '+ground*8+' ＋ 押している土 '+held*8+' ＋ 移動中 '+transit*8+' ＝ '+sum(S.original)*8+'こ';return;}
+ if(S.stage===1){$('totalText').textContent='土のかたまり：はじめ '+sum(S.original)*8+'こ ／ いま '+v.soil.grains.length+'こ。土は すてていないよ。';return;}
  $('totalText').textContent='はじめ：'+sum(S.original)+' '+unit()+'　／　いま：'+ground+' ＋ 容器 '+held+' ＋ 移動中 '+transit+' ＝ '+(ground+held+transit)+' '+unit();
 }
 function renderBoard() {
@@ -265,7 +265,6 @@ $('apply').onclick=()=>{
  const raw=$('custom').value.trim().split(/[,、\s]+/),v=raw.map(Number),water=type()==='water',n=v.length,a=sum(v)/n;
  const valid=raw.every(x=>x!=='')&&n>=(water?2:3)&&n<=(water?5:6)&&v.every(x=>Number.isInteger(x)&&x>=0&&x<=(water?300:6))&&sum(v)>0&&(water?v.every(x=>x%5===0)&&a%5===0:Number.isInteger(a));
  if(!valid){$('settingError').textContent=water?'2～5個、0～300mL、5mL単位で同じ量にできる数を入れてください。':'3～6列、0～6、同じ高さが整数になる数を入れてください。';return;}
- if(S.stage===1&&!M.sweepPossible(v)){$('settingError').textContent='左から右の1回でならすには、左側に十分な高い土が必要です。山を左、くぼみを右に配置してください。';return;}
  cancel();fresh(S.stage,v);render();persist();$('settings').close();if(S.stage===1)startSoil();
 };
 let saved;try{saved=JSON.parse(localStorage.getItem(KEY));}catch{}
@@ -275,7 +274,7 @@ function validSaved(record){
 }
 fresh();
 if(validSaved(saved)){settings={...settings,...saved.settings};$('resume').showModal();}
-$('resumeYes').onclick=()=>{if(validSaved(saved)){S=saved.state;history=Array.isArray(saved.history)?saved.history:[];if(S.stage===1)fresh(1,M.sweepPossible(S.original)?S.original:soilSets[0],{soilIndex:S.soilIndex||0});}message='つづきから はじめよう。';$('resume').close();render();if(S.stage===1)startSoil();};
+$('resumeYes').onclick=()=>{if(validSaved(saved)){S=saved.state;history=Array.isArray(saved.history)?saved.history:[];if(S.stage===1)fresh(1,S.original,{soilIndex:S.soilIndex||0});}message='つづきから はじめよう。';$('resume').close();render();if(S.stage===1)startSoil();};
 $('resumeNo').onclick=()=>{$('resume').close();fresh();render();persist();};
 $('resume').addEventListener('cancel',()=>persist());
 render();

@@ -38,6 +38,55 @@ function stream(start,end){const gravity=500,vy=30,dy=Math.max(1,end.y-start.y),
  return Array.from({length:17},(_,i)=>{const t=time*i/16;return {x:start.x+vx*t,y:start.y+vy*t+.5*gravity*t*t};});
 }
 function sweepPossible(values){const a=values.reduce((x,y)=>x+y,0)/values.length;let held=0;return Number.isInteger(a)&&values.every(v=>{held+=v-a;return held>=0;});}
-const api={clamp,ease,area,rotate,clipBelow,liquid,retained,spillAngle,removed,arrived,pose,stream,sweepPossible};
+// Grain identities persist: a blade translates connected rows, then gravity settles them.
+function soilPlan(values,pieces=8){
+ const average=values.reduce((a,b)=>a+b,0)/values.length,count=values.length*pieces;
+ let grains=values.flatMap((h,i)=>Array.from({length:pieces},(_,j)=>Array.from({length:h},(_,y)=>({x:i*pieces+j,y}))).flat()).map((g,id)=>({...g,id}));
+ let vehicle={x:0,depth:0,dir:1},time=0;const events=[];
+ function add(kind,nextGrains,nextVehicle,weight=1){
+  const last=events.at(-1);
+  if(kind==='drive'&&last?.kind==='drive'&&last.to.dir===nextVehicle.dir){last.end+=weight;last.to={...nextVehicle};time+=weight;vehicle={...nextVehicle};return;}
+  events.push({kind,start:time,end:time+weight,before:grains,after:nextGrains,from:{...vehicle},to:{...nextVehicle}});
+  time+=weight;grains=nextGrains;vehicle={...nextVehicle};
+ }
+ function pass(dir){
+  for(let j=dir===1?0:count-1;dir===1?j<count-1:j>0;j+=dir){
+   const edge=j+(dir===-1?1:0);
+   if(vehicle.x!==edge)add('drive',grains,{...vehicle,x:edge},Math.abs(vehicle.x-edge)*.35);
+   const grid=new Map(grains.map(g=>[`${g.x},${g.y}`,g])),moving=new Set();let blocked=false;
+   for(const g of grains.filter(g=>g.x===j&&g.y>=average)){
+    let x=j;while(grid.has(`${x},${g.y}`)){moving.add(grid.get(`${x},${g.y}`).id);x+=dir;}
+    if(x<0||x>=count)blocked=true;
+   }
+   if(blocked)return false;
+   const pushed=grains.map(g=>moving.has(g.id)?{...g,x:g.x+dir}:g);
+   add(moving.size?'push':'drive',pushed,{...vehicle,x:edge+dir},moving.size?1:.35);
+   // Sort each column bottom-up. Falling never changes x or lifts a grain.
+   const columns=Array.from({length:count},()=>[]);pushed.forEach(g=>columns[g.x].push(g));
+   const settled=new Map();columns.forEach(col=>col.sort((a,b)=>a.y-b.y).forEach((g,y)=>settled.set(g.id,{...g,y})));
+   const fallen=pushed.map(g=>settled.get(g.id));
+   if(fallen.some((g,i)=>g.y!==pushed[i].y))add('fall',fallen,vehicle,.8);
+  }
+  return grains.every(g=>g.y<average);
+ }
+ if(!pass(1)){
+  add('back',grains,{...vehicle,x:vehicle.x-3},2);
+  add('away',grains,{...vehicle,depth:1},2);
+  add('bypass',grains,{...vehicle,x:count+1},6);
+  add('turn',grains,{...vehicle,dir:-1},2);
+  add('return',grains,{...vehicle,depth:0},2);
+  pass(-1);
+ }
+ add('drive',grains,{...vehicle,x:vehicle.dir===1?count+1:-1},1);
+ return {events,duration:time,average,count,pieces,initial:events[0].before,final:grains};
+}
+function soilFrame(plan,progress){
+ const time=clamp(progress)*plan.duration,e=plan.events.find(e=>time<e.end)||plan.events.at(-1),p=clamp((time-e.start)/(e.end-e.start));
+ const t=e.kind==='fall'?p*p:ease(p);
+ const grains=e.before.map((g,i)=>({...g,x:g.x+(e.after[i].x-g.x)*t,y:g.y+(e.after[i].y-g.y)*t}));
+ const vehicle={x:e.from.x+(e.to.x-e.from.x)*ease(p),depth:e.from.depth+(e.to.depth-e.from.depth)*ease(p),dir:e.kind==='turn'?(p<.5?e.from.dir:e.to.dir):e.from.dir,turn:e.kind==='turn'?Math.abs(1-2*p):1};
+ return {grains,vehicle,kind:e.kind,progress:clamp(progress),position:vehicle.x};
+}
+const api={clamp,ease,area,rotate,clipBelow,liquid,retained,spillAngle,removed,arrived,pose,stream,sweepPossible,soilPlan,soilFrame};
 root.NarasuMotion=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
