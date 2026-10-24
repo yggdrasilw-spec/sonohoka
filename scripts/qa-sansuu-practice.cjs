@@ -20,13 +20,13 @@ const expected=(topic,t,a,b)=>{
    for(const e of document.querySelectorAll('button,select')){const r=e.getBoundingClientRect();if(!r.width||!r.height)continue;const top=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);if(!e.contains(top))fail.push(e.textContent+' obscured');}
     for(const svg of document.querySelectorAll('#application-diagram:not([hidden]) svg')){const r=svg.getBoundingClientRect();if(r.height<80)fail.push('hint diagram too small');}
     return fail;
-  });assert.deepEqual(failures,[]);}
+  });if(failures.length)await p.screenshot({path:path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba/practice-layout-failure.png')});assert.deepEqual(failures,[]);}
   for(const topic of ['multiply','subtract','add','divide']){
    await p.locator('#practice-topic').selectOption(topic);const seen=new Set();
    for(let i=0;i<9;i++){
     const id=await p.locator('#application').getAttribute('data-problem-id');assert(!seen.has(id),'no repeated questions within topic');seen.add(id);
     const t=Number(id.split('-')[1]);const [a,b]=(await p.locator('.practice-operand strong').allTextContents()).map(Number),right=expected(topic,t,a,b);
-    const choices=await p.locator('#practice-choices button').allTextContents();assert.equal(new Set(choices).size,3);assert(choices.includes(right),id+' answer');
+    const choices=await p.locator('#practice-choices button').evaluateAll(bs=>bs.map(b=>b.getAttribute('aria-label')));assert.equal(new Set(choices).size,3);assert(choices.includes(right),id+' answer');
     assert(await p.locator('#application-diagram').isHidden());await fits();
     if(i%3===1)await p.locator('#practice-hint').click();
     if(i%3===2){await p.locator('#practice-choices button').filter({hasText:choices.find(c=>c!==right)}).click();assert.match(await p.locator('#practice-feedback').innerText(),/ヒント/);}

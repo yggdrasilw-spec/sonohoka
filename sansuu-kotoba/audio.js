@@ -58,6 +58,7 @@
     const digits=['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
     const number=n=>n<10?digits[n]:n<100?(n>=20?digits[Math.floor(n/10)]:'')+'じゅう'+(n%10?digits[n%10]:''):String(n);
     return String(text).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xfee0))
+      .replace(/([1-9])つ/g,(_,n)=>['','ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ'][Number(n)])
       .replace(/(\d+)こ/g,(_,n)=>{const value=Number(n),last=value%10;if([1,6,8].includes(last))return (value>last?number(value-last):'')+({1:'いっこ',6:'ろっこ',8:'はっこ'}[last]);if(last===0)return number(value).replace(/じゅう$/,'じゅっ')+'こ';return number(value)+'こ';})
       .replace(/引かれる/g,'ひかれる').replace(/引く/g,'ひく').replace(/数/g,'かず').replace(/人/g,'ひと').replace(/×/g,' かける ').replace(/[−－]/g,' ひく ').replace(/[＋+]/g,' たす ').replace(/÷/g,' わる ').replace(/[＝=]/g,' は ').replace(/→/g,' から ').replace(/\d+/g,n=>number(Number(n)));
   }
@@ -92,8 +93,8 @@
     }catch{status('おとをさいせいできませんでした');}
   }
   function update(){
-    $('effects-toggle').setAttribute('aria-pressed',String(effects));$('effects-toggle').textContent=`♪ おと：${effects?'入':'切'}`;
-    $('voice-toggle').setAttribute('aria-pressed',String(voice));$('voice-toggle').textContent=`声：${voice?'入':'切'}`;
+    $('effects-toggle').setAttribute('aria-pressed',String(effects));$('effects-toggle').textContent=`🎵 おと：${effects?'入':'切'}`;
+    $('voice-toggle').setAttribute('aria-pressed',String(voice));$('voice-toggle').textContent=`🗣️ 声：${voice?'入':'切'}`;
   }
   $('effects-toggle').addEventListener('click',()=>{activate();effects=!effects;if(!effects)stopEffects();else play('tap');update();status(effects?'おとを つけたよ':'おとを とめたよ');});
   $('voice-toggle').addEventListener('click',()=>{activate();voice=!voice;cancelSpeech();update();status(voice?'声を つけたよ':'声を とめたよ');});

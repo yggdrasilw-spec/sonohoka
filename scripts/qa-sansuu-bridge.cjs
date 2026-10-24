@@ -23,14 +23,14 @@ const {serve}=require('./portfolio-demo-inspect.cjs');
    assert.equal(await page.locator('#morph-left-term .term-suffix').innerText(),'数');
    if(scene==='multiply')await page.screenshot({path:path.join(out,'bridge-word-change.png')});
    await page.locator('#step').click();await page.locator('#step').click();
-   assert.equal(await opacity('frame'),0);assert.equal(await opacity('morph-operator'),1);assert.match(await page.locator('#play').innerText(),/もういちど/);
+   assert.equal(await opacity('frame'),0);assert.equal(await opacity('morph-operator'),1);assert.match(await page.locator('#play').getAttribute('aria-label'),/もういちど/);
    const positions=await page.evaluate(()=>{const svg=document.getElementById('morph-equation'),r=svg.getBoundingClientRect();return ['left','right'].map((side,i)=>{const label=document.getElementById(side+'-person').getBoundingClientRect();return Math.abs(r.x+r.width*[.3,.8][i]-(label.x+label.width/2));});});assert(positions.every(n=>n<1),JSON.stringify(positions));
    if(scene==='multiply')await page.screenshot({path:path.join(out,'bridge-complete.png')});
    await page.locator('#play').click();await page.waitForTimeout(160);await page.locator('#play').click();const paused=await opacity('morph-left');await page.waitForTimeout(250);assert.equal(await opacity('morph-left'),paused);
    await page.locator('#restart').click();assert.equal(await opacity('frame'),1);assert.match(await page.locator('#frame-count').innerText(),/1 \/ 8/);
   }
   await page.locator('[data-mode="people"]').click();await page.locator('[data-scene="multiply"]').click();await page.locator('[data-mode="numbers"]').click();
-  await page.waitForFunction(()=>document.getElementById('play').textContent.includes('もういちど'),{},{timeout:9000});assert.equal(await opacity('frame'),0);
+  await page.waitForFunction(()=>document.getElementById('play').getAttribute('aria-label').includes('もういちど'),{},{timeout:9000});assert.equal(await opacity('frame'),0);
   await page.locator('#play').click();await page.locator('[data-mode="quiz"]').click();await page.waitForTimeout(200);assert.equal(await page.locator('#play').getAttribute('aria-pressed'),'false');assert(await page.locator('#morph-equation').isHidden());
   await page.emulateMedia({reducedMotion:'reduce'});await page.locator('[data-mode="numbers"]').click();assert.equal(await opacity('frame'),0);assert.equal(await page.locator('#play').getAttribute('aria-pressed'),'false');
   for(const width of [375,390,768]){await page.setViewportSize({width,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}

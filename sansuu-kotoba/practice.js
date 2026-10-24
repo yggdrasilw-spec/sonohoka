@@ -62,7 +62,7 @@
     $('practice-count').textContent=`ぜんぶで ${$('practice-topic').value==='all'?36:9}もんを ひとめぐり ／ のこり ${deck.length+1}もん`;
     $('practice-feedback').textContent='';$('diagram-placeholder').hidden=false;$('application-diagram').hidden=true;$('application-diagram').replaceChildren();
     order=shuffle([0,1,2]);$('practice-choices').replaceChildren();
-    order.forEach(i=>{const button=document.createElement('button');button.type='button';button.textContent=current.options[i];button.dataset.option=i;button.addEventListener('click',()=>answer(i,button));$('practice-choices').append(button);});score();
+    order.forEach(i=>{const button=document.createElement('button');button.type='button';button.textContent='💬 '+current.options[i];button.setAttribute('aria-label',current.options[i]);button.dataset.option=i;button.addEventListener('click',()=>answer(i,button));$('practice-choices').append(button);});score();
     if(narrate){audio.play('tap');read();}
   }
   function answer(i,button){
