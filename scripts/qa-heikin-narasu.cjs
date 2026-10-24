@@ -7,8 +7,8 @@ try{
  const page=await browser.newPage({viewport:{width:1366,height:768}});page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/heikin_narasu.html`);
  const snapshot=()=>page.evaluate(()=>Narasu.snapshot());
- async function invariant(){const s=await snapshot(),v=s.visual;assert.equal(v.values.reduce((a,b)=>a+b,0)+v.bucket+v.jug+(v.transit||0),s.state.original.reduce((a,b)=>a+b,0));assert(v.values.every(x=>x>=0&&x<=300));assert(v.bucket>=0&&v.bucket<=2);samples++;return s;}
- async function finish(){for(let i=0;i<200;i++){const s=await invariant();if(!s.busy)return s;await page.waitForTimeout(20);}throw Error('animation timeout');}
+ async function invariant(){const s=await snapshot(),v=s.visual;assert.equal(v.values.reduce((a,b)=>a+b,0)+v.bucket+v.jug+(v.transit||0),s.state.original.reduce((a,b)=>a+b,0));assert(v.values.every(x=>x>=0&&x<=300));assert(v.bucket>=0);if(s.state.stage===1){assert.equal(v.soil.heights.reduce((a,b)=>a+b,0)+v.soil.pile+v.soil.flying,s.state.original.reduce((a,b)=>a+b,0)*8);assert.equal(await page.locator('[data-grain]').count(),s.state.original.reduce((a,b)=>a+b,0)*8);}samples++;return s;}
+ async function finish(){for(let i=0;i<850;i++){const s=await invariant();if(!s.busy)return s;await page.waitForTimeout(20);}throw Error('animation timeout');}
  async function scene(name){await page.locator('#scenes button').nth(['玉','土','水','水差し','式','練習'].indexOf(name)).click();await finish();}
  async function speed(value){await page.locator('#settingsOpen').click();await page.locator('#speed').selectOption(value);await page.locator('#settings button.primary').click();}
  async function demo(){await page.locator('#demo').click();return finish();}
