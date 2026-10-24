@@ -40,7 +40,7 @@ const expected=(topic,t,a,b)=>{
     count++;if(i<8)await p.locator('#practice-next').click();
    }
   }
-  assert.match(await p.locator('#practice-score').innerText(),/答えた 36問.*最初に正解 12問/);
+  assert.match(await p.locator('#practice-score').innerText(),/答えた 36もん.*はじめにせいかい 12もん/);
   await p.screenshot({path:path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba/practice-1024.png')});
   for(const [width,height] of [[1366,768],[1366,640],[1366,600],[1280,600],[1180,620]]){await p.setViewportSize({width,height});await fits();}
   await p.setViewportSize({width:390,height:844});assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await p.screenshot({path:path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba/practice-mobile.png'),fullPage:true});

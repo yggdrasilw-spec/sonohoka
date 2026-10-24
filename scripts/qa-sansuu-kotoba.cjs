@@ -28,9 +28,9 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
    await page.locator('[data-mode="quiz"]').click();
    assert.equal(await page.locator('#mapping').isHidden(),true);
    if(scene!=='push')assert.equal(await page.locator('#left-term').innerText(),'？');
-   await page.locator('[data-answer="right"]').click();assert.match(await page.locator('#feedback').innerText(),/もう一度/);
+   await page.locator('[data-answer="right"]').click();assert.match(await page.locator('#feedback').innerText(),/もういちど/);
    await page.locator('[data-answer="left"]').click();assert.match(await page.locator('#feedback').innerText(),/先/);questions++;
-   await page.locator('#next').click();await page.locator('[data-answer="right"]').click();assert.match(await page.locator('#feedback').innerText(),/根元/);questions++;
+   await page.locator('#next').click();await page.locator('[data-answer="right"]').click();assert.match(await page.locator('#feedback').innerText(),/ねもと/);questions++;
    await page.locator('[data-mode="people"]').click();
   }
   await page.locator('[data-scene="multiply"]').click();await page.locator('[data-mode="numbers"]').click();
