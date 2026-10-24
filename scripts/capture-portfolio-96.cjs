@@ -8,7 +8,7 @@ try{
  const context=await browser.newContext({viewport:{width:1280,height:720},recordVideo:{dir,size:{width:1280,height:720}}});
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/heikin_narasu.html`);await page.waitForTimeout(700);
- const marks=[],durations=[3,1.5,1.5,1.8,1.7];
+ const marks=[],durations=[2,1.5,1.5,3,1.5];
  const mark=()=>marks.push(Date.now()/1000);
  const done=()=>page.waitForFunction(()=>!Narasu.snapshot().busy);
  const col=i=>page.locator(`[data-col="${i}"]`).click();
@@ -17,15 +17,15 @@ try{
  await page.waitForTimeout(450);
  assert.deepEqual(await page.evaluate(()=>Narasu.snapshot().state.values),[3,3,3,3]);
  mark();await page.locator('#scenes button').nth(1).click();
- await page.waitForFunction(()=>Narasu.snapshot().state.bucket===2&&!Narasu.snapshot().busy);
+ await page.waitForFunction(()=>Narasu.snapshot().visual.bucket>=1&&Narasu.snapshot().busy);
  await page.screenshot({path:path.join(dir,'frame-01.png')});
  mark();await page.waitForFunction(()=>!Narasu.snapshot().soilAuto&&!Narasu.snapshot().busy);
  await page.waitForTimeout(300);await page.screenshot({path:path.join(dir,'frame-02.png')});const soilEnd=Date.now()/1000;
- await page.locator('#scenes button').nth(2).click();await page.locator('#subnav button').nth(1).click();await page.locator('#toJug').click();
- for(let i=0;i<3;i++){await col(i);await done();}
+ await page.locator('#scenes button').nth(2).click();await page.locator('#toJug').click();
+ for(let i=0;i<2;i++){await col(i);await done();}
  mark();await page.locator('#divide').click();await done();await page.waitForTimeout(400);await page.screenshot({path:path.join(dir,'frame-03.png')});const divideEnd=Date.now()/1000;
- assert.deepEqual(await page.evaluate(()=>Narasu.snapshot().state.values),[120,120,120]);
- await page.locator('#next').click();for(const value of [360,3,120]){await page.locator('#answer').fill(String(value));await page.locator('#answerForm button').click();}
+ assert.deepEqual(await page.evaluate(()=>Narasu.snapshot().state.values),[120,120]);
+ await page.locator('#next').click();for(const value of [240,2,120]){await page.locator('#answer').fill(String(value));await page.locator('#answerForm button').click();}
  await page.locator('#toggleDiagram').click();await page.locator('#toggleDiagram').click();
  mark();await page.waitForTimeout(200);await page.screenshot({path:path.join(dir,'frame-04.png')});await page.waitForTimeout(1600);
  assert(await page.locator('#drawing').isHidden());assert.match(await page.locator('#math').innerText(),/平均 ＝ 合計 ÷ 個数/);assert.deepEqual(errors,[]);

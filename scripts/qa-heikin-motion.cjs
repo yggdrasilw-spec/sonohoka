@@ -2,8 +2,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const {serve}=require('./portfolio-demo-inspect.cjs');
 const out=path.resolve(__dirname,'../.portfolio-work/heikin-motion');fs.mkdirSync(out,{recursive:true});
-(async()=>{const server=serve();await new Promise(r=>server.listen(0,'127.0.0.1',r));const b=await chromium.launch({channel:'msedge',headless:true});try{
- const p=await b.newPage({viewport:{width:1366,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(`http://127.0.0.1:${server.address().port}/sonohoka/heikin_narasu.html`);
+(async()=>{const remote=process.argv.includes('--public'),server=remote?null:serve();if(server)await new Promise(r=>server.listen(0,'127.0.0.1',r));const b=await chromium.launch({channel:'msedge',headless:true});try{
+ const p=await b.newPage({viewport:{width:1366,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(remote?'https://yggdrasilw-spec.github.io/sonohoka/heikin_narasu.html':`http://127.0.0.1:${server.address().port}/sonohoka/heikin_narasu.html`);
  const snap=()=>p.evaluate(()=>Narasu.snapshot());
  await p.locator('#scenes button').nth(1).click();let previous=0,samples=0,paused=false;
  for(let i=0;i<250;i++){const s=await snap(),v=s.visual;assert.equal(v.soil.heights.reduce((a,b)=>a+b,0)+v.soil.pile+v.soil.flying,96);assert(v.soil.position>=previous);previous=v.soil.position;samples++;
@@ -20,4 +20,4 @@ const out=path.resolve(__dirname,'../.portfolio-work/heikin-motion');fs.mkdirSyn
  await p.locator('#divide').click();await p.waitForFunction(()=>document.querySelector('[data-stream]'));await p.locator('#pause').click();const jugAngle=await p.locator('[data-vessel="jug"]').getAttribute('data-angle');assert(Number(jugAngle)<-1);await p.screenshot({path:path.join(out,'jug-pouring.png')});
  await p.locator('#reset').click();await p.waitForTimeout(350);assert.deepEqual((await snap()).state.values,[180,60]);assert.equal((await snap()).state.jug,0);assert(!(await snap()).busy);assert.deepEqual(errors,[]);
  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({samples,geometry,jugAngle,errors},null,2));console.log('PASS: one-way sweep, discrete grain conservation, horizontal tilted water, source cup/jug motion, pause and cancellation',samples);
-}finally{await b.close();server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
+}finally{await b.close();server?.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
