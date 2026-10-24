@@ -81,18 +81,20 @@ function water({state,visual,tx,selected,destination,hintLine}){
  return out;
 }
 function beads({state,visual,tx,selected,destination,hintLine,numbers,drag}){
+ const colors=['#f3efe2','#334854'];
  const n=state.values.length,cell=780/n,xs=state.values.map((_,i)=>90+cell*(i+.5)),base=290;
  let out='<rect x="45" y="290" width="870" height="22" rx="8" fill="#cda97f"/><rect x="45" y="312" width="870" height="10" rx="4" fill="#987553"/>';
  if(hintLine){const y=base-state.original.reduce((a,b)=>a+b,0)/n*36;out+=`<line class="hintLine" x1="90" x2="870" y1="${y}" y2="${y}"/>`;}
  for(let i=0;i<n;i++){
   const x=xs[i],q=visual.values[i],chosen=selected===i||destination===i;
   out+=`<g role="button" tabindex="0" data-col="${i}" aria-label="${i+1}ばん ${q}こ" aria-pressed="${chosen}"><rect class="target" x="${x-cell/2+5}" y="36" width="${cell-10}" height="320" rx="16"/><rect x="${x-4}" y="60" width="8" height="230" rx="4" fill="#99a8ad"/>`;
-  for(let k=0;k<q;k++)out+=`<ellipse cx="${x}" cy="${base-18-k*36}" rx="33" ry="16" fill="${k%2?'#334854':'#f3efe2'}" stroke="#455c68" stroke-width="2"/>`;
+  for(let k=0;k<q;k++)out+=`<ellipse data-bead-color="${visual.beadColors[i][k]}" cx="${x}" cy="${base-18-k*36}" rx="33" ry="16" fill="${colors[visual.beadColors[i][k]]}" stroke="#455c68" stroke-width="2"/>`;
   out+=text(x,345,`${i+1}ばん`,'muted');if(numbers)out+=text(x,42,`${q}こ`);if(chosen)out+=text(x,373,'えらんだよ','muted');out+='</g>';
  }
  if(tx){const p=tx.progress,k=M.ease(p),x=xs[tx.from]+(xs[tx.to]-xs[tx.from])*k;
   const fromY=base-(tx.before.values[tx.from]-.5)*36,toY=base-(tx.before.values[tx.to]+.5)*36,y=fromY+(toY-fromY)*k-60*Math.sin(p*Math.PI);
-  out+=`<ellipse cx="${x}" cy="${y}" rx="33" ry="16" fill="#f3efe2" stroke="#455c68" stroke-width="3"/>`;
+  const color=tx.before.beadColors[tx.from].at(-1);
+  out+=`<ellipse data-moving-bead="true" data-bead-color="${color}" cx="${x}" cy="${y}" rx="33" ry="16" fill="${colors[color]}" stroke="#455c68" stroke-width="3"/>`;
  }
  if(drag?.moved)out+=`<circle cx="${drag.x}" cy="${drag.y}" r="20" fill="#f6b55d" opacity=".8" pointer-events="none"/>`;
  return out;

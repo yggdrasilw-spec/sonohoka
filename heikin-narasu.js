@@ -26,6 +26,11 @@ const type = () => S.stage===0?'beads':S.stage===1?'soil':S.stage===5?exercises[
 const unit = () => type()==='water'?'mL':type()==='beads'?'こ':'単位';
 const allEqual = () => S.values.every(v=>v===average()) && !S.bucket && !S.jug;
 const fmt = n => Number.isInteger(n)?String(n):n.toFixed(1);
+function ensureBeadColors(state){
+ // Older saves contain counts only. Assign their visible colors once on restore.
+ if(!Array.isArray(state.beadColors)||state.beadColors.length!==state.values.length||!state.beadColors.every((col,i)=>Array.isArray(col)&&col.length===state.values[i]&&col.every(c=>c===0||c===1)))
+  state.beadColors=state.values.map(q=>Array.from({length:q},(_,k)=>k%2));
+}
 function fresh(stage=0, values, extra={}) {
  const defaults = stage===0?[5,4,1,2]:stage===1?soilSets[0]:stage===5?exercises[0].values:waterSets[0];
  S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...extra};
@@ -55,6 +60,7 @@ function changeRef(state, ref, delta) {if(typeof ref==='number')state.values[ref
 function transfer(from,to,amount,after) {
  if(tx||amount<=0)return;
  const before=copy(S),next=copy(S);changeRef(next,from,-amount);changeRef(next,to,amount);
+ if(type()==='beads')next.beadColors[to].push(next.beadColors[from].pop());
  if(refValue(next,from)<0 || refValue(next,to)<0)throw Error('Negative quantity');
  if(after)after(next);
  selected=null;destination=null;message=type()==='water'?`${from+1}ばんのコップを傾けて、${to==='jug'?'水差し':(to+1)+'ばん'}へ ${amount} mL 注ぐよ。`:'';
@@ -82,7 +88,9 @@ function visual() {
  const v=copy(tx.before),p=tx.progress;
  const removed=type()==='beads'?tx.amount:Math.round(tx.amount*M.removed(p));
  const arrived=type()==='beads'?0:Math.round(tx.amount*M.arrived(p));
- changeRef(v,tx.from,-removed);changeRef(v,tx.to,arrived);v.transit=removed-arrived;return v;
+ changeRef(v,tx.from,-removed);changeRef(v,tx.to,arrived);
+ if(type()==='beads')v.beadColors[tx.from].pop();
+ v.transit=removed-arrived;return v;
 }
 function completionMessage() {
  if(S.stage===3){if(S.jugPhase==='divide'&&!S.jug)return 'どのコップも '+fmt(average())+' mL。このように ならした量を「平均」といいます。';if(S.jugPhase==='divide')return '全部 集まったね。横線で '+S.values.length+'等分した量を、コップに分けよう。';return '水差しに '+S.jug+' mL 集まったよ。';}
@@ -185,6 +193,7 @@ function defaultMessage() {
 }
 function btn(label,fn,options={}) {const b=document.createElement('button');b.textContent=label;b.type='button';b.disabled=!!tx||!!options.disabled;if(options.id)b.id=options.id;if(options.primary)b.className='primary';if(options.pressed!==undefined)b.setAttribute('aria-pressed',options.pressed);b.onclick=fn;return b;}
 function render() {
+ if(type()==='beads')ensureBeadColors(S);
  document.querySelector('.lesson').dataset.stage=S.stage;
  document.querySelector('.lesson').dataset.kind=type();
  $('scenes').replaceChildren(...names.map((name,i)=>{const b=btn(name,()=>go(i));b.disabled=false;b.innerHTML='<small>'+String(i+1).padStart(2,'0')+'</small>'+name;if(S.stage===i)b.setAttribute('aria-current','step');return b;}));
