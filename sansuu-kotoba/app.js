@@ -46,6 +46,7 @@
   }
   function rolePart(side,text,word){return {text,target:document.querySelector(`.person-label.${side==='left'?'receiver':'actor'}`),onStart:()=>focusCharacter(side,word)};}
   function readRoles(){const s=scenes[sceneKey];return audio.sequence([
+    {text:s.description,target:$('caption')},
     rolePart('left',`ひだりは、${s.left}人。`,s.left+'人'),
     rolePart('right',`みぎは、${s.right}人。`,s.right+'人')
   ]);}
@@ -57,9 +58,18 @@
   document.addEventListener('lesson-speech-clear',clearCharacterFocus);
   function bridgeCue(at){
     if(bridgeCues.has(at))return;bridgeCues.add(at);
-    if(at===0)return;
-    if(isBlocks()){audio.play(at===blocks.end?'correct':at===3950?'transform':'tap');return;}
+    const s=scenes[sceneKey];
+    if(at===0){if(audio.voice)readRoles();return;}
+    if(isBlocks()){audio.play(at===blocks.end?'correct':at===3950?'transform':'tap');if(audio.voice)audio.speak(blocks.cue(sceneKey,s,at),$('caption'));return;}
     audio.play(at===2200?'hint':at===3950?'transform':'correct');
+    if(!audio.voice)return;
+    if(at===2200)audio.speak('同じばしょに、数がかさなるよ。',$('caption'));
+    else if(at===3950)audio.sequence([
+      {text:'ことばも へんしん！',target:$('caption')},
+      rolePart('left',`${s.left}人から、${s.left}数。`,s.left+'数'),
+      rolePart('right',`${s.right}人から、${s.right}数。`,s.right+'数')
+    ]);
+    else readNumberRoles();
   }
   function renderBridge(){
     const s=scenes[sceneKey],clamp=x=>Math.max(0,Math.min(1,x));
@@ -103,6 +113,9 @@
     function tick(){
       const now=performance.now(),rate=isBlocks()?blocks.playbackRate(bridgeTime):1.8;
       const delta=(now-previous)*350/Number($('speed').value)*rate;previous=now;
+      // Hold the current teaching landmark while its narration is heard.
+      // Updating the clock above prevents a jump when voice is turned off.
+      if(audio.voice&&audio.speaking){timer=requestAnimationFrame(tick);return;}
       const next=bridgeTime+delta,at=cueTimes().find(t=>!bridgeCues.has(t)&&t>bridgeTime&&t<=next);
       const oldFrame=frame;bridgeTime=Math.min(endTime(),at??next);renderBridge();
       if(frame!==oldFrame&&frame===2)audio.play(sceneKey);
@@ -117,9 +130,9 @@
     $('caption').textContent=scene.beats[frame];
     const p=arc.getPointAtLength(length*(reduced.matches?.5:Math.min(frame/3,.90)));$('traveler').setAttribute('cx',p.x);$('traveler').setAttribute('cy',p.y);
   }
-  function playFrameSound(){if(frame===2)audio.play(sceneKey);}
+  function playFrameSound(){if(frame===2)audio.play(sceneKey);if(audio.voice)audio.speak(scenes[sceneKey].beats[frame],$('caption'));}
   // Brief anticipation, two snappy action frames, then time to see the result.
-  function schedule(){timerType='timeout';timer=setTimeout(()=>{if(sceneKey==='add'&&frame===3){stop(false);return;}frame=(frame+1)%4;renderFrame();playFrameSound();schedule();},Number($('speed').value)*[.9,.6,.6,2][frame]);}
+  function schedule(){timerType='timeout';timer=setTimeout(()=>{if(audio.voice&&audio.speaking){schedule();return;}if(sceneKey==='add'&&frame===3){stop(false);return;}frame=(frame+1)%4;renderFrame();playFrameSound();schedule();},Number($('speed').value)*[.9,.6,.6,2][frame]);}
   function render(){
     stop();frame=0;bridgeTime=0;bridgeCues.clear();const s=scenes[sceneKey];
     document.querySelector('.visual').classList.toggle('number-mode',mode==='numbers');
@@ -187,6 +200,11 @@
     audio.play('correct');audio.speak($('feedback').textContent,$('feedback'));
   }));
   document.addEventListener('lesson-audio-stop',()=>stop());
-  document.addEventListener('lesson-read',()=>{stop();if(mode==='apply'){document.dispatchEvent(new Event('practice-read'));return;}if(mode==='people'||mode==='numbers'&&bridgeTime<3950){readRoles();return;}if(mode==='numbers'){readNumberRoles();return;}audio.speak($('question').textContent,$('question'));});
+  $('voice-toggle').addEventListener('click',()=>{
+    if(!audio.voice||!timer)return;
+    if(isBlocks()&&bridgeTime>=2200)audio.speak(blocks.caption(sceneKey,scenes[sceneKey],bridgeTime),$('caption'));
+    else if(mode==='people'||mode==='numbers')audio.speak($('caption').textContent,$('caption'));
+  });
+  document.addEventListener('lesson-read',()=>{stop();if(mode==='apply'){document.dispatchEvent(new Event('practice-read'));return;}if(isBlocks()&&bridgeTime>=2200){audio.speak(blocks.caption(sceneKey,scenes[sceneKey],bridgeTime),$('caption'));return;}if(mode==='people'||mode==='numbers'&&bridgeTime<3950){readRoles();return;}if(mode==='numbers'){readNumberRoles();return;}audio.speak($('question').textContent,$('question'));});
   render();
 })();

@@ -14,6 +14,7 @@ const examples={subtract:{a:7,b:2,op:'−',result:5,total:7},add:{a:4,b:3,op:'�
    window.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);
+  await page.locator('#voice-toggle').click();
   await page.locator('#play').click();await page.waitForTimeout(800);
   assert.equal(await page.locator('#frame-count').innerText(),'4 / 4 コマ');
   await page.locator('#play').click();
@@ -56,7 +57,7 @@ const examples={subtract:{a:7,b:2,op:'−',result:5,total:7},add:{a:4,b:3,op:'�
    const paused=await page.locator('#block-stage').innerHTML();await page.waitForTimeout(150);
    assert.equal(await page.locator('#block-stage').innerHTML(),paused);
   }
-  assert.deepEqual(await page.evaluate(()=>spoken),[],'animation and stepping have no automatic narration even with voice on');
+  assert.deepEqual(await page.evaluate(()=>spoken),[],'voice off preserves silent snappy animation');
   await page.locator('#step').click();assert.deepEqual(await page.evaluate(()=>spoken),[]);
   await page.locator('#read-aloud').click();await page.waitForTimeout(80);
   assert((await page.evaluate(()=>spoken)).length>0,'explicit reading of role terms remains available');
@@ -71,7 +72,48 @@ const examples={subtract:{a:7,b:2,op:'−',result:5,total:7},add:{a:4,b:3,op:'�
    document.getElementById('frame-count').textContent=`${steps.filter(x=>x<=t).length} / ${steps.length} ステップ`;
   });
   await page.screenshot({path:'.portfolio-work/sansuu-kotoba/snappy-divide.png'});
+  const voiced=await browser.newPage();
+  voiced.on('pageerror',e=>errors.push(e.message));
+  await voiced.addInitScript(()=>{
+   window.spoken=[];window.currentSpeech=null;
+   Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],speak:u=>{spoken.push(u.text);window.currentSpeech=u;},cancel:()=>{window.currentSpeech=null;}}});
+   window.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};
+  });
+  await voiced.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);
+  await voiced.locator('#play').click();
+  assert.match(await voiced.evaluate(()=>currentSpeech.text),/せなか/);
+  await voiced.waitForTimeout(900);
+  assert.equal(await voiced.locator('#frame-count').innerText(),'1 / 4 コマ','people wait for narration');
+  await voiced.locator('#voice-toggle').click();await voiced.waitForTimeout(900);
+  assert.notEqual(await voiced.locator('#frame-count').innerText(),'1 / 4 コマ','turning voice off resumes motion');
+  await voiced.locator('#voice-toggle').click();
+  assert.equal(await voiced.evaluate(()=>LessonAudio.speaking),true,'turning voice on during playback reads current action');
+  const frozen=await voiced.locator('#frame-count').innerText();await voiced.waitForTimeout(800);
+  assert.equal(await voiced.locator('#frame-count').innerText(),frozen);
+  for(const [scene,s] of Object.entries(examples)){
+   await voiced.locator(`[data-scene="${scene}"]`).click();
+   assert.equal(await voiced.evaluate(()=>LessonAudio.speaking),false,'scene change cancels narration');
+   await voiced.locator('#step').click();assert.equal(await voiced.evaluate(()=>currentSpeech.text),await voiced.locator('#caption').innerText());
+   await voiced.locator('[data-mode="numbers"]').click();
+   if(await voiced.locator('[data-number-view="blocks"]').getAttribute('aria-pressed')!=='true')await voiced.locator('[data-number-view="blocks"]').click();
+   for(let i=0;i<100;i++){
+    await voiced.locator('#step').click();
+    if(await voiced.locator('#block-stage').getAttribute('data-count')==='1')break;
+   }
+   assert.equal(await voiced.evaluate(()=>currentSpeech.text),'いち');
+   await voiced.locator('#play').click();
+   // Resuming deliberately cancels the previous spoken count. The next count
+   // starts speaking and holds its corresponding highlighted block.
+   await voiced.waitForFunction(()=>document.getElementById('block-stage').dataset.count==='2',null,{timeout:1500});
+   assert.equal(await voiced.evaluate(()=>currentSpeech.text),'に');
+   await voiced.waitForTimeout(600);assert.equal(await voiced.locator('#block-stage').getAttribute('data-count'),'2');
+   await voiced.locator('#voice-toggle').click();
+   await voiced.waitForFunction(()=>Number(document.getElementById('block-stage').dataset.count)>2,null,{timeout:1500});
+   await voiced.locator('#audio-stop').click();assert.equal(await voiced.evaluate(()=>LessonAudio.speaking),false);
+   await voiced.locator('#voice-toggle').click();
+   await voiced.locator('[data-mode="people"]').click();
+  }
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({timings,samples,automaticNarration:false,pause:'passed',reducedMotion:'passed',errors},null,2));
+  console.log(JSON.stringify({timings,samples,voiceOff:'silent and snappy',voiceOn:'narration holds the matching scene/count',liveToggle:'passed',pause:'passed',reducedMotion:'passed',errors},null,2));
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
