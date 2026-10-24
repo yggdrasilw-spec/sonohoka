@@ -117,7 +117,7 @@
     playButton('⏸️','とめる');$('play').setAttribute('aria-pressed','true');
     let previous=performance.now();
     function tick(){
-      const now=performance.now(),rate=isBlocks()?blocks.playbackRate(bridgeTime):1.8;
+      const now=performance.now(),rate=isBlocks()?blocks.playbackRate(bridgeTime,sceneKey):1.8;
       const delta=(now-previous)*350/Number($('speed').value)*rate;previous=now;
       // Hold the current teaching landmark while its narration is heard.
       // Updating the clock above prevents a jump when voice is turned off.

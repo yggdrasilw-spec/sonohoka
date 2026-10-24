@@ -6,7 +6,7 @@
   const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>{const t=clamp(x);return t<.5?8*t**4:1-(-2*t+2)**4/2;},mix=(a,b,t)=>a+(b-a)*t;
   // Preserve all teaching/step landmarks, but spend less real time travelling.
   // Counting and the pause before it remain slower than the hand action.
-  const playbackRate=time=>time<actionStart?1.8:time<actionEnd?4:time<countStart?1.8:1.5;
+  const playbackRate=(time,key)=>time<actionStart?1.8:time<actionEnd?(key==='divide'?2:4):time<countStart?1.8:1.5;
   const answer=(key,s)=>key==='add'?s.a+s.b:key==='subtract'?s.a-s.b:key==='multiply'?s.a*s.b:s.a/s.b;
   const countTimes=(key,s)=>Array.from({length:answer(key,s)},(_,i)=>countStart+(i+1)*(countEnd-countStart)/answer(key,s));
   function count(key,s,time){return countTimes(key,s).filter(t=>time>=t-.01).length;}
@@ -15,11 +15,12 @@
     if(key==='subtract')return [{at:at(.30),text:`${s.b}こを ロープで まとめたよ。ロープを にぎって 引こう。`}];
     if(key==='add')return [{at:at(.18),text:`手のひらで ${s.b}こを おして、${s.a}こに 合わせよう。`}];
     if(key==='multiply')return [{at:at(.32),text:`${s.a}こを 手の中に にぎったよ。`},{at:at(.60),text:`手を ひらくと、${s.a}こずつ ${s.b}つ分！`}];
-    const size=s.a/s.b,result=[];
-    for(let g=0;g<s.b;g++)result.push(
-      {at:at((g+.30)/s.b),text:`${size}こを にぎって、${g+1}つ目の はこへ はこぶよ。`},
-      {at:at((g+.62)/s.b),text:`手を ひらいて、${size}こを おこう。`},
-      {at:at((g+.80)/s.b),text:`${size}こを おいたよ。のこりは ${s.a-(g+1)*size}こ。`}
+    const size=s.b,rounds=s.a/size,result=[];
+    for(let g=0;g<rounds;g++)result.push(
+      {at:at((g+.30)/rounds),text:`${size}こを にぎったよ。1こずつ 分けよう。`},
+      {at:at((g+.45)/rounds),text:'左の はこに 1こ。'},
+      {at:at((g+.70)/rounds),text:'右の はこに 1こ。'},
+      {at:at((g+.80)/rounds),text:`1こずつ おいたよ。のこりは ${s.a-(g+1)*size}こ。`}
     );
     return result;
   }
@@ -29,7 +30,7 @@
     for(let i=1;i<=7;i++){
       const q=inverseEase(i/7);
       if(key==='multiply')result.push(at(.18+.14*q),at(.50+.10*q));
-      else if(key==='divide')for(let g=0;g<s.b;g++)result.push(at((g+.16+.14*q)/s.b),at((g+.62+.18*q)/s.b));
+      else if(key==='divide')for(let g=0;g<s.a/s.b;g++)result.push(...[.16+.14*q,.45+.10*q,.55+.05*q,.70+.10*q].map(v=>at((g+v)/(s.a/s.b))));
       else result.push(at(key==='subtract'?.36+.54*i/7:.18+.70*i/7));
     }
     return result.map(t=>Math.round(t*1000)/1000);
@@ -42,9 +43,10 @@
     if(time===2200)return '人と 同じばしょに、ブロックが かさなるよ。';
     if(time===3950)return '人から 数へ。ブロックで 数のうごきを 見よう。';
     if(time===5600)return intro(key,s)+(key==='multiply'?`右の ${s.b}は、${s.b}つ分のことだよ。`:key==='divide'?`右の ${s.b}は、分けるばしょの数だよ。`:'');
-    if(time===actionStart)return key==='subtract'?`${s.b}こに ロープをかけて 引き出そう。`:key==='multiply'?`${s.a}こを 手のひらに あつめよう。`:key==='divide'?`${s.a/s.b}こずつ、にぎって はこぼう。`:intro(key,s);
+    if(time===actionStart)return key==='subtract'?`${s.b}こに ロープをかけて 引き出そう。`:key==='multiply'?`${s.a}こを 手のひらに あつめよう。`:key==='divide'?`${s.b}こずつ、${s.a/s.b}回 とって、左と 右の はこに、1こずつ 入れよう。`:intro(key,s);
     const hand=handCues(key,s).find(c=>c.at===time);if(hand)return hand.text;
     if(time===countStart)return key==='divide'?'1つ分の ブロックを、1こずつ かぞえよう。':`${resultWords[key]}を、1こずつ かぞえよう。`;
+    if(time===end&&key==='divide')return `${s.b}こずつ ${s.a/s.b}回 とったね。${s.b}つの はこには、${s.a/s.b}こずつ。${s.a} わる ${s.b}は ${s.a/s.b}。`;
     if(time===end)return `${s.a} ${s.op} ${s.b} は ${answer(key,s)}。${resultWords[key]}は、${answer(key,s)}こだね。`;
     return String(count(key,s,time));
   }
@@ -56,8 +58,8 @@
       if(key==='subtract')return p<.30?`${s.b}こを ロープで まとめるよ。`:`ロープを 引いて ${s.b}こを うごかすよ。`;
       if(key==='add')return `${s.b}こを 手のひらで おして、${s.a}こに あわせるよ。`;
       if(key==='multiply')return p<.32?`${s.a}こを 手のひらに あつめるよ。`:p<.60?`手の中に ${s.a}こ。にぎって、ひらくよ。`:`ひらくと ${s.a}こずつ ${s.b}つ分！`;
-      const cycle=Math.min(s.b-1,Math.floor(p*s.b)),local=p>=1?1:p*s.b-cycle,size=s.a/s.b;
-      return local<.30?`のこり ${s.a-cycle*size}こから、${size}こを あつめるよ。`:local<.62?`${size}こを にぎって、${cycle+1}つ目の はこへ。`:local<.80?`手を ひらいて、${size}こを おくよ。`:`おけたね。のこり ${s.a-(cycle+1)*size}こ。`;
+      const size=s.b,rounds=s.a/size,cycle=Math.min(rounds-1,Math.floor(p*rounds)),local=p>=1?1:p*rounds-cycle;
+      return local<.30?`のこり ${s.a-cycle*size}こから、${size}こを あつめるよ。`:local<.45?`${size}こを にぎって、左の はこへ。`:local<.55?'手を ひらいて、左に 1こ。':local<.70?'手の中の あと 1こを、右の はこへ。':local<.80?'手を ひらいて、右にも 1こ。':`1こずつ おけたね。のこり ${s.a-(cycle+1)*size}こ。`;
     }
     if(time<end)return `${key==='divide'?'1つ分を':'ブロックを'} かぞえる：${count(key,s,time)}こ`;
     return `${s.a} ${s.op} ${s.b} ＝ ${answer(key,s)}。${resultWords[key]}は ${answer(key,s)}こ。`;
@@ -142,25 +144,27 @@
       if(time>=actionStart){const exit=ease((p-.92)/.08),palmX=mix(300,500,ease((p-.32)/.20)),closure=p<.32?ease((p-.18)/.14):1-ease((p-.50)/.10);hand={pose:'animated',closure,x:p<.18?mix(850,300,ease(p/.18)):mix(palmX,860,exit),y:mix(390,520,exit),size:280,opacity:1-exit};if(p>=.32&&p<.60)shape.push(text(500,285,`手の中に ${s.a}こ`));}
     }else{
       for(let g=0;g<s.b;g++)tray(210+g*440,390,260,160,done?`1つ分 ${s.a/s.b}こ`:`${g+1}つ目の ばしょ`);
-      const batch=s.a/s.b,cycle=Math.min(s.b-1,Math.floor(p*s.b)),local=p>=1?1:Math.round((p*s.b-cycle)*1e8)/1e8,sourceX=247.5+cycle*150,targetX=315+cycle*440;
-      const carry=ease((local-.30)/.32),drop=ease((local-.70)/.10),back=ease((local-.80)/.20);
-      let hx=sourceX,hy=317.5;
-      if(local<.16&&cycle===0){hx=mix(850,sourceX,ease(local/.16));hy=mix(480,317.5,ease(local/.16));}
-      else if(local>=.30&&local<.80){hx=mix(sourceX,targetX,carry);hy=mix(317.5,435,carry);}
-      else if(local>=.80){hx=mix(targetX,cycle===s.b-1?850:sourceX+150,back);hy=mix(435,cycle===s.b-1?520:317.5,back);}
+      const batch=s.b,rounds=s.a/batch,cycle=Math.min(rounds-1,Math.floor(p*rounds)),local=p>=1?1:Math.round((p*rounds-cycle)*1e8)/1e8;
+      const sourceX=247.5+cycle*130,row=Math.floor(cycle/2),column=cycle%2,targetY=470+row*65,leftX=300+column*65,rightX=740+column*65,back=ease((local-.80)/.20);
+      let hx=sourceX,hy=355;
+      if(local<.16&&cycle===0){hx=mix(850,sourceX,ease(local/.16));hy=mix(480,355,ease(local/.16));}
+      else if(local>=.30&&local<.55){const t=ease((local-.30)/.15);hx=mix(sourceX,leftX,t);hy=mix(355,targetY,t);}
+      else if(local>=.55&&local<.80){hx=mix(leftX,rightX,ease((local-.55)/.15));hy=targetY;}
+      else if(local>=.80){hx=mix(rightX,cycle===rounds-1?850:sourceX+130,back);hy=mix(targetY,cycle===rounds-1?560:355,back);}
       for(let i=0;i<s.a;i++){
-        const group=Math.floor(i/batch),slot=i%batch,sx=190+group*150+(slot%2)*65,sy=260+Math.floor(slot/2)*65,tx=245+group*440+(slot%2)*65,ty=415+Math.floor(slot/2)*65;
+        const trip=Math.floor(i/batch),group=i%batch,sx=190+trip*130+group*65,sy=300,tx=245+group*440+(trip%2)*65,ty=415+Math.floor(trip/2)*65,dropStart=group===0?.50:.75,dropEnd=group===0?.55:.80;
         let x=sx,y=sy,location='source',opacity=1;
-        if(group<cycle||group===cycle&&local>=.80){x=tx;y=ty;location='box';}
-        else if(group===cycle&&local>=.16){
-          const px=hx-55+(slot%2)*60,py=hy-55+Math.floor(slot/2)*60,gather=ease((local-.16)/.14);
+        if(trip<cycle||trip===cycle&&local>=dropEnd){x=tx;y=ty;location='box';}
+        else if(trip===cycle&&local>=.16){
+          const px=hx-55+group*60,py=hy-55,gather=ease((local-.16)/.14),drop=ease((local-dropStart)/.05);
           x=local<.30?mix(sx,px,gather):mix(px,tx,drop);y=local<.30?mix(sy,py,gather):mix(py,ty,drop);
-          if(local>=.30){location='hand';opacity=local<.62?0:1;}
+          if(local>=.30){location='hand';opacity=local<.45||local>=.60&&local<.70?0:1;}
         }
         unit(i,x,y,'receiver',group,group===0,opacity,location);
       }
-      if(time>=actionStart){const closure=local<.30?ease((local-.16)/.14):1-ease((local-.62)/.18);hand={pose:'animated',closure,x:hx,y:hy,size:260,opacity:cycle===s.b-1?1-back:1};if(local>=.30&&local<.80)shape.push(text(500,250,`手の中に ${batch}こ`));}
-      shape.push(text(500,220,`ぜんぶで ${s.a}こ`),text(800,275,`${s.b}つに 分ける`));
+      if(time>=actionStart){const closure=local<.30?ease((local-.16)/.14):local<.55?1-ease((local-.45)/.10):local<.70?ease((local-.55)/.05):1-ease((local-.70)/.10);hand={pose:'animated',closure,x:hx,y:hy,size:260,opacity:cycle===rounds-1?1-back:1};if(local>=.30&&local<.80)shape.push(text(500,280,`手の中に ${local<.55?2:1}こ`));}
+      shape.push(text(500,200,`${s.a}こから ${batch}こずつ ${rounds}回 とる`),text(500,240,'左に 1こ、右に 1こ'));
+
     }
     let countIndex=0;
     const blocks=units.map(u=>{

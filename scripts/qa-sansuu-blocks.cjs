@@ -43,10 +43,12 @@ const ropeRig=JSON.parse(fs.readFileSync(path.join(__dirname,'../sansuu-kotoba/a
      const words=svg.textContent+LessonBlocks.caption(scene,s,t)+LessonBlocks.cue(scene,s,t);
      if([...(words.match(/[一-龥]/g)||[])].some(c=>!kanji.has(c)))failures.push(`t=${t}: kanji outside grades 1/2`);
     }
+    if(scene==='divide')for(const t of LessonBlocks.steps(scene,s)){LessonBlocks.render(scene,s,t);const frame=document.querySelector('#block-stage [data-frame]')?.dataset.frame;if(frame!==undefined&&frame!=='')frames.add(+frame);}
+    LessonBlocks.render(scene,s,20100);
     const units=[...document.querySelectorAll('#block-stage [data-block]')];
     const result={failures,frames:[...frames].sort((a,b)=>a-b),groups:units.reduce((a,u)=>{a[u.dataset.group]=(a[u.dataset.group]||0)+1;return a;},{}),included:units.filter(u=>u.dataset.included==='true').length};
     function probe(t){LessonBlocks.render(scene,s,t);const svg=document.getElementById('block-stage');return {source:+svg.dataset.sourceCount,held:+svg.dataset.heldCount,placed:+svg.dataset.placedCount,pose:svg.querySelector('[data-glove]')?.dataset.pose,visible:[...svg.querySelectorAll('[data-block]')].filter(u=>+u.getAttribute('opacity')>=1).length,ids:[...svg.querySelectorAll('[data-location="hand"]')].map(u=>+u.dataset.block)};}
-    if(scene==='divide')result.carry=[probe(8160),probe(10610),probe(13060),probe(16000)];
+    if(scene==='divide'){result.half=Array.from({length:4},(_,g)=>probe(6200+(g+.6)*2450));result.carry=Array.from({length:4},(_,g)=>probe(6200+(g+.4)*2450));result.drops=Array.from({length:4},(_,g)=>{const t=6200+(g+.85)*2450;const state=probe(t);state.boxes=[0,1].map(b=>document.querySelectorAll(`#block-stage [data-location="box"][data-group="${b}"]`).length);return state;});}
     if(scene==='multiply')result.grasp=[probe(10120),probe(13060)];
     if(scene==='add'){
       const positions=t=>{LessonBlocks.render(scene,s,t);return [...document.querySelectorAll('#block-stage [data-group="0"]')].map(u=>u.getAttribute('transform'));};
@@ -61,8 +63,8 @@ const ropeRig=JSON.parse(fs.readFileSync(path.join(__dirname,'../sansuu-kotoba/a
    if(scene==='multiply'||scene==='divide')assert.deepEqual(report.frames,[0,1,2,3,4,5,6,7]);
    if(scene==='multiply')assert.deepEqual(report.groups,{0:4,1:4,2:4});if(scene==='divide')assert.deepEqual(report.groups,{0:4,1:4});if(scene==='subtract')assert.deepEqual(report.groups,{0:5,1:2});
    if(scene==='divide'){
-    assert.deepEqual(report.carry.map(x=>[x.source,x.held,x.placed]),[[4,4,0],[4,0,4],[0,4,4],[0,0,8]]);
-    assert.deepEqual(report.carry[0].ids,[0,1,2,3]);assert.deepEqual(report.carry[2].ids,[4,5,6,7]);assert.equal(report.carry[0].pose,'grip');assert.equal(report.carry[2].pose,'grip');
+    assert.deepEqual(report.carry.map(x=>[x.source,x.held,x.placed]),[[6,2,0],[4,2,2],[2,2,4],[0,2,6]]);
+    for(let g=0;g<4;g++){assert.deepEqual(report.carry[g].ids,[g*2,g*2+1]);assert.equal(report.carry[g].pose,'grip');assert.equal(report.drops[g].held,0);assert.equal(report.drops[g].source,6-g*2);}assert.deepEqual(report.half.map(x=>[x.source,x.held,x.placed]),[[6,1,1],[4,1,3],[2,1,5],[0,1,7]]);for(let g=0;g<4;g++)assert.deepEqual(report.half[g].ids,[g*2+1]);assert.deepEqual(report.drops.map(x=>x.boxes),[[1,1],[2,2],[3,3],[4,4]]);
    }
    if(scene==='multiply'){assert.equal(report.grasp[0].visible,0);assert.equal(report.grasp[0].held,4);assert.equal(report.grasp[0].pose,'grip');assert.equal(report.grasp[1].visible,12);assert.equal(report.grasp[1].pose,'open');}
    await page.locator('#restart').click();
@@ -70,7 +72,7 @@ const ropeRig=JSON.parse(fs.readFileSync(path.join(__dirname,'../sansuu-kotoba/a
    for(let i=1;i<total;i++)await page.locator('#step').click();
    assert.equal(await page.locator('#block-stage').getAttribute('data-answer'),String(s.result));assert.match(await page.locator('#play').getAttribute('aria-label'),/もういちど/);
    await page.screenshot({path:path.join(out,`blocks-${scene}.png`)});
-   await page.evaluate(({scene,s})=>{const t=scene==='divide'?8160:10120;LessonBlocks.render(scene,s,t);document.getElementById('caption').textContent=LessonBlocks.caption(scene,s,t);const steps=LessonBlocks.steps(scene,s);document.getElementById('frame-count').textContent=`${steps.filter(x=>x<=t).length} / ${steps.length} ステップ`;},{scene,s});
+   await page.evaluate(({scene,s})=>{const t=scene==='divide'?7180:10120;LessonBlocks.render(scene,s,t);document.getElementById('caption').textContent=LessonBlocks.caption(scene,s,t);const steps=LessonBlocks.steps(scene,s);document.getElementById('frame-count').textContent=`${steps.filter(x=>x<=t).length} / ${steps.length} ステップ`;},{scene,s});
    await page.screenshot({path:path.join(out,`glove-${scene}.png`)});
    await page.locator('#play').click();await page.waitForTimeout(120);await page.locator('#play').click();const held=await page.locator('#block-stage').innerHTML();await page.waitForTimeout(120);assert.equal(await page.locator('#block-stage').innerHTML(),held,'pause freezes diagram');
    await page.locator('[data-number-view="digits"]').click();assert(await page.locator('#block-stage').isHidden());assert(await page.locator('#morph-equation').isVisible());await page.locator('#play').click();
@@ -89,7 +91,7 @@ const ropeRig=JSON.parse(fs.readFileSync(path.join(__dirname,'../sansuu-kotoba/a
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(out,'blocks-mobile.png'),fullPage:true});
   await page.emulateMedia({reducedMotion:'no-preference'});await page.locator('#restart').click();await page.locator('#play').click();
   await page.waitForFunction(()=>document.getElementById('block-stage').dataset.answer==='4',{},{timeout:27000});assert.equal(await page.locator('#play').getAttribute('aria-pressed'),'false','automatic playback stops on answer');
-  await page.locator('[data-scene="push"]').click();assert(await page.locator('#block-stage').isHidden());assert(await page.locator('[data-mode="numbers"]').isDisabled());
+  await page.locator('#other-scenes-open').click();await page.locator('[data-scene="push"]').click();assert(await page.locator('#block-stage').isHidden());assert(await page.locator('[data-mode="numbers"]').isDisabled());
   const voiced=await browser.newPage();
   await voiced.addInitScript(()=>{window.blockSpeech=null;Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],speak:u=>{window.blockSpeech=u;},cancel:()=>{window.blockSpeech=null;}}});window.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};});
   await voiced.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);
@@ -99,6 +101,6 @@ const ropeRig=JSON.parse(fs.readFileSync(path.join(__dirname,'../sansuu-kotoba/a
   await voiced.locator('#play').click();await voiced.waitForFunction(()=>document.getElementById('block-stage').dataset.count==='2',{},{timeout:4000});
   assert.equal(await voiced.evaluate(()=>blockSpeech.text),'に');await voiced.waitForTimeout(800);assert.equal(await voiced.locator('#block-stage').getAttribute('data-count'),'2','count waits for voice');
   await voiced.locator('#audio-stop').click();assert.equal(await voiced.evaluate(()=>LessonAudio.speaking),false);assert.equal(await voiced.locator('#play').getAttribute('aria-pressed'),'false');
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({samples,operations:4,conservation:'add/subtract/divide',multiplication:'4 blocks per group, 3 groups',division:'8 shared into 2 groups of 4',pause:'verified',viewports:7,errors}));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({samples,operations:4,conservation:'add/subtract/divide',multiplication:'4 blocks per group, 3 groups',division:'four pickups of 2, one left and one right each trip, 4 in each',pause:'verified',viewports:7,errors}));
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
