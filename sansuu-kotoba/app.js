@@ -1,6 +1,7 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
+  const audio=window.LessonAudio;
   const scenes = {
     push: {row:4,title:'うしろから、押す',left:'押される',right:'押す',description:'みぎの人が、ひだりの人の せなかを 押す。',beats:['手を せなかに 近づける。','せなかに 手を あてる。','うしろから 前へ、ぐっと 押す。','押された人が、前へ 一歩。']},
     subtract: {row:0,title:'うしろから、引く',left:'引かれる',right:'引く',a:7,b:2,op:'−',description:'みぎの人が、ひだりの人の 体の ロープを 引く。',beats:['体に まいた ロープを 持つ。','ロープを しっかり にぎる。','ロープを ぐっと 引く。','ひだりの人が、引かれる。']},
@@ -10,6 +11,7 @@
   };
   let sceneKey='push', mode='people', frame=0, timer=null, questionIndex=0, answered=false, tried=false, attempts=0, correct=0;
   let bridgeTime=0;
+  const bridgeCues=new Set();
   const bridgeSteps=[0,650,1300,1950,2800,3800,4800,5600], bridgeEnd=5600;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   // Like the clock's direction arrows: derive the head from the arc's endpoint
@@ -27,7 +29,16 @@
   const arc=$('arc'), length=arc.getTotalLength();
   const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp${row===3?'?v=rice-first-v2':''}`;
   Object.values(scenes).forEach(s=>{for(let n=0;n<4;n++){const image=new Image();image.src=asset(s.row,n);}});
-  function stop(){clearTimeout(timer);timer=null;$('play').textContent=mode==='numbers'?(bridgeTime>=bridgeEnd?'↶ もう一度':'▶ 数に かえる'):'▶ うごかす';$('play').setAttribute('aria-pressed','false');}
+  function stop(silence=true){clearTimeout(timer);timer=null;if(silence)audio.cancel();$('play').textContent=mode==='numbers'?(bridgeTime>=bridgeEnd?'↶ もう一度':'▶ 数に かえる'):'▶ うごかす';$('play').setAttribute('aria-pressed','false');}
+  function numberReading(){const s=scenes[sceneKey];return `${s.left}数は、${s.a}。${s.right}数は、${s.b}。式は、${s.a} ${s.op} ${s.b}。`;}
+  function bridgeCue(at){
+    if(bridgeCues.has(at))return;bridgeCues.add(at);
+    const s=scenes[sceneKey];
+    if(at===0)audio.speak(`${s.description} 左は、${s.left}人。右は、${s.right}人。`,$('mapping'));
+    else if(at===2200){audio.play('hint');audio.speak('同じ場所に、数が重なるよ。',$('caption'));}
+    else if(at===3950){audio.play('transform');audio.speak(`ことばも変身！ ${s.left}人から、${s.left}数。${s.right}人から、${s.right}数。`,$('mapping'));}
+    else if(at===5600){audio.play('correct');audio.speak(numberReading(),$('mapping'));}
+  }
   function renderBridge(){
     const s=scenes[sceneKey],clamp=x=>Math.max(0,Math.min(1,x));
     frame=Math.min(3,Math.floor(bridgeTime/650));renderFrame();
@@ -42,6 +53,8 @@
     visual.style.setProperty('--term-old-opacity',1-termChange);
     visual.style.setProperty('--term-pop',1+emphasis*.45);
     visual.style.setProperty('--term-glow',emphasis);
+    visual.style.setProperty('--burst-opacity',reduced.matches?0:Math.sin(Math.PI*clamp((bridgeTime-3300)/1700)));
+    visual.style.setProperty('--number-pop',reduced.matches?1:1+Math.sin(Math.PI*digits)*.12);
     visual.classList.toggle('terms-changed',bridgeTime>=3500);
     for(const side of ['left','right']){
       $(`${side}-person`).setAttribute('aria-hidden',String(termChange>=.5));
@@ -54,22 +67,34 @@
     $('stage').setAttribute('aria-label',bridgeTime<3300?s.description:`左の${s.left}数は${s.a}、右の${s.right}数は${s.b}。矢印は右から左へ。`);
   }
   function startBridge(){
-    if(bridgeTime>=bridgeEnd)bridgeTime=0;
-    if(reduced.matches){bridgeTime=bridgeEnd;renderBridge();stop();$('morph-status').textContent='人と同じ場所の数を表示しました。';return;}
+    audio.activate();audio.cancel();
+    if(bridgeTime>=bridgeEnd){bridgeTime=0;bridgeCues.clear();}
+    if(reduced.matches){bridgeTime=bridgeEnd;renderBridge();stop();bridgeCue(5600);$('morph-status').textContent='人と同じ場所の数を表示しました。';return;}
     $('morph-status').textContent='人から数へ、同じ場所で変わります。';
     $('play').textContent='Ⅱ とめる';$('play').setAttribute('aria-pressed','true');
     let previous=performance.now();
-    function tick(){const now=performance.now();bridgeTime=Math.min(bridgeEnd,bridgeTime+(now-previous)*350/Number($('speed').value));previous=now;renderBridge();if(bridgeTime>=bridgeEnd){stop();$('morph-status').textContent='数になりました。「もう一度」で見直せます。';return;}timer=setTimeout(tick,40);}
-    renderBridge();timer=setTimeout(tick,40);
+    function tick(){
+      const now=performance.now(),delta=(now-previous)*350/Number($('speed').value);previous=now;
+      if(!audio.speaking){
+        const next=bridgeTime+delta,at=[2200,3950,5600].find(t=>!bridgeCues.has(t)&&t>bridgeTime&&t<=next);
+        const oldFrame=frame;bridgeTime=Math.min(bridgeEnd,at??next);renderBridge();
+        if(frame!==oldFrame&&frame===2)audio.play(sceneKey);
+        if(at!==undefined)bridgeCue(at);
+        if(bridgeTime>=bridgeEnd){stop(false);$('morph-status').textContent='数になりました。「もう一度」で見直せます。';return;}
+      }
+      timer=setTimeout(tick,40);
+    }
+    renderBridge();if(bridgeTime===0)bridgeCue(0);timer=setTimeout(tick,40);
   }
   function renderFrame(){
-    const scene=scenes[sceneKey];$('frame').src=asset(scene.row,frame);$('frame-count').textContent=`${frame+1} / 4 コマ`;
+    const scene=scenes[sceneKey],src=asset(scene.row,frame);if($('frame').getAttribute('src')!==src)$('frame').src=src;$('frame-count').textContent=`${frame+1} / 4 コマ`;
     $('caption').textContent=scene.beats[frame];
     const p=arc.getPointAtLength(length*(reduced.matches?.5:Math.min(frame/3,.90)));$('traveler').setAttribute('cx',p.x);$('traveler').setAttribute('cy',p.y);
   }
-  function schedule(){timer=setTimeout(()=>{if(sceneKey==='add'&&frame===3){stop();return;}frame=(frame+1)%4;renderFrame();schedule();},Number($('speed').value)*(frame===3?2:1));}
+  function narrateFrame(){if(frame===2)audio.play(sceneKey);audio.speak(scenes[sceneKey].beats[frame],$('caption'));}
+  function schedule(){timer=setTimeout(()=>{if(audio.speaking){schedule();return;}if(sceneKey==='add'&&frame===3){stop(false);return;}frame=(frame+1)%4;renderFrame();narrateFrame();schedule();},Number($('speed').value)*(frame===3?2:1));}
   function render(){
-    stop();frame=0;bridgeTime=0;const s=scenes[sceneKey];
+    stop();frame=0;bridgeTime=0;bridgeCues.clear();const s=scenes[sceneKey];
     document.querySelector('.visual').classList.toggle('number-mode',mode==='numbers');
     $('morph-equation').toggleAttribute('hidden',mode!=='numbers');$('morph-status').hidden=mode!=='numbers';$('morph-status').textContent='';
     $('caption').classList.remove('term-change-cue');
@@ -105,27 +130,30 @@
     $('hint-text').textContent='矢印の 先は「される側」。根元は「する側」。みぎから ひだりへ、はたらきかけるよ。';
     $('score').textContent=attempts?`${attempts}問中 ${correct}問、はじめに できた`:'左右の ばしょを 見てみよう';
   }
-  document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(sceneKey==='push'&&(mode==='numbers'||mode==='apply'))mode='people';questionIndex=0;render();}));
-  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;if(mode==='apply'&&sceneKey==='push')sceneKey='multiply';questionIndex=0;render();if(mode==='numbers')startBridge();}));
+  document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{sceneKey=b.dataset.scene;if(sceneKey==='push'&&(mode==='numbers'||mode==='apply'))mode='people';questionIndex=0;render();audio.play('tap');}));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{audio.activate();mode=b.dataset.mode;if(mode==='apply'&&sceneKey==='push')sceneKey='multiply';questionIndex=0;render();if(mode==='numbers')startBridge();else if(mode==='quiz')audio.speak($('question').textContent,$('question'));else if(mode==='apply')document.dispatchEvent(new Event('practice-read'));}));
   document.addEventListener('practice-topic-changed',e=>{if(e.detail!=='all')sceneKey=e.detail;document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===e.detail)));});
-  $('play').addEventListener('click',()=>{if(timer){stop();return;}if(mode==='numbers'){startBridge();return;}if(sceneKey==='add'&&frame===3){frame=0;renderFrame();}$('play').textContent='Ⅱ とめる';$('play').setAttribute('aria-pressed','true');schedule();});
-  $('step').addEventListener('click',()=>{stop();if(mode==='numbers'){bridgeTime=bridgeSteps.find(t=>t>bridgeTime)??bridgeEnd;renderBridge();stop();return;}frame=(frame+1)%4;renderFrame();});
-  $('restart').addEventListener('click',()=>{stop();if(mode==='numbers'){bridgeTime=0;renderBridge();stop();return;}frame=0;renderFrame();});
+  $('play').addEventListener('click',()=>{audio.activate();if(timer){stop();return;}if(mode==='numbers'){startBridge();return;}if(sceneKey==='add'&&frame===3){frame=0;renderFrame();}$('play').textContent='Ⅱ とめる';$('play').setAttribute('aria-pressed','true');narrateFrame();schedule();});
+  $('step').addEventListener('click',()=>{audio.activate();stop();if(mode==='numbers'){bridgeTime=bridgeSteps.find(t=>t>bridgeTime)??bridgeEnd;renderBridge();stop();if(bridgeTime>=bridgeEnd)bridgeCue(5600);else if(bridgeTime>=3950)bridgeCue(3950);else if(bridgeTime>=2200)bridgeCue(2200);else narrateFrame();return;}frame=(frame+1)%4;renderFrame();narrateFrame();});
+  $('restart').addEventListener('click',()=>{stop();bridgeCues.clear();if(mode==='numbers'){bridgeTime=0;renderBridge();stop();return;}frame=0;renderFrame();});
   $('speed').addEventListener('change',()=>{if(timer&&mode!=='numbers'){clearTimeout(timer);schedule();}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
   reduced.addEventListener('change',()=>{if(mode==='numbers'){if(reduced.matches){stop();bridgeTime=bridgeEnd;renderBridge();stop();}}else renderFrame();});
   $('frame').addEventListener('error',()=>{$('image-error').hidden=false;stop();});
   $('frame').addEventListener('load',()=>{$('image-error').hidden=true;});
-  $('hint').addEventListener('click',()=>{$('hint-text').hidden=false;$('mapping').hidden=false;});
-  $('next').addEventListener('click',()=>{questionIndex++;$('mapping').hidden=true;newQuestion();});
+  $('hint').addEventListener('click',()=>{$('hint-text').hidden=false;$('mapping').hidden=false;audio.play('hint');audio.speak($('hint-text').textContent,$('hint-text'));});
+  $('next').addEventListener('click',()=>{stop();questionIndex++;$('mapping').hidden=true;newQuestion();audio.speak($('question').textContent,$('question'));});
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>{
     if(answered)return;
     const target=questionIndex%2===0?'left':'right',s=scenes[sceneKey],ok=b.dataset.answer===target;
-    if(!ok){if(!tried){attempts++;tried=true;}$('feedback').textContent='矢印を たどって、もう一度。';$('hint-text').hidden=false;return;}
+    if(!ok){if(!tried){attempts++;tried=true;}$('feedback').textContent='矢印を たどって、もう一度。';$('hint-text').hidden=false;audio.play('retry');audio.speak($('feedback').textContent,$('feedback'));return;}
     if(!tried){attempts++;correct++;}answered=true;b.classList.add('correct');
     $('feedback').textContent=target==='left'?'そう！ 矢印の 先が「される側」。':'そう！ 矢印の 根元が「する側」。';
     $('mapping').hidden=false;if(sceneKey!=='push'){$('left-term').textContent=s.left+'数';$('right-term').textContent=s.right+'数';}
     $('score').textContent=`${attempts}問中 ${correct}問、はじめに できた`;
+    audio.play('correct');audio.speak($('feedback').textContent,$('feedback'));
   }));
+  document.addEventListener('lesson-audio-stop',()=>stop());
+  document.addEventListener('lesson-read',()=>{stop();if(mode==='apply'){document.dispatchEvent(new Event('practice-read'));return;}audio.speak(mode==='quiz'?$('question').textContent:mode==='numbers'&&bridgeTime>=3950?numberReading():`${scenes[sceneKey].description} ${$('caption').textContent}`,mode==='quiz'?$('question'):$('caption'));});
   render();
 })();

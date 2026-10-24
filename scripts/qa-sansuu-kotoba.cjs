@@ -10,7 +10,7 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
  try{
   const page=await browser.newPage({viewport:{width:1280,height:1000}});
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)badResponses.push(r.url())});
-  await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);await page.locator('#voice-toggle').click();
   await page.locator('#frame').evaluate(img=>img.decode());
   assert.equal(await page.locator('[data-mode="numbers"]').isDisabled(),true);
   const terms={subtract:['引かれる数','引く数'],multiply:['かけられる数','かける数'],divide:['わられる数','わる数'],add:['たされる数','たす数']};

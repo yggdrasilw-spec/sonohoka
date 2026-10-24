@@ -7,7 +7,7 @@ const {serve}=require('./portfolio-demo-inspect.cjs');
  const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSync(out,{recursive:true});
  try{
   const page=await browser.newPage({viewport:{width:1180,height:720}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/sonohoka/sansuu_kotoba.html`);await page.locator('#voice-toggle').click();
   const opacity=id=>page.locator('#'+id).evaluate(el=>Number(getComputedStyle(el).opacity));
   for(const [scene,a,b,op] of [['multiply','4','3','×'],['subtract','7','2','−'],['divide','8','2','÷'],['add','4','3','＋']]){
    await page.locator(`[data-scene="${scene}"]`).click();await page.locator('[data-mode="numbers"]').click();

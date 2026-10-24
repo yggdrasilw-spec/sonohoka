@@ -13,7 +13,7 @@ const expected=(topic,t,a,b)=>{
  const base=process.argv[2]||`http://127.0.0.1:${s.address().port}/sonohoka/`,errors=[];let count=0;
  try{
   const p=await browser.newPage({viewport:{width:1024,height:600}});p.on('pageerror',e=>errors.push(e.message));
-  await p.goto(base+'sansuu_kotoba.html');await p.locator('[data-mode="apply"]').click();
+  await p.goto(base+'sansuu_kotoba.html');await p.locator('#voice-toggle').click();await p.locator('[data-mode="apply"]').click();
   async function fits(){const failures=await p.evaluate(()=>{
    const fail=[],container=document.getElementById('application').getBoundingClientRect();if(document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth)fail.push('scroll');
    for(const sel of ['#application-equation','#application-diagram','#application-diagram p','#practice-statement','#practice-question','#practice-choices','#practice-feedback','.practice-actions','#practice-score']){const e=document.querySelector(sel);if(!e)continue;const r=e.getBoundingClientRect();if(!r.width||!r.height)continue;if(r.bottom>container.bottom+1||r.right>innerWidth||r.top<container.top-1)fail.push(sel+' clipped');}

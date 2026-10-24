@@ -6,14 +6,14 @@ const {serve}=require('./portfolio-demo-inspect.cjs');
  const base=process.argv[2]||`http://127.0.0.1:${server.address().port}/sonohoka/`,out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSync(out,{recursive:true});
  const errors=[];let states=0;
  try{
-  const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'sansuu_kotoba.html');
+  const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'sansuu_kotoba.html');await page.locator('#voice-toggle').click();
   async function check(label){
    const report=await page.evaluate(()=>{
     const selectors=['header','.scenes','.lesson-heading','.direction','.playback','#stage','#mapping','#number-panel','#caption','#quiz','.remember','.teacher-note summary'];
     const failures=[];
     for(const sel of selectors){const el=document.querySelector(sel),r=el.getBoundingClientRect();if(!r.width||!r.height)continue;if(r.top<0||r.left<0||r.right>innerWidth+1||r.bottom>innerHeight+1)failures.push(sel+' outside viewport');}
     for(const el of document.querySelectorAll('button,select')){const r=el.getBoundingClientRect();if(!r.width||!r.height)continue;const top=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);if(top!==el&&!el.contains(top))failures.push(el.textContent+' obscured');}
-    for(const el of document.querySelectorAll('.person-label strong,.operand span')){const r=el.getBoundingClientRect();if(r.width&&el.scrollWidth>el.clientWidth+1)failures.push(el.textContent+' text overflow');}
+    for(const el of document.querySelectorAll('.person-label strong,.operand span')){const r=el.getBoundingClientRect();if(r.width&&el.scrollWidth>el.clientWidth+1)failures.push(el.textContent+' text overflow '+innerWidth+'x'+innerHeight+' '+el.scrollWidth+'/'+el.clientWidth);}
     const visual=document.querySelector('.visual').getBoundingClientRect(),slot=document.querySelector('.visual-slot').getBoundingClientRect();if(visual.bottom>slot.bottom+2)failures.push('diagram exceeds reserved height');
     if(document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth)failures.push('page requires scroll');
     return failures;

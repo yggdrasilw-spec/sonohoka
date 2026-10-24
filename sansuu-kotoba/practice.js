@@ -1,6 +1,7 @@
 'use strict';
 (() => {
   const $=id=>document.getElementById(id);
+  const audio=window.LessonAudio;
   const terms={multiply:['かけられる数','かける数'],subtract:['引かれる数','引く数'],add:['たされる数','たす数'],divide:['わられる数','わる数']};
   const symbols={multiply:'×',subtract:'−',add:'＋',divide:'÷'};
   const samples={multiply:[[4,3],[3,2],[5,4]],subtract:[[7,2],[9,3],[8,5]],add:[[4,3],[5,2],[6,3]],divide:[[8,2],[12,3],[16,4]]};
@@ -51,7 +52,9 @@
     $('application-diagram').innerHTML=diagram(current.before)+diagram(current.after)+`<p>${current.explain}</p>`;
   }
   function score(){$('practice-score').textContent=`答えた ${attempts}問 ／ ヒントなしで 最初に正解 ${independent}問`;}
-  function next(){
+  function read(){const choices=order.map((option,index)=>`${index+1}ばん。${current.options[option]}。`).join(' ');audio.speak(`${current.a} ${current.op} ${current.b} は ${current.r}。${current.statement} ${current.question} ${choices}`,$('practice-statement'));}
+  function next(narrate=true){
+    audio.cancel();
     if(!deck.length)fillDeck();current=deck.pop();answered=false;assisted=false;attempted=false;
     $('application').dataset.problemId=current.id;
     $('application-equation').innerHTML=`<div class="practice-operand receiver"><strong>${current.a}</strong><span>${terms[current.topic][0]}</span></div><b>${current.op}</b><div class="practice-operand actor"><strong>${current.b}</strong><span>${terms[current.topic][1]}</span></div><b>＝ ${current.r}</b>`;
@@ -60,17 +63,20 @@
     $('practice-feedback').textContent='';$('diagram-placeholder').hidden=false;$('application-diagram').hidden=true;$('application-diagram').replaceChildren();
     order=shuffle([0,1,2]);$('practice-choices').replaceChildren();
     order.forEach(i=>{const button=document.createElement('button');button.type='button';button.textContent=current.options[i];button.dataset.option=i;button.addEventListener('click',()=>answer(i,button));$('practice-choices').append(button);});score();
+    if(narrate){audio.play('tap');read();}
   }
   function answer(i,button){
     if(answered)return;
     const first=!attempted;if(first){attempts++;attempted=true;}
-    if(i!==current.answer){assisted=true;$('practice-feedback').textContent='図のヒントで、どの数が かわるか 見てみよう。';reveal();score();return;}
+    if(i!==current.answer){assisted=true;$('practice-feedback').textContent='図のヒントで、どの数が かわるか 見てみよう。';reveal();score();audio.play('retry');audio.speak($('practice-feedback').textContent,$('practice-feedback'));return;}
     if(first&&!assisted)independent++;answered=true;button.classList.add('correct');
     $('practice-feedback').textContent='そう！ 文と式の意味が つながったね。';reveal();score();
     [...$('practice-choices').children].forEach(b=>b.setAttribute('aria-disabled','true'));
+    audio.play('correct');audio.speak(`${$('practice-feedback').textContent} ${current.explain}`,$('practice-feedback'));
   }
-  $('practice-hint').addEventListener('click',()=>{if(!answered)assisted=true;reveal();});
+  $('practice-hint').addEventListener('click',()=>{if(!answered)assisted=true;reveal();audio.play('hint');audio.speak(current.explain,$('application-diagram'));});
   $('practice-next').addEventListener('click',next);
   $('practice-topic').addEventListener('change',()=>{fillDeck();next();});
-  document.addEventListener('practice-enter',e=>{const topic=e.detail==='push'?'all':e.detail;$('practice-topic').value=topic;fillDeck();next();});
+  document.addEventListener('practice-enter',e=>{const topic=e.detail==='push'?'all':e.detail;$('practice-topic').value=topic;fillDeck();next(false);});
+  document.addEventListener('practice-read',()=>{if(current)read();});
 })();
