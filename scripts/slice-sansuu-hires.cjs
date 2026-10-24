@@ -28,4 +28,8 @@ async function split(scene,row){
  }
  return {scene,source:[width,height],grid:{x:xs,y:ys},frames};
 }
-(async()=>{for(const [scene,row] of [['push',4],['subtract',0],['multiply',1]])console.log(JSON.stringify(await split(scene,row)));})().catch(e=>{console.error(e);process.exitCode=1});
+(async()=>{
+ const scenes=[['push',4],['subtract',0],['multiply',1],['divide',2]],selected=process.argv.slice(2);
+ assert(selected.every(name=>scenes.some(([scene])=>scene===name)),'Unknown scene name');
+ for(const [scene,row] of scenes)if(!selected.length||selected.includes(scene))console.log(JSON.stringify(await split(scene,row)));
+})().catch(e=>{console.error(e);process.exitCode=1});

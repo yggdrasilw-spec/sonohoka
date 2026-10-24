@@ -18,7 +18,7 @@ const out=path.resolve(__dirname,'../.portfolio-work/sansuu-kotoba');fs.mkdirSyn
   for(const scene of ['push',...Object.keys(terms)]){
    await page.locator(`[data-scene="${scene}"]`).click();
    for(let f=0;f<4;f++){
-    const n=await page.locator('#frame').evaluate(async img=>{await img.decode();return img.naturalWidth;});assert(n>0);if(scene!=='divide')assert(n>=760,`${scene}: high-resolution frame`);frames++;
+    const n=await page.locator('#frame').evaluate(async img=>{await img.decode();return img.naturalWidth;});assert(n>=760,`${scene}: high-resolution frame`);frames++;
     await page.locator('#step').click();
    }
    if(scene!=='push'){

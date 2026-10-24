@@ -27,7 +27,7 @@
     svg.querySelector('.arrow-head').setAttribute('points',points.map(p=>`${p.x},${p.y}`).join(' '));
   });
   const arc=$('arc'), length=arc.getTotalLength();
-  const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp${row===3?'?v=rice-first-v2':[0,1,4].includes(row)?'?v=hires-v2':''}`;
+  const asset=(row,n)=>`sansuu-kotoba/assets/scene-${row}-${n}.webp${row===3?'?v=rice-first-v2':'?v=hires-v2'}`;
   Object.values(scenes).forEach(s=>{for(let n=0;n<4;n++){const image=new Image();image.src=asset(s.row,n);}});
   function stop(silence=true){clearTimeout(timer);timer=null;if(silence)audio.cancel();$('play').textContent=mode==='numbers'?(bridgeTime>=bridgeEnd?'↶ もういちど':'▶ 数に かえる'):'▶ うごかす';$('play').setAttribute('aria-pressed','false');}
   function clearCharacterFocus(){for(const side of ['left','right']){$(`character-${side}-focus`).hidden=true;document.querySelector(`.person-label.${side==='left'?'receiver':'actor'}`).classList.remove('role-speaking');}}
