@@ -7,12 +7,14 @@ function stone(x,y,w,h,index,kind){
  const colors=['#b98650','#c89b60','#ac7545','#d0a36b'];
  return `<path data-grain="${kind}" d="M${x+2} ${y+1}L${x+w-4} ${y}L${x+w} ${y+5}L${x+w-2} ${y+h-2}L${x+4} ${y+h}L${x} ${y+h-5}Z" fill="${colors[index%4]}" stroke="#77502e" stroke-width="1.2"/>`;
 }
-function soil({state,visual,average}){
+function soil({state,visual}){
  const s=visual.soil,left=170,right=790,base=306,scale=32,sub=(right-left)/(state.values.length*8),gw=sub-2,gh=27;
- const line=base-average*scale,blade=left+s.vehicle.x*sub;
- let out=`<path d="M${left} ${base+4}H${right}" stroke="#856640" stroke-width="4"/><line class="hintLine" x1="${left}" x2="${right}" y1="${line}" y2="${line}"/>`;
- const captions={back:'いったん バックするよ',away:'土の山を よけて 奥へ',bypass:'奥を通って 右側へ',turn:'向きを 変えるよ',return:'反対側から ならすよ'};
- out+=text(480,30,captions[s.kind]||(s.vehicle.dir===1?'左から 右へ →':'← 右から 左へ'),'muted');
+ const line=base-s.vehicle.height*scale,blade=left+s.vehicle.x*sub,chosen=Number.isInteger(state.soilStartHeight);
+ let out=`<path d="M${left} ${base+4}H${right}" stroke="#856640" stroke-width="4"/>`;
+ if(chosen)out+=`<line data-cut-line="${s.vehicle.height}" class="hintLine" x1="${left}" x2="${right}" y1="${line}" y2="${line}"/>`;
+ const captions={back:'いったん バックするよ',away:'土の山を よけて 奥へ',bypass:'奥を通って 右側へ',turn:'向きを 変えるよ',return:'反対側から ならすよ',lower:'押す高さを 一層 下げるよ'};
+ out+=text(480,30,chosen?(captions[s.kind]||(s.vehicle.dir===1?'左から 右へ →':'← 右から 左へ')):'どの高さから 押してみよう？','muted');
+ if(chosen&&s.kind!=='lower')out+=text(480,60,`押す高さ：下から ${s.vehicle.height}段目`,'muted');
  let ground='';for(const g of s.grains)ground+=`<g data-grain-id="${g.id}" data-grid-x="${g.x}" data-grid-y="${g.y}">${stone(left+g.x*sub+1,base-(g.y+1)*scale+3,gw,gh,g.id,'ground')}</g>`;
  const depth=s.vehicle.depth,dir=s.vehicle.dir,shrink=1-.2*depth;
  const machine=`<g data-sweep-x="${blade}" data-direction="${dir}" data-depth="${depth}" data-motion="${s.kind}" transform="translate(${blade},${line-67-65*depth}) scale(${dir*shrink*Math.max(.12,s.vehicle.turn)},${shrink}) translate(-112,0)">
@@ -24,7 +26,7 @@ function soil({state,visual,average}){
  <path d="M74 38L103 52M75 27L103 41" stroke="#b98217" stroke-width="7"/>
  <path d="M107 25Q97 42 105 69L115 69L115 27Z" fill="#8f9ca1" stroke="#455d68" stroke-width="3"/>
  </g>`;
- out+=depth>.15?machine+ground:ground+machine;
+ out+=chosen?(depth>.15?machine+ground:ground+machine):ground;
  out+=text(480,351,'横に 押す。下が 空いたら、落ちて たまる。','muted');
  return out;
 }

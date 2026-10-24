@@ -17,7 +17,8 @@ try{
  await page.waitForTimeout(450);
  assert.deepEqual(await page.evaluate(()=>Narasu.snapshot().state.values),[3,3,3,3]);
  mark();await page.locator('#scenes button').nth(1).click();
- await page.waitForFunction(()=>Narasu.snapshot().visual.bucket>=1&&Narasu.snapshot().busy);
+ await page.locator('#soilHeight').selectOption('4');await page.locator('#soilMode').selectOption('layers');await page.locator('#soilPlay').click();
+ await page.waitForFunction(()=>Narasu.snapshot().visual.soil.kind==='push'&&Narasu.snapshot().busy);
  await page.screenshot({path:path.join(dir,'frame-01.png')});
  mark();await page.waitForFunction(()=>!Narasu.snapshot().soilAuto&&!Narasu.snapshot().busy);
  await page.waitForTimeout(300);await page.screenshot({path:path.join(dir,'frame-02.png')});const soilEnd=Date.now()/1000;

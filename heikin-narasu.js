@@ -4,7 +4,7 @@
 const $ = id => document.getElementById(id);
 const M=window.NarasuMotion;
 const names = ['玉','土','水','水差し','式','練習'];
-const waterSets = [[180,60],[180,60,120],[200,80,160,40],[200,50,150,100,100]];
+const waterSets = [[180,60],[180,60,60],[200,80,200,120],[250,50,200,100,200]];
 const soilSets = [[5,4,1,2],[6,2,1,3],[1,5,5,1],[4,2,4,2,3],[6,1,4,2,3,2]];
 const exercises = [
  {type:'beads',values:[4,2,3],text:'玉を うつして、同じ高さにしよう。'},
@@ -24,7 +24,7 @@ const copy = x => JSON.parse(JSON.stringify(x));
 const average = () => sum(S.original)/S.original.length;
 const type = () => S.stage===0?'beads':S.stage===1?'soil':S.stage===5?exercises[S.practice].type:'water';
 const unit = () => type()==='water'?'mL':type()==='beads'?'こ':'単位';
-const allEqual = () => S.values.every(v=>v===average()) && !S.bucket && !S.jug;
+const allEqual = () => (S.stage===1&&S.soilGrains?S.soilComplete:S.values.every(v=>v===average())) && !S.bucket && !S.jug;
 const fmt = n => Number.isInteger(n)?String(n):n.toFixed(1);
 function ensureBeadColors(state){
  // Older saves contain counts only. Assign their visible colors once on restore.
@@ -33,7 +33,7 @@ function ensureBeadColors(state){
 }
 function fresh(stage=0, values, extra={}) {
  const defaults = stage===0?[5,4,1,2]:stage===1?soilSets[0]:stage===5?exercises[0].values:waterSets[0];
- S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...extra};
+ S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,soilStartHeight:null,soilMode:'single',soilComplete:false,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...extra};
  history=[];selected=null;destination=null;hint=0;message='';
  $('totalPanel').open=false;$('answer').value='';
 }
@@ -47,14 +47,27 @@ function go(stage) {
  if(stage===3 && S.stage===2){S.stage=3;S.jugPhase='collect';S.collected=[];S.step=0;history=[];hint=0;message='';}
  else if(stage===4 && (S.stage===2||S.stage===3)){S.stage=4;S.values=S.original.slice();S.jug=0;S.bucket=0;S.step=0;S.solved=false;S.diagram=0;history=[];hint=0;message='';}
  else fresh(stage);
- render();persist();if(stage===1)startSoil();
+ render();persist();
 }
-function reset() {cancel();const original=S.original.slice();const extras={waterIndex:S.waterIndex,soilIndex:S.soilIndex,practice:S.practice};fresh(S.stage,original,extras);if(S.stage===5)S.diagram=exercises[S.practice].hide?2:0;render();persist();if(S.stage===1)startSoil();}
-function startSoil(){soilAuto=true;soilPaused=false;scheduleSoil();render();}
+function reset() {cancel();const original=S.original.slice();const extras={waterIndex:S.waterIndex,soilIndex:S.soilIndex,practice:S.practice,soilStartHeight:S.soilStartHeight,soilMode:S.soilMode};fresh(S.stage,original,extras);if(S.stage===5)S.diagram=exercises[S.practice].hide?2:0;render();persist();}
+function startSoil(){
+ if(S.stage!==1||tx||!Number.isInteger(S.soilStartHeight))return;
+ const original=S.original.slice(),extra={soilIndex:S.soilIndex,soilStartHeight:S.soilStartHeight,soilMode:S.soilMode};
+ cancel();fresh(1,original,extra);soilAuto=true;soilPaused=false;scheduleSoil();render();
+}
 function scheduleSoil(){
  clearTimeout(soilTimer);if(!soilAuto||soilPaused||S.stage!==1||tx)return;
- if(allEqual()){soilAuto=false;message='高いところの土を、低いところへ。たいらにすることを「ならす」というよ。';render();return;}
- soilTimer=setTimeout(()=>{if(!soilAuto||soilPaused||S.stage!==1)return;const before=copy(S),next=copy(S),plan=M.soilPlan(S.values);next.values=next.values.map(()=>average());next.bucket=0;next.vehicle=S.values.length;next.soilGrains=plan.final;next.soilVehicle=M.soilFrame(plan,1).vehicle;tx={kind:'soilSweep',plan,before,next,progress:0,elapsed:0,last:0,paused:false};message='土を横に押すと、下が空いた土は落ちるよ。端で押せなくなったら、奥を通って反対からならすよ。';render();runAnimation(settings.speed==='reduced'?400:settings.speed==='slow'?28000:16000);},settings.speed==='reduced'?100:650);
+ soilTimer=setTimeout(()=>{
+  if(!soilAuto||soilPaused||S.stage!==1)return;
+  const before=copy(S),next=copy(S),plan=M.soilPlan(S.values,8,{startHeight:S.soilStartHeight,layered:S.soilMode==='layers'});
+  const heights=Array(plan.count).fill(0);plan.final.forEach(g=>heights[g.x]++);
+  next.values=S.values.map((_,i)=>sum(heights.slice(i*8,(i+1)*8))/8);
+  next.bucket=0;next.soilGrains=plan.final;next.soilVehicle=M.soilFrame(plan,1).vehicle;next.soilComplete=plan.flat;next.soilBlocked=plan.blocked;
+  tx={kind:'soilSweep',plan,before,next,progress:0,elapsed:0,last:0,paused:false};
+  message=S.soilMode==='layers'?'選んだ高さから、一層ずつ下げて押すよ。土の動きを見てみよう。':'選んだ高さで押すよ。くぼみが埋まるか、土の動きを見てみよう。';
+  const lowers=plan.events.filter(e=>e.kind==='lower').length;
+  render();runAnimation(settings.speed==='reduced'?400+lowers*200:settings.speed==='slow'?28000+lowers*6000:16000+lowers*4000);
+ },settings.speed==='reduced'?100:650);
 }
 function undo() {if(tx){cancel();message='動きを取り消したよ。';}else if(history.length){cancel();S=history.pop();message='ひとつ前に もどしたよ。';}hint=0;render();persist();}
 function refValue(state, ref) {return typeof ref==='number'?state.values[ref]:state[ref];}
@@ -80,7 +93,7 @@ function runAnimation(duration){
   if(!tx.paused && tx.last)tx.elapsed+=Math.min(now-tx.last,80);
   tx.last=now;tx.progress=Math.min(tx.elapsed/duration,1);
   renderBoard();renderTotals();
-  if(tx.progress>=1){const next=tx.next;checkpoint();S=next;tx=null;message=completionMessage();render();persist();if(S.stage===1)scheduleSoil();else if(diagramDemo)continueDiagramDemo();return;}
+  if(tx.progress>=1){const next=tx.next;checkpoint();S=next;tx=null;if(S.stage===1)soilAuto=false;message=completionMessage();render();persist();if(diagramDemo)continueDiagramDemo();return;}
   frame=requestAnimationFrame(tick);
  }
  frame=requestAnimationFrame(tick);
@@ -95,9 +108,10 @@ function visual() {
  v.transit=removed-arrived;return v;
 }
 function completionMessage() {
+ if(S.stage===1&&S.soilBlocked)return 'この高さでは、土の行き場がなくなったよ。土をすてずに、高さを変えて試してみよう。';
  if(S.stage===3){if(S.jugPhase==='divide'&&!S.jug)return 'どのコップも '+fmt(average())+' mL。このように ならした量を「平均」といいます。';if(S.jugPhase==='divide')return '全部 集まったね。横線で '+S.values.length+'等分した量を、コップに分けよう。';return '水差しに '+S.jug+' mL 集まったよ。';}
  if(allEqual())return S.stage===1?'高いところの土を、低いところへ。たいらにすることを「ならす」というよ。':'どこも '+fmt(average())+' '+unit()+'。ならせたね！ 全部の量は 変わらないよ。';
- if(S.stage===1)return S.bucket?'けずった土は バケットの中。低いところへ 運ぶよ。':'低いところが 上がったね。次の高いところへ 向かうよ。';
+ if(S.stage===1)return '選んだ高さで押したよ。まだ高いところや くぼみがあるね。一層ずつ下げる方法でも試そう。';
  return 'うつせたね。多いところと 少ないところを 見てみよう。';
 }
 function selectColumn(i) {
@@ -137,7 +151,7 @@ function soilView(){
  const v=copy(S),pieces=8,count=S.values.length*pieces;
  const soil=tx?.plan?M.soilFrame(tx.plan,tx.progress):{
   grains:S.soilGrains||S.values.flatMap((h,i)=>Array.from({length:pieces},(_,j)=>Array.from({length:h},(_,y)=>({x:i*pieces+j,y}))).flat()).map((g,id)=>({...g,id})),
-  vehicle:S.soilVehicle||{x:allEqual()?count+1:0,depth:0,dir:1,turn:1},kind:'drive',progress:allEqual()?1:0,position:allEqual()?count+1:0
+  vehicle:S.soilVehicle||{x:0,depth:0,dir:1,turn:1,height:S.soilStartHeight??Math.max(...S.original)},kind:'drive',progress:allEqual()?1:0,position:allEqual()?count+1:0
  };
  const heights=Array(count).fill(0);
  soil.grains.forEach(g=>heights[Math.max(0,Math.min(count-1,Math.floor(g.x)))]++);
@@ -211,7 +225,7 @@ function next() {
 }
 function defaultMessage() {
  if(S.stage===0)return '高い棒から 低い棒へ。いちばん上の玉を うつそう。';
- if(S.stage===1)return 'ブルドーザーが 地面を「ならす」ところを 見てみよう。';
+ if(S.stage===1)return 'はじめに押す高さと、押し方を選ぼう。選んだ高さで地面はどう変わるかな？';
  if(S.stage===2)return 'コップを2つ選んで、同じ量にしてみよう。';
  if(S.stage===3)return S.jugPhase==='collect'?'コップを1つずつ選んで、水差しに集めよう。':'水差しの横線は、コップの数で等しく分けた目印だよ。同じ量ずつ分けよう。';
  if(S.stage===4)return '元の量のカードを見て、順に計算しよう。';
@@ -228,7 +242,19 @@ function render() {
  $('message').textContent=message||defaultMessage();
  const sub=$('subnav');sub.replaceChildren();
  if(S.stage===2)waterSets.forEach((v,i)=>sub.append(btn((i+2)+'このコップ',()=>{cancel();fresh(2,v,{waterIndex:i});render();persist();},{pressed:S.waterIndex===i})));
- if(S.stage===1){const b=btn('べつの地面を 見る',()=>{cancel();const i=(S.soilIndex+1)%soilSets.length;fresh(1,soilSets[i],{soilIndex:i});render();persist();startSoil();},{id:'anotherSoil'});b.disabled=false;sub.append(b);}
+ if(S.stage===1){
+  const select=(id,label,choices,value,onchange)=>{
+   const wrap=document.createElement('label');wrap.className='soilChoice';wrap.append(document.createTextNode(label));
+   const control=document.createElement('select');control.id=id;control.disabled=!!tx||soilAuto;
+   for(const [key,name] of choices){const option=document.createElement('option');option.value=key;option.textContent=name;control.append(option);}
+   control.value=value;control.onchange=()=>{onchange(control.value);delete S.soilGrains;delete S.soilVehicle;S.values=S.original.slice();S.soilComplete=false;message='';render();persist();};wrap.append(control);sub.append(wrap);
+  };
+  select('soilHeight','はじめに押す高さ',[['','高さを選ぶ'],...Array.from({length:Math.max(...S.original)},(_,i)=>[String(i+1),'下から '+(i+1)+'段目'])],S.soilStartHeight===null?'':String(S.soilStartHeight),v=>{S.soilStartHeight=v===''?null:Number(v);});
+  select('soilMode','押し方',[['single','選んだ高さだけ'],['layers','一層ずつ下げる']],S.soilMode,v=>{S.soilMode=v;});
+  sub.append(btn('ならしてみる',startSoil,{id:'soilPlay',primary:true,disabled:S.soilStartHeight===null||soilAuto}));
+  const b=btn('べつの地面を 見る',()=>{cancel();const i=(S.soilIndex+1)%soilSets.length;fresh(1,soilSets[i],{soilIndex:i});render();persist();},{id:'anotherSoil'});b.disabled=false;sub.append(b);
+ }
+
  if(S.stage===5)sub.append(btn('問題 '+(S.practice+1)+' / '+exercises.length,()=>{}, {disabled:true}));
  const cards=$('cards');cards.replaceChildren();
  if(S.stage>=3){
@@ -257,7 +283,7 @@ function render() {
  for(const id of ['undo','hint','demo'])$(id).hidden=S.stage===1;
  $('hint').textContent=hint?'ヒント '+hint+' / 3':'ヒント';
  $('demo').textContent=S.stage>=4?'図が動くヒント':'おてほんを ひとつ';
- $('reset').textContent=S.stage===1?'↻ もう一度 見る':'はじめの形';
+ $('reset').textContent=S.stage===1?'はじめの地面':'はじめの形';
  $('pause').hidden=!tx&&!soilAuto;$('pause').textContent=tx?.paused||soilPaused?'▶ 再開':'Ⅱ 一時停止';
  document.querySelector('.guide').hidden=S.stage===1;
  $('next').disabled=!!tx;$('next').textContent=S.stage===2&&S.waterIndex<3?'コップを ふやす →':S.stage===5?'つぎの問題 →':'つぎへ →';
@@ -303,16 +329,16 @@ $('apply').onclick=()=>{
  const raw=$('custom').value.trim().split(/[,、\s]+/),v=raw.map(Number),water=type()==='water',n=v.length,a=sum(v)/n;
  const valid=raw.every(x=>x!=='')&&n>=(water?2:3)&&n<=(water?5:6)&&v.every(x=>Number.isInteger(x)&&x>=0&&x<=(water?300:6))&&sum(v)>0&&(water?v.every(x=>x%5===0)&&a%5===0:Number.isInteger(a));
  if(!valid){$('settingError').textContent=water?'2～5個、0～300mL、5mL単位で同じ量にできる数を入れてください。':'3～6列、0～6、同じ高さが整数になる数を入れてください。';return;}
- cancel();fresh(S.stage,v);render();persist();$('settings').close();if(S.stage===1)startSoil();
+ cancel();fresh(S.stage,v);render();persist();$('settings').close();
 };
 let saved;try{saved=JSON.parse(localStorage.getItem(KEY));}catch{}
 function validSaved(record){
  if(!record?.state)return false;const s=record.state,t=s.stage===0?'beads':s.stage===1?'soil':'water';
- return Number.isInteger(s.stage)&&s.stage>=0&&s.stage<=5&&Number.isInteger(s.practice)&&s.practice>=0&&s.practice<exercises.length&&Array.isArray(s.original)&&Array.isArray(s.values)&&s.original.length===s.values.length&&s.values.length>=2&&s.values.length<=6&&[...s.original,...s.values,s.bucket,s.jug].every(x=>Number.isInteger(x)&&x>=0&&x<=1800)&&sum(s.original)===sum(s.values)+s.bucket+s.jug&&s.bucket<=2&&s.values.every(x=>x<=(t==='water'?300:6));
+ return Number.isInteger(s.stage)&&s.stage>=0&&s.stage<=5&&Number.isInteger(s.practice)&&s.practice>=0&&s.practice<exercises.length&&Array.isArray(s.original)&&Array.isArray(s.values)&&s.original.length===s.values.length&&s.values.length>=2&&s.values.length<=6&&[...s.original,...s.values,s.bucket,s.jug].every(x=>Number.isFinite(x)&&x>=0&&x<=1800&&Number.isInteger(t==='soil'?x*8:x))&&sum(s.original)===sum(s.values)+s.bucket+s.jug&&s.bucket<=2&&s.values.every(x=>x<=(t==='water'?300:6));
 }
 fresh();
 if(validSaved(saved)){settings={...settings,...saved.settings};$('resume').showModal();}
-$('resumeYes').onclick=()=>{if(validSaved(saved)){S=saved.state;history=Array.isArray(saved.history)?saved.history:[];if(S.stage===1)fresh(1,S.original,{soilIndex:S.soilIndex||0});}message='つづきから はじめよう。';$('resume').close();render();if(S.stage===1)startSoil();};
+$('resumeYes').onclick=()=>{if(validSaved(saved)){S=saved.state;history=Array.isArray(saved.history)?saved.history:[];if(S.stage===1)fresh(1,S.original,{soilIndex:S.soilIndex||0,soilStartHeight:Number.isInteger(S.soilStartHeight)&&S.soilStartHeight<=Math.max(...S.original)?S.soilStartHeight:null,soilMode:S.soilMode==='layers'?'layers':'single'});}message='つづきから はじめよう。';$('resume').close();render();};
 $('resumeNo').onclick=()=>{$('resume').close();fresh();render();persist();};
 $('resume').addEventListener('cancel',()=>persist());
 render();
