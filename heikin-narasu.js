@@ -332,7 +332,7 @@ function renderTotals() {
 }
 function renderBoard() {
  const v=view(),kind=type();
- $('board').setAttribute('viewBox',kind==='water'?'0 0 960 460':'0 0 960 380');
+ $('board').setAttribute('viewBox',kind==='water'?'0 0 960 460':kind==='soil'?'0 0 1080 380':'0 0 960 380');
  const context={state:S,visual:v,tx,soilAuto,selected,destination,average:average(),hintLine:(S.stage>=4?hint>=3||allEqual():settings.line||hint>=3||allEqual()),numbers:settings.numbers,drag};
  $('board').innerHTML=NarasuRender[kind](context);
 }
