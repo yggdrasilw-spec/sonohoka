@@ -24,16 +24,20 @@ const readings={
  '正解':'せいかい','式':'しき','図':'ず','練習':'れんしゅう','下から':'したから','上の':'うえの','下の':'したの',
  '注ぐ':'そそぐ','傾けて':'かたむけて','押す':'おす','分ける':'わける','分けよう':'わけよう','分けた':'わけた','分かる':'わかる',
  '変わらない':'かわらない','変える':'かえる','取り消した':'とりけした','移動中':'いどうちゅう',
- '数から':'かずから','数を':'かずを','数に':'かずに','数で':'かずで','数と':'かずと','数が':'かずが'
+ '数から':'かずから','数を':'かずを','数に':'かずに','数で':'かずで','数と':'かずと','数が':'かずが',
+ '何cm':'なんせんちめーとる','何g':'なんぐらむ','何m':'なんめーとる','歩はば':'ほはば','四捨五入':'ししゃごにゅう'
 };
 const words=new RegExp(Object.keys(readings).sort((a,b)=>b.length-a.length).join('|'),'g');
 function reading(text){
  return String(text).normalize('NFKC').replace(words,w=>readings[w])
   .replace(/(\d+(?:\.\d+)?)\s*m[lL]/g,(_,n)=>number(n)+'みりりっとる')
+  .replace(/(\d+(?:\.\d+)?)\s*cm\b/g,(_,n)=>number(n)+'せんちめーとる')
+  .replace(/(\d+(?:\.\d+)?)\s*m\b/g,(_,n)=>number(n)+'めーとる')
+  .replace(/(\d+(?:\.\d+)?)\s*g\b/g,(_,n)=>number(n)+'ぐらむ')
   .replace(/(\d+)\s*(?:こ|個)/g,(_,n)=>pieces(n))
   .replace(/([1-9])つ/g,(_,n)=>['','ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ'][Number(n)])
   .replace(/(\d+)等分/g,(_,n)=>number(n)+'とうぶん').replace(/(\d+)段目/g,(_,n)=>number(n)+'だんめ')
-  .replace(/\d+(?:\.\d+)?/g,number).replace(/÷/g,'、わる、').replace(/[＋+]/g,'、たす、').replace(/[＝=]/g,'、イコール、')
+  .replace(/\d+(?:\.\d+)?/g,number).replace(/÷/g,'、わる、').replace(/×/g,'、かける、').replace(/[＋+]/g,'、たす、').replace(/[＝=]/g,'、イコール、')
   .replace(/→/g,'、から、').replace(/△/g,'うえボタン').replace(/▽/g,'したボタン').replace(/\s+/g,' ').trim();
 }
 let context=null,activated=false,speech=true,effects=true,current=null,lastText='',epoch=0,timer=0;

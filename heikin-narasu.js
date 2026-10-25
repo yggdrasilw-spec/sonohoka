@@ -4,7 +4,8 @@
 const $ = id => document.getElementById(id);
 const M=window.NarasuMotion;
 const A=window.NarasuAudio;
-const names = ['玉','土','水','水差し','式','練習'];
+const Apps=window.NarasuApplications;
+const names = ['玉','土','水','水差し','式','練習','つかう'];
 const waterSets = [[180,60],[180,60,60],[200,80,200,120],[250,50,200,100,200]];
 const jugSets = [...waterSets,[180,60,120,240,90,30],[240,80,200,120,160,40,280,160],[200,80,160,40,120,180,60,140,100,120]];
 const soilSets = [[5,4,1,2],[6,2,1,3],[1,5,5,1],[4,2,4,2,3],[6,1,4,2,3,2]];
@@ -36,13 +37,13 @@ function ensureBeadColors(state){
 }
 function fresh(stage=0, values, extra={}) {
  const defaults = stage===0?[5,4,1,2]:stage===1?soilSets[0]:stage===5?exercises[0].values:waterSets[0];
- S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,soilStartHeight:stage===1?Math.max(...(values||defaults)):null,soilMode:'single',soilComplete:false,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...extra};
+ S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,soilStartHeight:stage===1?Math.max(...(values||defaults)):null,soilMode:'single',soilComplete:false,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...(stage===6?{application:Apps.initial()}:{}),...extra};
  history=[];selected=null;destination=null;hint=0;message='';
  $('totalPanel').open=false;$('answer').value='';
 }
 function persist() {try{localStorage.setItem(KEY,JSON.stringify({state:S,history:history.slice(-60),settings}));}catch{}}
 function tell(text) {message=text;render();}
-function cancel() {token++;cancelAnimationFrame(frame);clearTimeout(soilTimer);soilAuto=false;soilPaused=false;diagramDemo=false;tx=null;selected=null;destination=null;A.cancel();}
+function cancel() {token++;cancelAnimationFrame(frame);clearTimeout(soilTimer);soilAuto=false;soilPaused=false;diagramDemo=false;tx=null;selected=null;destination=null;Apps.cancel();A.cancel();}
 function checkpoint() {history.push(copy(S));if(history.length>100)history.shift();}
 function go(stage) {
  cancel();
@@ -52,7 +53,7 @@ function go(stage) {
  else fresh(stage);
  render();persist();
 }
-function reset() {cancel();const original=S.original.slice();const extras={waterIndex:S.waterIndex,soilIndex:S.soilIndex,practice:S.practice,soilStartHeight:S.soilStartHeight,soilMode:S.soilMode};fresh(S.stage,original,extras);if(S.stage===5)S.diagram=exercises[S.practice].hide?2:0;render();persist();}
+function reset() {cancel();const original=S.original.slice();const extras={waterIndex:S.waterIndex,soilIndex:S.soilIndex,practice:S.practice,soilStartHeight:S.soilStartHeight,soilMode:S.soilMode,...(S.stage===6?{application:Apps.initial(S.application.index)}:{})};fresh(S.stage,original,extras);if(S.stage===5)S.diagram=exercises[S.practice].hide?2:0;render();persist();}
 function startSoil(){
  if(S.stage!==1||tx||!Number.isInteger(S.soilStartHeight))return;
  const original=S.original.slice(),extra={soilIndex:S.soilIndex,soilStartHeight:S.soilStartHeight,soilMode:S.soilMode};
@@ -82,7 +83,7 @@ function scheduleSoil(){
   render();runAnimation(settings.speed==='reduced'?400+lowers*200:settings.speed==='slow'?28000+lowers*6000:16000+lowers*4000);
  },settings.speed==='reduced'?100:650);
 }
-function undo() {if(tx){cancel();message='動きを取り消したよ。';}else if(history.length){cancel();S=history.pop();message='ひとつ前に もどしたよ。';}hint=0;render();persist();}
+function undo() {if(tx||Apps.snapshot().busy){cancel();message='動きを取り消したよ。';}else if(history.length){cancel();S=history.pop();message='ひとつ前に もどしたよ。';}hint=0;render();persist();}
 function refValue(state, ref) {return typeof ref==='number'?state.values[ref]:state[ref];}
 function changeRef(state, ref, delta) {if(typeof ref==='number')state.values[ref]+=delta;else state[ref]+=delta;}
 function transfer(from,to,amount,after) {
@@ -185,6 +186,7 @@ function view() {
  v.jug-=removed;v.values[index]+=arrived;v.transit=removed-arrived;v.activeCup=index;return v;
 }
 function demonstrate() {
+ if(S.stage===6){Apps.demonstrate();return;}
  if(tx)return;
  if(S.stage>=4){
   S.diagram=0;
@@ -208,6 +210,7 @@ function continueDiagramDemo(){
  render();
 }
 function giveHint() {
+ if(S.stage===6){Apps.hint();return;}
  if(tx)return;
  hint=Math.min(3,hint+1);
  if(S.stage>=4&&type()==='water'){
@@ -234,9 +237,10 @@ function answer(event) {
 }
 function next() {
  if(tx)return;
+ if(S.stage===6){cancel();const index=S.application.index;if(index<Apps.problems.length-1){S.application=Apps.initial(index+1);history=[];message='';}else {S.application={...S.application,feedback:'これで8問。平均は、いろいろな量を比べたり、全体を予想したりするときに使えるね。'};}render();persist();return;}
  if(S.stage===2&&S.waterIndex<3){cancel();const index=S.waterIndex+1;fresh(2,waterSets[index],{waterIndex:index});}
- else if(S.stage===5){if(S.practice<exercises.length-1){cancel();const i=S.practice+1;fresh(5,exercises[i].values,{practice:i,diagram:exercises[i].hide?2:0});}else return tell('練習はおしまい。全部を合わせ、同じ数に分けると 平均が求められるね！');}
- else {go(Math.min(5,S.stage+1));return;}render();persist();
+ else if(S.stage===5){if(S.practice<exercises.length-1){cancel();const i=S.practice+1;fresh(5,exercises[i].values,{practice:i,diagram:exercises[i].hide?2:0});}else {go(6);return;}}
+ else {go(Math.min(6,S.stage+1));return;}render();persist();
 }
 function defaultMessage() {
  if(S.stage===0)return '高い棒から 低い棒へ。いちばん上の玉を うつそう。';
@@ -247,14 +251,48 @@ function defaultMessage() {
  return exercises[S.practice].text;
 }
 function btn(label,fn,options={}) {const b=document.createElement('button');b.textContent=label;b.type='button';b.disabled=!!tx||!!options.disabled;if(options.id)b.id=options.id;if(options.primary)b.className='primary';if(options.pressed!==undefined)b.setAttribute('aria-pressed',options.pressed);b.onclick=fn;return b;}
+function applicationNarration(){
+ const app=S.application,p=Apps.current(app);
+ const data=p.values.map((v,i)=>(i+1)+p.item+'目、'+v+p.unit+(p.exclude===i?'、失敗した回':'')).join('。');
+ const choice=p.choice?p.choice.question+'。'+p.choice.options.join('、')+'。':'';
+ return p.title+'。'+Apps.question(app)+'。'+data+'。'+choice+$('message').textContent;
+}
+function renderApplications(){
+ const app=S.application,p=Apps.current(app);
+ $('lessonTitle').textContent=p.title;
+ $('subnav').replaceChildren(document.createTextNode(p.group+'　'+(app.index+1)+' / '+Apps.problems.length));
+ $('message').classList.toggle('is-leveled',app.solved);
+ $('message').textContent=message||(app.solved&&app.feedback.startsWith('できたね！')?'できたね！ 式と考え方も たしかめよう。':app.feedback)||'画像の値から考えよう。ヒントや、ならす動きも使えるよ。';
+ if(app.solved){const label=document.createElement('strong');label.className='leveled-label';label.textContent='正解！';$('message').prepend(label);}
+ // Keep the full question visible even when feedback or a hint replaces the status.
+ Apps.render($('applications'),{state:app,settings,onChange:(state,another)=>{
+  const focused=document.activeElement,answering=focused?.closest('#appAnswerForm'),choosing=focused?.closest('.appChoice');
+  cancel();if(another)history=[];else checkpoint();S.application=state;message='';render();persist();
+  if(another)$('appProblem').focus();
+  else if(answering||choosing){const control=$('appAnswer');if(control&&!control.disabled)control.focus();else if(!state.solved)$('applications').querySelector('.appChoice [aria-pressed="true"]')?.focus();}
+ }});
+ $('applications').querySelector('.appTaskLabel').after(Object.assign(document.createElement('p'),{className:'appQuestion',textContent:Apps.question(app)}));
+ $('undo').hidden=false;$('undo').disabled=!history.length;
+ $('hint').hidden=false;$('hint').disabled=app.solved;$('hint').textContent=app.hint?'ヒント '+app.hint+' / 3':'ヒント';
+ $('demo').hidden=true;$('reset').textContent='この問題を はじめから';$('reset').disabled=false;
+ $('pause').hidden=true;$('pause').textContent='Ⅱ 一時停止';
+ $('next').disabled=false;$('next').textContent=app.index===Apps.problems.length-1?'学習を ふりかえる':'つぎの問題 →';
+ document.querySelector('.guide').hidden=true;
+ A.configure(settings);const feedback=app.solved?'correct':'';
+ if(feedback&&feedback!==audioFeedback)A.play('success');audioFeedback=feedback;
+ if(!$('settings').open&&!$('resume').open)A.speak(app.feedback?$('message').textContent:p.title+'。'+Apps.question(app));
+}
 function render() {
+ $('applications').hidden=S.stage!==6;
+ for(const id of ['cards','drawing','math','answerForm','actions','totalPanel'])$(id).hidden=S.stage===6;
  if(type()==='beads')ensureBeadColors(S);
  $('soilReferences').hidden=S.stage!==1;if(S.stage!==1)$('soilReferences').open=false;
  document.querySelector('.lesson').dataset.stage=S.stage;
  document.querySelector('.lesson').dataset.kind=type();
  document.querySelector('.lesson').dataset.manyCups=S.stage===3&&S.values.length>5;
  $('scenes').replaceChildren(...names.map((name,i)=>{const b=btn(name,()=>go(i));b.disabled=false;b.innerHTML='<small>'+String(i+1).padStart(2,'0')+'</small>'+name;if(S.stage===i)b.setAttribute('aria-current','step');return b;}));
- $('eyebrow').textContent='やってみよう '+(S.stage+1)+' / 6';
+ $('eyebrow').textContent='やってみよう '+(S.stage+1)+' / '+names.length;
+ if(S.stage===6){renderApplications();return;}
  $('lessonTitle').textContent=['ならしてみよう！','地面を「ならす」って？','同じ量に しよう','まとめてから 分けたら？','図がなくても 分かるかな？','べつの問題でも やってみよう'][S.stage];
  const leveled=!tx&&allEqual()&&!(S.stage>=4&&S.diagram===2);
  const correct=!tx&&((S.stage>=4&&S.solved)||(S.stage===5&&type()==='beads'&&allEqual()));
@@ -331,6 +369,7 @@ function renderTotals() {
  $('totalText').textContent='はじめ：'+sum(S.original)+' '+unit()+'　／　いま：'+ground+' ＋ 容器 '+held+' ＋ 移動中 '+transit+' ＝ '+(ground+held+transit)+' '+unit();
 }
 function renderBoard() {
+ if(S.stage===6)return;
  const v=view(),kind=type();
  $('board').setAttribute('viewBox',kind==='water'?'0 0 960 460':kind==='soil'?'0 0 1080 380':'0 0 960 380');
  const context={state:S,visual:v,tx,soilAuto,selected,destination,average:average(),hintLine:(S.stage>=4?hint>=3||allEqual():settings.line||hint>=3||allEqual()),numbers:settings.numbers,drag};
@@ -346,10 +385,10 @@ window.addEventListener('pointercancel',()=>{drag=null;renderBoard();});
 document.addEventListener('click',e=>{const control=e.target.closest('button,[data-soil-height],[data-col]');if(control&&control.id!=='audioStop'&&!control.disabled&&control.getAttribute('aria-disabled')!=='true'){A.activate();A.play('tap');}},{capture:true});
 $('undo').onclick=undo;$('reset').onclick=reset;$('hint').onclick=giveHint;$('demo').onclick=demonstrate;$('next').onclick=next;
 $('answerForm').onsubmit=answer;
-$('pause').onclick=()=>{A.cancel();if(soilAuto){soilPaused=!soilPaused;if(tx){tx.paused=soilPaused;tx.last=0;}if(!soilPaused)scheduleSoil();}else if(tx){tx.paused=!tx.paused;tx.last=0;}$('pause').textContent=tx?.paused||soilPaused?'▶ 再開':'Ⅱ 一時停止';};
-$('speak').onclick=()=>{A.activate();if(!settings.speech)return tell('読み上げは 先生の設定で使えるよ。');if(!A.speak($('lessonTitle').textContent+'。'+$('message').textContent,{force:true}))tell('この端末では読み上げを使えません。画面の説明を見てね。');};
+$('pause').onclick=()=>{A.cancel();if(S.stage===6){Apps.pause();$('pause').textContent=Apps.snapshot().paused?'▶ 再開':'Ⅱ 一時停止';return;}if(soilAuto){soilPaused=!soilPaused;if(tx){tx.paused=soilPaused;tx.last=0;}if(!soilPaused)scheduleSoil();}else if(tx){tx.paused=!tx.paused;tx.last=0;}$('pause').textContent=tx?.paused||soilPaused?'▶ 再開':'Ⅱ 一時停止';};
+$('speak').onclick=()=>{A.activate();if(!settings.speech)return tell('読み上げは 先生の設定で使えるよ。');if(!A.speak(S.stage===6?applicationNarration():$('lessonTitle').textContent+'。'+$('message').textContent,{force:true}))tell('この端末では読み上げを使えません。画面の説明を見てね。');};
 $('audioStop').onclick=()=>A.cancel();
-$('settingsOpen').onclick=()=>{A.cancelSpeech();if((tx&&!tx.paused)||(soilAuto&&!soilPaused))$('pause').click();for(const key of ['speed','speech','effects','numbers','line']){if(key==='speed')$(key).value=settings[key];else $(key).checked=settings[key];}$('custom').value=S.original.join(',');$('settingError').textContent='';$('settings').showModal();};
+$('settingsOpen').onclick=()=>{A.cancelSpeech();if((tx&&!tx.paused)||(soilAuto&&!soilPaused)||(Apps.snapshot().busy&&!Apps.snapshot().paused))$('pause').click();for(const key of ['speed','speech','effects','numbers','line']){if(key==='speed')$(key).value=settings[key];else $(key).checked=settings[key];}$('custom').value=S.original.join(',');$('settingError').textContent='';$('settings').showModal();};
 for(const key of ['speed','speech','effects','numbers','line'])$(key).onchange=()=>{settings[key]=key==='speed'?$(key).value:$(key).checked;A.configure(settings);renderBoard();persist();};
 $('apply').onclick=()=>{
  if(S.stage>=4){$('settingError').textContent='数値の編集は、玉・土・水・水差しの場面で使えます。';return;}
@@ -362,7 +401,7 @@ $('apply').onclick=()=>{
 let saved;try{saved=JSON.parse(localStorage.getItem(KEY));}catch{}
 function validSaved(record){
  if(!record?.state)return false;const s=record.state,t=s.stage===0?'beads':s.stage===1?'soil':'water';
- return Number.isInteger(s.stage)&&s.stage>=0&&s.stage<=5&&Number.isInteger(s.practice)&&s.practice>=0&&s.practice<exercises.length&&Array.isArray(s.original)&&Array.isArray(s.values)&&s.original.length===s.values.length&&s.values.length>=2&&s.values.length<=((s.stage===3||s.stage===4)?10:6)&&[...s.original,...s.values,s.bucket,s.jug].every(x=>Number.isFinite(x)&&x>=0&&x<=3000&&Number.isInteger(t==='soil'?x*8:x))&&sum(s.original)===sum(s.values)+s.bucket+s.jug&&s.bucket<=2&&s.values.every(x=>x<=(t==='water'?300:6));
+ return Number.isInteger(s.stage)&&s.stage>=0&&s.stage<=6&&(s.stage!==6||Apps.valid(s.application))&&Number.isInteger(s.practice)&&s.practice>=0&&s.practice<exercises.length&&Array.isArray(s.original)&&Array.isArray(s.values)&&s.original.length===s.values.length&&s.values.length>=2&&s.values.length<=((s.stage===3||s.stage===4)?10:6)&&[...s.original,...s.values,s.bucket,s.jug].every(x=>Number.isFinite(x)&&x>=0&&x<=3000&&Number.isInteger(t==='soil'?x*8:x))&&sum(s.original)===sum(s.values)+s.bucket+s.jug&&s.bucket<=2&&s.values.every(x=>x<=(t==='water'?300:6));
 }
 fresh();
 if(validSaved(saved)){settings={...settings,...saved.settings};$('resume').showModal();}
@@ -371,5 +410,5 @@ $('resumeNo').onclick=()=>{$('resume').close();fresh();render();persist();};
 $('resume').addEventListener('cancel',()=>persist());
 render();
 // Exposed read-only snapshots make conservation and interrupted moves verifiable.
-window.Narasu={snapshot:()=>copy({state:S,visual:view(),busy:!!tx,paused:!!tx?.paused,soilAuto,soilPaused,diagramDemo,hint,history:history.length,selected,destination}),validateInput:validSaved};
+window.Narasu={snapshot:()=>copy({state:S,visual:view(),busy:!!tx||Apps.snapshot().busy,paused:!!tx?.paused||Apps.snapshot().paused,application:S.stage===6?Apps.snapshot():null,soilAuto,soilPaused,diagramDemo,hint,history:history.length,selected,destination}),validateInput:validSaved};
 })();
