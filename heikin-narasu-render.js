@@ -7,7 +7,7 @@ function stone(x,y,w,h,index,kind){
  const colors=['#b98650','#c89b60','#ac7545','#d0a36b'];
  return `<path data-grain="${kind}" d="M${x+2} ${y+1}L${x+w-4} ${y}L${x+w} ${y+5}L${x+w-2} ${y+h-2}L${x+4} ${y+h}L${x} ${y+h-5}Z" fill="${colors[index%4]}" stroke="#77502e" stroke-width="1.2"/>`;
 }
-function soil({state,visual}){
+function soil({state,visual,tx,soilAuto}){
  const s=visual.soil,left=170,right=790,base=306,scale=32,sub=(right-left)/(state.values.length*8),gw=sub-2,gh=27;
  const line=base-s.vehicle.height*scale,blade=left+s.vehicle.x*sub,chosen=Number.isInteger(state.soilStartHeight);
  let out=`<path d="M${left} ${base+4}H${right}" stroke="#856640" stroke-width="4"/>`;
@@ -28,12 +28,19 @@ function soil({state,visual}){
  </g>`;
  out+=chosen?(depth>.15?machine+ground:ground+machine):ground;
  out+=text(480,351,'横に 押す。下が 空いたら、落ちて たまる。','muted');
+ out+=text(875,65,'はじめの高さ','muted');
+ const startHeight=state.soilStartHeight??s.vehicle.height;
+ for(const [delta,y,label,disabled] of [[1,82,'△',startHeight>=Math.max(...state.original)],[-1,222,'▽',startHeight<=1]]){
+  const locked=!!tx||!!soilAuto||disabled;
+  out+=`<g class="soilHeightControl" role="button" tabindex="${locked?-1:0}" data-soil-height="${delta}" aria-label="押す高さを1段${delta===1?'上げる':'下げる'}" aria-disabled="${locked}"><rect x="827" y="${y}" width="96" height="80" rx="14" fill="#eff8f5" stroke="#007e80" stroke-width="3"/>${text(875,y+53,label)}</g>`;
+ }
+ out+=text(875,199,`下から ${state.soilStartHeight??s.vehicle.height}段目`,'muted');
  return out;
 }
 function water({state,visual,tx,selected,destination,hintLine}){
  const base=370,cap=300,height=180,width=76,n=state.values.length,jug=state.stage===3;
- const left=jug?45:75,right=jug?650:885,cell=(right-left)/n,xs=Array.from({length:n},(_,i)=>left+(i+.5)*cell);
- const specs=Object.fromEntries(xs.map((x,i)=>[i,{x,width,height,capacity:cap}]));
+ const left=jug?45:75,right=jug?650:885,cell=(right-left)/n,xs=Array.from({length:n},(_,i)=>left+(i+.5)*cell),cupWidth=Math.min(width,cell*.72);
+ const specs=Object.fromEntries(xs.map((x,i)=>[i,{x,width:cupWidth,height,capacity:cap}]));
  if(jug)specs.jug={x:807,width:106,height:170,capacity:state.original.reduce((a,b)=>a+b,0)};
  const value=key=>typeof key==='number'?visual.values[key]:visual.jug;
  let moving=null,to=null,p=0,pose=null;
@@ -61,10 +68,11 @@ function water({state,visual,tx,selected,destination,hintLine}){
  for(let i=0;i<n;i++){
   const x=xs[i],s=specs[i],chosen=selected===i||destination===i;
   out+=`<g role="button" tabindex="0" data-col="${i}" aria-label="${i+1}ばん ${visual.values[i]} mL" aria-pressed="${chosen}"><rect class="target" x="${x-cell/2+2}" y="174" width="${cell-4}" height="280" rx="15"/>`;
-  if(moving===i)out+=`<path d="M${x-width/2} ${base-height}V${base}H${x+width/2}V${base-height}" fill="none" stroke="#bacbd0" stroke-dasharray="5 6" stroke-width="2"/>`;
+  if(moving===i)out+=`<path d="M${x-s.width/2} ${base-height}V${base}H${x+s.width/2}V${base-height}" fill="none" stroke="#bacbd0" stroke-dasharray="5 6" stroke-width="2"/>`;
   else out+=vessel(i,s,visual.values[i]);
-  if(hintLine&&state.stage!==4)out+=`<path class="hintLine" d="M${x-width/2-5} ${base-height*(state.original.reduce((a,b)=>a+b,0)/n)/cap}h${width+10}"/>`;
-  out+=text(x,407,`${visual.values[i]} mL`)+text(x,440,`${i+1}ばん`,'muted')+'</g>';
+  if(hintLine&&state.stage!==4)out+=`<path class="hintLine" d="M${x-s.width/2-5} ${base-height*(state.original.reduce((a,b)=>a+b,0)/n)/cap}h${s.width+10}"/>`;
+  if(n>5)out+=`<text x="${x}" y="405" text-anchor="middle" style="font-size:26px">${visual.values[i]}</text><text x="${x}" y="427" text-anchor="middle" class="muted" style="font-size:18px">mL</text><text x="${x}" y="453" text-anchor="middle" class="muted" style="font-size:20px">${i+1}ばん</text></g>`;
+  else out+=text(x,407,`${visual.values[i]} mL`)+text(x,440,`${i+1}ばん`,'muted')+'</g>';
  }
  if(jug){const s=specs.jug;
   if(moving!=='jug')out+=vessel('jug',s,visual.jug);

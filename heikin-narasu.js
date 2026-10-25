@@ -5,6 +5,7 @@ const $ = id => document.getElementById(id);
 const M=window.NarasuMotion;
 const names = ['玉','土','水','水差し','式','練習'];
 const waterSets = [[180,60],[180,60,60],[200,80,200,120],[250,50,200,100,200]];
+const jugSets = [...waterSets,[180,60,120,240,90,30],[240,80,200,120,160,40,280,160],[200,80,160,40,120,180,60,140,100,120]];
 const soilSets = [[5,4,1,2],[6,2,1,3],[1,5,5,1],[4,2,4,2,3],[6,1,4,2,3,2]];
 const exercises = [
  {type:'beads',values:[4,2,3],text:'玉を うつして、同じ高さにしよう。'},
@@ -33,7 +34,7 @@ function ensureBeadColors(state){
 }
 function fresh(stage=0, values, extra={}) {
  const defaults = stage===0?[5,4,1,2]:stage===1?soilSets[0]:stage===5?exercises[0].values:waterSets[0];
- S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,soilStartHeight:null,soilMode:'single',soilComplete:false,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...extra};
+ S={stage,original:[...(values||defaults)],values:[...(values||defaults)],bucket:0,jug:0,vehicle:0,jugPhase:'collect',collected:[],waterIndex:0,soilIndex:0,soilStartHeight:stage===1?Math.max(...(values||defaults)):null,soilMode:'single',soilComplete:false,practice:0,step:0,solved:false,diagram:stage===4?1:0,distributionStarted:false,...extra};
  history=[];selected=null;destination=null;hint=0;message='';
  $('totalPanel').open=false;$('answer').value='';
 }
@@ -54,6 +55,16 @@ function startSoil(){
  if(S.stage!==1||tx||!Number.isInteger(S.soilStartHeight))return;
  const original=S.original.slice(),extra={soilIndex:S.soilIndex,soilStartHeight:S.soilStartHeight,soilMode:S.soilMode};
  cancel();fresh(1,original,extra);soilAuto=true;soilPaused=false;scheduleSoil();render();
+}
+function changeSoilHeight(delta){
+ if(S.stage!==1||tx||soilAuto)return;
+ const height=Math.max(1,Math.min(Math.max(...S.original),(S.soilStartHeight??Math.max(...S.original))+delta));
+ if(height===S.soilStartHeight)return;
+ S.soilStartHeight=height;delete S.soilGrains;delete S.soilVehicle;S.values=S.original.slice();S.soilComplete=false;S.soilBlocked=false;message='';
+ render();persist();
+ const control=$('board').querySelector('[data-soil-height="'+delta+'"]');
+ if(control?.getAttribute('aria-disabled')==='false')control.focus();
+ else $('board').querySelector('[data-soil-height][aria-disabled="false"]')?.focus();
 }
 function scheduleSoil(){
  clearTimeout(soilTimer);if(!soilAuto||soilPaused||S.stage!==1||tx)return;
@@ -225,9 +236,9 @@ function next() {
 }
 function defaultMessage() {
  if(S.stage===0)return '高い棒から 低い棒へ。いちばん上の玉を うつそう。';
- if(S.stage===1)return 'はじめに押す高さと、押し方を選ぼう。選んだ高さで地面はどう変わるかな？';
+ if(S.stage===1)return '図の △ ▽ で、はじめに押す高さを変えよう。ブルドーザーの位置を見て、試してみよう。';
  if(S.stage===2)return 'コップを2つ選んで、同じ量にしてみよう。';
- if(S.stage===3)return S.jugPhase==='collect'?'コップを1つずつ選んで、水差しに集めよう。':'水差しの横線は、コップの数で等しく分けた目印だよ。同じ量ずつ分けよう。';
+ if(S.stage===3)return S.jugPhase==='collect'?'コップが '+S.values.length+'こでも、やり方は同じ。1つずつ選んで、全部の水を水差しに集めよう。':'水差しの横線は、'+S.values.length+'このコップに等しく分けた目印だよ。同じ量ずつ分けよう。';
  if(S.stage===4)return '元の量のカードを見て、順に計算しよう。';
  return exercises[S.practice].text;
 }
@@ -237,12 +248,18 @@ function render() {
  $('soilReferences').hidden=S.stage!==1;if(S.stage!==1)$('soilReferences').open=false;
  document.querySelector('.lesson').dataset.stage=S.stage;
  document.querySelector('.lesson').dataset.kind=type();
+ document.querySelector('.lesson').dataset.manyCups=S.stage===3&&S.values.length>5;
  $('scenes').replaceChildren(...names.map((name,i)=>{const b=btn(name,()=>go(i));b.disabled=false;b.innerHTML='<small>'+String(i+1).padStart(2,'0')+'</small>'+name;if(S.stage===i)b.setAttribute('aria-current','step');return b;}));
  $('eyebrow').textContent='やってみよう '+(S.stage+1)+' / 6';
  $('lessonTitle').textContent=['ならしてみよう！','地面を「ならす」って？','同じ量に しよう','まとめてから 分けたら？','図がなくても 分かるかな？','べつの問題でも やってみよう'][S.stage];
+ const leveled=!tx&&allEqual()&&!(S.stage>=4&&S.diagram===2);
+ const correct=!tx&&((S.stage>=4&&S.solved)||(S.stage===5&&type()==='beads'&&allEqual()));
+ $('message').classList.toggle('is-leveled',leveled||correct);
  $('message').textContent=message||defaultMessage();
+ if(leveled||correct){const label=document.createElement('strong');label.className='leveled-label';label.textContent=correct?'正解！':'ならせたね！';$('message').prepend(label);}
  const sub=$('subnav');sub.replaceChildren();
  if(S.stage===2)waterSets.forEach((v,i)=>sub.append(btn((i+2)+'このコップ',()=>{cancel();fresh(2,v,{waterIndex:i});render();persist();},{pressed:S.waterIndex===i})));
+ if(S.stage===3)jugSets.forEach(v=>sub.append(btn(v.length+'このコップ',()=>{cancel();fresh(3,v);render();persist();},{pressed:S.original.length===v.length})));
  if(S.stage===1){
   const select=(id,label,choices,value,onchange)=>{
    const wrap=document.createElement('label');wrap.className='soilChoice';wrap.append(document.createTextNode(label));
@@ -250,7 +267,6 @@ function render() {
    for(const [key,name] of choices){const option=document.createElement('option');option.value=key;option.textContent=name;control.append(option);}
    control.value=value;control.onchange=()=>{onchange(control.value);delete S.soilGrains;delete S.soilVehicle;S.values=S.original.slice();S.soilComplete=false;message='';render();persist();};wrap.append(control);sub.append(wrap);
   };
-  select('soilHeight','はじめに押す高さ',[['','高さを選ぶ'],...Array.from({length:Math.max(...S.original)},(_,i)=>[String(i+1),'下から '+(i+1)+'段目'])],S.soilStartHeight===null?'':String(S.soilStartHeight),v=>{S.soilStartHeight=v===''?null:Number(v);});
   select('soilMode','押し方',[['single','選んだ高さだけ'],['layers','一層ずつ下げる']],S.soilMode,v=>{S.soilMode=v;});
   sub.append(btn('ならしてみる',startSoil,{id:'soilPlay',primary:true,disabled:S.soilStartHeight===null||soilAuto}));
   const b=btn('べつの地面を 見る',()=>{cancel();const i=(S.soilIndex+1)%soilSets.length;fresh(1,soilSets[i],{soilIndex:i});render();persist();},{id:'anotherSoil'});b.disabled=false;sub.append(b);
@@ -309,12 +325,12 @@ function renderTotals() {
 function renderBoard() {
  const v=view(),kind=type();
  $('board').setAttribute('viewBox',kind==='water'?'0 0 960 460':'0 0 960 380');
- const context={state:S,visual:v,tx,selected,destination,average:average(),hintLine:(S.stage>=4?hint>=3||allEqual():settings.line||hint>=3||allEqual()),numbers:settings.numbers,drag};
+ const context={state:S,visual:v,tx,soilAuto,selected,destination,average:average(),hintLine:(S.stage>=4?hint>=3||allEqual():settings.line||hint>=3||allEqual()),numbers:settings.numbers,drag};
  $('board').innerHTML=NarasuRender[kind](context);
 }
 // Stable delegated handlers survive SVG redraws and work with touch, mouse and keyboard.
-$('board').addEventListener('click',e=>{const col=e.target.closest('[data-col]');if(col)selectColumn(Number(col.dataset.col));});
-$('board').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const col=e.target.closest('[data-col]');if(col){e.preventDefault();const i=Number(col.dataset.col);selectColumn(i);$('board').querySelector('[data-col="'+i+'"]')?.focus();}});
+$('board').addEventListener('click',e=>{const height=e.target.closest('[data-soil-height]');if(height){if(height.getAttribute('aria-disabled')==='false')changeSoilHeight(Number(height.dataset.soilHeight));return;}const col=e.target.closest('[data-col]');if(col)selectColumn(Number(col.dataset.col));});
+$('board').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const height=e.target.closest('[data-soil-height]');if(height){e.preventDefault();if(height.getAttribute('aria-disabled')==='false')changeSoilHeight(Number(height.dataset.soilHeight));return;}const col=e.target.closest('[data-col]');if(col){e.preventDefault();const i=Number(col.dataset.col);selectColumn(i);$('board').querySelector('[data-col="'+i+'"]')?.focus();}});
 $('board').addEventListener('pointerdown',e=>{if(tx||S.stage===3||S.stage===4||type()==='soil')return;const col=e.target.closest('[data-col]');if(!col)return;drag={index:Number(col.dataset.col),startX:e.clientX,startY:e.clientY,moved:false,x:0,y:0};});
 $('board').addEventListener('pointermove',e=>{if(!drag)return;if(Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>10)drag.moved=true;if(drag.moved){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('board').getScreenCTM().inverse());drag.x=p.x;drag.y=p.y;renderBoard();}});
 window.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;if(!d.moved)return;const col=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-col]');const target=col?Number(col.dataset.col):-1;if(target>=0&&target!==d.index&&S.values[d.index]){selected=d.index;selectColumn(target);}else{selected=null;destination=null;tell('ここには おけないよ。別の棒・コップへ うつそう。');}const stop=ev=>{ev.stopImmediatePropagation();ev.preventDefault();};$('board').addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>$('board').removeEventListener('click',stop,true),0);});
@@ -328,18 +344,19 @@ for(const key of ['speed','speech','numbers','line'])$(key).onchange=()=>{settin
 $('apply').onclick=()=>{
  if(S.stage>=4){$('settingError').textContent='数値の編集は、玉・土・水・水差しの場面で使えます。';return;}
  const raw=$('custom').value.trim().split(/[,、\s]+/),v=raw.map(Number),water=type()==='water',n=v.length,a=sum(v)/n;
- const valid=raw.every(x=>x!=='')&&n>=(water?2:3)&&n<=(water?5:6)&&v.every(x=>Number.isInteger(x)&&x>=0&&x<=(water?300:6))&&sum(v)>0&&(water?v.every(x=>x%5===0)&&a%5===0:Number.isInteger(a));
- if(!valid){$('settingError').textContent=water?'2～5個、0～300mL、5mL単位で同じ量にできる数を入れてください。':'3～6列、0～6、同じ高さが整数になる数を入れてください。';return;}
+ const maxCount=S.stage===3?10:water?5:6;
+ const valid=raw.every(x=>x!=='')&&n>=(water?2:3)&&n<=maxCount&&v.every(x=>Number.isInteger(x)&&x>=0&&x<=(water?300:6))&&sum(v)>0&&(water?v.every(x=>x%5===0)&&a%5===0:Number.isInteger(a));
+ if(!valid){$('settingError').textContent=water?'2～'+maxCount+'個、0～300mL、5mL単位で同じ量にできる数を入れてください。':'3～6列、0～6、同じ高さが整数になる数を入れてください。';return;}
  cancel();fresh(S.stage,v);render();persist();$('settings').close();
 };
 let saved;try{saved=JSON.parse(localStorage.getItem(KEY));}catch{}
 function validSaved(record){
  if(!record?.state)return false;const s=record.state,t=s.stage===0?'beads':s.stage===1?'soil':'water';
- return Number.isInteger(s.stage)&&s.stage>=0&&s.stage<=5&&Number.isInteger(s.practice)&&s.practice>=0&&s.practice<exercises.length&&Array.isArray(s.original)&&Array.isArray(s.values)&&s.original.length===s.values.length&&s.values.length>=2&&s.values.length<=6&&[...s.original,...s.values,s.bucket,s.jug].every(x=>Number.isFinite(x)&&x>=0&&x<=1800&&Number.isInteger(t==='soil'?x*8:x))&&sum(s.original)===sum(s.values)+s.bucket+s.jug&&s.bucket<=2&&s.values.every(x=>x<=(t==='water'?300:6));
+ return Number.isInteger(s.stage)&&s.stage>=0&&s.stage<=5&&Number.isInteger(s.practice)&&s.practice>=0&&s.practice<exercises.length&&Array.isArray(s.original)&&Array.isArray(s.values)&&s.original.length===s.values.length&&s.values.length>=2&&s.values.length<=((s.stage===3||s.stage===4)?10:6)&&[...s.original,...s.values,s.bucket,s.jug].every(x=>Number.isFinite(x)&&x>=0&&x<=3000&&Number.isInteger(t==='soil'?x*8:x))&&sum(s.original)===sum(s.values)+s.bucket+s.jug&&s.bucket<=2&&s.values.every(x=>x<=(t==='water'?300:6));
 }
 fresh();
 if(validSaved(saved)){settings={...settings,...saved.settings};$('resume').showModal();}
-$('resumeYes').onclick=()=>{if(validSaved(saved)){S=saved.state;history=Array.isArray(saved.history)?saved.history:[];if(S.stage===1)fresh(1,S.original,{soilIndex:S.soilIndex||0,soilStartHeight:Number.isInteger(S.soilStartHeight)&&S.soilStartHeight<=Math.max(...S.original)?S.soilStartHeight:null,soilMode:S.soilMode==='layers'?'layers':'single'});}message='つづきから はじめよう。';$('resume').close();render();};
+$('resumeYes').onclick=()=>{if(validSaved(saved)){S=saved.state;history=Array.isArray(saved.history)?saved.history:[];if(S.stage===1)fresh(1,S.original,{soilIndex:S.soilIndex||0,soilStartHeight:Number.isInteger(S.soilStartHeight)&&S.soilStartHeight>=1&&S.soilStartHeight<=Math.max(...S.original)?S.soilStartHeight:Math.max(...S.original),soilMode:S.soilMode==='layers'?'layers':'single'});}message='つづきから はじめよう。';$('resume').close();render();};
 $('resumeNo').onclick=()=>{$('resume').close();fresh();render();persist();};
 $('resume').addEventListener('cancel',()=>persist());
 render();
