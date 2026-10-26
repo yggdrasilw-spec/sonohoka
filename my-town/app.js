@@ -10,12 +10,13 @@
   const percent=n=>(14+64*n)/540*100;
   const label=i=>`${String.fromCharCode(65+Math.floor(i/4))}${i%4+1}`;
   const name=i=>byId.get(state.plots[i])?.name||'';
+  const canNavigate=i=>Boolean(byId.get(state.plots[i])?.canNavigate);
   const message=text=>{$('status').textContent=text;};
   function validate(data){
     if(!data||data.version!==1||typeof data.title!=='string'||data.title.length>40||!Array.isArray(data.plots)||data.plots.length!==16||data.plots.some(p=>p!==null&&!byId.has(p)))throw Error('町ファイルの形式がちがいます。');
     for(const k of ['start','goal'])if(data[k]!==null&&(!Number.isInteger(data[k])||data[k]<0||data[k]>15||!data.plots[data[k]]))throw Error('出発地・目的地のデータを確認してください。');
     if(data.start!==null&&data.start===data.goal)throw Error('出発地と目的地は別の場所にしてください。');
-    return {version:1,title:data.title,plots:[...data.plots],start:data.start,goal:data.goal};
+    return {version:1,title:data.title,plots:[...data.plots],start:data.start!==null&&byId.get(data.plots[data.start]).canNavigate?data.start:null,goal:data.goal!==null&&byId.get(data.plots[data.goal]).canNavigate?data.goal:null};
   }
   function save(){
     try{localStorage.setItem(KEY,JSON.stringify(state));$('save-state').textContent='このブラウザーに自動保存しました。共有端末ではファイルでも保存しましょう。';}
@@ -39,12 +40,12 @@
   }
   function renderPalette(){
     const query=$('search').value.trim().toLowerCase(),cat=$('category').value;
-    let count=0;paletteButtons.forEach((b,i)=>{const p=places[i];const visible=(query?`${p.name} ${p.ja}`.toLowerCase().includes(query):cat==='all'||p.category===cat);b.hidden=!visible;b.querySelector('.ja').hidden=!$('translations').checked;if(visible)count++;});
+    let count=0;paletteButtons.forEach((b,i)=>{const p=places[i];const visible=(query?`${p.name} ${p.ja} ${p.aliases.join(' ')}`.toLowerCase().includes(query):cat==='all'||p.category===cat);b.hidden=!visible;b.querySelector('.ja').hidden=!$('translations').checked;if(visible)count++;});
     $('no-results')?.remove();if(!count){const p=document.createElement('p');p.id='no-results';p.textContent='見つかりません。別のことばで探してみましょう。';$('palette').append(p);}
   }
-  function choose(id){selected=id;paletteButtons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.id===id)));$('erase').setAttribute('aria-pressed',String(id==='erase'));$('selection').textContent=id==='erase'?'消したい場所を押しましょう。':`${byId.get(id).name}（${byId.get(id).ja}）を置きます。町の場所を押しましょう。`;}
+  function choose(id){selected=id;paletteButtons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.id===id)));$('erase').setAttribute('aria-pressed',String(id==='erase'));$('selection').textContent=id==='erase'?'消したい場所を押しましょう。':`${byId.get(id).name}（${byId.get(id).ja}）を置きます。町の場所を押しましょう。${byId.get(id).canNavigate?'':' この絵は町のことばを表し、出発地・目的地には使いません。'}`;}
   function renderEndpoints(){
-    for(const k of ['start','goal']){const sel=$(k),currentValue=state[k];sel.replaceChildren(new Option('選んでください',''));state.plots.forEach((id,i)=>{if(id)sel.add(new Option(`${label(i)} · ${byId.get(id).name}（${byId.get(id).ja}）`,String(i)));});sel.value=currentValue===null?'':String(currentValue);}
+    for(const k of ['start','goal']){const sel=$(k),currentValue=state[k];sel.replaceChildren(new Option('選んでください',''));state.plots.forEach((id,i)=>{if(id&&canNavigate(i))sel.add(new Option(`${label(i)} · ${byId.get(id).name}（${byId.get(id).ja}）`,String(i)));});sel.value=currentValue===null?'':String(currentValue);}
   }
   function pathBetween(a,b){
     const start=entrance(a),goal=entrance(b),key=p=>p.x+','+p.y,q=[[start]],seen=new Set([key(start)]);
@@ -53,9 +54,9 @@
   }
   const direction=(a,b)=>b.x>a.x?'E':b.x<a.x?'W':b.y>a.y?'S':'N';
   function plan(a,b){
-    if(a===b)return null;const path=pathBetween(a,b);if(!path||path.length<2)return null;
+    if(a===b||!canNavigate(a)||!canNavigate(b))return null;const path=pathBetween(a,b);if(!path||path.length<2)return null;
     const initial=direction(path[0],path[1]);
-    const steps=[{type:'intro',text:`Start from the ${name(a)}.`,ja:`${byId.get(state.plots[a]).ja}の上の入口から出発。矢印 ${arrows[initial]} の向きで始めます。`}];
+    const steps=[{type:'intro',text:`Start at the ${name(a)}.`,ja:`${byId.get(state.plots[a]).ja}の上の入口から出発。矢印 ${arrows[initial]} の向きで始めます。`}];
     let last=initial,segment=[path[0]];
     for(let i=1;i<path.length;i++){
       const dir=direction(path[i-1],path[i]);
@@ -64,14 +65,14 @@
     }
     steps.push({type:'move',text:'Go straight.',ja:'まっすぐ進みましょう。',nodes:segment,dir:last});
     const side=last==='E'?'right':'left'; // Entrance is always on the north road; final move is horizontal.
-    steps.push({type:'arrive',text:`You can see the ${name(b)} on your ${side}.`,ja:`${side==='right'?'右':'左'}に${byId.get(state.plots[b]).ja}が見えます。目的地の入口に着きました。`});
+    steps.push({type:'arrive',text:`The ${name(b)} is on your ${side}.`,ja:`${side==='right'?'右':'左'}に${byId.get(state.plots[b]).ja}が見えます。目的地の入口に着きました。`});
     return {path,steps,initial};
   }
   function prepare(){
     route=null;$('character').hidden=true;$('route-path')?.remove();$('position').textContent='';$('town-name').readOnly=stage==='guide';
-    if(state.start===null||state.goal===null){$('route-summary').textContent=state.plots.filter(Boolean).length<2?'町に2つ以上の場所を置きましょう。':'S 出発地と G 目的地を選びましょう。';controls();return;}
+    if(state.start===null||state.goal===null){$('route-summary').textContent=state.plots.filter((_,i)=>canNavigate(i)).length<2?'道案内する場所を2つ以上置きましょう（street・town以外）。':'S 出発地と G 目的地を選びましょう。';controls();return;}
     route=plan(state.start,state.goal);if(!route){$('route-summary').textContent='出発地と目的地は別の場所にしてください。';controls();return;}
-    $('route-summary').textContent=`Where is the ${name(state.goal)}? — ${label(state.start)} から ${label(state.goal)} へ。まず、自分のことばで案内してみよう。`;
+    $('route-summary').textContent=`Excuse me, where is the ${name(state.goal)}? — ${label(state.start)} から ${label(state.goal)} へ。まず、自分のことばで案内してみよう。`;
     if(stage==='guide'){$('character').hidden=false;setPosition(route.path[0]);setFrame(route.initial,0);}
     controls();
   }
@@ -84,7 +85,7 @@
     if(!$('sound').checked||!window.speechSynthesis||t!==token)return Promise.resolve();
     return new Promise(resolve=>{
       let done=false,timer;const finish=()=>{if(done)return;done=true;clearTimeout(timer);if(speechFinish===finish)speechFinish=null;resolve();};speechFinish=finish;
-      try{const utterance=new SpeechSynthesisUtterance(text),voices=speechSynthesis.getVoices();const voice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang.startsWith('en'));if(!voice&&voices.length){$('speech-note').textContent='英語の音声が見つからないため、文字と動きで案内します。';finish();return;}utterance.lang='en-US';utterance.rate=.85;if(voice)utterance.voice=voice;utterance.onend=finish;utterance.onerror=()=>{$('speech-note').textContent='音声を再生できませんでした。文字と動きで案内します。';finish();};timer=setTimeout(()=>{if(t===token){try{speechSynthesis.cancel();}catch{}$('speech-note').textContent='音声の応答を待たず、文字と動きで続けます。';}finish();},Math.min(12000,2000+text.length*130));speechSynthesis.speak(utterance);}catch{finish();$('speech-note').textContent='音声を使えないため、文字と動きで案内します。';}
+      try{const utterance=new SpeechSynthesisUtterance(text),voices=speechSynthesis.getVoices();const voice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang.startsWith('en'));if(!voice&&voices.length){$('speech-note').textContent='英語の音声が見つからないため、文字と動きで案内します。';finish();return;}utterance.lang='en-US';utterance.rate=.85;if(voice){utterance.voice=voice;if(!voice.lang.toLowerCase().startsWith('en-us'))$('speech-note').textContent='米国英語の声がないため、別の英語音声を使います。';}utterance.onend=finish;utterance.onerror=()=>{$('speech-note').textContent='音声を再生できませんでした。文字と動きで案内します。';finish();};timer=setTimeout(()=>{if(t===token){try{speechSynthesis.cancel();}catch{}$('speech-note').textContent='音声の応答を待たず、文字と動きで続けます。';}finish();},Math.min(12000,2000+text.length*130));speechSynthesis.speak(utterance);}catch{finish();$('speech-note').textContent='音声を使えないため、文字と動きで案内します。';}
     });
   }
   function showStep(step){$('directions').querySelectorAll('li').forEach(e=>e.classList.remove('active'));const li=document.createElement('li');li.className='active';const en=document.createElement('span');en.lang='en';en.textContent=step.text;const ja=document.createElement('span');ja.className='translation';ja.textContent=step.ja;li.append(en,ja);$('directions').append(li);}

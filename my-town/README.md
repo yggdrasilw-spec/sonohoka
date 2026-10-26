@@ -6,8 +6,8 @@
 
 ## 授業での使い方
 
-1. 「町をつくる」で場所の絵を選び、地図の区画を押します。16区画あり、同じ場所を複数置けます。初めは「よく使う場所」を表示します。「すべての場所」で元HTMLの40語すべてを選べます。検索は英語名と表示している日本語訳に対応します。
-2. 「道案内をする」で、S 出発地と G 目的地を選びます。A1〜D4の位置記号で地図と選択欄を対応させます。
+1. 「町をつくる」で場所の絵を選び、地図の区画を押します。16区画あり、同じ場所を複数置けます。初めは「よく使う場所」を表示します。「すべての場所」で元HTMLの40種類すべてを選べます。表示名は米国での使用を確認して調整しています。検索は英語名と表示している日本語訳に対応します。
+2. 「道案内をする」で、S 出発地と G 目的地を選びます（町全体の語彙street / townは地点指定の対象外です）。A1〜D4の位置記号で地図と選択欄を対応させます。
 3. まず友達に英語で案内してから、「1つずつ見る」または「お手本を再生」で確認します。別の正しい道順もあり、お手本だけが正解という判定はしません。
 4. 役割を交代します。「同じ道案内をもう一度」で条件を保ったまま出発地へ戻れます。
 
@@ -36,9 +36,11 @@
 
 `node scripts/qa-my-town.cjs` で原本の反例、全240経路、保存、停止、音声失敗、画像の復号、画面条件を検証します。WindowsのEdgeと、既存リポジトリと同じPlaywright環境を使います。画像の再配信用変換は `scripts/prepare-my-town-assets.py` です。
 
-指摘と確認範囲は `REVIEW.md`、原本は `source/original.html` に保持しています。
+指摘と確認範囲は `REVIEW.md`、米国英語としての判断と出典は `ENGLISH-REVIEW.md`、原本は `source/original.html` に保持しています。
 
-授業表現は、文部科学省「小学校学習指導要領解説 外国語活動・外国語編」の道案内の例（Go straight. / Turn left. / Turn right. / You can see it on your right.）を参照しました。
+英語表現は米国国務省の教材、米国の大学・自治体・施設の実際の案内を再確認しました。現在は Start at the library. / Go straight. / Turn left. / Turn right. / The library is on your right. の形を使います。場所名はcommunity center / concert hall / burger restaurant / train stationに調整しました。詳細は `ENGLISH-REVIEW.md` を参照してください。
+
+初版の授業表現は、文部科学省「小学校学習指導要領解説 外国語活動・外国語編」の道案内の例（Go straight. / Turn left. / Turn right. / You can see it on your right.）を参照しました。
 
 - https://www.mext.go.jp/content/20220614-mxt_kyoiku02-100002607_11.pdf
 - https://www.mext.go.jp/component/b_menu/shingi/toushin/__icsFiles/afieldfile/2018/09/26/1395320_0507.pdf

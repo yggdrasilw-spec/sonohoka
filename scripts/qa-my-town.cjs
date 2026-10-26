@@ -41,6 +41,21 @@ try{
      if(traversed!==r.path.length-1)throw Error('step coverage');const [hx,hy]=dirs[heading];const cross=hx*1-hy*0;const side=cross>0?'right':'left';if(!r.steps.at(-1).text.endsWith(`on your ${side}.`))throw Error('arrival side');count++;
    }return {count,left,right};
  });assert.equal(allPairs.count,240);assert(allPairs.left>0&&allPairs.right>0);checks+=240;
+ // Every selectable vocabulary item must use the reviewed label in both sentences.
+ const english=await p.evaluate(()=>{
+   const expected={'public-hall':'community center','music-hall':'concert hall','hamburger-shop':'burger restaurant',station:'train station'};
+   for(const [id,name] of Object.entries(expected))if(TOWN_PLACES.find(p=>p.id===id).name!==name)throw Error('US vocabulary label');
+   let verified=0;
+   for(const place of TOWN_PLACES.filter(p=>p.canNavigate)){
+     document.getElementById('edit-tab').click();document.querySelector(`[data-id="${place.id}"]`).click();document.querySelectorAll('.plot')[0].click();document.querySelectorAll('.plot')[1].click();document.getElementById('route-tab').click();
+     const st=document.getElementById('start'),gl=document.getElementById('goal');st.value='';st.dispatchEvent(new Event('change'));gl.value='1';gl.dispatchEvent(new Event('change'));st.value='0';st.dispatchEvent(new Event('change'));
+     const route=MyTown.snapshot().route;if(route.steps[0].text!==`Start at the ${place.name}.`)throw Error('start wording');if(!new RegExp(`^The ${place.name} is on your (left|right)\\.$`).test(route.steps.at(-1).text))throw Error('arrival wording');verified++;
+   }
+   return {verified};
+ });assert.equal(english.verified,38);
+ await p.locator('#edit-tab').click();await p.locator('#search').fill('public hall');assert.equal(await p.locator('[data-id="public-hall"]').isVisible(),true);assert.match(await p.locator('[data-id="public-hall"]').innerText(),/community center/);
+ const legacy={...sample,plots:['street','town','public-hall','station',...Array(12).fill(null)],start:0,goal:1};await p.evaluate(data=>localStorage.setItem('my-town-v1',JSON.stringify(data)),legacy);await p.reload();const migrated=await p.evaluate(()=>MyTown.snapshot().state);assert.equal(migrated.start,null);assert.equal(migrated.goal,null);assert.deepEqual(migrated.plots,legacy.plots);
+ await p.locator('#route-tab').click();assert.equal(await p.locator('#start option').count(),3);assert.match(await p.locator('#start').innerText(),/community center/);assert.match(await p.locator('#start').innerText(),/train station/);assert.equal(await p.locator('#start option[value="0"]').count(),0);assert.equal(await p.locator('#start option[value="1"]').count(),0);checks+=english.verified+4;
  await p.evaluate(data=>localStorage.setItem('my-town-v1',JSON.stringify(data)),sample);await p.reload();
  // Native keyboard placement, undo, duplicate destination prevention.
  await p.locator('[data-id="library"]').focus();await p.keyboard.press('Enter');await p.locator('.plot').nth(2).focus();await p.keyboard.press('Enter');assert.equal((await p.evaluate(()=>MyTown.snapshot())).state.plots[2],'library');
@@ -69,6 +84,6 @@ try{
  const broken=await browser.newPage();await broken.addInitScript(()=>{Storage.prototype.setItem=function(){throw Error('denied');};Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],cancel(){},speak(){}}});});
  await broken.goto(base+'/my-town/');await broken.locator('#sample').click();await broken.locator('#replace-confirm').click();await broken.waitForFunction(()=>MyTown.snapshot().state.start===0);assert.match(await broken.locator('#save-state').innerText(),/自動保存できません/);await broken.locator('#route-tab').click();await broken.locator('#sound').check();await broken.locator('#next').click();await broken.locator('#stop').click();await broken.waitForTimeout(100);assert.equal((await broken.evaluate(()=>MyTown.snapshot())).busy,false);
  await broken.locator('#next').click();await broken.waitForFunction(()=>!MyTown.snapshot().busy,{},{timeout:14000});assert.match(await broken.locator('#speech-note').innerText(),/待たず/);await broken.close();checks+=3;
- assert.deepEqual(errors,[]);const result={checks,allPairs,assets,viewports,original};fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(result,null,2));console.log('PASS',JSON.stringify(result));
+ assert.deepEqual(errors,[]);const result={checks,allPairs,english,assets,viewports,original};fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(result,null,2));console.log('PASS',JSON.stringify(result));
 }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
