@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Town - Direction Maker</title>
+    <style>
+        /* 全体のリセットと横長画面へのフィット */
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            margin: 0; padding: 0; 
+            height: 100vh; width: 100vw; 
+            overflow: hidden; /* 画面全体のスクロールを禁止 */
+            display: flex; 
+            background: #eef2f5; 
+            touch-action: pan-y;
+        }
+
+        /* 左側：マップエリア */
+        #map-area { 
+            flex: 1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 15px; 
+            box-sizing: border-box; 
+            position: relative;
+        }
+        #map-wrapper { 
+            background: white; 
+            padding: 10px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            position: relative;
+        }
+        #map { display: grid; gap: 0; position: relative; }
+        .cell { width: 45px; height: 45px; box-sizing: border-box; position: relative; display: flex; align-items: center; justify-content: center; }
+        
+        .intersection { background: #d1d8e0; border-radius: 50%; width: 18px; height: 18px; margin: 13.5px; z-index: 1; }
+        .road-h { background: #d1d8e0; height: 18px; width: 100%; margin: 13.5px 0; }
+        .road-v { background: #d1d8e0; width: 18px; height: 100%; margin: 0 13.5px; }
+        
+        .building-plot { 
+            background: #fdfdfd; border: 2px dashed #ced6e0; z-index: 2; cursor: pointer; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            font-size: 9px; text-align: center; overflow: hidden; word-break: break-word; 
+            line-height: 1.1; padding: 1px; touch-action: manipulation; 
+        }
+        .building-plot.drag-over { background: #e3f2fd; border-color: #2196f3; }
+        .building-plot.has-building { border: 2px solid #b2bec3; background: #fff; }
+        .building-plot .icon { font-size: 20px; }
+        .building-plot.start-point { border: 3px solid #4caf50; background: #e8f5e9; }
+        .building-plot.goal-point { border: 3px solid #f44336; background: #ffebee; }
+
+        /* キャラクター */
+        #character { 
+            position: absolute; top: 0; left: 0; width: 45px; height: 45px; 
+            z-index: 100; pointer-events: none; transition: transform 0.4s linear; 
+            display: flex; align-items: center; justify-content: center; 
+        }
+        #character svg { width: 36px; height: 36px; transition: transform 0.2s ease-in-out; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+
+        /* 右側：サイドバー */
+        #sidebar { 
+            width: 420px; 
+            background: white; 
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05); 
+            display: flex; flex-direction: column; 
+            padding: 15px; box-sizing: border-box; 
+            z-index: 10;
+        }
+
+        /* クレードル（パレット） */
+        #cradle-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+            margin-bottom: 15px;
+            background: #fafafa;
+            border-radius: 6px;
+        }
+        #cradle {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            flex: 1;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            padding: 2px;
+        }
+        #cradle::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+        
+        .cradle-btn {
+            background: #e0e0e0;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            flex-shrink: 0;
+            color: #333;
+            user-select: none;
+            touch-action: manipulation;
+            transition: background 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .cradle-btn:hover { background: #d5d5d5; }
+        .cradle-btn:active { background: #bdbdbd; }
+
+        .building-item {
+            flex: 0 0 75px; /* 固定幅で横に並べる */
+            background: white; 
+            border: 1px solid #dee2e6; 
+            border-radius: 6px;
+            cursor: grab; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            font-size: 10px; text-align: center; 
+            user-select: none; touch-action: none;
+            padding: 5px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+        .building-item:active { cursor: grabbing; }
+        .building-item.selected { border-color: #2196f3; background: #e3f2fd; box-shadow: 0 0 0 2px #2196f3 inset; }
+        .building-emoji { font-size: 24px; margin-bottom: 2px; }
+        .delete-item { border-color: #ff6b6b; color: #d32f2f; background: #fff5f5; }
+        .delete-item.selected { border-color: #f44336; background: #ffebee; box-shadow: 0 0 0 2px #f44336 inset; }
+
+        /* ドラッグ中のゴースト */
+        .drag-ghost {
+            position: fixed; pointer-events: none; transform: translate(-50%, -50%);
+            font-size: 32px; z-index: 1000; opacity: 0.9; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        /* コントロール類 */
+        .btn-group { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        button { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; transition: background 0.2s; touch-action: manipulation; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-start { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .btn-goal { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .btn-run { background: #2196f3; color: white; flex: 1; font-size: 15px; padding: 12px; }
+        .btn-run:hover:not(:disabled) { background: #1976d2; }
+        .btn-clear { background: #f5f6fa; color: #636e72; border: 1px solid #dfe6e9; }
+        
+        /* テキスト表示エリア */
+        #direction-container { 
+            flex: 1; 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 6px; 
+            border-left: 5px solid #2196f3; 
+            font-size: 16px; 
+            line-height: 1.5; 
+            color: #2d3436;
+            overflow-y: auto; /* テキストが長くなった場合のみここだけスクロール */
+        }
+        .step-text { margin-bottom: 8px; padding: 4px 8px; border-radius: 4px; transition: background 0.3s, color 0.3s; opacity: 0.4; }
+        .step-text.active { background: #e3f2fd; color: #1565c0; font-weight: bold; opacity: 1; transform: scale(1.02); }
+        #status { margin-top: 10px; font-size: 13px; color: #636e72; min-height: 18px; }
+
+        /* 画面が極端に狭い場合のフォールバック */
+        @media (max-width: 900px) {
+            body { flex-direction: column; height: auto; overflow: auto; }
+            #map-area { padding: 10px; }
+            #sidebar { width: 100%; box-shadow: none; border-top: 1px solid #ddd; }
+            #direction-container { max-height: 200px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 左側：マップ -->
+    <div id="map-area">
+        <div id="map-wrapper">
+            <div id="map"></div>
+            <div id="character">
+                <svg viewBox="0 0 100 100" id="char-svg">
+                    <polygon points="50,5 65,25 35,25" fill="#f44336" />
+                    <circle cx="50" cy="40" r="18" fill="#ffcc80" />
+                    <rect x="35" y="58" width="30" height="25" rx="5" fill="#42a5f5" />
+                    <rect x="37" y="83" width="10" height="15" rx="3" fill="#37474f" />
+                    <rect x="53" y="83" width="10" height="15" rx="3" fill="#37474f" />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右側：サイドバー -->
+    <div id="sidebar">
+        <div class="btn-group">
+            <button id="btn-set-start" class="btn-start">スタート地点</button>
+            <button id="btn-set-goal" class="btn-goal">ゴール地点</button>
+            <button id="btn-clear" class="btn-clear">クリア</button>
+        </div>
+        
+        <!-- クレードル（左右ボタン付き） -->
+        <div id="cradle-wrapper">
+            <button id="cradle-left" class="cradle-btn" aria-label="左へスクロール">◀</button>
+            <div id="cradle"></div>
+            <button id="cradle-right" class="cradle-btn" aria-label="右へスクロール">▶</button>
+        </div>
+
+        <div class="btn-group">
+            <button id="btn-run" class="btn-run" disabled>🔊 音声と共に案内を実行</button>
+        </div>
+
+        <div id="direction-container">建物を配置し、スタートとゴールを指定してください。</div>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // データ定義
+        // ==========================================
+        const buildingData = {
+            "amusement park": "🎡", "aquarium": "🐟", "castle": "🏰", "church": "⛪",
+            "elementary school": "🏫", "fire station": "🚒", "hospital": "🏥", "house": "🏠",
+            "library": "📚", "museum": "🏛️", "gym": "🤸", "music hall": "🎵",
+            "public hall": "🏢", "swimming pool": "🏊", "theater": "🎭", "rice field": "🌾",
+            "bridge": "🌉", "bus stop": "🚌", "farm": "🚜", "park": "🌳",
+            "police station": "🚓", "post office": "📮", "restaurant": "🍽️", "roller coaster": "🎢",
+            "stadium": "🏟️", "station": "🚉", "street": "🛣️", "town": "🏘️",
+            "zoo": "🦁", "garden": "🌷", "bookstore": "📖", "convenience store": "🏪",
+            "department store": "🏬", "flower shop": "💐", "gas station": "⛽", "hamburger shop": "🍔",
+            "shopping mall": "🛍️", "supermarket": "🛒", "shrine": "⛩️", "temple": "🛕"
+        };
+
+        const MAP_SIZE = 11;
+        const CELL_SIZE = 45;
+        const mapData = Array(MAP_SIZE).fill(null).map(() => Array(MAP_SIZE).fill(null));
+        
+        let startPos = null, goalPos = null;
+        let isSettingStart = false, isSettingGoal = false, isAnimating = false;
+        let currentDirection = 0;
+        
+        let selectedBuildingType = null, draggedType = null;
+        let ghostEl = null, startX = 0, startY = 0;
+        let isDragging = false, justDragged = false;
+
+        const mapEl = document.getElementById('map');
+        const charEl = document.getElementById('character');
+        const dirContainer = document.getElementById('direction-container');
+        const statusEl = document.getElementById('status');
+        const btnRun = document.getElementById('btn-run');
+
+        // ==========================================
+        // 音声合成のセットアップとウォームアップ
+        // ==========================================
+        const synth = window.speechSynthesis;
+        let preferredVoice = null;
+        let isWarmedUp = false;
+
+        function initVoices() {
+            if (!synth) return;
+            const voices = synth.getVoices();
+            preferredVoice = 
+                voices.find(v => v.lang === 'en-US' && v.name.includes('Google US English')) || 
+                voices.find(v => v.lang === 'en-US') ||
+                voices.find(v => v.lang.startsWith('en-US')) ||
+                voices.find(v => v.lang.startsWith('en'));
+        }
+
+        if (synth && synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = initVoices;
+        }
+        initVoices();
+
+        // ウォームアップ用（無音で1音読み上げる）
+        function warmUpSpeech() {
+            if (!synth || isWarmedUp) return;
+            const utt = new SpeechSynthesisUtterance(" ");
+            utt.volume = 0; // 完全に無音にする
+            utt.lang = 'en-US';
+            if (preferredVoice) utt.voice = preferredVoice;
+            synth.speak(utt);
+            isWarmedUp = true;
+            console.log("Speech engine warmed up.");
+        }
+
+        // 起動時にウォームアップ（ボイスロード待ちのため少し遅延）
+        setTimeout(() => {
+            initVoices();
+            warmUpSpeech();
+        }, 500);
+
+        // ブラウザの自動再生制限対策：最初のユーザー操作時にもウォームアップ
+        document.body.addEventListener('pointerdown', () => {
+            if (!isWarmedUp) {
+                warmUpSpeech();
+            }
+        }, { once: true });
+
+        // 音声読み上げ関数 (Promiseを返す)
+        function speak(text, rate = 0.9) {
+            return new Promise((resolve) => {
+                if (!synth) {
+                    setTimeout(resolve, text.length * 60);
+                    return;
+                }
+                synth.cancel(); // 前の読み上げをキャンセル
+                const utt = new SpeechSynthesisUtterance(text);
+                utt.lang = 'en-US';
+                utt.rate = rate;
+                utt.pitch = 1.0;
+                if (preferredVoice) {
+                    utt.voice = preferredVoice;
+                }
+                utt.onend = resolve;
+                utt.onerror = resolve;
+                synth.speak(utt);
+            });
+        }
+
+        // ==========================================
+        // クレードル（左右ボタンによるスクロール）
+        // ==========================================
+        function initCradle() {
+            const cradleEl = document.getElementById('cradle');
+            for (const [name, emoji] of Object.entries(buildingData)) {
+                cradleEl.appendChild(createPaletteItem(name, emoji, name));
+            }
+            cradleEl.appendChild(createPaletteItem('delete', '🗑️', '消去'));
+
+            // 左右ボタンのイベント
+            document.getElementById('cradle-left').addEventListener('click', () => {
+                cradleEl.scrollBy({ left: -250, behavior: 'smooth' });
+            });
+            document.getElementById('cradle-right').addEventListener('click', () => {
+                cradleEl.scrollBy({ left: 250, behavior: 'smooth' });
+            });
+        }
+
+        function createPaletteItem(type, emoji, label) {
+            const item = document.createElement('div');
+            item.className = 'building-item';
+            item.dataset.type = type;
+            item.innerHTML = `<span class="building-emoji">${emoji}</span> <span>${label}</span>`;
+            
+            // タップ（クリック）で選択＆単語読み上げ
+            item.addEventListener('click', (e) => {
+                if (justDragged) { e.preventDefault(); return; }
+                selectPaletteItem(type);
+                if (type !== 'delete') {
+                    speak(type, 1.0);
+                }
+            });
+            
+            // ドラッグ開始
+            item.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0 && e.pointerType === 'mouse') return;
+                if (isAnimating) return;
+                draggedType = type; startX = e.clientX; startY = e.clientY;
+                isDragging = false; item.setPointerCapture(e.pointerId);
+            });
+            
+            item.addEventListener('pointermove', (e) => {
+                if (draggedType !== type) return;
+                if (!isDragging && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) {
+                    isDragging = true;
+                    ghostEl = document.createElement('div');
+                    ghostEl.className = 'drag-ghost';
+                    ghostEl.innerHTML = emoji;
+                    document.body.appendChild(ghostEl);
+                }
+                if (isDragging) {
+                    e.preventDefault();
+                    ghostEl.style.left = `${e.clientX}px`;
+                    ghostEl.style.top = `${e.clientY}px`;
+                    const target = document.elementFromPoint(e.clientX, e.clientY);
+                    document.querySelectorAll('.building-plot').forEach(el => el.classList.remove('drag-over'));
+                    if (target && target.closest('.building-plot')) {
+                        target.closest('.building-plot').classList.add('drag-over');
+                    }
+                }
+            });
+            
+            item.addEventListener('pointerup', (e) => {
+                if (draggedType !== type) return;
+                item.releasePointerCapture(e.pointerId);
+                if (isDragging) {
+                    const target = document.elementFromPoint(e.clientX, e.clientY);
+                    if (target) {
+                        const plot = target.closest('.building-plot');
+                        if (plot) {
+                            const r = parseInt(plot.dataset.r), c = parseInt(plot.dataset.c);
+                            if (type === 'delete') {
+                                mapData[r][c] = null;
+                                if (startPos && startPos.r === r && startPos.c === c) startPos = null;
+                                if (goalPos && goalPos.r === r && goalPos.c === c) goalPos = null;
+                            } else {
+                                mapData[r][c] = type;
+                            }
+                            updateMapUI();
+                        }
+                    }
+                    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+                    document.querySelectorAll('.building-plot').forEach(el => el.classList.remove('drag-over'));
+                    justDragged = true;
+                    setTimeout(() => { justDragged = false; }, 150);
+                }
+                isDragging = false; draggedType = null;
+            });
+            
+            item.addEventListener('pointercancel', (e) => {
+                item.releasePointerCapture(e.pointerId);
+                if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+                document.querySelectorAll('.building-plot').forEach(el => el.classList.remove('drag-over'));
+                isDragging = false; draggedType = null;
+            });
+            return item;
+        }
+
+        function selectPaletteItem(type) {
+            if (isAnimating) return;
+            selectedBuildingType = type; isSettingStart = false; isSettingGoal = false;
+            document.querySelectorAll('.building-item').forEach(el => {
+                if (el.dataset.type === type) el.classList.add('selected');
+                else el.classList.remove('selected');
+            });
+            statusEl.innerText = type === 'delete' ? "消したい建物をタップしてください。" : `「${type}」を配置したい場所をタップしてください。`;
+        }
+
+        // ==========================================
+        // マップ初期化・更新
+        // ==========================================
+        function initMap() {
+            mapEl.style.gridTemplateColumns = `repeat(${MAP_SIZE}, ${CELL_SIZE}px)`;
+            mapEl.style.gridTemplateRows = `repeat(${MAP_SIZE}, ${CELL_SIZE}px)`;
+            mapEl.style.width = `${MAP_SIZE * CELL_SIZE}px`;
+            mapEl.style.height = `${MAP_SIZE * CELL_SIZE}px`;
+
+            for (let r = 0; r < MAP_SIZE; r++) {
+                for (let c = 0; c < MAP_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
+                    if (r % 2 === 0 && c % 2 === 0) {
+                        const inner = document.createElement('div'); inner.className = 'intersection'; cell.appendChild(inner);
+                    } else if (r % 2 === 0 && c % 2 !== 0) {
+                        const inner = document.createElement('div'); inner.className = 'road-h'; cell.appendChild(inner);
+                    } else if (r % 2 !== 0 && c % 2 === 0) {
+                        const inner = document.createElement('div'); inner.className = 'road-v'; cell.appendChild(inner);
+                    } else {
+                        cell.classList.add('building-plot');
+                        cell.addEventListener('click', () => handleBuildingClick(r, c));
+                    }
+                    mapEl.appendChild(cell);
+                }
+            }
+        }
+
+        function updateMapUI() {
+            const cells = mapEl.children;
+            for (let r = 0; r < MAP_SIZE; r++) {
+                for (let c = 0; c < MAP_SIZE; c++) {
+                    const cell = cells[r * MAP_SIZE + c];
+                    if (r % 2 !== 0 && c % 2 !== 0) {
+                        cell.className = 'cell building-plot'; cell.innerHTML = '';
+                        if (mapData[r][c]) {
+                            cell.classList.add('has-building');
+                            const emoji = buildingData[mapData[r][c]] || '🏢';
+                            cell.innerHTML = `<span class="icon">${emoji}</span><span>${mapData[r][c]}</span>`;
+                        }
+                        if (startPos && startPos.r === r && startPos.c === c) cell.classList.add('start-point');
+                        if (goalPos && goalPos.r === r && goalPos.c === c) cell.classList.add('goal-point');
+                    }
+                }
+            }
+            checkReadyToRun();
+        }
+
+        function handleBuildingClick(r, c) {
+            if (isAnimating || justDragged) return;
+            if (isSettingStart) {
+                if (!mapData[r][c]) return alert("建物がある場所を指定してください。");
+                startPos = { r, c }; isSettingStart = false;
+                document.getElementById('btn-set-start').disabled = false;
+                statusEl.innerText = "スタート地点を設定しました。"; updateMapUI();
+            } else if (isSettingGoal) {
+                if (!mapData[r][c]) return alert("建物がある場所を指定してください。");
+                goalPos = { r, c }; isSettingGoal = false;
+                document.getElementById('btn-set-goal').disabled = false;
+                statusEl.innerText = "ゴール地点を設定しました。"; updateMapUI();
+            } else if (selectedBuildingType) {
+                if (selectedBuildingType === 'delete') {
+                    mapData[r][c] = null;
+                    if (startPos && startPos.r === r && startPos.c === c) startPos = null;
+                    if (goalPos && goalPos.r === r && goalPos.c === c) goalPos = null;
+                } else {
+                    mapData[r][c] = selectedBuildingType;
+                }
+                updateMapUI();
+            }
+        }
+
+        function checkReadyToRun() {
+            btnRun.disabled = !(startPos && goalPos && mapData[startPos.r][startPos.c] && mapData[goalPos.r][goalPos.c]);
+        }
+
+        // ==========================================
+        // 経路探索
+        // ==========================================
+        function getNearestIntersection(buildingPos, targetPos) {
+            const candidates = [
+                {r: buildingPos.r - 1, c: buildingPos.c - 1}, {r: buildingPos.r - 1, c: buildingPos.c + 1},
+                {r: buildingPos.r + 1, c: buildingPos.c - 1}, {r: buildingPos.r + 1, c: buildingPos.c + 1}
+            ];
+            candidates.sort((a, b) => {
+                const distA = Math.abs(a.r - targetPos.r) + Math.abs(a.c - targetPos.c);
+                const distB = Math.abs(b.r - targetPos.r) + Math.abs(b.c - targetPos.c);
+                return distA - distB;
+            });
+            return candidates[0];
+        }
+
+        function findPath(startNode, goalNode) {
+            const queue = [ { r: startNode.r, c: startNode.c, path: [{ r: startNode.r, c: startNode.c }] } ];
+            const visited = new Set(); visited.add(`${startNode.r},${startNode.c}`);
+            const directions = [ { r: -2, c: 0, dir: 'N' }, { r: 2, c: 0, dir: 'S' }, { r: 0, c: 2, dir: 'E' }, { r: 0, c: -2, dir: 'W' } ];
+            while (queue.length > 0) {
+                const current = queue.shift();
+                if (current.r === goalNode.r && current.c === goalNode.c) return current.path;
+                for (const d of directions) {
+                    const nr = current.r + d.r; const nc = current.c + d.c;
+                    if (nr >= 0 && nr < MAP_SIZE && nc >= 0 && nc < MAP_SIZE && !visited.has(`${nr},${nc}`)) {
+                        visited.add(`${nr},${nc}`);
+                        queue.push({ r: nr, c: nc, path: [...current.path, { r: nr, c: nc }] });
+                    }
+                }
+            }
+            return null;
+        }
+
+        // ==========================================
+        // 英語生成とアクションステップ
+        // ==========================================
+        function getTurnDirection(dir1, dir2) {
+            const dirVectors = { 'N': {x:0, y:-1}, 'S': {x:0, y:1}, 'E': {x:1, y:0}, 'W': {x:-1, y:0} };
+            const v1 = dirVectors[dir1], v2 = dirVectors[dir2];
+            const cross = v1.x * v2.y - v1.y * v2.x;
+            return cross > 0 ? 'right' : 'left'; 
+        }
+
+        function buildSteps(path) {
+            const steps = [];
+            const startName = mapData[startPos.r][startPos.c];
+            const goalName = mapData[goalPos.r][goalPos.c];
+            
+            steps.push({ type: 'text', text: `Start from the ${startName}.` });
+
+            let segments = [];
+            let currentSeg = { dir: null, blocks: 0, nodes: [path[0]] };
+
+            for (let i = 1; i < path.length; i++) {
+                const prev = path[i-1], curr = path[i];
+                let moveDir = '';
+                if (curr.r < prev.r) moveDir = 'N';
+                else if (curr.r > prev.r) moveDir = 'S';
+                else if (curr.c > prev.c) moveDir = 'E';
+                else if (curr.c < prev.c) moveDir = 'W';
+
+                if (currentSeg.dir === null) {
+                    currentSeg.dir = moveDir; currentSeg.blocks = 1; currentSeg.nodes.push(curr);
+                } else if (currentSeg.dir === moveDir) {
+                    currentSeg.blocks++; currentSeg.nodes.push(curr);
+                } else {
+                    segments.push(currentSeg);
+                    currentSeg = { dir: moveDir, blocks: 1, nodes: [prev, curr] };
+                }
+            }
+            segments.push(currentSeg);
+
+            for (let i = 0; i < segments.length; i++) {
+                const seg = segments[i];
+                if (i > 0) {
+                    const turn = getTurnDirection(segments[i-1].dir, seg.dir);
+                    steps.push({ type: 'turn', text: `Turn ${turn}.`, targetDir: seg.dir });
+                }
+                steps.push({ 
+                    type: 'move', 
+                    text: `Go straight for ${seg.blocks} block${seg.blocks > 1 ? 's' : ''}.`, 
+                    nodes: seg.nodes, 
+                    dir: seg.dir
+                });
+            }
+
+            const lastSeg = segments[segments.length - 1];
+            const lastNode = path[path.length - 1];
+            let relativeDir = "in front of you";
+            const dx = goalPos.c - lastNode.c;
+            const dy = goalPos.r - lastNode.r;
+
+            if (lastSeg.dir === 'E') {
+                if (dy < 0) relativeDir = "on your left";
+                if (dy > 0) relativeDir = "on your right";
+            } else if (lastSeg.dir === 'W') {
+                if (dy < 0) relativeDir = "on your right";
+                if (dy > 0) relativeDir = "on your left";
+            } else if (lastSeg.dir === 'S') {
+                if (dx > 0) relativeDir = "on your left";
+                if (dx < 0) relativeDir = "on your right";
+            } else if (lastSeg.dir === 'N') {
+                if (dx > 0) relativeDir = "on your right";
+                if (dx < 0) relativeDir = "on your left";
+            }
+
+            let goalText = relativeDir !== "in front of you" ? `You can see the ${goalName} ${relativeDir}.` : `You can see the ${goalName} in front of you.`;
+            steps.push({ type: 'text', text: goalText });
+
+            const landmarks = ["park", "station", "school", "library", "hospital"];
+            const neighbors = [
+                {r: goalPos.r-1, c: goalPos.c}, {r: goalPos.r+1, c: goalPos.c},
+                {r: goalPos.r, c: goalPos.c-1}, {r: goalPos.r, c: goalPos.c+1}
+            ];
+            for (const n of neighbors) {
+                if (n.r >= 0 && n.r < MAP_SIZE && n.c >= 0 && n.c < MAP_SIZE) {
+                    const type = mapData[n.r][n.c];
+                    if (type && landmarks.includes(type)) {
+                        steps.push({ type: 'text', text: `It's by the ${type}.` });
+                        break;
+                    }
+                }
+            }
+            return steps;
+        }
+
+        // ==========================================
+        // アニメーションと音声の同期実行
+        // ==========================================
+        function getCharTranslate(r, c) {
+            return { x: c * CELL_SIZE + CELL_SIZE / 2, y: r * CELL_SIZE + CELL_SIZE / 2 };
+        }
+        async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+        async function rotateCharacter(targetDir) {
+            let targetDeg = 0;
+            if (targetDir === 'E') targetDeg = 90;
+            if (targetDir === 'S') targetDeg = 180;
+            if (targetDir === 'W') targetDeg = 270;
+            const diff = (targetDeg - currentDirection + 360) % 360;
+            if (diff === 90) currentDirection += 90;
+            else if (diff === 270) currentDirection -= 90;
+            else currentDirection = targetDeg;
+            document.getElementById('char-svg').style.transform = `rotate(${currentDirection}deg)`;
+            await sleep(300);
+        }
+
+        async function moveCharacter(nodes) {
+            for (let i = 1; i < nodes.length; i++) {
+                const node = nodes[i];
+                const pos = getCharTranslate(node.r, node.c);
+                charEl.style.transform = `translate(${pos.x - CELL_SIZE/2}px, ${pos.y - CELL_SIZE/2}px)`;
+                await sleep(400);
+            }
+        }
+
+        async function executeSteps(steps) {
+            isAnimating = true;
+            btnRun.disabled = true;
+            document.getElementById('btn-clear').disabled = true;
+            document.getElementById('btn-set-start').disabled = true;
+            document.getElementById('btn-set-goal').disabled = true;
+
+            dirContainer.innerHTML = '';
+            
+            const firstNode = steps.find(s => s.type === 'move').nodes[0];
+            const startPosPx = getCharTranslate(firstNode.r, firstNode.c);
+            charEl.style.transition = 'none';
+            charEl.style.transform = `translate(${startPosPx.x - CELL_SIZE/2}px, ${startPosPx.y - CELL_SIZE/2}px)`;
+            currentDirection = 0;
+            document.getElementById('char-svg').style.transform = `rotate(0deg)`;
+            await sleep(50);
+            charEl.style.transition = 'transform 0.4s linear';
+
+            for (let i = 0; i < steps.length; i++) {
+                const step = steps[i];
+                const stepEl = document.createElement('div');
+                stepEl.className = 'step-text active';
+                stepEl.innerText = step.text;
+                dirContainer.appendChild(stepEl);
+                
+                if (i > 0) {
+                    const prevEls = dirContainer.querySelectorAll('.step-text');
+                    if (prevEls[i-1]) prevEls[i-1].classList.remove('active');
+                }
+
+                const voicePromise = speak(step.text);
+                let animPromise = Promise.resolve();
+                
+                if (step.type === 'turn') {
+                    animPromise = rotateCharacter(step.targetDir);
+                } else if (step.type === 'move') {
+                    animPromise = moveCharacter(step.nodes);
+                }
+
+                await Promise.all([voicePromise, animPromise]);
+                await sleep(200);
+            }
+
+            const prevEls = dirContainer.querySelectorAll('.step-text');
+            if (prevEls.length > 0) prevEls[prevEls.length-1].classList.remove('active');
+
+            isAnimating = false;
+            document.getElementById('btn-clear').disabled = false;
+            document.getElementById('btn-set-start').disabled = false;
+            document.getElementById('btn-set-goal').disabled = false;
+            btnRun.disabled = false;
+        }
+
+        // ==========================================
+        // メイン実行イベント
+        // ==========================================
+        btnRun.addEventListener('click', async () => {
+            if (isAnimating) return;
+            if (synth && !preferredVoice) initVoices();
+
+            const startNode = getNearestIntersection(startPos, goalPos);
+            const goalNode = getNearestIntersection(goalPos, startPos);
+            const path = findPath(startNode, goalNode);
+            
+            if (!path) {
+                dirContainer.innerHTML = `<span style="color:red;">道が塞がれていてたどり着けません！</span>`;
+                return;
+            }
+
+            const steps = buildSteps(path);
+            await executeSteps(steps);
+        });
+
+        document.getElementById('btn-set-start').addEventListener('click', () => {
+            isSettingStart = true; isSettingGoal = false; selectedBuildingType = null;
+            document.querySelectorAll('.building-item').forEach(el => el.classList.remove('selected'));
+            statusEl.innerText = "スタートにしたい建物をタップしてください。";
+        });
+        document.getElementById('btn-set-goal').addEventListener('click', () => {
+            isSettingGoal = true; isSettingStart = false; selectedBuildingType = null;
+            document.querySelectorAll('.building-item').forEach(el => el.classList.remove('selected'));
+            statusEl.innerText = "ゴールにしたい建物をタップしてください。";
+        });
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            mapData.forEach(row => row.fill(null));
+            startPos = null; goalPos = null;
+            dirContainer.innerHTML = "建物を配置し、スタートとゴールを指定してください。";
+            statusEl.innerText = "";
+            updateMapUI();
+        });
+
+        // 起動
+        initCradle();
+        initMap();
+        updateMapUI();
+    </script>
+</body>
+</html>
