@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#176b67">
   <title>My Town｜わたしの町を案内しよう</title>
-  <link rel="stylesheet" href="style.css?v=20261026-map2">
-  <script defer src="data.js?v=20261026-map2"></script>
-  <script defer src="town-model.js?v=20261026-map2"></script>
-  <script defer src="app.js?v=20261026-map2"></script>
+  <link rel="stylesheet" href="style.css?v=20261027-usability">
+  <script defer src="data.js?v=20261027-usability"></script>
+  <script defer src="town-model.js?v=20261027-usability"></script>
+  <script defer src="app.js?v=20261027-usability"></script>
 </head>
-<body>
+<body data-stage="edit">
 <header><div><span class="eyebrow">5年生 外国語 · 道案内</span><h1>My Town <small>わたしの町</small></h1></div><label class="sound"><input id="sound" type="checkbox"> 英語の音声</label></header>
 <main>
   <nav aria-label="活動の順序"><button id="edit-tab" aria-current="step">1 町をつくる</button><button id="route-tab">2 道案内をする</button></nav>
@@ -18,8 +18,10 @@
   <div class="workspace">
     <section class="map-panel" aria-label="わたしの町">
       <label class="town-name">町の名前 <input id="town-name" maxlength="40" value="My Town" autocomplete="off"></label>
-      <div class="map-tools"><label>マスの数 <select id="map-size"><option value="4">4 × 4（16マス）</option><option value="5">5 × 5（25マス）</option><option value="6">6 × 6（36マス）</option><option value="8">8 × 8（64マス）</option></select></label><button id="open-map">地図だけ大きく見る</button></div>
-      <p class="map-hint small">小さい画面では、地図を左右に動かせます。</p>
+      <div class="map-tools"><label>マスの数 <select id="map-size"><option value="4">4 × 4（16マス）</option><option value="5">5 × 5（25マス）</option><option value="6">6 × 6（36マス）</option><option value="8">8 × 8（64マス）</option></select></label><button id="open-map">道案内を大きく見る</button></div>
+      <div id="placement-tools" tabindex="-1" class="placement-tools"><div id="placement-preview">まず、置きたい絵を選ぼう。</div><button id="choose-picture">絵の一覧へ</button></div>
+      <div id="map-endpoints" hidden><p class="small">① 出発・目的地のボタンを選ぶ → ② 地図の建物を押す</p><div class="endpoint-tools"><button id="pick-start" aria-pressed="false">S 出発地を選ぶ</button><button id="pick-goal" aria-pressed="false">G 目的地を選ぶ</button></div><p id="endpoint-hint" role="status">下の選択欄からも選べます。</p></div>
+      <p class="map-hint small">見えない場所は、地図を左右に動かして見よう。</p>
       <div class="map-scroll" tabindex="0" role="region" aria-label="町の地図。小さい画面では左右にスクロールできます。"><div id="board">
         <svg id="roads" viewBox="0 0 540 540" aria-hidden="true"></svg>
         <div id="plots"></div>
@@ -29,6 +31,7 @@
       </div></div>
       <p class="map-key"><b class="start-key">S 出発</b> <b class="goal-key">G 目的地</b> <span>● 各場所の入口は、絵のすぐ上の道です。</span></p>
       <p id="position" class="position" aria-live="polite"></p>
+      <div id="map-guide" class="map-guide" hidden><strong id="inline-instruction">出発地と目的地を選ぼう。</strong><span id="inline-translation"></span><div><button class="primary" data-map-action="next">1つずつ見る</button><button data-map-action="stop">止めて出発地へ</button></div><span id="guide-progress" class="small"></span></div>
       <div class="file-tools"><button id="undo" disabled>1つ戻す</button><button id="export">町を保存（ファイル）</button><label class="file-button">町を開く<input id="import" type="file" accept=".json,application/json"></label><button id="clear">町を空にする</button></div>
       <p id="save-state" class="small">このブラウザーに自動保存します。共有端末ではファイルでも保存しましょう。</p>
     </section>
@@ -37,13 +40,14 @@
       <div class="editor-tools"><button id="erase" aria-pressed="false">消す</button><button id="sample">見本の町にする</button><label><input id="translations" type="checkbox" checked> 日本語の意味</label></div>
       <label class="search-label">場所をさがす <input id="search" type="search" placeholder="例：library / としょかん"></label>
       <label class="category-label">種類 <select id="category"><option value="basic">よく使う場所</option><option value="all">すべての場所（40語）</option><option value="shops">お店</option><option value="culture">文化・自然など</option></select></label>
-      <p id="selection" class="selection">まだ絵を選んでいません。</p>
+      <p id="selection" class="selection" role="status">まだ絵を選んでいません。</p>
+      <button id="go-to-map" class="wide" disabled>選んだ絵を地図に置く</button>
       <div id="palette" aria-label="場所の絵"></div>
       <button id="to-route" class="primary wide">町ができたら → 道案内へ</button>
     </section>
     <section id="guide" class="control-panel" hidden aria-labelledby="guide-title">
       <h2 id="guide-title">どこから、どこへ？</h2>
-      <p class="small">出発地と目的地を選んでから、友達に英語で案内してみましょう。</p>
+      <p class="small">地図の建物を押すか、下の選択欄で選ぼう。決まったら、まず友達に英語で案内してみよう。</p>
       <div class="endpoints"><label><b>S 出発地</b><select id="start"><option value="">選んでください</option></select></label><label><b>G 目的地</b><select id="goal"><option value="">選んでください</option></select></label></div>
       <p id="route-summary" class="selection">町に2つ以上の場所を置きましょう。</p>
       <details><summary>使える英語</summary><p lang="en">Excuse me, where is the library?<br>Go straight.<br>Turn left. / Turn right.<br>The library is on your left / right.</p><p class="small">左右は、キャラクターから見た左右です。矢印が今の向きです。歩く区間の終わりまで、まっすぐ進みます。</p></details>
@@ -59,6 +63,7 @@
 <dialog id="replace-dialog"><h2 id="replace-title">今の町を入れ替えますか？</h2><p id="replace-description">今の町は「1つ戻す」で戻せます。残す場合は、先にファイルで保存してください。</p><form method="dialog"><button value="cancel">やめる</button><button id="replace-confirm" value="ok" class="primary">入れ替える</button></form></dialog>
 <dialog id="map-dialog" aria-labelledby="map-title">
   <div class="large-map-toolbar"><h2 id="map-title">My Town</h2><label>地図の倍率 <select id="map-zoom"><option value="1">100%</option><option value="1.25" selected>125%</option><option value="1.5">150%</option><option value="2">200%</option></select></label><button id="close-map">閉じる（Esc）</button></div>
+  <div id="large-endpoints"></div>
   <div id="large-map-scroll" tabindex="0" role="region" aria-label="大きな地図。上下左右にスクロールできます。"></div>
   <div class="large-map-footer"><div class="current-instruction"><strong id="map-instruction" lang="en" role="status">出発地から案内しましょう。</strong><span id="map-translation"></span></div><div class="large-map-actions"><button class="primary" data-map-action="next">1つずつ見る</button><button data-map-action="play">お手本を再生</button><button data-map-action="stop">止めて出発地へ</button><button data-map-action="restart">もう一度</button></div></div>
 </dialog>
