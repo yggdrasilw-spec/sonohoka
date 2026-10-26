@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#176b67">
   <title>My Town｜わたしの町を案内しよう</title>
-  <link rel="stylesheet" href="style.css">
-  <script defer src="data.js?v=20261026-us1"></script>
-  <script defer src="app.js?v=20261026-us1"></script>
+  <link rel="stylesheet" href="style.css?v=20261026-map2">
+  <script defer src="data.js?v=20261026-map2"></script>
+  <script defer src="town-model.js?v=20261026-map2"></script>
+  <script defer src="app.js?v=20261026-map2"></script>
 </head>
 <body>
 <header><div><span class="eyebrow">5年生 外国語 · 道案内</span><h1>My Town <small>わたしの町</small></h1></div><label class="sound"><input id="sound" type="checkbox"> 英語の音声</label></header>
@@ -17,11 +18,13 @@
   <div class="workspace">
     <section class="map-panel" aria-label="わたしの町">
       <label class="town-name">町の名前 <input id="town-name" maxlength="40" value="My Town" autocomplete="off"></label>
+      <div class="map-tools"><label>マスの数 <select id="map-size"><option value="4">4 × 4（16マス）</option><option value="5">5 × 5（25マス）</option><option value="6">6 × 6（36マス）</option><option value="8">8 × 8（64マス）</option></select></label><button id="open-map">地図だけ大きく見る</button></div>
       <p class="map-hint small">小さい画面では、地図を左右に動かせます。</p>
       <div class="map-scroll" tabindex="0" role="region" aria-label="町の地図。小さい画面では左右にスクロールできます。"><div id="board">
         <svg id="roads" viewBox="0 0 540 540" aria-hidden="true"></svg>
         <div id="plots"></div>
-        <div id="character" hidden><span id="facing" aria-hidden="true">→</span><div id="sprite"></div></div>
+        <svg id="route-hints" aria-hidden="true"></svg>
+        <div id="character" hidden><span id="facing" aria-hidden="true">↑</span><svg id="ground-direction" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="43"/><g id="ground-needle"><path d="M50 5 L65 30 L50 24 L35 30 Z"/></g></svg><div id="sprite"></div><div id="turn-sprites" aria-hidden="true"><div id="turn-pose-a" class="turn-pose"></div><div id="turn-pose-b" class="turn-pose"></div></div><span id="turn-bubble" lang="en" hidden></span></div>
         <div id="start-pin" class="pin start" hidden>S</div><div id="goal-pin" class="pin goal" hidden>G</div>
       </div></div>
       <p class="map-key"><b class="start-key">S 出発</b> <b class="goal-key">G 目的地</b> <span>● 各場所の入口は、絵のすぐ上の道です。</span></p>
@@ -53,6 +56,11 @@
   </div>
   <footer>作った町を使って、友達と道案内をしよう。地図の道順はお手本の一例です。</footer>
 </main>
-<dialog id="replace-dialog"><h2>今の町を入れ替えますか？</h2><p>今の町は「1つ戻す」で戻せます。残す場合は、先にファイルで保存してください。</p><form method="dialog"><button value="cancel">やめる</button><button id="replace-confirm" value="ok" class="primary">入れ替える</button></form></dialog>
+<dialog id="replace-dialog"><h2 id="replace-title">今の町を入れ替えますか？</h2><p id="replace-description">今の町は「1つ戻す」で戻せます。残す場合は、先にファイルで保存してください。</p><form method="dialog"><button value="cancel">やめる</button><button id="replace-confirm" value="ok" class="primary">入れ替える</button></form></dialog>
+<dialog id="map-dialog" aria-labelledby="map-title">
+  <div class="large-map-toolbar"><h2 id="map-title">My Town</h2><label>地図の倍率 <select id="map-zoom"><option value="1">100%</option><option value="1.25" selected>125%</option><option value="1.5">150%</option><option value="2">200%</option></select></label><button id="close-map">閉じる（Esc）</button></div>
+  <div id="large-map-scroll" tabindex="0" role="region" aria-label="大きな地図。上下左右にスクロールできます。"></div>
+  <div class="large-map-footer"><div class="current-instruction"><strong id="map-instruction" lang="en" role="status">出発地から案内しましょう。</strong><span id="map-translation"></span></div><div class="large-map-actions"><button class="primary" data-map-action="next">1つずつ見る</button><button data-map-action="play">お手本を再生</button><button data-map-action="stop">止めて出発地へ</button><button data-map-action="restart">もう一度</button></div></div>
+</dialog>
 </body>
 </html>
