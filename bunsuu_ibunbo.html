@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>分数のたし算・ひき算（分母がちがうとき）</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:18px/1.7 'BIZ UDPGothic','Hiragino Maru Gothic ProN',Meiryo,sans-serif;background:#eef5fb;color:#1e293b}
+#app{max-width:720px;margin:0 auto;padding:12px}
+h1{font-size:19px;margin:4px 0}h1 small{font-size:14px;color:#475569}
+h2{font-size:20px;margin:8px 0;padding-left:10px;border-left:8px solid #16a34a}
+#dots{display:flex;gap:6px;flex-wrap:wrap}
+#dots button{border:0;border-radius:99px;min-width:36px;padding:4px 10px;background:#cbd5e1;font:inherit;font-size:15px;cursor:pointer}
+#dots .on{background:#16a34a;color:#fff}
+.card{background:#fff;border-radius:14px;padding:12px 14px;margin:10px 0;border:2px solid #cbd5e1}
+.n{animation:in .4s}.n .bar i{animation:pop .35s both;animation-delay:calc(var(--i,0)*.07s)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@keyframes pop{from{transform:scaleY(0)}}
+@media(prefers-reduced-motion:reduce){.n,.n .bar i{animation:none}}
+p{margin:6px 0}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.2;margin:0 3px;font-weight:700}
+.fr b{padding:0 4px;border-bottom:3px solid currentColor}.fr u{text-decoration:none}
+.row{display:flex;align-items:center;margin:6px 0}
+.lb{width:64px;flex:none;text-align:center}.lb .fr{font-size:16px}
+.bar{flex:1;display:flex;height:42px;border:3px solid #334155;border-radius:6px;overflow:hidden;background:#fff}
+.bar i{flex:1;border-right:2px solid #334155}.bar i:last-child{border:0}
+.mkw{position:relative}.mk{position:absolute;top:-4px;bottom:-4px;border-left:3px dashed #dc2626;pointer-events:none}
+.eq{font-size:22px;text-align:center;margin:8px 0;font-weight:700}
+.k{background:#fde047;padding:0 4px;border-radius:4px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 10px}
+.chips span{min-width:38px;text-align:center;padding:2px 6px;border-radius:8px;background:#e2e8f0;font-weight:700}
+.chips .hi{background:#db2777;color:#fff}
+.fl{display:flex;gap:6px;justify-content:center;margin:8px 0}
+.fl>div{flex:1;background:#dcfce7;border-radius:12px;padding:8px;text-align:center;font-size:16px}
+.fl .a{flex:0;background:none;align-self:center;font-size:24px;padding:0}
+.nav{display:flex;justify-content:space-between;gap:8px;position:sticky;bottom:0;padding:8px 0;background:#eef5fb}
+.b{border:0;border-radius:12px;padding:10px 18px;font:inherit;font-weight:700;background:#16a34a;color:#fff;cursor:pointer}
+.b.g{background:#64748b}.b:focus-visible,input:focus-visible{outline:3px solid #f59e0b}
+input{width:66px;font:inherit;font-size:22px;text-align:center;border:2px solid #db2777;border-radius:8px;padding:2px}
+input::-webkit-inner-spin-button{display:none}
+.ok{color:#15803d;font-weight:700}.ng{color:#dc2626;font-weight:700}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ov{position:fixed;inset:0;background:#0009;display:none;z-index:9;overflow:auto;padding:8px}
+.ov.on{display:block}
+.ov>div{max-width:760px;margin:0 auto;background:#fff;border-radius:14px;padding:10px 12px}
+#nls{width:100%;height:auto;display:block;font-family:inherit}
+#nls text{font-size:13px;fill:#334155;pointer-events:none}
+.mb{position:relative;display:flex;height:52px;border:3px solid #334155;background:#fff;margin:16px 0 42px}
+.mb s{position:relative;flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;font-weight:700;color:#0f172a}
+.mb s.x{background:#38bdf8}.mb s.y{background:#fb923c}
+.mb.mg s.x,.mb.mg s.y{background:#4ade80}
+.mb s::before{content:"";position:absolute;z-index:2;right:-1px;top:0;bottom:0;width:2px;background:#64748b;transform:scaleY(0);transform-origin:top;transition:transform .5s calc(var(--j,0)*.05s),background .5s}
+.mb.fi s::before,.mb.gr s.e::before{transform:scaleY(1)}
+.mb.gr s.e::before{background:#334155;width:3px}
+.mb s:last-of-type::before{display:none}
+.mb.pl.fi s::before{animation:cut 1s calc(var(--j,0)*.1s) both}
+@keyframes cut{0%{transform:scaleY(0);background:#f59e0b;width:5px}50%{transform:scaleY(1);background:#f59e0b;width:5px}to{transform:scaleY(1)}}
+.rw{display:flex;align-items:center;gap:8px;margin:10px 0;transition:opacity .4s}
+.rw .mb{flex:1;margin:0}
+.rl{width:58px;flex:none;text-align:center}.rl .fr{font-size:16px}
+.rw.hd{opacity:0}.rw.hd s{transform:translateY(-124px)}
+.r3 s{transition:transform .8s calc(var(--j,0)*.06s)}
+.r2 s{transition:transform 1s calc(var(--i,0)*.1s),background .6s 1s}
+.ad.tk .r2 s.y{transform:translate(var(--dx),-62px);background:#cbd5e1;z-index:3}
+.ct{flex-wrap:wrap}
+.mb s[data-n]::after{content:attr(data-n);opacity:0;transition:opacity .5s calc(var(--i,0)*.06s)}
+.mb.nn s[data-n]::after{opacity:1}
+.mb em{position:absolute;display:block;font-style:normal;opacity:0;transition:opacity .5s;pointer-events:none}
+.mb .mkr{top:-10px;bottom:-10px;border-left:3px dashed #dc2626;opacity:1}
+.mb .hg{top:-7px;bottom:-7px;left:0;border:3px dashed #f59e0b;border-radius:4px}
+.mb .br{top:100%;margin-top:6px;left:0;height:12px;border:3px solid #db2777;border-top:0}
+.br b{position:absolute;top:14px;left:0;right:0;text-align:center;color:#db2777;white-space:nowrap}
+.mo[data-s="1"] .hg,.mo[data-s="2"] .br,.mo[data-s="3"] .br{opacity:1}
+.hl{padding:0 3px;border-radius:4px}.hl.o{background:#fed7aa}.hl.p{background:#fbcfe8}
+.ct{display:flex;gap:6px;justify-content:center}.mc{min-height:3.6em}
+.b:disabled{opacity:.4;cursor:default}
+@media(prefers-reduced-motion:reduce){.mb s,.mb em,.mb s::after{transition:none}}
+
+button{min-height:44px}button:focus-visible,select:focus-visible{outline:4px solid #a16207;outline-offset:3px}
+#dots{display:block;margin:12px 0}#course{font:inherit;width:100%;padding:10px;border:2px solid #64748b;border-radius:8px;background:white}
+#progress{font-weight:bold;color:#475569}#t:focus{outline:none}.card{padding:18px;min-height:200px}
+.unit{font-weight:bold;color:#475569}.task{border-left:5px solid #0284c7;padding:8px;background:#eff6ff}
+.pieces{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.pieces span{background:#dbeafe;border:2px solid #334155;padding:8px;border-radius:6px}
+.b{background:#15803d}.b.g{background:#475569}.mc{margin-top:12px}.ct{gap:8px}.fr{white-space:nowrap}
+.eq{overflow-wrap:anywhere}#fb{min-height:2em}.help{margin:8px 0}.help button{font-size:16px;padding:6px 10px}
+@media(max-width:480px){body{font-size:18px}.top{flex-wrap:wrap}.eq{font-size:20px}.fl{flex-direction:column}.ct .b{padding:8px 10px}.nav .b{padding:10px}#app{padding:8px}.card{padding:12px}.mb{height:56px}.mb s{font-size:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style></head><body>
+<div id="app">
+<div class="top"><h1>分数の たし算・ひき算 <small>（分母が ちがうとき）</small></h1><button class="b g" onclick="nl()" style="padding:6px 12px;font-size:15px">📏 数直線ずかん</button></div>
+<div id="dots"></div><p id="progress"></p><h2 id="t" tabindex="-1"></h2><div class="help"><button class="b g" onclick="jump(0)">分数の はじめに もどる</button> <button class="b g" onclick="replay()">この 画面を もういちど</button></div><div id="c"></div>
+<div class="nav"><button class="b g" id="pv" onclick="prev()">◀ もどる</button><button class="b" id="nt" onclick="nxt()">つぎへ ▶</button></div>
+</div>
+<div class="ov" id="ov" role="dialog" aria-modal="true" aria-label="数直線ずかん" onclick="if(event.target==this)nl(0)"><div>
+<div class="top"><b>📏 数直線ずかん（分母 2〜10）</b><button class="b g" onclick="nl(0)" style="padding:6px 12px;font-size:15px">とじる ✕</button></div>
+<p style="font-size:15px;margin:2px 0">目もりを タップしてね。2つ えらぶと 大きさを くらべられるよ。</p>
+<p><label>分母 <select id="nd" onchange="numberOptions()"></select></label> <label>分子 <select id="nk"></select></label> <button class="b" onclick="pick(+$('#nk').value,+$('#nd').value)">この 分数を えらぶ</button></p>
+<div style="overflow-x:auto"><svg id="nls" style="min-width:660px" viewBox="0 0 720 400" role="img" aria-label="0から1の数直線。分母2から10の分数を比較します。分数は上の選択欄からも選べます。"></svg></div><div id="nlr" aria-live="polite"></div>
+<button class="b g" onclick="sel=[];draw()" style="padding:6px 12px;font-size:15px">えらびなおし</button>
+</div></div>
+<script>
+const $=s=>document.querySelector(s),R=n=>Math.floor(Math.random()*n),
+gcd=(a,b)=>b?gcd(b,a%b):a,lcm=(a,b)=>a/gcd(a,b)*b,
+fr=(a,b)=>`<span class=fr><b>${a}</b><u>${b}</u></span>`,
+C={B:'#38bdf8',O:'#fb923c',P:'#4ade80',G:'repeating-linear-gradient(45deg,#94a3b8 0 4px,#fff 4px 8px)'},
+bar=(d,s,l='')=>{let h='',i=0;for(const[n,c]of s)for(let j=0;j<n;j++)h+=`<i style="--i:${i++};background:${C[c]}"></i>`;for(;i<d;i++)h+='<i></i>';return`<div class=row role=img aria-label="全体を${d}等分。色のついた部分は${s.reduce((v,x)=>v+x[0],0)}こ分"><span class=lb aria-hidden=true>${l}</span><div class=bar aria-hidden=true>${h}</div></div>`},
+B=(d,a,l)=>bar(d,[[a,'B']],l),O=(d,a,l)=>bar(d,[[a,'O']],l),
+mk=p=>`<em class=mk style="left:calc(64px + (100% - 64px)*${p})"></em>`,
+eq=h=>`<div class=eq>${h}</div>`,
+ch=(n,hi)=>`<b>${n}の倍数</b><div class=chips>${[...Array(8)].map((_,i)=>`<span class="${hi.includes(n*(i+1))?'hi':''}">${n*(i+1)}</span>`).join('')}</div>`,
+qz=(t,o,a)=>`<p>${t}</p>${o.map(x=>`<button class="b g" data-v=${x} onclick="qa(this,${x==a})">${x}</button>`).join(' ')}`;
+function qa(b,t){b.textContent=b.dataset.v+(t?' ◯ せいかい！':' ✕ もういちど');b.style.background=t?'#16a34a':'#dc2626'}
+const nb=(l,a)=>`<p><button class="b g" onclick="sel=${a};nl()">📏 ${l}</button></p>`;
+const MS={},MT={},mi=r=>r.querySelectorAll('.mo').forEach(mr),
+cl=(F,k,f,nf)=>[...Array(F)].map((_,i)=>{const n=nf(i);return`<s class="${f(i)}${(i+1)%k==0?' e':''}" style="--i:${n};--j:${i}"${n?` data-n="${n}"`:''}></s>`}).join(''),
+ctl=id=>`<div class="eq"></div><p class="mc"></p><div class="ct"><button class="b g" onclick="mstep('${id}',-1)" aria-label="ひとつ前の変化">◀</button> <button class="b" onclick="mstep('${id}',1)">▶ つぎの へんか</button> <button class="b g" onclick="mall('${id}')">▶▶ ぜんぶ 見る</button> <button class="b g" onclick="mstep('${id}',-9)" aria-label="図をはじめから">↺ はじめから</button></div>`,
+mu=(v,k)=>k>1?`${v}×${k}`:v;
+function mo(id,a,b,k,d){const F=d>0?b*k:b,SF=d>0?a*k:a,C=F/k,P=SF/F*100;
+return`<div class="mo" id="${id}" data-t="m" data-mx="3" data-a="${a}" data-b="${b}" data-k="${k}" data-d="${d}"><div class="mb">${cl(F,k,i=>i<SF?'x':'',d>0?(i=>i<SF?i+1:0):(i=>i<SF&&(i+1)%k==0?(i+1)/k:0))}<em class="hg" style="width:${100/C}%"></em><em class="mkr" style="left:${P}%"></em><em class="br" style="width:${P}%"><b></b></em></div>${ctl(id)}</div>`}
+function ad(id,a,b,c,e,op,s0){const L=lcm(b,e),k1=L/b,k2=L/e,x=a*k1,y=c*k2,n=op=='a'?x+y:x-y,g=gcd(n,L),K=g>1?g:1e9;
+if(s0!=null&&MS[id]==null)MS[id]=s0;
+const rw=(q,f,nf,k)=>`<div class="rw ${q}"><span class="rl"></span><div class="mb">${cl(L,k,f,nf)}</div></div>`;
+return`<div class="mo ad" id="${id}" data-t="a" data-mx="${g>1?5:4}" data-a="${a}" data-b="${b}" data-c="${c}" data-e="${e}" data-op="${op}" style="--dx:${(x-y)*100}%">${rw('r1',i=>i<x?'x':'',i=>i<x?i+1:0,k1)}${rw('r2',i=>i<y?'y':'',i=>i<y?i+1:0,k2)}${rw('r3',i=>i<(op=='a'?x:n)?'x':i<n?'y':'',i=>i<n?i+1:0,K)}${ctl(id)}</div>`}
+function mstep(id,v){clearTimeout(MT[id]);const el=$('#'+id);if(!el)return;MS[id]=v==-9?0:Math.max(0,Math.min(+el.dataset.mx,(MS[id]||0)+v));el.querySelectorAll('.mb').forEach(m=>m.classList.add('pl'));mr(el)}
+function mall(id){clearTimeout(MT[id]);mstep(id,-9);const t=()=>{const el=$('#'+id);if(el&&(MS[id]||0)<+el.dataset.mx)MT[id]=setTimeout(()=>{mstep(id,1);t()},2600)};t()}
+function mr(el){const s=MS[el.id]||0,bt=el.querySelectorAll('.ct button');el.dataset.s=s;el.dataset.t=='a'?m2(el):m1(el);bt[0].disabled=!s;bt[1].disabled=s>=+el.dataset.mx}
+function m1(el){const[a,b,k,d]=['a','b','k','d'].map(x=>+el.dataset[x]),F=d>0?b*k:b,SF=d>0?a*k:a,C=F/k,SC=SF/k,s=+el.dataset.s,mb=el.querySelector('.mb'),
+H=(t,c)=>`<span class="hl ${c}">${t}</span>`,o=d>0?'×':'÷',nu=`${a}${o}${k}`,de=`${b}${o}${k}`;
+mb.classList.toggle('fi',d>0?s>0:s<3);mb.classList.toggle('gr',d>0||s>0);mb.classList.toggle('nn',s>1);
+el.querySelector('.br b').textContent=`${a}${o}${k}＝${d>0?SF:SC}こ`;
+el.querySelector('.eq').innerHTML=[fr(a,b),`全体は ${b}${o}${k}＝${F/k*(d>0?k:1)} こ分`, `色は ${a}${o}${k}＝${d>0?SF:SC} こ分`,`${fr(a,b)}＝${fr(nu,de)}＝${d>0?fr(SF,F):fr(SC,C)}`][s];
+el.querySelector('.mc').innerHTML=(d>0?[
+`まず ${fr(a,b)}。バーを ${b}等分して、${a}こ分に 色を ぬったよ。`,
+`分母に <b>×${k}</b>。1つぶんを ${k}こに 切り分けると、ぜんぶで ${b}×${k}＝<b>${F}こ</b> に ふえたよ。色の 長さ（赤い線）は かわらない。`,
+`色の ぶぶんも 1つぶんが ${k}こずつに なったよ。ぜんぶで ${a}×${k}＝<b>${SF}こ</b>。<b>分子にも ×${k}</b> を したのと 同じだね！`,
+`赤い線の 位置は ずっと 同じ。だから 大きさは かわらず ${fr(a,b)}＝${fr(SF,F)}。`
+]:[
+`まず ${fr(a,b)}。バーを ${b}等分して、${a}こ分に 色を ぬったよ。`,
+`分母を <b>÷${k}</b>。${k}こずつ ひとまとまりに すると、${b}÷${k}＝<b>${C}こ</b> の まとまりに なるよ。`,
+`色の ぶぶんも ${k}こずつ まとまって、${a}÷${k}＝<b>${SC}こ</b>。<b>分子も ÷${k}</b> を したのと 同じだね！`,
+`赤い線の 位置は ずっと 同じ。だから 大きさは かわらず ${fr(a,b)}＝${fr(SC,C)}。分母が 小さく なったね。`
+])[s]}
+function m2(el){const[a,b,c,e]=['a','b','c','e'].map(x=>+el.dataset[x]),A=el.dataset.op=='a',L=lcm(b,e),k1=L/b,k2=L/e,x=a*k1,y=c*k2,n=A?x+y:x-y,g=gcd(n,L),s=+el.dataset.s,sy=A?'＋':'−',
+R=['.r1','.r2','.r3'].map(q=>el.querySelector(q)),T=(r,k,v)=>r.querySelector('.mb').classList.toggle(k,!!v),v3=s>=(A?3:4),lb=(r,h)=>r.querySelector('.rl').innerHTML=h;
+[R[0],R[1]].forEach(r=>{T(r,'gr',1);T(r,'fi',s>0);T(r,'nn',s>1)});
+R[2].classList.toggle('hd',!v3);T(R[2],'fi',v3&&s<5);T(R[2],'gr',s>4);T(R[2],'mg',s>4);T(R[2],'nn',v3&&s<5);
+el.classList.toggle('tk',!A&&s>2);
+lb(R[0],s?fr(x,L):fr(a,b));lb(R[1],s?fr(y,L):fr(c,e));lb(R[2],s>4?fr(n/g,L/g):fr(n,L));
+el.querySelector('.eq').innerHTML=[
+`${fr(a,b)}${sy}${fr(c,e)}`,
+`${fr(a,b)}＝${fr(mu(a,k1),mu(b,k1))}　${fr(c,e)}＝${fr(mu(c,k2),mu(e,k2))}`,
+`${fr(x,L)}${sy}${fr(y,L)}`,
+`${fr(x,L)}${sy}${fr(y,L)}＝${fr(`${x}${A?'+':'−'}${y}`,L)}`,
+`${fr(x,L)}${sy}${fr(y,L)}＝${fr(n,L)}`,
+`${fr(n,L)}＝${fr(`${n}÷${g}`,`${L}÷${g}`)}＝${fr(n/g,L/g)}`][s];
+el.querySelector('.mc').innerHTML=[
+`${fr(a,b)} と ${fr(c,e)}。1つぶんの 大きさが ちがうから、そのままでは ${A?'たせない':'ひけない'}ね。`,
+`分母 ${b} と ${e} の 最小公倍数は <b>${L}</b>。${k1>1?`${b}→${L} は ×${k1}`:`${b}は そのまま`}、${k2>1?`${e}→${L} は ×${k2}`:`${e}は そのまま`}。1つぶんを 切り分けて ${L}こに そろえるよ（<b>通分</b>）。`,
+`${fr(1,L)} を 1つぶんと すると、${fr(a,b)} は <b>${x}こ</b>、${fr(c,e)} は <b>${y}こ</b>。`,
+A?`${x}こ と ${y}こを あわせると、${x}＋${y}＝<b>${n}こ</b>。`:`${x}こ から ${y}こ（オレンジ色の ぶぶん）を とるよ。`,
+A?`答えは ${fr(1,L)} が ${n}こ分。だから ${fr(n,L)}。`:`のこりは ${x}－${y}＝<b>${n}こ</b>。答えは ${fr(n,L)}。`,
+`${fr(n,L)} は 約分できるよ。${g}こずつ ひとまとまりに すると ${fr(n/g,L/g)}。分母を 小さく しよう。`][s]}
+
+const S=[
+{t:'① 分母が 同じなら たせるけど…',p:[
+`<p>まず ふくしゅう。<span class=k>分母が 同じ</span> 分数は たし算 できたよね。</p>${B(5,1,fr(1,5))}${O(5,2,fr(2,5))}<p>どちらも ${fr(1,5)} が いくつ分か で 表せるよ。</p>`,
+`<p>2つの バーを つなげると…</p>${bar(5,[[1,'B'],[2,'O']],fr(3,5))}${eq(`${fr(1,5)} が　1こ ＋ 2こ ＝ 3こ`)}${eq(`${fr(1,5)}＋${fr(2,5)}＝${fr('1+2',5)}＝${fr(3,5)}`)}<p class=ok>1つぶんの 大きさが 同じ だから、分子だけ たせば いいんだね。</p>`,
+`<p>では、<span class=k>分母が ちがう</span> ときは どうかな？<br>牛にゅうが ${fr(1,2)}L と ${fr(1,3)}L あります。あわせると なんL？</p>${B(2,1,fr(1,2))}${O(3,1,fr(1,3))}`,
+`<p>2つの バーを くらべてみて。さっきと ちがって <span class=k>1つぶんの 大きさ</span>が ちがうよね。<br>分母（ぶんぼ）が ちがうと、そのままでは たせないんだ。</p>`,
+`<p>もし 分子どうし、分母どうしを たしてしまったら…</p>${eq(`${fr(1,2)}＋${fr(1,3)}＝${fr('1+1','2+3')}＝${fr(2,5)}？`)}<div class=mkw>${mk(.5)}${B(2,1,fr(1,2))}${bar(5,[[2,'P']],fr(2,5))}</div><p class=ng>たしたのに ${fr(1,2)} より 小さい！ これは まちがいだよ。</p>${nb('数直線で たしかめる','[{k:2,d:5},{k:1,d:2}]')}`]},
+
+{t:'② 同じ 大きさの 分数を さがそう',p:[
+`<p>${fr(1,2)} の バーの それぞれの 1こを、さらに 2つずつに 切ると、大きさは どうなるかな？ ▶ を おしてね。</p>${mo('w2b',1,2,2,1)}`,
+`<p>こんどは 3つに 切って みよう（分母×3）。</p>${mo('w2a',1,2,3,1)}${nb('数直線ずかんで 見る','[{k:1,d:2}]')}`,
+`<p>${fr(1,3)} も 2つに 切ってみるよ。</p>${mo('w2c',1,3,2,1)}`,
+`<p>${fr(1,2)} と ${fr(1,3)}。切り方を えらぶと、どちらも <span class=k>分母が 6</span> の 分数に できるね！</p>${B(6,3,fr(3,6))}${O(6,2,fr(2,6))}${eq(`${fr(1,2)}＝${fr(3,6)}　　${fr(1,3)}＝${fr(2,6)}`)}`,
+`${eq(`${fr('●','■')}＝${fr('●×▲','■×▲')}`)}<p><span class=k>分母と 分子に 同じ数を かけても</span> 大きさは かわらないんだね。</p>${qz(`${fr(2,3)}＝${fr('□',9)} の □に 入る数は？`,[4,6,8],6)}`]},
+
+{t:'③ 分母を そろえて たし算（通分）',p:[
+`<p>牛にゅう ${fr(1,2)}L と ${fr(1,3)}L を あわせるよ。バーを 切って 分母を そろえよう。▶ を おしてね。</p>${ad('w3',1,2,1,3,'a')}`,
+`${eq(`${fr(1,2)}＋${fr(1,3)}＝${fr(3,6)}＋${fr(2,6)}＝${fr(5,6)}`)}<p class=ok>答え　${fr(5,6)} L</p><p>分母が そろえば、<span class=k>分子だけ</span> たせば いいよ。分母を そろえる ことを <b>通分（つうぶん）</b>と いうんだ。</p>`]},
+
+{t:'④ 通分して ひき算',p:[
+`<p>${fr(2,3)}L − ${fr(1,2)}L も 同じように 分母を そろえてから ひくよ。</p>${ad('w4',2,3,1,2,'s')}`,
+`${eq(`${fr(2,3)}−${fr(1,2)}＝${fr(4,6)}−${fr(3,6)}＝${fr(1,6)}`)}<p class=ok>答え　${fr(1,6)} L</p>`]},
+
+{t:'⑤ 分母が 大きいときの 通分',p:[
+`<p>${fr(3,5)}L − ${fr(1,4)}L。分母が 5 と 4 のとき、同じ大きさの 分数を 書きならべるのは たいへん…。<br>そこで <span class=k>分母の 倍数（ばいすう）</span>を 見てみよう。</p>${nb(`${fr(3,5)} と ${fr(1,4)} を 数直線ずかんで くらべる`,'[{k:3,d:5},{k:1,d:4}]')}`,
+`${ch(5,[20])}${ch(4,[20])}<p>どちらにも ある <span class=k>20</span> を <b>公倍数（こうばいすう）</b>と いうよ。その中で いちばん 小さい ものを <b>最小公倍数</b>と いい、それを 分母に すると 数が 小さくて らく！</p>`,
+`<p>まず ${fr(3,5)} を 分母が 20 の 分数に しよう。5 を 20 にするには <span class=k>×4</span>。</p>${mo('w5a',3,5,4,1)}`,
+`<p>つぎに ${fr(1,4)}。4 を 20 にするには <span class=k>×5</span>。</p>${mo('w5b',1,4,5,1)}`,
+`<p>どちらも 20こに 分けた ものさしに そろったね。ここから ひき算 するよ。</p>${ad('w5c',3,5,1,4,'s',2)}`,
+`${eq(`${fr(3,5)}−${fr(1,4)}＝${fr(12,20)}−${fr(5,20)}＝${fr(7,20)}`)}<p class=ok>答え　${fr(7,20)} L</p>`]},
+
+{t:'⑥ 大きさを 変えずに 表し方を かえる（約分）',p:[
+`<p>答えが ${fr(6,8)} に なったよ。分数の 大きさを 変えずに、分母を もっと 小さく できるかな？</p>${B(8,6,fr(6,8))}`,
+`<p>分子と 分母を <span class=k>同じ数で わる</span>と、分母が 小さい 分数に なる。これを <b>約分（やくぶん）</b>と いうよ。▶ を おしてね。</p>${mo('w6a',6,8,2,-1)}`,
+`<p>${fr(12,18)} は？ 2 で わっても 3 で わっても できるけど、<span class=k>いちばん 大きい 公約数 6</span> で わると 1回で できる！</p>${mo('w6b',12,18,6,-1)}`,
+`<p><span class=k>まとめ</span>　分母と 分子に <b>同じ数</b>を…</p>${eq(`${fr('●','■')}＝${fr('●×▲','■×▲')}`)}${eq(`${fr('●','■')}＝${fr('●÷▲','■÷▲')}`)}<p>かけても わっても、大きさは かわらない！ だから 同じ 大きさの 分数を いくつでも つくれるし、約分も できるんだね。</p>`,
+`<p>答えが 約分できる ときは、分母を できるだけ 小さく しよう。</p>${ad('w6c',1,6,1,3,'a')}`]},
+
+{t:'⑦ まとめ：3つの ステップ',p:[
+`<div class=fl><div><b>① 通分</b><br>分母を そろえる</div><div class=a>➡</div><div><b>② 計算</b><br>分子だけ<br>たす・ひく</div><div class=a>➡</div><div><b>③ 約分</b><br>できるとき<br>小さくする</div></div>`,
+`<p>れい　${fr(1,6)}＋${fr(3,8)}　（6と8の 最小公倍数は <span class=k>24</span>）</p>${ad('w7',1,6,3,8,'a')}<p>13 と 24 に 1より 大きい 公約数は ないので 約分は なし。</p>`,
+`<p class=ng>気をつけよう！</p>${eq(`${fr(1,6)}＋${fr(3,8)}＝${fr(4,14)} ✕`)}<p>分母は たさないよ。<span class=k>分母は そろえるだけ</span>。さあ、れんしゅうしよう！</p>`]},
+
+{t:'⑧ れんしゅうもんだい',pr:1}];
+
+const parts=(count,size)=>`<div class="pieces">${Array.from({length:count},(_,i)=>`<span>${size}こ<br>●`.replace('●','●'.repeat(size))).join('')}</div>`;
+S.unshift(
+{t:'はじめに① 1を 同じ 大きさに 分ける',p:[
+`<p>ここから いっしょに はじめよう。分からなく なったら「もどる」で 同じ 図を 見られるよ。</p><p class="unit">下の バー 1本で「1」です。</p>${B(1,1,'1')}<p>色の ついた ところが、まるごと 1つ。</p>`,
+`<p>同じ 長さの バーを、<b>同じ 大きさに 2つ</b>に 分けるよ。</p>${B(2,1,fr(1,2))}<p>その 1こ分を「2分の1」と 読むよ。</p>${eq(fr(1,2))}<p>下の 2：全体を 2つに 分けた。<br>上の 1：そのうちの 1こ分。</p>`,
+`<p>4つに 分ける ときも、<b>同じ 大きさ</b>に するよ。</p>${B(4,1,fr(1,4))}<p>4分の1：4つに 分けた うちの 1こ分。</p><p class="task">色の ない ところも ふくめて、4こ あるか 数えよう。</p>`,
+`<p>色が 3こ分なら「4分の3」。</p>${B(4,3,fr(3,4))}<p><b>分母（ぶんぼ）</b>：下の 4。全体を いくつに 等分したか。<br><b>分子（ぶんし）</b>：上の 3。その いくつ分か。</p>`,
+`<p>図を 見て えらぼう。同じ 大きさに 4つに 分けて、色は 何こ分？</p>${B(4,3,'色の部分')}${qz('色の こ数は？',[1,3,4],3)}<p>答えたら「つぎへ」。何度 えらびなおしても いいよ。</p>`]},
+{t:'はじめに② 1つぶんと 分数の たし算・ひき算',p:[
+`<p>どの バーも、1本の 長さが「1」です。</p>${B(2,1,fr(1,2))}${B(4,1,fr(1,4))}<p>同じ 1を たくさんに 分けると、<b>1こ分は 小さくなる</b>ね。</p>`,
+`<p>今度は どちらも 5等分。1こ分の 大きさが 同じだね。</p>${B(5,1,fr(1,5))}${O(5,2,fr(2,5))}<p>上は 1こ分。下は 2こ分。</p>`,
+`<p>1こ分と 2こ分を あわせよう。</p>${bar(5,[[1,'B'],[2,'O']],fr(3,5))}${eq(`${fr(1,5)}＋${fr(2,5)}＝${fr(3,5)}`)}<p>5等分の 1こ分が、1＋2＝3こ分。<b>切り方は 5等分の まま</b>だよ。</p>`,
+`<p>5等分の 4こ分から、1こ分を とるよ。しまの 部分が とった ところ。</p>${bar(5,[[3,'B'],[1,'G']],fr(4,5))}${eq(`${fr(4,5)}−${fr(1,5)}＝${fr(3,5)}`)}<p>のこりは 3こ分。切り方は 5等分の まま。</p>`]},
+{t:'ふくしゅう③ かけ算と 同じ 大きさの 分数',p:[
+`<p>2こずつの まとまりが 3つ あるよ。</p>${parts(3,2)}${eq('2＋2＋2＝6')} ${eq('2×3＝6')}<p>同じ数を くり返し たすことを、かけ算で 表せるね。</p>`,
+`<p>同じ 1を 2等分した うちの 1こ分。<b>それぞれの 1こを、さらに 3つに</b> 切ろう。</p>${mo('preEq',1,2,3,1)}`,
+`<p>切る 前と 後を くらべよう。どちらも 全体は 同じ 1。</p>${B(2,1,fr(1,2))}${B(6,3,fr(3,6))}<p>色の 長さは 同じ。名前が かわっても、大きさは 同じだよ。</p>${eq(`${fr(1,2)}＝${fr(3,6)}`)}`]},
+{t:'ふくしゅう④ 倍数・そろう数を 見つける',p:[
+`<p>2ずつ ふやすと…</p>${parts(3,2)}${eq('2 → 4 → 6')}<p>2の だんで 出てくる数を、<b>2の 倍数</b>と いうよ。</p>`,
+`<p>3ずつ ふやすと…</p>${parts(2,3)}${eq('3 → 6')}<p>6は、2ずつでも 3ずつでも 作れるね。</p>`,
+`${ch(2,[6,12])}${ch(3,[6,12])}<p>両方に ある数が <b>公倍数</b>。この中で いちばん 小さい 6が <b>最小公倍数</b>。</p><p>分母を そろえる ときに 使えるよ。むずかしい ときは、図の ヒントで そろえよう。</p>`]},
+{t:'ふくしゅう⑤ わり算・大きさを 変えない 約分',p:[
+`<p>6こを、2こずつに まとめるよ。</p>${parts(3,2)}<p>まとまりは 3つ。</p>${eq('6÷2＝3')}<p>わり算で、まとまりの 数を 表せるね。</p>`,
+`<p>8等分の 6こ分を、2こずつ まとめよう。全体も 色の 部分も、同じ 2こずつだよ。</p>${mo('preReduce',6,8,2,-1)}`,
+`<p>まとめる 前と 後。全体も 色の 長さも 同じだね。</p>${B(8,6,fr(6,8))}${B(4,3,fr(3,4))}${eq(`${fr(6,8)}＝${fr(3,4)}`)}<p><b>約分</b>は、大きさを 変えずに 分数の 表し方を かえることだよ。</p>`]}
+);
+
+const solved=new Set(),hintUsed=new Set();
+let st={s:0,k:0},P=[['e',1,2,6],['e',3,5,20],['a',1,2,1,3],['s',2,3,1,2],['a',1,4,1,6],['r',6,8],['s',3,5,1,4],['a',1,6,1,3],['s',5,6,1,3],['a',1,6,3,8]],pi=0,sc=0,hc=0,done=0;
+function stopTimers(){Object.keys(MT).forEach(id=>clearTimeout(MT[id]))}
+function jump(i){stopTimers();st={s:i,k:0};go()}
+function replay(){stopTimers();$('#c').querySelectorAll('.mo').forEach(el=>MS[el.id]=0);go()}
+function go(){stopTimers();const s=S[st.s];
+$('#dots').innerHTML=`<label for="course">学ぶ ところを えらぶ</label><select id="course" onchange="jump(+this.value)">${S.map((x,i)=>`<option value="${i}" ${i==st.s?'selected':''}>${x.t}</option>`).join('')}</select>`;
+$('#t').textContent=s.t;
+if(s.pr){$('#c').innerHTML='<div class="card" id="pc"></div>';pr()}
+else $('#c').innerHTML=`<div class="card">${s.p[st.k]}</div>`;
+mi($('#c'));ui();$('#t').focus({preventScroll:true})}
+function ui(){const s=S[st.s];$('#pv').disabled=!(st.s||st.k);$('#nt').style.display=s.pr?'none':'';
+$('#progress').textContent=s.pr?'図の ヒントを 見ながら 取り組めます。':`この 学習の ${st.k+1} / ${s.p.length} 画面`;
+if(!s.pr)$('#nt').textContent=st.k<s.p.length-1?'つぎへ ▶':'つぎの 学習へ ▶'}
+function nxt(){const s=S[st.s];if(s.pr)return;if(st.k<s.p.length-1)st.k++;else if(st.s<S.length-1){st.s++;st.k=0}go()}
+function prev(){if(st.k)st.k--;else if(st.s){st.s--;st.k=S[st.s].pr?0:S[st.s].p.length-1}go()}
+
+const rnd=()=>{let a,b,c,d,s=Math.random()<.5;do{b=2+R(8);d=2+R(8);a=1+R(b-1);c=1+R(d-1)}while(b==d||a*d==c*b||(!s&&a*d+c*b>=b*d));if(s&&a*d<c*b)[a,b,c,d]=[c,d,a,b];return[s?'s':'a',a,b,c,d]};
+function tg(p){const[t,a,b,c,d]=p;if(t=='e')return[a*c/b,c];if(t=='r'){const g=gcd(a,b);return[a/g,b/g]}const L=lcm(b,d),x=a*L/b,y=c*L/d,n=t=='a'?x+y:x-y,g=gcd(n,L);return[n/g,L/g]}
+function pr(){const p=P[pi]||(P[pi]=rnd()),[t,a,b,c,d]=p,I=id=>`<input id=${id} type=text inputmode=numeric autocomplete=off aria-label="${id=='n'?'答えの分子':'答えの分母'}">`;hc=0;done=0;
+const q=t=='e'?`${fr(a,b)}＝${fr(I('n'),c)}`:t=='r'?`${fr(a,b)}＝${fr(I('n'),I('m'))}<br><small>約分しよう</small>`:`${fr(a,b)}${t=='a'?'＋':'−'}${fr(c,d)}＝${fr(I('n'),I('m'))}`;
+$('#pc').innerHTML=`<p>もんだい ${pi+1}${pi>9?'（もっと れんしゅう）':''}　　自分で できた ${sc}こ</p>${eq(q)}<div style="text-align:center"><button class=b onclick=ck()>こたえあわせ</button> <button class="b g" onclick=hint()>ヒント 💡</button></div><p id=fb role=status aria-live=polite style="text-align:center"></p><div id=hb></div>`}
+function readNumber(v){const t=v.trim().replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));return /^\d+$/.test(t)?Number(t):NaN}
+function ck(){const p=P[pi],[N,D]=tg(p),n=readNumber($('#n').value),m=p[0]=='e'?D:readNumber($('#m').value),f=$('#fb');
+if(!Number.isSafeInteger(n)||!Number.isSafeInteger(m)||n<=0||m<=0){f.innerHTML='<span class=ng>1以上の 整数を 入れてね（例：3）</span>';return}
+if(n*D!=N*m){f.innerHTML='<span class=ng>✕ おしい！ ヒントを 見て もういちど。</span>';return}
+if(p[0]!='e'&&gcd(n,m)>1){f.innerHTML='<span class=ng>あっているよ！ でも 約分（やくぶん）できるよ。分母を もっと 小さく しよう。</span>';return}
+if(!done){if(!solved.has(pi)){if(!hintUsed.has(pi))sc++;solved.add(pi)}done=1}
+f.innerHTML='<span class=ok>◯ '+(hintUsed.has(pi)?'ヒントで できたね！':'せいかい！')+'</span> <button class=b onclick="pi++;pr()">つぎの もんだい ▶</button>'}
+function hint(){const p=P[pi],[t,a,b,c,d]=p;hc++;hintUsed.add(pi);let h='';
+if(t=='e'){const k=c/b;h=hc<2?`<p>分母が ${b} → ${c} だから <span class=k>×${k}</span>。分子にも ×${k} を しよう。</p>`:B(b,a,fr(a,b))+B(c,a*k,fr('?',c))}
+else if(t=='r'){const g=gcd(a,b);h=hc<2?`<p>分子 ${a} と 分母 ${b} を 同じ数で わろう。まずは 2こずつに まとめられるか、図で 見よう。</p>`:`<p>最大公約数は <span class=k>${g}</span>。${a}÷${g}、${b}÷${g}</p>`+B(b,a,fr(a,b))+B(b/g,a/g,fr('?','?'))}
+else{const L=lcm(b,d),x=a*L/b,y=c*L/d;h=hc<2?`<p>分母 ${b} と ${d} の 最小公倍数は <span class=k>${L}</span>。<br>${fr(a,b)}＝${fr('?',L)}（×${L/b}）　${fr(c,d)}＝${fr('?',L)}（×${L/d}）</p>`:B(L,x,fr(x,L))+O(L,y,fr(y,L))+bar(L,t=='a'?[[x,'B'],[y,'O']]:[[x-y,'B'],[y,'G']],fr('?',L))+`<p>${L}こに 分けた ものさしで ${x}こ ${t=='a'?'と':'から'} ${y}こ ${t=='a'?'を あわせる':'を とる'}と…</p>`}
+if(hc>=3){
+ const id='practiceGuide'+pi;
+ h='<p>図を ひとつずつ 動かして たしかめよう。「つぎの へんか」を おしてね。</p>'+
+ (t=='e'?mo(id,a,b,c/b,1):t=='r'?mo(id,a,b,gcd(a,b),-1):ad(id,a,b,c,d,t));
+ h+='<p>答えを 見ながら 入れても いいよ。できたら、つぎの 問題でも ためそう。</p>';
+}
+$('#hb').innerHTML=h;mi($('#hb'))}
+let sel=[];const X0=70,W=630,Y0=34,RH=40,NC=['#db2777','#0284c7'];
+let modalFocus;
+function numberOptions(){$('#nk').innerHTML=Array.from({length:+$('#nd').value-1},(_,i)=>`<option>${i+1}</option>`).join('')}
+function nl(o=1){if(o){modalFocus=document.activeElement;$('#nd').innerHTML=Array.from({length:9},(_,i)=>`<option>${i+2}</option>`).join('');numberOptions()}
+$('#ov').classList.toggle('on',!!o);$('#app').inert=!!o;document.body.style.overflow=o?'hidden':'';
+if(o){draw();$('#ov button').focus()}else if(modalFocus?.isConnected)modalFocus.focus()}
+function pick(k,d){if(sel.length>1)sel=[];sel.push({k,d});draw()}
+function draw(){const at=sel.map(s=>s.k/s.d),H=9*RH+4;
+let h=`<text x="${X0}" y="14" text-anchor="middle" style="font-size:14px;font-weight:700">0</text><text x="${X0+W}" y="14" text-anchor="middle" style="font-size:14px;font-weight:700">1</text>`;
+if(at.length==2)h+=`<rect x="${X0+Math.min(...at)*W}" y="${Y0-14}" width="${Math.abs(at[0]-at[1])*W}" height="${H}" fill="#fde047" opacity=".6"/>`;
+at.forEach((v,i)=>h+=`<line x1="${X0+v*W}" x2="${X0+v*W}" y1="${Y0-14}" y2="${Y0-14+H}" stroke="${NC[i]}" stroke-width="3" stroke-dasharray="6 4"/>`);
+for(let d=2;d<=10;d++){const y=Y0+(d-2)*RH+22;
+h+=`<text x="6" y="${y+4}" style="font-size:14px;font-weight:700">分母${d}</text><line x1="${X0}" x2="${X0+W}" y1="${y}" y2="${y}" stroke="#334155" stroke-width="3"/>`;
+for(let k=0;k<=d;k++){const x=X0+W*k/d,m=at.findIndex(v=>Math.abs(v-k/d)<1e-9),t=k>0&&k<d;
+h+=`<circle cx="${x}" cy="${y}" r="${m>=0?6:4}" fill="${m>=0?NC[m]:'#334155'}"/>`;
+if(t){const s=m>=0?`fill:${NC[m]};font-weight:700;font-size:14px`:'',c=m>=0?NC[m]:'#334155';
+h+=`<text x="${x}" y="${y-23}" text-anchor="middle" style="${s}">${k}</text><line x1="${x-9}" x2="${x+9}" y1="${y-20}" y2="${y-20}" stroke="${c}" stroke-width="1.5"/><text x="${x}" y="${y-8}" text-anchor="middle" style="${s}">${d}</text><rect x="${x-14}" y="${y-34}" width="28" height="42" fill="transparent" style="cursor:pointer" onclick="pick(${k},${d})"/>`}}}
+$('#nls').innerHTML=h;
+const cf=(s,i)=>`<span style="color:${NC[i]}">${fr(s.k,s.d)}</span>`;let r='<p>まず 目もりを 1つ タップしてみよう。</p>';
+if(sel.length==1){const{k,d}=sel[0],l=[];for(let e=2;e<=10;e++)if(k*e%d==0)l.push(fr(k*e/d,e));r=`<div class="eq">${l.join('＝')}</div><p>${l.length>1?'同じ 位置の 目もりは すべて 同じ 大きさ！':'この 図には 同じ 大きさの 分数は ないよ。'}　もう1つ えらぶと くらべられるよ。</p>`}
+if(sel.length==2){const[a,b]=sel,x=a.k*b.d,y=b.k*a.d;
+if(x==y)r=`<div class="eq">${cf(a,0)}＝${cf(b,1)}</div><p>同じ 大きさ！</p>`;
+else{const L=lcm(a.d,b.d),p=a.k*L/a.d,q=b.k*L/b.d,n=Math.abs(p-q),g=gcd(n,L),big=x>y?0:1;
+r=`<div class="eq">${cf(a,0)} ${x>y?'＞':'＜'} ${cf(b,1)}</div><p>${cf(sel[big],big)} の ほうが 大きいよ。ちがいは <span class="k">黄色の ぶぶん</span>。</p><p>通分すると ${fr(p,L)} と ${fr(q,L)}。ちがいは ${fr(n,L)}${g>1?`＝${fr(n/g,L/g)}`:''}</p>`}}
+$('#nlr').innerHTML=r}
+document.onkeydown=e=>{if(e.key=='Escape'&&$('#ov').classList.contains('on'))nl(0);
+if(e.key=='Tab'&&$('#ov').classList.contains('on')){const a=[...$('#ov').querySelectorAll('button,select')],first=a[0],last=a[a.length-1];if(e.shiftKey&&document.activeElement==first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement==last){e.preventDefault();first.focus()}}
+if(e.key=='Enter'&&e.target.matches('input')&&$('#n'))ck()};
+go();
+</script></body></html>

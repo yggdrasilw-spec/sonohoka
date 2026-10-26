@@ -1,0 +1,22 @@
+// Record the actual UI; no teaching state or drawing is substituted.
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
+const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {serve}=require('./portfolio-demo-inspect.cjs');
+const root=path.resolve(__dirname,'..'),dir=path.join(root,'.portfolio-work/demo-97');
+(async()=>{fs.mkdirSync(dir,{recursive:true});const server=serve();await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'msedge',headless:true});
+try{const context=await browser.newContext({viewport:{width:1280,height:720},recordVideo:{dir,size:{width:1280,height:720}}}),p=await context.newPage(),marks=[];
+await p.goto(`http://127.0.0.1:${server.address().port}/sonohoka/bunsuu_ibunbo.html`);await p.locator('#nt').click();await p.waitForTimeout(500);
+const mark=async i=>{marks.push(Date.now()/1000);await p.screenshot({path:path.join(dir,`frame-0${i}.png`)})};
+await mark(0);await p.waitForTimeout(1700);
+await p.selectOption('#course','2');await mark(1);await p.waitForTimeout(1600);
+await p.locator('#nt').click();await mark(2);await p.waitForTimeout(1800);
+const next=p.locator('#preEq').getByRole('button',{name:'▶ つぎの へんか',exact:true});
+await next.click();await mark(3);await p.waitForTimeout(1000);await next.click();await p.waitForTimeout(1000);
+await next.click();await p.waitForTimeout(350);await mark(4);await p.waitForTimeout(2500);
+const end=Date.now()/1000,video=p.video();await context.close();await video.saveAs(path.join(dir,'source.webm'));
+const ff=cp.spawnSync('python',['-c','import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())'],{encoding:'utf8'}).stdout.trim();
+const probe=cp.spawnSync(ff,['-hide_banner','-i',path.join(dir,'source.webm')],{encoding:'utf8'}).stderr,m=probe.match(/Duration: (\d+):(\d+):([\d.]+)/);if(!m)throw Error(probe);
+const duration=+m[1]*3600+ +m[2]*60+ +m[3],origin=end-duration;
+const data={id:97,title:'分数のたし算・ひき算｜分母がちがうとき',url:'bunsuu_ibunbo.html',sourceCommit:cp.spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),sourceSha256:require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(root,'bunsuu_ibunbo.html'))).digest('hex'),source:'source.webm',captions:['分数の意味から、図で復習','同じ数ずつのまとまりから、切り分けへ','切り方が変わっても、色の長さは同じ'],posterIndex:4,segments:marks.map(t=>Math.max(0,t-origin)),sourceDurations:marks.map((t,i)=>(marks[i+1]||end)-t),durations:[1.5,1.5,2,2,2.5]};
+fs.writeFileSync(path.join(dir,'storyboard.json'),JSON.stringify(data,null,2)+'\n');fs.writeFileSync(path.join(root,'scripts/portfolio-demos-97.json'),JSON.stringify(data,null,2)+'\n');console.log('CAPTURE PASS');
+}finally{await browser.close();server.close()}})().catch(e=>{console.error(e);process.exitCode=1});

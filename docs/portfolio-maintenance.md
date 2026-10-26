@@ -1,5 +1,13 @@
 # 学習アプリ作品集の更新
 
+## 2026年10月26日「分母がちがう分数のたし算・ひき算」の追加
+
+教材番号97として `bunsuu_ibunbo.html` を追加。主学年は5年。分数の意味、同分母計算、かけ算、倍数、わり算の5つの復習コースから、通分・約分・異分母の加減算へ進む。1画面ずつの説明、図の段階操作、練習の3段階ヒント、数直線の比較に対応。レビュー記録は `docs/bunsuu-ibunbo-review.md`。原本のDownloads内HTMLは変更していない。
+
+紹介は実操作の9.5秒・1280×720・H.264/AAC動画と同名PNG。`node scripts/capture-portfolio-97.cjs` で収録、`python scripts/encode-portfolio-missing.py 97` で書き出す。分数の読み方からかけ算のまとまり、同値分数の切り分けへ進む。字幕は画面外の帯に3本。参照元HTMLのSHA-256と採用区間は `scripts/portfolio-demos-97.json`、元映像と画像証拠は `.portfolio-work/demo-97/` に保存。
+
+教材の検証は `node scripts/qa-bunsuu-ibunbo.cjs`。掲載の検証は `node scripts/qa-portfolio-97.cjs`（公開ベースURLを第1引数に指定可）。全体は `node scripts/qa-portfolio.cjs --videos`。掲載94件、動画93本、非公開教材の静止画1件。
+
 ## 2026年10月24日「しりとりアプリ」の動画更新
 
 教材27の動画・同名PNGを最新のしりとり画面で再収録。手書き・かなボタン・キーボードの3つの入力方法と、AI生成画像・Wiki画像・ことばの意味を9.5秒で紹介する。字幕は3本、操作画面の外の専用帯に配置。H.264/AAC、1280×720、無音のプレビュー用。
