@@ -46,12 +46,13 @@
     let last = initial, segment = [path[0]];
     const move = () => {
       const blocks = (segment.length - 1) / 2;
-      // Whole city blocks are bounded by intersections. Entrances are mid-block;
-      // never round their half-block approaches into a false block count.
-      const whole = Number.isInteger(blocks) && blocks > 0 && segment[0].x % 2 === 0 && segment[0].y % 2 === 0 && segment.at(-1).x % 2 === 0 && segment.at(-1).y % 2 === 0;
+      // One block is two road edges, in either axis. Mid-block entrances can
+      // produce half blocks; retain that distance instead of rounding it away.
       const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
-      steps.push({ type: 'move', text: whole ? `Go straight for ${words[blocks]} block${blocks === 1 ? '' : 's'}.` : 'Go straight.',
-        ja: whole ? `交差点から次の交差点までが1ブロック。${blocks}ブロック、まっすぐ進みましょう。` : 'まっすぐ進みましょう。', nodes: segment, dir: last, blocks: whole ? blocks : null });
+      const distance = blocks === .5 ? 'half a block' : Number.isInteger(blocks)
+        ? `${words[blocks]} block${blocks === 1 ? '' : 's'}` : `${words[Math.floor(blocks)]} and a half blocks`;
+      steps.push({ type: 'move', text: `Go straight for ${distance}.`,
+        ja: `交差点から次の交差点までが1ブロック。${blocks === .5 ? '半' : blocks}ブロック、まっすぐ進みましょう。`, nodes: segment, dir: last, blocks });
     };
     for (let i = 1; i < path.length; i++) {
       const dir = direction(path[i - 1], path[i]);

@@ -27,7 +27,14 @@
     catch{$('save-state').textContent='この端末では自動保存できません。「町を保存（ファイル）」を使ってください。';}
   }
   function checkpoint(){previous=structuredClone(state);$('undo').disabled=false;}
-  function cancelSpeech(){try{window.speechSynthesis?.cancel();}catch{}if(speechFinish)speechFinish();}
+  let englishVoice=null;
+  function refreshVoice(){
+    try{const voices=window.speechSynthesis?.getVoices()||[],english=voices.filter(v=>/^en(?:-|$)/i.test(v.lang)),us=v=>/^en-US$/i.test(v.lang);
+      englishVoice=english.find(v=>v.localService&&us(v))||english.find(v=>v.localService)||english.find(us)||english[0]||null;
+      return voices;
+    }catch{return [];}
+  }
+  function cancelSpeech(){const finish=speechFinish;if(finish)finish();try{const synth=window.speechSynthesis;if(synth&&(finish||synth.speaking||synth.pending))synth.cancel();}catch{}}
   function stop(reset=true){token++;busy=false;cancelSpeech();$('character').getAnimations().forEach(a=>a.cancel());clearTurnCue();setFrame(heading,0);if(reset){index=0;$('directions').replaceChildren();$('map-instruction').textContent='出発地から案内しましょう。';$('map-translation').textContent='';if(route){setPosition(route.path[0]);setFrame(route.initial,0);}}controls();}
   function changed(){stop(false);route=null;index=0;$('directions').replaceChildren();$('route-path')?.remove();buildMap();renderMap();renderEndpoints();prepare();save();}
   function setStage(next){stop();stage=next;document.body.dataset.stage=next;setEndpointMode(null);$('placement-tools').hidden=next!=='edit';$('map-endpoints').hidden=next!=='guide';$('map-guide').hidden=next!=='guide';$('town-name').readOnly=next==='guide';$('position').textContent='';$('editor').hidden=next!=='edit';$('guide').hidden=next!=='guide';$('edit-tab').toggleAttribute('aria-current',next==='edit');$('route-tab').toggleAttribute('aria-current',next==='guide');if(next==='edit'){$('edit-tab').setAttribute('aria-current','step');$('character').hidden=true;message('絵を選んで、町の置きたい場所を押しましょう。');}else{$('route-tab').setAttribute('aria-current','step');prepare();message('出発地と目的地を選び、友達に道案内をしてみましょう。');}}
@@ -110,8 +117,19 @@
   function speak(text,t){
     if(!$('sound').checked||!window.speechSynthesis||t!==token)return Promise.resolve();
     return new Promise(resolve=>{
-      let done=false,timer;const finish=()=>{if(done)return;done=true;clearTimeout(timer);if(speechFinish===finish)speechFinish=null;resolve();};speechFinish=finish;
-      try{const utterance=new SpeechSynthesisUtterance(text),voices=speechSynthesis.getVoices();const voice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang.startsWith('en'));if(!voice&&voices.length){$('speech-note').textContent='英語の音声が見つからないため、文字と動きで案内します。';finish();return;}utterance.lang='en-US';utterance.rate=.85;if(voice){utterance.voice=voice;if(!voice.lang.toLowerCase().startsWith('en-us'))$('speech-note').textContent='米国英語の声がないため、別の英語音声を使います。';}utterance.onend=finish;utterance.onerror=()=>{$('speech-note').textContent='音声を再生できませんでした。文字と動きで案内します。';finish();};timer=setTimeout(()=>{if(t===token){try{speechSynthesis.cancel();}catch{}$('speech-note').textContent='音声の応答を待たず、文字と動きで続けます。';}finish();},Math.min(12000,2000+text.length*130));speechSynthesis.speak(utterance);}catch{finish();$('speech-note').textContent='音声を使えないため、文字と動きで案内します。';}
+      let done=false,timer,waiting;const finish=()=>{if(done)return;done=true;clearTimeout(timer);clearTimeout(waiting);if(speechFinish===finish)speechFinish=null;resolve();};speechFinish=finish;
+      const timeout=()=>{if(done)return;finish();if(t===token){try{speechSynthesis.cancel();}catch{}$('speech-note').textContent='音声の応答を待たず、文字と動きで続けます。';}};
+      try{
+        const utterance=new SpeechSynthesisUtterance(text),voices=refreshVoice(),voice=englishVoice;
+        if(!voice&&voices.length){$('speech-note').textContent='英語の音声が見つからないため、文字と動きで案内します。';finish();return;}
+        utterance.lang=voice?.lang||'en-US';utterance.rate=.85;if(voice)utterance.voice=voice;
+        const note=voice?(voice.localService?'端末内の英語音声を使います。':'通信を使う英語音声です。開始まで時間がかかる場合があります。'):'端末の英語音声を使います。';
+        $('speech-note').textContent=note;
+        waiting=setTimeout(()=>{if(!done&&t===token)$('speech-note').textContent='英語の音声を準備しています…';},800);
+        utterance.onstart=()=>{if(done||t!==token)return;clearTimeout(waiting);clearTimeout(timer);$('speech-note').textContent=note;timer=setTimeout(timeout,Math.min(20000,3000+text.length*150));};
+        utterance.onend=finish;utterance.onerror=()=>{if(done||t!==token)return;finish();$('speech-note').textContent='音声を再生できませんでした。文字と動きで案内します。';};
+        timer=setTimeout(timeout,4000);speechSynthesis.speak(utterance);
+      }catch{finish();$('speech-note').textContent='音声を使えないため、文字と動きで案内します。';}
     });
   }
   function showStep(step){$('directions').querySelectorAll('li').forEach(e=>e.classList.remove('active'));const li=document.createElement('li');li.className='active';const en=document.createElement('span');en.lang='en';en.textContent=step.text;const ja=document.createElement('span');ja.className='translation';ja.textContent=step.ja;li.append(en,ja);$('directions').append(li);$('map-instruction').textContent=step.text;$('map-translation').textContent=step.ja;syncInstruction();}
@@ -119,9 +137,17 @@
   function showBlockCue(step){
     if(!step.blocks)return;
     const ns='http://www.w3.org/2000/svg',group=document.createElementNS(ns,'g');group.id='block-cue';
-    for(let i=0;i<step.blocks;i++){
-      const p=step.nodes[i*2+1],mark=document.createElementNS(ns,'g');mark.classList.add('block-marker');mark.dataset.block=String(i+1);mark.setAttribute('transform',`translate(${14+64*p.x} ${14+64*p.y})`);
-      const circle=document.createElementNS(ns,'circle');circle.setAttribute('r','13');const text=document.createElementNS(ns,'text');text.textContent=String(i+1);mark.append(circle,text);group.append(mark);
+    for(let i=0;i<step.nodes.length-1;i+=2){
+      const end=Math.min(i+2,step.nodes.length-1),a=step.nodes[i],b=step.nodes[end],p={x:(a.x+b.x)/2,y:(a.y+b.y)/2},distance=end/2;
+      const mark=document.createElementNS(ns,'g');mark.classList.add('block-marker');mark.dataset.block=String(distance);mark.setAttribute('transform',`translate(${14+64*p.x} ${14+64*p.y})`);
+      const circle=document.createElementNS(ns,'circle');circle.setAttribute('r','13');const text=document.createElementNS(ns,'text');text.textContent=Number.isInteger(distance)?String(distance):`${Math.floor(distance)||''}½`;
+      if(!Number.isInteger(distance)){
+        // Keep the final half-block label clear of the character's feet.
+        const horizontal=a.y===b.y,dx=horizontal?0:22,dy=horizontal?-22:0;
+        const stem=document.createElementNS(ns,'line');stem.setAttribute('x2',String(-dx));stem.setAttribute('y2',String(-dy));stem.setAttribute('stroke','#176b67');stem.setAttribute('stroke-width','2');mark.append(stem);
+        mark.setAttribute('transform',`translate(${14+64*p.x+dx} ${14+64*p.y+dy})`);text.style.fontSize='14px';
+      }
+      mark.append(circle,text);group.append(mark);
     }
     $('roads').append(group);
   }
@@ -138,7 +164,7 @@
     for(const p of step.nodes.slice(1)){
       if(t!==token)return;const from={...current};
       if(duration){const start=performance.now();while(t===token){const elapsed=performance.now()-start,ratio=Math.min(1,elapsed/duration);$('character').style.left=percent(from.x+(p.x-from.x)*ratio)+'%';$('character').style.top=percent(from.y+(p.y-from.y)*ratio)+'%';setFrame(step.dir,Math.floor(elapsed/140)%4);if(ratio>=1)break;await delay(25);}}
-      if(t!==token)return;setPosition(p);if(step.blocks){const completed=Math.floor(step.nodes.indexOf(p)/2);document.querySelectorAll('.block-marker').forEach(m=>m.classList.toggle('done',Number(m.dataset.block)<=completed));}
+      if(t!==token)return;setPosition(p);if(step.blocks){const completed=step.nodes.indexOf(p)/2;document.querySelectorAll('.block-marker').forEach(m=>m.classList.toggle('done',Number(m.dataset.block)<=completed));}
     }
     setFrame(step.dir,0);
   }
@@ -200,7 +226,7 @@ b.addEventListener('click',()=>{
   $('town-name').addEventListener('change',()=>{checkpoint();state.title=$('town-name').value;save();});
   for(const k of ['start','goal'])$(k).onchange=()=>{const n=$(k).value===''?null:Number($(k).value),other=k==='start'?'goal':'start';if(n!==null&&n===state[other]){$(k).value=state[k]===null?'':String(state[k]);message('出発地と目的地は別の場所を選びましょう。');return;}checkpoint();state[k]=n;changed();setEndpointMode(k==='start'&&state.goal===null?'goal':null);message(n===null?'場所の選択を外しました。':`${k==='start'?'出発地':'目的地'}は ${label(n)} ${name(n)} です。${endpointMode==='goal'?'次は目的地の建物を押そう。':route?'まず友達に案内してから、お手本を見よう。':'もう一方の場所も選ぼう。'}`);};
   $('play').onclick=()=>run(true);$('next').onclick=()=>run(false);$('stop').onclick=()=>{stop();message('止めて出発地へ戻りました。もう一度始められます。');};$('restart').onclick=()=>{stop();message('出発地へ戻りました。同じ道をもう一度案内しましょう。');};
-  $('sound').onchange=()=>{cancelSpeech();$('speech-note').textContent=$('sound').checked?'英語の音声を使います。端末により声は異なります。':'音声を使わず、文字と動きで案内します。';};
+  $('sound').onchange=()=>{cancelSpeech();if($('sound').checked)refreshVoice();$('speech-note').textContent=$('sound').checked?'英語の音声を使います。端末により声は異なります。':'音声を使わず、文字と動きで案内します。';};
   $('undo').onclick=()=>{if(!previous)return;stop();state=previous;previous=null;$('undo').disabled=true;changed();message('1つ前の町に戻しました。');};
   $('clear').onclick=()=>requestReplace({...state,title:'My Town',plots:Array(gridSize()*gridSize()).fill(null),start:null,goal:null});
   $('sample').onclick=()=>requestReplace(Model.resize({version:1,title:'Our Town',plots:['elementary-school','park',null,'library',null,'post-office','hospital',null,'house',null,'supermarket',null,'station','restaurant',null,'zoo'],start:0,goal:15},gridSize()));
@@ -210,6 +236,7 @@ b.addEventListener('click',()=>{
   buildMap();renderMap();renderEndpoints();renderPalette();prepare();
   if(loadError)message('保存データを読み込めませんでした。ファイルで保存した町は「町を開く」で戻せます。');
   if(!window.speechSynthesis){$('sound').disabled=true;$('speech-note').textContent='このブラウザーでは音声を使えません。文字と動きで案内できます。';}
+  else{refreshVoice();speechSynthesis.addEventListener?.('voiceschanged',refreshVoice);}
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&busy){stop();message('画面を離れたので、出発地へ戻りました。');}});
   window.MyTown={snapshot:()=>({state:structuredClone(state),stage,busy,index,current,heading,bearing,mapSize:gridSize(),route:structuredClone(route)}),pathBetween};
 })();

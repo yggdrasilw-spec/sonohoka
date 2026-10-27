@@ -24,8 +24,10 @@ for(const size of Model.SIZES){
    }
    if(step.type==='move'){
     assert(step.nodes.length>1);for(const n of step.nodes.slice(1)){assert.deepEqual([n.x-at.x,n.y-at.y],vectors[dir]);assert(!(n.x%2&&n.y%2));assert(n.x>=0&&n.x<=2*size&&n.y>=0&&n.y<=2*size);at=n;travel++;}
-    if(step.blocks!==null){assert.equal(step.blocks,(step.nodes.length-1)/2);assert(Number.isInteger(step.blocks)&&step.blocks>0);for(const end of [step.nodes[0],step.nodes.at(-1)])assert.equal(end.x%2+end.y%2,0);assert.match(step.text,/^Go straight for (one|two|three|four|five|six|seven|eight) blocks?\.$/);assert.equal(step.text.endsWith('one block.'),step.blocks===1);countedSegments++;}
-    else assert.equal(step.text,'Go straight.');
+    assert.equal(step.blocks,(step.nodes.length-1)/2);assert(step.blocks>0&&Number.isInteger(step.blocks*2));
+    assert.equal(step.blocks,(Math.abs(step.nodes.at(-1).x-step.nodes[0].x)+Math.abs(step.nodes.at(-1).y-step.nodes[0].y))/2);
+    assert.match(step.text,/^Go straight for (half a block|(one|two|three|four|five|six|seven|eight)( and a half)? blocks?)\.$/);
+    assert.equal(step.text.endsWith('one block.'),step.blocks===1);assert.equal(step.text.includes('half'),!Number.isInteger(step.blocks));countedSegments++;
    }
   }
   assert.equal(travel,distance);assert.deepEqual(at,g);const [dx,dy]=vectors[dir];assert(r.steps.at(-1).text.endsWith(`on your ${dx>0?'right':'left'}.`));routes++;
