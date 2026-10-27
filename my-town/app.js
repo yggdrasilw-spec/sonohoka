@@ -7,7 +7,8 @@
   let previous=null,selected=null,stage='edit',route=null,index=0,busy=false,token=0,current=null,heading='E',speechFinish=null;
   let endpointMode=null;
   const plotButtons=[],paletteButtons=[];
-  const image=id=>`assets/places/${id}.webp`;
+  const image=id=>`assets/display-places/${id}.webp`;
+  const mapImage=id=>`assets/${$('map-dialog').open?'map-places':'display-map-places'}/${id}.webp`;
   const entrance=i=>Model.entrance(gridSize(),i);
   const percent=n=>(14+64*n)/boardExtent()*100;
   const label=i=>Model.label(gridSize(),i);
@@ -41,7 +42,7 @@
   function renderMap(){
     state.plots.forEach((id,i)=>{
       const b=plotButtons[i];b.replaceChildren();b.className='plot';
-      if(id){const img=new Image();img.src=`assets/map-places/${id}.webp`;img.alt='';img.draggable=false;const span=document.createElement('span');span.className='place-name';span.lang='en';span.textContent=byId.get(id).name;b.append(img,span);}else{const span=document.createElement('span');span.className='empty';span.textContent='＋';b.append(span);}
+      if(id){const img=new Image();img.src=mapImage(id);img.dataset.placeId=id;img.alt='';img.draggable=false;const span=document.createElement('span');span.className='place-name';span.lang='en';span.textContent=byId.get(id).name;b.append(img,span);}else{const span=document.createElement('span');span.className='empty';span.textContent='＋';b.append(span);}
       const coordinate=document.createElement('span');coordinate.className='plot-coordinate';coordinate.textContent=label(i);b.append(coordinate);const dot=document.createElement('span');dot.className='entrance';b.append(dot);
       if(i===state.start||i===state.goal){const isStart=i===state.start;b.classList.add(isStart?'is-start':'is-goal');const badge=document.createElement('span');badge.className='plot-tag';badge.textContent=isStart?'S':'G';b.append(badge);}
       b.setAttribute('aria-label',`${label(i)} ${id?byId.get(id).name+'（'+byId.get(id).ja+'）':'空き地'}${i===state.start?' 出発地':''}${i===state.goal?' 目的地':''}`);
@@ -56,7 +57,7 @@
   }
   function choose(id){selected=id;renderPlacement();paletteButtons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.id===id)));$('erase').setAttribute('aria-pressed',String(id==='erase'));$('selection').textContent=id==='erase'?'消したい場所を押しましょう。':`${byId.get(id).name}（${byId.get(id).ja}）を置きます。町の場所を押しましょう。${byId.get(id).canNavigate?'':' この絵は町のことばを表し、出発地・目的地には使いません。'}`;}
   function renderPlacement(){
-    const preview=$('placement-preview');preview.replaceChildren();$('go-to-map').disabled=!selected;
+    const preview=$('placement-preview');preview.replaceChildren();$('go-to-map').disabled=!selected;$('enlarge-picture').disabled=!selected||selected==='erase';
     if(!selected){preview.textContent='まず、置きたい絵を選ぼう。';return;}
     if(selected==='erase'){preview.textContent='消すモード：消したい場所を押そう。';return;}
     const img=new Image();img.src=image(selected);img.alt='';const text=document.createElement('span');text.textContent=`${byId.get(selected).name}（${byId.get(selected).ja}）を置く`;preview.append(img,text);
@@ -200,6 +201,15 @@ b.addEventListener('click',()=>{
     updateLargeMap();
   }
   for(const p of places){const b=document.createElement('button');b.className='place-card';b.dataset.id=p.id;b.setAttribute('aria-pressed','false');const img=new Image();img.src=image(p.id);img.alt='';img.loading='lazy';img.draggable=false;const en=document.createElement('span');en.lang='en';en.textContent=p.name;const ja=document.createElement('span');ja.className='ja';ja.textContent=p.ja;b.append(img,en,ja);b.addEventListener('click',()=>{choose(p.id);cancelSpeech();speak(p.name,token);});$('palette').append(b);paletteButtons.push(b);}
+  function refreshMapImages(){
+    $('plots').querySelectorAll('img[data-place-id]').forEach(img=>{img.src=mapImage(img.dataset.placeId);});
+  }
+  $('enlarge-picture').onclick=()=>{
+    if(!selected||selected==='erase')return;
+    const p=byId.get(selected);$('picture-title').textContent=`${p.name}（${p.ja}）`;$('picture-original').src=`assets/map-places/${selected}.webp`;$('picture-original').alt=p.ja;$('picture-dialog').showModal();
+  };
+  $('close-picture').onclick=()=>$('picture-dialog').close();
+  $('picture-dialog').addEventListener('close',()=>$('picture-original').removeAttribute('src'));
   function updateLargeMap(){
     if(!$('map-dialog').open)return;
     const scroll=$('large-map-scroll'),fit=Math.min(scroll.clientWidth-32,scroll.clientHeight-32),base=Math.max(gridSize()*100+28,fit);
@@ -207,10 +217,10 @@ b.addEventListener('click',()=>{
   }
   $('open-map').onclick=()=>{
     if(stage!=='guide')setStage('guide');
-    $('map-dialog').showModal();$('large-endpoints').append($('map-endpoints'));$('large-map-scroll').append($('board'));updateLargeMap();followCharacter();controls();
+    $('map-dialog').showModal();refreshMapImages();$('large-endpoints').append($('map-endpoints'));$('large-map-scroll').append($('board'));updateLargeMap();followCharacter();controls();
   };
   $('close-map').onclick=()=>$('map-dialog').close();
-  $('map-dialog').addEventListener('close',()=>{$('placement-tools').after($('map-endpoints'));document.querySelector('.map-scroll').append($('board'));$('board').style.width='';followCharacter();});
+  $('map-dialog').addEventListener('close',()=>{refreshMapImages();$('placement-tools').after($('map-endpoints'));document.querySelector('.map-scroll').append($('board'));$('board').style.width='';followCharacter();});
   $('map-zoom').onchange=()=>{updateLargeMap();followCharacter();};
   new ResizeObserver(()=>{const tile=$('board').clientWidth/boardExtent()*100;$('board').style.setProperty('--tile-px',`${tile}px`);scrollHost().style.setProperty('--actor-space',`${Math.ceil($('board').clientWidth/(gridSize()*2.2)+25)}px`);}).observe($('board'));
   new ResizeObserver(()=>updateLargeMap()).observe($('large-map-scroll'));
