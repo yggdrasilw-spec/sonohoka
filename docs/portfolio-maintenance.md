@@ -8,7 +8,7 @@
 
 再収録は `node scripts/capture-fraction-trio.cjs`（末尾に99/100/101を指定すれば限定収録）、録画と実画面の時間合わせは `python scripts/align-fraction-trio.py`、出力は `python scripts/encode-portfolio-missing.py 99 100 101`。元映像・画面・編集区間は `.portfolio-work/demo-{99,100,101}/`、再現用の参照元SHA-256・字幕・区間は `scripts/portfolio-demos-{99,100,101}.json`。
 
-`node scripts/qa-fraction-trio.cjs`、`node scripts/qa-portfolio-fractions.cjs`、`node scripts/qa-portfolio.cjs --videos` で検証。カード検索・5年フィルター・リンク・PNG・ホバー・動画モーダル・末尾シーク・Range/206・PC/390pxを確認する。掲載検証の第1引数には公開ベースURLも指定でき、3教材・3動画・3画像のSHA-256をローカルと照合する。全体は98件・動画97本・非公開教材の静止画1件。
+`node scripts/qa-fraction-trio.cjs`、`node scripts/qa-portfolio-fractions.cjs`、`node scripts/qa-portfolio.cjs --videos` で検証。カード検索・5年フィルター・リンク・PNG・ホバー・動画モーダル・末尾シーク・Range/206・PC/390pxを確認する。掲載検証の第1引数には公開ベースURLも指定でき、3教材・3動画・3画像のSHA-256をローカルと照合する（Gitの改行変換に合わせ、HTMLのみLFへ正規化。動画と画像はバイト単位）。全体は98件・動画97本・非公開教材の静止画1件。
 
 
 ## 2026年10月26日「分母がちがう分数のたし算・ひき算」の追加
