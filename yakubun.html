@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>約分 ― いちばんかんたんな分数になおそう</title>
+<style>
+:root{--n:#e8590c;--d:#1971c2;--ok:#2b8a3e}
+*{box-sizing:border-box}
+body{margin:0;background:#eef5f9;color:#2b2f33;font:16px/1.6 "Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+.w{max-width:980px;margin:auto;padding:10px}
+h1{font-size:1.25rem;margin:4px 0 8px}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;border:2px solid #8a98a5;background:#fff;border-radius:10px;padding:5px 12px;cursor:pointer}
+button.on{background:#ffe8cc;border-color:var(--n);font-weight:700}
+button:focus-visible,input:focus-visible{outline:3px solid #74c0fc}
+.c{background:#fff;border-radius:12px;padding:12px;margin:10px 0;border:1px solid #cfdbe4}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 5px;font-weight:700;line-height:1.15}
+.fr i,.note i{display:block;width:100%;border-top:3px solid #2b2f33;margin:2px 0}
+.fr .n,.a span{color:var(--n)}.fr .d,.b span{color:var(--d)}
+.big .fr{font-size:2.4rem}
+.tape{display:flex;height:40px;border:3px solid #2b2f33;border-radius:4px;margin:6px 0}
+.tape b{flex:1;border-right:1px solid #9aa7b2;background:#fff;transition:background .3s}
+.tape b.o{background:#ffa94d}.tape b.g{border-right:5px solid var(--ok)}.tape b:last-child{border:0}
+.row{display:flex;align-items:center;gap:12px}.row .tape{flex:1}.row>div{width:90px}.row small{width:130px}
+.mid{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.note{display:inline-block;padding:6px 12px;border:2px solid #b8cfdd;border-radius:6px;font-size:1.4rem;font-weight:700;min-width:120px;background:#fff linear-gradient(#d8e8f0 1px,#0000 1px) 0 0/20px 20px,linear-gradient(90deg,#d8e8f0 1px,#0000 1px) 0 0/20px 20px}
+.r{display:flex;justify-content:center;gap:4px;align-items:center;height:1.8em}
+.r span{position:relative;min-width:2.2em;text-align:center}
+.r em{font-size:.8rem;color:var(--ok);font-style:normal;min-width:2.8em}
+.x{opacity:.65}.x::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:3px solid #d00;transform:rotate(-28deg)}
+#msg{min-height:3.2em;font-size:1.1rem;font-weight:700;padding:8px 10px;border-radius:8px;background:#e7f5ff}
+#msg.ng{background:#ffe3e3}#msg.ok{background:#d3f9d8}
+input{font:inherit;width:3.4em;padding:3px;border:2px solid #8a98a5;border-radius:6px}
+
+button,select{min-height:44px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #a45b00;outline-offset:2px}
+button:disabled{cursor:default;opacity:.45}
+.diagram{overflow-x:auto;border-radius:12px}.diagram:focus-visible{outline:3px solid #a45b00}
+.diagram-hint{font-size:14px;color:#475569;margin:4px 0}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.tape b{min-width:0}.row{display:grid;grid-template-columns:55px minmax(0,1fr) 130px}.row>div,.row small{width:auto}.mid>div{max-width:100%}@media(max-width:600px){.row{grid-template-columns:40px minmax(0,1fr) 82px;gap:6px}.row small{font-size:12px}.c{padding:8px}.mid>div{min-width:0!important;flex-basis:100%}.note{font-size:1.2rem}}
+</style></head><body><div class="w">
+<h1>約分 ― いちばんかんたんな分数になおそう</h1>
+<nav id="nav"></nav><div id="app"></div></div>
+<script>
+function keepUI(){const active=document.activeElement, controls=[...document.querySelectorAll('button,input,select')],id=active?.id,index=controls.indexOf(active);
+ const inputs=[...document.querySelectorAll('input')].map(e=>[e.id,e.value]);
+ return ()=>{for(const [key,value] of inputs){const el=document.getElementById(key);if(el)el.value=value}
+ const el=id?document.getElementById(id):[...document.querySelectorAll('button,input,select')][index];if(el&&!el.disabled)el.focus({preventScroll:true})};}
+
+const $=s=>document.querySelector(s),gcd=(a,b)=>b?gcd(b,a%b):a;
+const num=v=>+String(v).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
+const fr=(n,d)=>`<span class="fr"><span class="n">${n}</span><i></i><span class="d">${d}</span></span>`;
+const tape=(n,d,k=0)=>'<div class="tape">'+Array.from({length:d},(_,i)=>`<b class="${i<n?'o':''}${k&&i%k==k-1?' g':''}"></b>`).join('')+'</div>';
+const sp=g=>[2,3,5,7,11,13].find(p=>g%p==0)||g;
+let pending=0;
+let st=1,cur=[24,36],S,snd=true,AC,showAll=0;
+const ex=[[24,36],[30,45],[18,48],[28,42],[15,40],[7,12]];
+function beep(f){if(!snd)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+.15)}catch(e){}}
+// ノート表記: 新しい数を上(分子)/下(分母)に書き足し、古い数は斜線で消す
+function note(h,dv){const L=h.length;let a='',b='';
+ const row=(v,x,t)=>`<div class="r"><span class="${x?'x':''}">${v}</span><em>${t?'÷'+t:''}</em></div>`;
+ for(let i=0;i<L;i++){const j=L-1-i;a+=row(h[j][0],i,i?dv[j]:0)}
+ for(let j=0;j<L;j++)b+=row(h[j][1],j<L-1,j<L-1?dv[j]:0);
+ return `<div class="note"><div class="a">${a}</div><i></i><div class="b">${b}</div></div>`}
+function reset(n,d){clearTimeout(pending);cur=[n,d];S={h:[[n,d]],dv:[],busy:0,done:0,k:0,hint:0,msg:'分子も分母も われる数を さがそう。「もう われない」と思ったら ボタンをおしてね。',cls:''};show()}
+function rnd(){const b=3+Math.random()*8|0;let a;do a=1+Math.random()*(b-1)|0;while(gcd(a,b)>1);const g=Math.random()<.2?1:2+Math.random()*5|0;reset(a*g,b*g)}
+function own(){const n=num($('#cn').value),d=num($('#cd').value);if(!(Number.isInteger(n)&&Number.isInteger(d)&&n>=1&&d>n&&d<=60)){alert('分子は1以上で分母より小さく、分母は60までの整数を入れてね');return}reset(n,d)}
+const chips=()=>`<div class="c">もんだい: ${ex.map(([n,d])=>`<button class="${cur+''==[n,d]+''?'on':''}" onclick="reset(${n},${d})">${fr(n,d)}</button>`).join(' ')} <button onclick="rnd()">🎲 ランダム</button><br>じぶんで: <label>分子<input inputmode="numeric" id="cn"></label> <label>分母<input inputmode="numeric" id="cd" onkeydown="if(event.key=='Enter')own()"></label> <button onclick="own()">この分数でやる</button></div>`;
+const T=['① 大きさは同じ','② 約分しよう','③ どうして約分するの？'];
+function show(){const restore=keepUI();$('#nav').innerHTML=T.map((t,i)=>`<button aria-pressed="${st==i+1}" class="${st==i+1?'on':''}" onclick="st=${i+1};show()">${t}</button>`).join('')+`<button aria-pressed="${snd}" onclick="snd=!snd;show()">${snd?'🔊 おとON':'🔇 おとOFF'}</button>`;$('#app').innerHTML=[0,s1,s2,s3][st]();restore()}
+function s1(){const[n,d]=cur,g=gcd(n,d),R=[[n*2,d*2,'2をかけても 同じ']];R.push([n,d,'いまの分数']);
+ for(let c=2;c<=g;c++)if(g%c==0)R.push([n/c,d/c,`${c}で わっても 同じ`]);
+ return chips()+`<div class="c"><p>同じ大きさの分数は、分子と分母に同じ正の整数を かけたり、わりきれる同じ正の整数で わったりして <b>いくらでも</b> 作れるよ。ぜんぶ 色のついた ぶぶんの 長さが 同じ！</p>`+R.map(([a,b,t],i)=>`<div class="row"><div>${fr(a,b)}</div>${tape(a,b)}<small>${t}${i==R.length-1?'<br>⭐ いちばん小さい数':''}</small></div>`).join('')+`<p>でも、いちばん小さい数で書いた分数が いちばんシンプルで わかりやすい！ 分子と分母を1より大きい同じ整数でわり、数を小さくすることが <b>約分</b>。1より大きい公約数がなくなるまで約分すると、いちばんかんたんな形になるよ。${g==1?'(この分数は もう いちばんかんたんな形だね)':''}</p></div>`}
+function s2(){const[n,d]=S.h.at(-1);
+ return chips()+`<div class="c"><div class="mid"><div class="big">${fr(n,d)}</div><div style="flex:1;min-width:260px">${tape(n,d,S.k)}<small>${d}こに 分けた中の ${n}こ</small></div><div>ノートでは…<br>${note(S.h,S.dv)}</div></div>
+<div id="msg" role="status" class="${S.cls}">${S.msg}</div>
+<p>公約数で わろう: ${[2,3,5,7].map(k=>`<button class="${S.hint==k?'on':''}" onclick="go(${k})">÷${k}</button>`).join(' ')} ほかの数 <input aria-label="わる数" inputmode="numeric" id="kin" onkeydown="if(event.key=='Enter')go(num(this.value))"> <button onclick="go(num($('#kin').value))">でわる</button></p>
+<p><button onclick="chk()">もう われない！</button> <button onclick="hint()">💡 ヒント</button> <button onclick="reset(...cur)">やりなおす</button></p>
+<small>ヒント: 2…どちらも偶数 / 5…一の位が0か5 / 3…各位の数をたした数が3のだん</small></div>`}
+function say(m,c){S.msg=m;S.cls=c;show()}
+function go(k){if(S.busy||S.done)return;const[n,d]=S.h.at(-1);
+ if(!(k>=2)||k!=Math.floor(k))return say('2以上の整数を入れてね','ng');
+ if(n%k||d%k){beep(200);return say(`${k}では ${n%k&&d%k?'分子も分母も':n%k?'分子':'分母'}が わりきれないよ。ほかの数で ためそう`,'ng')}
+ const again=S.dv.at(-1)==k;beep(660);S.busy=1;S.k=k;S.hint=0;S.msg=`${again?'まだ ':''}${k}で われる！ ${k}こずつ まとめるよ`;S.cls='';show();
+ const state=S;pending=setTimeout(()=>{if(S!==state)return;S.h.push([n/k,d/k]);S.dv.push(k);S.busy=0;S.k=0;fin()},matchMedia('(prefers-reduced-motion:reduce)').matches?0:1000)}
+function fin(){const[n,d]=S.h.at(-1);
+ if(gcd(n,d)>1)S.msg='まだ われる数が ありそうだよ。つぎは？';
+ else{S.done=1;beep(880);const G=S.dv.reduce((a,b)=>a*b,1);S.cls='ok';
+  S.msg=S.dv.length?`もう 1より大きい同じ整数では われない！ これが約分した、いちばんかんたんな分数 ${fr(n,d)}。わった数: ${S.dv.join('×')}${S.dv.length>1?' = '+G:''}。これが さいだい公約数！ ${G}で 1回に わっても 同じ答えに なるよ。`:'1より大きい公約数が ないから、もう約分できないよ。この分数が いちばんかんたん！'}
+ show()}
+function chk(){if(S.done||S.busy)return;gcd(...S.h.at(-1))==1?fin():say('まだ 同じ数で われるよ！ もういちど 分子と分母を 見てみよう','ng')}
+function hint(){if(S.done||S.busy)return;const g=gcd(...S.h.at(-1));S.hint=g>1?sp(g):0;say(g>1?`💡 分子も分母も ${S.hint} で われるよ`:'💡 1いがいに われる数は ないみたい。「もう われない」を おしてみよう','')}
+const P=[[18,27],[14,21],[12,30],[10,15],[22,33],[16,40]];
+function path(n,d){const h=[[n,d]],v=[];while(gcd(n,d)>1){const p=sp(gcd(n,d));n/=p;d/=p;h.push([n,d]);v.push(p)}return[h,v]}
+function s3(){return `<div class="c"><p>ばらばらに 見える分数も、約分すると…？ 同じ大きさの分数は どれかな？</p><button onclick="showAll=!showAll;beep(660);show()">${showAll?'もとにもどす':'ぜんぶ 約分する'}</button><div class="mid" style="margin-top:10px">`+P.map(([n,d])=>{const[h,v]=path(n,d),[a,b]=h.at(-1);return `<div class="c" style="text-align:center;${showAll?`border:4px solid ${b==3?'#e8590c':'#1971c2'}`:''}">${showAll?note(h,v)+'<br>↓<br>'+fr(a,b):fr(n,d)}</div>`}).join('')+`</div>${showAll?'<p>約分すると、同じ大きさの分数が すぐ わかる！ 同じ分数を見つけやすくなるね。たし算・ひき算をするときは、分母をそろえる通分も使うよ。</p>':''}</div>`}
+reset(24,36);
+</script></body></html>
