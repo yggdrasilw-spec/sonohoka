@@ -1,5 +1,16 @@
 # 学習アプリ作品集の更新
 
+## 2026年10月27日 分数3教材の追加
+
+教材99「おなじ大きさの分数」、100「約分」、101「通分」を5年生の算数に追加。添付原本を保持し、`onaji_okisa_bunsuu.html`、`yakubun.html`、`tsubun.html` をレビュー・修正した。状態競合・別解採点・キーボード操作・小型画面などの記録は `docs/fraction-trio-review.md`。教材本体は `45583ac3` で先にコミット・プッシュ済み。
+
+3枚それぞれに9.5秒・1280×720・H.264/AACの実操作動画と同名PNGを配置。動画は音なし、字幕は画面外の下部帯に3本。物の長さを変えずに分け方を変える、テープとノートを対応させる、同じ1こ分にそろえて計算する、という学習内容を示す。
+
+再収録は `node scripts/capture-fraction-trio.cjs`（末尾に99/100/101を指定すれば限定収録）、録画と実画面の時間合わせは `python scripts/align-fraction-trio.py`、出力は `python scripts/encode-portfolio-missing.py 99 100 101`。元映像・画面・編集区間は `.portfolio-work/demo-{99,100,101}/`、再現用の参照元SHA-256・字幕・区間は `scripts/portfolio-demos-{99,100,101}.json`。
+
+`node scripts/qa-fraction-trio.cjs`、`node scripts/qa-portfolio-fractions.cjs`、`node scripts/qa-portfolio.cjs --videos` で検証。カード検索・5年フィルター・リンク・PNG・ホバー・動画モーダル・末尾シーク・Range/206・PC/390pxを確認する。掲載検証の第1引数には公開ベースURLも指定でき、3教材・3動画・3画像のSHA-256をローカルと照合する。全体は98件・動画97本・非公開教材の静止画1件。
+
+
 ## 2026年10月26日「分母がちがう分数のたし算・ひき算」の追加
 
 教材番号97として `bunsuu_ibunbo.html` を追加。主学年は5年。分数の意味、同分母計算、かけ算、倍数、わり算の5つの復習コースから、通分・約分・異分母の加減算へ進む。1画面ずつの説明、図の段階操作、練習の3段階ヒント、数直線の比較に対応。レビュー記録は `docs/bunsuu-ibunbo-review.md`。原本のDownloads内HTMLは変更していない。
