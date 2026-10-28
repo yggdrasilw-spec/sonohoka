@@ -5,7 +5,7 @@ const {serve}=require('./portfolio-demo-inspect.cjs');
 try{const context=await browser.newContext({viewport:{width:1280,height:640},recordVideo:{dir,size:{width:1280,height:640}}}),p=await context.newPage(),marks=[];
  await p.goto(`http://127.0.0.1:${server.address().port}/sonohoka/bun_no_hitogata.html`);await p.locator('#sd').click();await p.locator('.tb').nth(3).click();
  const mark=async i=>{await p.waitForTimeout(450);marks[i]=Date.now()/1000;await p.screenshot({path:path.join(dir,`frame-0${i}.png`)});await p.waitForTimeout(2200)};
- await mark(0);await p.locator('.gp').nth(2).click();await mark(1);await p.locator('.gp').nth(6).click();await p.locator('#ck4').click();await mark(2);await p.locator('.ck').nth(0).click();await mark(3);await p.locator('.ck').nth(2).click();await mark(4);
+ await mark(0);await p.locator('.gp').nth(2).click();await mark(1);await p.locator('.gp').nth(6).click();await p.locator('.gp').nth(9).click();await p.locator('#ck4').click();await mark(2);await p.locator('.ck').nth(0).click();await mark(3);await p.locator('.ck').nth(2).click();await mark(4);
  const end=Date.now()/1000,video=p.video();await context.close();await video.saveAs(dir+'/source.webm');
  const ff=cp.spawnSync('python',['-c','import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())'],{encoding:'utf8'}).stdout.trim();
  const probe=cp.spawnSync(ff,['-hide_banner','-i',dir+'/source.webm'],{encoding:'utf8'}).stderr,m=probe.match(/Duration: (\d+):(\d+):([\d.]+)/);if(!m)throw Error(probe);const duration=+m[1]*3600+ +m[2]*60+ +m[3],origin=end-duration;

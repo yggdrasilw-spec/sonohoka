@@ -191,6 +191,6 @@ Downloadsの提供原本は変更していない（SHA256: `486F89C4746DB5B6FB39
 検証は scripts/qa-rescue-answer.cjs で8×7の中央先行・発話開始との同期・待機中のリサイズ・聞き直し・途中切替・音声エラー・消音・動きを減らす設定を確認。実際のMicrosoft Harukaでも「だから…」の終了から約766ms後に「ごじゅうろく」の開始イベントと上部56の表示が一致した。全81式・395作戦・648分割、9種類の効果音、7画面サイズの固定位置、作品集の動画再生・末尾シークも検証。紹介動画は声OFFの実操作で再収録した。
 ## 2026年10月28日「ぶんの ひとがた」の追加
 
-教材番号102、国語・2年として `bun_no_hitogata.html` を追加。添付原本を保ち、横長画面の固定縮小、区切り・回答のキーボード操作、説明の一般化、操作順と問題選択を改善。検証の詳細は `docs/bun-no-hitogata-review.md`。
+教材番号102、国語・2年として `bun_no_hitogata.html` を追加。制作履歴の指定に合わせ、例文・問いかけを縦書きへ戻し、右側の傍線、大きな赤い○、句点前の区切り、文節の「ね」を復元。上にタイトル・タブ、左に人形、右に学習パネル、文の下に横書きの操作・補足説明を置く。206問へ増やし、述語の種類での絞り込みと未回答への移動・進捗を追加。検証の詳細は `docs/bun-no-hitogata-review.md`。
 
 9.5秒の実操作動画とPNGは `media/portfolio-102-intro.*`。収録：`node scripts/capture-portfolio-102.cjs`、書き出し：`python scripts/encode-portfolio-missing.py 102`。採用区間と教材ハッシュは `scripts/portfolio-demos-102.json`。検証：`node scripts/qa-bun-no-hitogata.cjs`、`node scripts/qa-portfolio-102.cjs`、`node scripts/qa-portfolio.cjs`。掲載99件、動画98本、非公開静止画1件。
