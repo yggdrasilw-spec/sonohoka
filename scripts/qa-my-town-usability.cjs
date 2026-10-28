@@ -5,7 +5,8 @@ const server=http.createServer((req,res)=>{let name=decodeURIComponent(req.url.s
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
-  const p=await browser.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(`http://127.0.0.1:${server.address().port}/my-town/`);
+  const p=await browser.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.addInitScript(()=>{document.addEventListener('DOMContentLoaded',()=>{const sound=document.getElementById('sound');if(sound?.getAttribute('aria-pressed')==='true')sound.click();});});
+ await p.goto(`http://127.0.0.1:${server.address().port}/my-town/`);
   await p.locator('[data-id="library"]').click();await p.locator('#go-to-map').click();assert.match(await p.locator('#placement-preview').innerText(),/library/);
   await p.locator('.plot').nth(0).click();await p.locator('.plot').nth(1).click();
   await p.locator('#open-map').click();

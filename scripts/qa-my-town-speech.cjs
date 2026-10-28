@@ -15,7 +15,8 @@ const server=http.createServer((req,res)=>{const pathname=decodeURIComponent(req
   await p.goto(`http://127.0.0.1:${server.address().port}/my-town/`);
   assert(await p.evaluate(()=>voiceReads>0),'voice list is requested before first playback');
   await p.evaluate(()=>{testVoices=[{lang:'en-US',localService:false,name:'Remote'},{lang:'en-GB',localService:true,name:'UK'},{lang:'en-US',localService:true,name:'Local'}];voicesReady();});
-  await p.locator('#route-tab').click();await p.locator('#speed').selectOption('0');await p.locator('#sound').check();await p.locator('#next').click();
+  assert.equal(await p.locator('#sound').getAttribute('aria-pressed'),'true','speech is on by default');
+  await p.locator('#route-tab').click();await p.locator('#speed').selectOption('0');await p.locator('#next').click();
   assert.equal(await p.evaluate(()=>speechCalls[0].voice.name),'Local');assert.equal(await p.evaluate(()=>speechCalls[0].text),'Start at the house.');
   assert.equal(await p.evaluate(()=>cancelCalls),0,'idle synthesis is not cancelled before first speech');
   // Delayed start remains on the intro; no instruction or animation is skipped.
@@ -27,10 +28,23 @@ const server=http.createServer((req,res)=>{const pathname=decodeURIComponent(req
   await p.evaluate(()=>{testVoices=[{lang:'en-US',localService:false,name:'Remote only'}];voicesReady();});await p.locator('#next').click();
   assert.equal(await p.evaluate(()=>speechCalls.at(-1).voice.name),'Remote only');await p.waitForFunction(()=>!MyTown.snapshot().busy,null,{timeout:6000});assert.match(await p.locator('#speech-note').innerText(),/待たず/);
   // Half-block badges stay on the path and all complete at the end of that move.
-  await p.locator('#sound').uncheck();await p.locator('#next').click();await p.waitForFunction(()=>!MyTown.snapshot().busy);
+  await p.locator('#sound').click();await p.locator('#next').click();await p.waitForFunction(()=>!MyTown.snapshot().busy);
   const badges=await p.locator('.block-marker').evaluateAll(ms=>ms.map(m=>({distance:Number(m.dataset.block),done:m.classList.contains('done'),position:m.getAttribute('transform')})));
   assert(badges.length>0);assert(badges.some(m=>m.distance%1===.5));assert(badges.every(m=>m.done&&!m.position.includes('NaN')));
   const out=path.join(root,'.portfolio-work/my-town');fs.mkdirSync(out,{recursive:true});await p.locator('#open-map').click();await p.screenshot({path:path.join(out,'distance-half-block.png'),fullPage:true});
-  assert.deepEqual(errors,[]);console.log('PASS: early voices, local US priority, delayed start, cancellation, stale callbacks, voiceschanged, timeout and distance badges');
+  assert.equal(await p.locator('#map-sound').getAttribute('aria-pressed'),'false');
+  await p.locator('#map-sound').focus();await p.keyboard.press('Space');
+  assert.equal(await p.locator('#sound').getAttribute('aria-pressed'),'true');
+  await p.keyboard.press('Escape');await p.locator('#sound').waitFor();
+  for(const width of [320,390,768,1366]){
+    await p.setViewportSize({width,height:844});await p.evaluate(()=>scrollTo(0,document.body.scrollHeight));
+    const box=await p.locator('#sound').boundingBox();assert(box.x>=0&&box.y>=0&&box.x+box.width<=width&&box.y+box.height<=844,'floating sound button stays in view');
+    await p.locator('#open-map').click();await p.locator('#map-sound').click();await p.locator('#map-sound').click();await p.keyboard.press('Escape');
+  }
+  await p.setViewportSize({width:390,height:844});await p.evaluate(()=>scrollTo(0,0));await p.screenshot({path:path.join(out,'sound-toggle-mobile.png'),fullPage:false});
+  await p.reload();assert.equal(await p.locator('#sound').getAttribute('aria-pressed'),'true');
+  const unsupported=await browser.newPage();await unsupported.addInitScript(()=>Object.defineProperty(window,'speechSynthesis',{value:undefined}));await unsupported.goto(`http://127.0.0.1:${server.address().port}/my-town/`);
+  assert(await unsupported.locator('#sound').isDisabled());assert.equal(await unsupported.locator('#sound').getAttribute('aria-pressed'),'false');assert(await unsupported.locator('#map-sound').isDisabled());await unsupported.close();
+  assert.deepEqual(errors,[]);console.log('PASS: default ON, synchronized keyboard toggles, floating control at 4 widths, unsupported speech, early voices, cancellation, timeout and distance badges');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

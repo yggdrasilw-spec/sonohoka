@@ -6,6 +6,7 @@ const sample={version:1,title:'QA Town',plots:['elementary-school','park',null,'
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`,browser=await chromium.launch({channel:'msedge',headless:true});let checks=0;
 try{
  const p=await browser.newPage({viewport:{width:1366,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ await p.addInitScript(()=>{document.addEventListener('DOMContentLoaded',()=>{const sound=document.getElementById('sound');if(sound?.getAttribute('aria-pressed')==='true')sound.click();});});
  await p.goto(base+'/my-town/source/original.html');
  const original=await p.evaluate(async()=>{
    mapData[1][1]='house';mapData[1][3]='library';startPos={r:1,c:1};goalPos={r:1,c:3};
@@ -82,7 +83,7 @@ try{
  await p.setViewportSize({width:1366,height:900});await p.evaluate(()=>document.body.style.zoom='2');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.equal(await p.locator('.place-name').evaluateAll(els=>els.some(e=>e.scrollWidth>e.clientWidth+1)),false);await p.screenshot({path:path.join(out,'zoom-200.png'),fullPage:true});await p.evaluate(()=>document.body.style.zoom='1');checks++;
  // Storage unavailable and a speech engine that never emits callbacks.
  const broken=await browser.newPage();await broken.addInitScript(()=>{Storage.prototype.setItem=function(){throw Error('denied');};Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],cancel(){},speak(){}}});});
- await broken.goto(base+'/my-town/');await broken.locator('#sample').click();await broken.locator('#replace-confirm').click();await broken.waitForFunction(()=>MyTown.snapshot().state.start===0);assert.match(await broken.locator('#save-state').innerText(),/自動保存できません/);await broken.locator('#route-tab').click();await broken.locator('#sound').check();await broken.locator('#next').click();await broken.locator('#stop').click();await broken.waitForTimeout(100);assert.equal((await broken.evaluate(()=>MyTown.snapshot())).busy,false);
+ await broken.goto(base+'/my-town/');await broken.locator('#sample').click();await broken.locator('#replace-confirm').click();await broken.waitForFunction(()=>MyTown.snapshot().state.start===0);assert.match(await broken.locator('#save-state').innerText(),/自動保存できません/);await broken.locator('#route-tab').click();assert.equal(await broken.locator('#sound').getAttribute('aria-pressed'),'true');await broken.locator('#next').click();await broken.locator('#stop').click();await broken.waitForTimeout(100);assert.equal((await broken.evaluate(()=>MyTown.snapshot())).busy,false);
  await broken.locator('#next').click();await broken.waitForFunction(()=>!MyTown.snapshot().busy,{},{timeout:14000});assert.match(await broken.locator('#speech-note').innerText(),/待たず/);await broken.close();checks+=3;
  assert.deepEqual(errors,[]);const result={checks,allPairs,english,assets,viewports,original};fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(result,null,2));console.log('PASS',JSON.stringify(result));
 }finally{await browser.close();server.close();}

@@ -116,7 +116,7 @@
   }
   const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   function speak(text,t){
-    if(!$('sound').checked||!window.speechSynthesis||t!==token)return Promise.resolve();
+    if(!soundEnabled||!window.speechSynthesis||t!==token)return Promise.resolve();
     return new Promise(resolve=>{
       let done=false,timer,waiting;const finish=()=>{if(done)return;done=true;clearTimeout(timer);clearTimeout(waiting);if(speechFinish===finish)speechFinish=null;resolve();};speechFinish=finish;
       const timeout=()=>{if(done)return;finish();if(t===token){try{speechSynthesis.cancel();}catch{}$('speech-note').textContent='音声の応答を待たず、文字と動きで続けます。';}};
@@ -236,7 +236,19 @@ b.addEventListener('click',()=>{
   $('town-name').addEventListener('change',()=>{checkpoint();state.title=$('town-name').value;save();});
   for(const k of ['start','goal'])$(k).onchange=()=>{const n=$(k).value===''?null:Number($(k).value),other=k==='start'?'goal':'start';if(n!==null&&n===state[other]){$(k).value=state[k]===null?'':String(state[k]);message('出発地と目的地は別の場所を選びましょう。');return;}checkpoint();state[k]=n;changed();setEndpointMode(k==='start'&&state.goal===null?'goal':null);message(n===null?'場所の選択を外しました。':`${k==='start'?'出発地':'目的地'}は ${label(n)} ${name(n)} です。${endpointMode==='goal'?'次は目的地の建物を押そう。':route?'まず友達に案内してから、お手本を見よう。':'もう一方の場所も選ぼう。'}`);};
   $('play').onclick=()=>run(true);$('next').onclick=()=>run(false);$('stop').onclick=()=>{stop();message('止めて出発地へ戻りました。もう一度始められます。');};$('restart').onclick=()=>{stop();message('出発地へ戻りました。同じ道をもう一度案内しましょう。');};
-  $('sound').onchange=()=>{cancelSpeech();if($('sound').checked)refreshVoice();$('speech-note').textContent=$('sound').checked?'英語の音声を使います。端末により声は異なります。':'音声を使わず、文字と動きで案内します。';};
+  let soundEnabled=true;
+  function renderSound(){
+    document.querySelectorAll('[data-sound-toggle]').forEach(button=>{
+      button.setAttribute('aria-pressed',String(soundEnabled));
+      button.querySelector('[data-sound-icon]').textContent=soundEnabled?'🔊':'🔇';
+      button.querySelector('[data-sound-state]').textContent=soundEnabled?'ON':'OFF';
+      button.querySelector('[data-sound-action]').textContent=soundEnabled?'押すとオフ':'押すとオン';
+    });
+  }
+  document.querySelectorAll('[data-sound-toggle]').forEach(button=>button.onclick=()=>{
+    soundEnabled=!soundEnabled;cancelSpeech();if(soundEnabled)refreshVoice();renderSound();
+    $('speech-note').textContent=soundEnabled?'英語の音声を使います。端末により声は異なります。':'音声を使わず、文字と動きで案内します。';
+  });
   $('undo').onclick=()=>{if(!previous)return;stop();state=previous;previous=null;$('undo').disabled=true;changed();message('1つ前の町に戻しました。');};
   $('clear').onclick=()=>requestReplace({...state,title:'My Town',plots:Array(gridSize()*gridSize()).fill(null),start:null,goal:null});
   $('sample').onclick=()=>requestReplace(Model.resize({version:1,title:'Our Town',plots:['elementary-school','park',null,'library',null,'post-office','hospital',null,'house',null,'supermarket',null,'station','restaurant',null,'zoo'],start:0,goal:15},gridSize()));
@@ -245,7 +257,7 @@ b.addEventListener('click',()=>{
   let loadError=false;try{const raw=localStorage.getItem(KEY);if(raw)state=validate(JSON.parse(raw));}catch{loadError=true;}
   buildMap();renderMap();renderEndpoints();renderPalette();prepare();
   if(loadError)message('保存データを読み込めませんでした。ファイルで保存した町は「町を開く」で戻せます。');
-  if(!window.speechSynthesis){$('sound').disabled=true;$('speech-note').textContent='このブラウザーでは音声を使えません。文字と動きで案内できます。';}
+  if(!window.speechSynthesis){soundEnabled=false;renderSound();document.querySelectorAll('[data-sound-toggle]').forEach(button=>{button.disabled=true;button.querySelector('[data-sound-action]').textContent='この端末では使えません';});$('speech-note').textContent='このブラウザーでは音声を使えません。文字と動きで案内できます。';}
   else{refreshVoice();speechSynthesis.addEventListener?.('voiceschanged',refreshVoice);}
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&busy){stop();message('画面を離れたので、出発地へ戻りました。');}});
   window.MyTown={snapshot:()=>({state:structuredClone(state),stage,busy,index,current,heading,bearing,mapSize:gridSize(),route:structuredClone(route)}),pathBetween};

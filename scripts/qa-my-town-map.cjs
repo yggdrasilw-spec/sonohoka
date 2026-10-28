@@ -40,6 +40,7 @@ const server=http.createServer((req,res)=>{let pathname=decodeURIComponent(req.u
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}/my-town/`;const browser=await chromium.launch({channel:'msedge',headless:true});const errors=[];let samples=0;
 try{
  const page=await browser.newPage({viewport:{width:1366,height:900}});page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{document.addEventListener('DOMContentLoaded',()=>{const sound=document.getElementById('sound');if(sound?.getAttribute('aria-pressed')==='true')sound.click();});});
  await page.goto(base);
  async function load(state){await page.evaluate(data=>localStorage.setItem('my-town-v1',JSON.stringify(data)),state);await page.reload();await page.locator('#route-tab').click();await page.locator('#speed').selectOption('0');}
  async function advance(n){for(let i=0;i<n;i++){await page.locator('#next').click();await page.waitForFunction(()=>!MyTown.snapshot().busy);}}
