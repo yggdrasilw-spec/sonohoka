@@ -1,0 +1,14 @@
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),crypto=require('node:crypto');
+const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {serve}=require('./portfolio-demo-inspect.cjs');
+(async()=>{const dir=path.resolve('.portfolio-work/demo-102');fs.mkdirSync(dir,{recursive:true});const server=serve();await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'msedge',headless:true});
+try{const context=await browser.newContext({viewport:{width:1280,height:640},recordVideo:{dir,size:{width:1280,height:640}}}),p=await context.newPage(),marks=[];
+ await p.goto(`http://127.0.0.1:${server.address().port}/sonohoka/bun_no_hitogata.html`);await p.locator('#sd').click();await p.locator('.tb').nth(3).click();
+ const mark=async i=>{await p.waitForTimeout(450);marks[i]=Date.now()/1000;await p.screenshot({path:path.join(dir,`frame-0${i}.png`)});await p.waitForTimeout(2200)};
+ await mark(0);await p.locator('.gp').nth(2).click();await mark(1);await p.locator('.gp').nth(6).click();await p.locator('#ck4').click();await mark(2);await p.locator('.ck').nth(0).click();await mark(3);await p.locator('.ck').nth(2).click();await mark(4);
+ const end=Date.now()/1000,video=p.video();await context.close();await video.saveAs(dir+'/source.webm');
+ const ff=cp.spawnSync('python',['-c','import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())'],{encoding:'utf8'}).stdout.trim();
+ const probe=cp.spawnSync(ff,['-hide_banner','-i',dir+'/source.webm'],{encoding:'utf8'}).stderr,m=probe.match(/Duration: (\d+):(\d+):([\d.]+)/);if(!m)throw Error(probe);const duration=+m[1]*3600+ +m[2]*60+ +m[3],origin=end-duration;
+ const data={id:102,title:'ぶんの ひとがた｜主語と述語',url:'bun_no_hitogata.html',source:'source.webm',sourceSHA256:crypto.createHash('sha256').update(fs.readFileSync('bun_no_hitogata.html')).digest('hex'),captions:['「ね」をつけて、ことばを区切ろう','「なにが・だれが」で、主語を見つける','主語と述語を、人形と線で確かめる'],posterIndex:4,segments:marks.map(t=>Math.max(0,t-origin)),sourceDurations:[2.1,2.1,2.1,2.1,2.1],durations:[1.5,2,2,2,2]};
+ fs.writeFileSync(dir+'/storyboard.json',JSON.stringify(data,null,2)+'\n');fs.writeFileSync('scripts/portfolio-demos-102.json',JSON.stringify(data,null,2)+'\n');console.log('CAPTURE PASS',duration);
+}finally{await browser.close();server.close()}})().catch(e=>{console.error(e);process.exitCode=1});
