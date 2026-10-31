@@ -194,3 +194,9 @@ Downloadsの提供原本は変更していない（SHA256: `486F89C4746DB5B6FB39
 教材番号102、国語・2年として `bun_no_hitogata.html` を追加。制作履歴の指定に合わせ、例文・問いかけを縦書きへ戻し、右側の傍線、大きな赤い○、句点前の区切り、文節の「ね」を復元。上にタイトル・タブ、左に人形、右に学習パネル、文の下に横書きの操作・補足説明を置く。206問へ増やし、述語の種類での絞り込みと未回答への移動・進捗を追加。検証の詳細は `docs/bun-no-hitogata-review.md`。
 
 9.5秒の実操作動画とPNGは `media/portfolio-102-intro.*`。収録：`node scripts/capture-portfolio-102.cjs`、書き出し：`python scripts/encode-portfolio-missing.py 102`。採用区間と教材ハッシュは `scripts/portfolio-demos-102.json`。検証：`node scripts/qa-bun-no-hitogata.cjs`、`node scripts/qa-portfolio-102.cjs`、`node scripts/qa-portfolio.cjs`。掲載99件、動画98本、非公開静止画1件。
+
+## 2026年10月31日 English Stage追加
+
+教材103として独立リポジトリ `english-stage` の英検5級向け試用版を追加。200語＋50表現、Neural2米国英語音声、技能別復習・誤答反復・保存・バックアップを紹介。5・6年、英語、練習に分類。100件、動画99本、非公開静止画1件。
+
+紹介映像は実操作から9.5秒に編集し、専用字幕帯に3本の字幕を配置。単語の絵と音声→選択クイズ→正解の流れ。`scripts/portfolio-demos-103.json` に採用区間を保存。`node scripts/qa-portfolio-103.cjs` と全体QAで確認。アプリの正本は `C:\Users\user\english-stage`。全音声の聴覚確認とスマホ実機確認は未完了。
