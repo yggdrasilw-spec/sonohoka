@@ -13,11 +13,11 @@ const out=path.resolve(__dirname,'../qa-output/phonics-audio');fs.mkdirSync(out,
  await page.reload();
  await page.locator('#review-open').click();
  assert.equal(await page.locator('.review-row').count(),220);
- const missing=page.locator('[data-review-key="sound:s"]');
+ const missing=page.locator('[data-review-key="sound:oo"]');
  assert.equal(await missing.locator('select').inputValue(),'pending');
  assert(await missing.locator('[data-review-play="standard"]').isDisabled());
  assert.match(await missing.textContent(),/単音は先生の録音待ち/);
- assert.equal(await page.evaluate(()=>Object.keys(window.PHONICS_AUDIO).filter(k=>k.startsWith('sound:')).length),0);
+ assert.equal(await page.evaluate(()=>Object.keys(window.PHONICS_AUDIO).filter(k=>k.startsWith('sound:')).length),30);
  const soundRow=page.locator('[data-review-key="word:sun"]');
  await soundRow.locator('[data-review-play="standard"]').click();
  await page.waitForFunction(()=>document.querySelector('.playing'));
@@ -41,8 +41,8 @@ const out=path.resolve(__dirname,'../qa-output/phonics-audio');fs.mkdirSync(out,
  assert(await page.locator('#record-reset').isDisabled());
  await page.locator('#record-review').click();await page.locator('#review-filter').selectOption('');
  await page.locator('#review-group').selectOption('英語の音');assert.equal(await page.locator('.review-row').count(),30);
- await missing.locator('[data-review-record]').click();
- assert.equal(await page.locator('#record-target').inputValue(),'sound:s');
+ await page.locator('#review-group').selectOption('次の読み方のきまり');await missing.locator('[data-review-record]').click();
+ assert.equal(await page.locator('#record-target').inputValue(),'sound:oo');
  assert(await page.locator('#record-play').isDisabled());assert(await page.locator('#record-standard').isDisabled());
  await page.locator('#record-file').setInputFiles(path.resolve(__dirname,'../phonics-lab/assets/audio/word-sun.mp3'));
  await page.waitForFunction(()=>document.querySelector('#record-state').textContent.includes('先生の声を使っています'));
@@ -70,8 +70,8 @@ const out=path.resolve(__dirname,'../qa-output/phonics-audio');fs.mkdirSync(out,
   }
   await context.close();return results;
  });
- assert.equal(decoded.length,148);for(const r of decoded){assert(r.duration>0.05,r.key+' too short');assert(r.peak>0.001,r.key+' silent');}
+ assert.equal(decoded.length,178);for(const r of decoded){assert(r.duration>0.05,r.key+' too short');assert(r.peak>0.001,r.key+' silent');}
  assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({passed:true,decoded},null,2));
- console.log('PASS: 148 MP3s decoded; review persistence, filtering, recording override, standard comparison, reset, mobile layout; no browser errors.');
+ console.log('PASS: 178 audio files decoded; review persistence, filtering, recording override, standard comparison, reset, mobile layout; no browser errors.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

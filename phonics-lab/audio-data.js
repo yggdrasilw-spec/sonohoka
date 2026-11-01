@@ -2,594 +2,892 @@
 window.PHONICS_AUDIO = {
   "letter:a": {
     "src": "assets/audio/letter-a.mp3?v=2ab42427f180",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:b": {
     "src": "assets/audio/letter-b.mp3?v=a789a84f4a1c",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:c": {
     "src": "assets/audio/letter-c.mp3?v=2fe32a144525",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:d": {
     "src": "assets/audio/letter-d.mp3?v=1dadb1584c9c",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:e": {
     "src": "assets/audio/letter-e.mp3?v=0cd301a17679",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:f": {
     "src": "assets/audio/letter-f.mp3?v=9452d7c5adbe",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:g": {
     "src": "assets/audio/letter-g.mp3?v=27301fd8630c",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:h": {
     "src": "assets/audio/letter-h.mp3?v=102d8457d52f",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:i": {
     "src": "assets/audio/letter-i.mp3?v=146a7baeb5a2",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:j": {
     "src": "assets/audio/letter-j.mp3?v=2765743605b7",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:k": {
     "src": "assets/audio/letter-k.mp3?v=151a5f78a1f9",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:l": {
     "src": "assets/audio/letter-l.mp3?v=1871e978d92d",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:m": {
     "src": "assets/audio/letter-m.mp3?v=3f60dd975efb",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:n": {
     "src": "assets/audio/letter-n.mp3?v=f15c77c6ff16",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:o": {
     "src": "assets/audio/letter-o.mp3?v=cc2489ae8218",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:p": {
     "src": "assets/audio/letter-p.mp3?v=a9e418a400ed",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:q": {
     "src": "assets/audio/letter-q.mp3?v=fa40d5ed25d6",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:r": {
     "src": "assets/audio/letter-r.mp3?v=da5f17baf0a8",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:s": {
     "src": "assets/audio/letter-s.mp3?v=fc5524a28df6",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:t": {
     "src": "assets/audio/letter-t.mp3?v=a839e1b39779",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:u": {
     "src": "assets/audio/letter-u.mp3?v=4204013b1120",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:v": {
     "src": "assets/audio/letter-v.mp3?v=11dfe02ffba5",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:w": {
     "src": "assets/audio/letter-w.mp3?v=666c59188cd1",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:x": {
     "src": "assets/audio/letter-x.mp3?v=b06c0a1dc2e1",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:y": {
     "src": "assets/audio/letter-y.mp3?v=df4071b81d0c",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "letter:z": {
     "src": "assets/audio/letter-z.mp3?v=1fcf54678d1c",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:apple": {
     "src": "assets/audio/word-apple.mp3?v=ad63cd3d83ee",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:ant": {
     "src": "assets/audio/word-ant.mp3?v=694c23179649",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:cat": {
     "src": "assets/audio/word-cat.mp3?v=56bdb72ab460",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:ball": {
     "src": "assets/audio/word-ball.mp3?v=410eb8026615",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:banana": {
     "src": "assets/audio/word-banana.mp3?v=801fb2618f8e",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:bus": {
     "src": "assets/audio/word-bus.mp3?v=8d9e5dfeb721",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:cup": {
     "src": "assets/audio/word-cup.mp3?v=4104068a18ee",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:key": {
     "src": "assets/audio/word-key.mp3?v=4810c2575e8e",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:kite": {
     "src": "assets/audio/word-kite.mp3?v=63c3a0c799b6",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:dog": {
     "src": "assets/audio/word-dog.mp3?v=24b8a43349cb",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:duck": {
     "src": "assets/audio/word-duck.mp3?v=7967c2a65232",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:door": {
     "src": "assets/audio/word-door.mp3?v=79f841197e46",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:egg": {
     "src": "assets/audio/word-egg.mp3?v=1e25fadee662",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:elephant": {
     "src": "assets/audio/word-elephant.mp3?v=13d3ec503303",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:pen": {
     "src": "assets/audio/word-pen.mp3?v=cee38f9a0fc1",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:fish": {
     "src": "assets/audio/word-fish.mp3?v=3f4f2ae9168e",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:fan": {
     "src": "assets/audio/word-fan.mp3?v=230e189513e0",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:flower": {
     "src": "assets/audio/word-flower.mp3?v=7e3632b146a2",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:gorilla": {
     "src": "assets/audio/word-gorilla.mp3?v=5e67a08d9ad4",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:goat": {
     "src": "assets/audio/word-goat.mp3?v=dc50c2654e76",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:grapes": {
     "src": "assets/audio/word-grapes.mp3?v=c2bec523d3e1",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:hat": {
     "src": "assets/audio/word-hat.mp3?v=335915a1e8bb",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:hand": {
     "src": "assets/audio/word-hand.mp3?v=8a6b02eb021b",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:house": {
     "src": "assets/audio/word-house.mp3?v=aa1219bf7b19",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:ink": {
     "src": "assets/audio/word-ink.mp3?v=e136bd20ec27",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:insect": {
     "src": "assets/audio/word-insect.mp3?v=88849e047f79",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:pig": {
     "src": "assets/audio/word-pig.mp3?v=064fded017db",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:juice": {
     "src": "assets/audio/word-juice.mp3?v=08aefd23194d",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:jam": {
     "src": "assets/audio/word-jam.mp3?v=30cef69f082b",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:jet": {
     "src": "assets/audio/word-jet.mp3?v=5fffdbb53a30",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:lemon": {
     "src": "assets/audio/word-lemon.mp3?v=de5c88fa8bb2",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:lion": {
     "src": "assets/audio/word-lion.mp3?v=582e0183ec4c",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:leaf": {
     "src": "assets/audio/word-leaf.mp3?v=8ca8c571cefa",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:milk": {
     "src": "assets/audio/word-milk.mp3?v=bd5f36f8c66d",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:monkey": {
     "src": "assets/audio/word-monkey.mp3?v=dd78987b0eb5",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:moon": {
     "src": "assets/audio/word-moon.mp3?v=f6e2216665c5",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:nose": {
     "src": "assets/audio/word-nose.mp3?v=a26bb18901c0",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:net": {
     "src": "assets/audio/word-net.mp3?v=9e2b7d9ee665",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:nine": {
     "src": "assets/audio/word-nine.mp3?v=5320c726a4a1",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:octopus": {
     "src": "assets/audio/word-octopus.mp3?v=54060c8a1a8d",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:sock": {
     "src": "assets/audio/word-sock.mp3?v=fad164ecd578",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:box": {
     "src": "assets/audio/word-box.mp3?v=d5b5c316418a",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:panda": {
     "src": "assets/audio/word-panda.mp3?v=0482be5e36a9",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:queen": {
     "src": "assets/audio/word-queen.mp3?v=03423f51d37f",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:quiz": {
     "src": "assets/audio/word-quiz.mp3?v=71f083ef8016",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:quiet": {
     "src": "assets/audio/word-quiet.mp3?v=d62062b8c905",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:rabbit": {
     "src": "assets/audio/word-rabbit.mp3?v=98758e3cbcf2",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:robot": {
     "src": "assets/audio/word-robot.mp3?v=8ccfcb3f1341",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:rainbow": {
     "src": "assets/audio/word-rainbow.mp3?v=d00e97dbc237",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:sun": {
     "src": "assets/audio/word-sun.mp3?v=e6d20011cd9e",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:snake": {
     "src": "assets/audio/word-snake.mp3?v=8e037f1bc133",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:tiger": {
     "src": "assets/audio/word-tiger.mp3?v=8542eac118f6",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:ten": {
     "src": "assets/audio/word-ten.mp3?v=809ed6602082",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:tomato": {
     "src": "assets/audio/word-tomato.mp3?v=5c4d34552cd3",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:umbrella": {
     "src": "assets/audio/word-umbrella.mp3?v=37e6c3945331",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:van": {
     "src": "assets/audio/word-van.mp3?v=7dce38d27065",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:violin": {
     "src": "assets/audio/word-violin.mp3?v=a42a02622927",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:vase": {
     "src": "assets/audio/word-vase.mp3?v=dc693a3543d3",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:water": {
     "src": "assets/audio/word-water.mp3?v=493c10ac54fc",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:window": {
     "src": "assets/audio/word-window.mp3?v=24d4141b8faa",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:watch": {
     "src": "assets/audio/word-watch.mp3?v=e77e8485b226",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:fox": {
     "src": "assets/audio/word-fox.mp3?v=385b18052fec",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:six": {
     "src": "assets/audio/word-six.mp3?v=dfd2d5c20245",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:yellow": {
     "src": "assets/audio/word-yellow.mp3?v=d81a3f5cce64",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:yogurt": {
     "src": "assets/audio/word-yogurt.mp3?v=db78a13cba15",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:yoyo": {
     "src": "assets/audio/word-yoyo.mp3?v=e39e69b53168",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:zebra": {
     "src": "assets/audio/word-zebra.mp3?v=20b1258bc62e",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:zoo": {
     "src": "assets/audio/word-zoo.mp3?v=9607ca645020",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:zipper": {
     "src": "assets/audio/word-zipper.mp3?v=89ec9f56fb3d",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:three": {
     "src": "assets/audio/word-three.mp3?v=52f0f0a9bacf",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:thumb": {
     "src": "assets/audio/word-thumb.mp3?v=59c3f60fb0e3",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:tooth": {
     "src": "assets/audio/word-tooth.mp3?v=017f9eaa4acc",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:this": {
     "src": "assets/audio/word-this.mp3?v=30c3dbf950fe",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:that": {
     "src": "assets/audio/word-that.mp3?v=b85fa0a49ddc",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:mother": {
     "src": "assets/audio/word-mother.mp3?v=61d9921893b7",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:chair": {
     "src": "assets/audio/word-chair.mp3?v=d039ff724aa7",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:cheese": {
     "src": "assets/audio/word-cheese.mp3?v=3e7bb59ba2dd",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:chicken": {
     "src": "assets/audio/word-chicken.mp3?v=d2620c788041",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:shoe": {
     "src": "assets/audio/word-shoe.mp3?v=1909e1025a97",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:sheep": {
     "src": "assets/audio/word-sheep.mp3?v=877450c1f640",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:shark": {
     "src": "assets/audio/word-shark.mp3?v=de16844a77c8",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:hats": {
     "src": "assets/audio/word-hats.mp3?v=620f69b9cba9",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:cats": {
     "src": "assets/audio/word-cats.mp3?v=c112db01be2b",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:boots": {
     "src": "assets/audio/word-boots.mp3?v=104b4358ff91",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:bat": {
     "src": "assets/audio/word-bat.mp3?v=7d7fc1b1fd8a",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:mat": {
     "src": "assets/audio/word-mat.mp3?v=257b69283033",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:rat": {
     "src": "assets/audio/word-rat.mp3?v=c7e9b190fab7",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:cap": {
     "src": "assets/audio/word-cap.mp3?v=bfe74c1e01e4",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:tap": {
     "src": "assets/audio/word-tap.mp3?v=cc89cc19d404",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:bag": {
     "src": "assets/audio/word-bag.mp3?v=82c8beb3d4fd",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:bug": {
     "src": "assets/audio/word-bug.mp3?v=cbdcd2fc7801",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:bed": {
     "src": "assets/audio/word-bed.mp3?v=68ce61d336de",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:pet": {
     "src": "assets/audio/word-pet.mp3?v=bb9dcae0739d",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:mud": {
     "src": "assets/audio/word-mud.mp3?v=d9f7baef002c",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:ship": {
     "src": "assets/audio/word-ship.mp3?v=312d799b7fa2",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:shop": {
     "src": "assets/audio/word-shop.mp3?v=c198d2873a16",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "word:one": {
     "src": "assets/audio/word-one.mp3?v=182e5bb88336",
-    "voice": "en-US-Neural2-F"
+    "voice": "en-US-Neural2-F",
+    "kind": "tts"
   },
   "jp:a": {
     "src": "assets/audio/jp-a.mp3?v=0d9fc4747bff",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "jp:i": {
     "src": "assets/audio/jp-i.mp3?v=4fd241db4c4f",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "jp:u": {
     "src": "assets/audio/jp-u.mp3?v=4c9e0efc10e4",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "jp:e": {
     "src": "assets/audio/jp-e.mp3?v=ea4b41c58443",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "jp:o": {
     "src": "assets/audio/jp-o.mp3?v=5a65a79b1215",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:m:a:joined": {
     "src": "assets/audio/blend-m-a-joined.mp3?v=31bc2fcb5c6e",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:m:i:joined": {
     "src": "assets/audio/blend-m-i-joined.mp3?v=ddd5609f75fe",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:m:u:joined": {
     "src": "assets/audio/blend-m-u-joined.mp3?v=24379ff50fde",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:m:e:joined": {
     "src": "assets/audio/blend-m-e-joined.mp3?v=f106a37e6de4",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:m:o:joined": {
     "src": "assets/audio/blend-m-o-joined.mp3?v=32e729e31c1e",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:k:a:joined": {
     "src": "assets/audio/blend-k-a-joined.mp3?v=4eaaeeb5f05f",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:k:i:joined": {
     "src": "assets/audio/blend-k-i-joined.mp3?v=0510d68957ab",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:k:u:joined": {
     "src": "assets/audio/blend-k-u-joined.mp3?v=5ad3e57e2078",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:k:e:joined": {
     "src": "assets/audio/blend-k-e-joined.mp3?v=43690af943b5",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:k:o:joined": {
     "src": "assets/audio/blend-k-o-joined.mp3?v=69054c9b69d4",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:n:a:joined": {
     "src": "assets/audio/blend-n-a-joined.mp3?v=f0307a40504f",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:n:i:joined": {
     "src": "assets/audio/blend-n-i-joined.mp3?v=086adbb874af",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:n:u:joined": {
     "src": "assets/audio/blend-n-u-joined.mp3?v=23be10e03b04",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:n:e:joined": {
     "src": "assets/audio/blend-n-e-joined.mp3?v=41a458720c7e",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:n:o:joined": {
     "src": "assets/audio/blend-n-o-joined.mp3?v=f045c3f5e858",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:p:a:joined": {
     "src": "assets/audio/blend-p-a-joined.mp3?v=e7338d7cdc4a",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:p:i:joined": {
     "src": "assets/audio/blend-p-i-joined.mp3?v=c73d15898658",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:p:u:joined": {
     "src": "assets/audio/blend-p-u-joined.mp3?v=e56ea0d4519b",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:p:e:joined": {
     "src": "assets/audio/blend-p-e-joined.mp3?v=60c56d1b8d0c",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
   },
   "blend:p:o:joined": {
     "src": "assets/audio/blend-p-o-joined.mp3?v=946910f3f6f6",
-    "voice": "ja-JP-Neural2-B"
+    "voice": "ja-JP-Neural2-B",
+    "kind": "tts"
+  },
+  "sound:ae": {
+    "src": "assets/audio/sound-ae.wav?v=daa6025dca52",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:b": {
+    "src": "assets/audio/sound-b.wav?v=ffdfd3503e19",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:k": {
+    "src": "assets/audio/sound-k.wav?v=cc477dd02041",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:d": {
+    "src": "assets/audio/sound-d.wav?v=64411d040835",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:eh": {
+    "src": "assets/audio/sound-eh.wav?v=86f6bbf1cbcc",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:f": {
+    "src": "assets/audio/sound-f.wav?v=cc119ebd353d",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:g": {
+    "src": "assets/audio/sound-g.wav?v=35a05c632aae",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:h": {
+    "src": "assets/audio/sound-h.wav?v=284d256dde7c",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:ih": {
+    "src": "assets/audio/sound-ih.wav?v=b6a753b0c7a1",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:j": {
+    "src": "assets/audio/sound-j.wav?v=4b5904f35a27",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:l": {
+    "src": "assets/audio/sound-l.wav?v=510b43341f9e",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:m": {
+    "src": "assets/audio/sound-m.wav?v=6dc98a3d97fd",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:n": {
+    "src": "assets/audio/sound-n.wav?v=c69084ebf127",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:aa": {
+    "src": "assets/audio/sound-aa.wav?v=bf33963e3ac9",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:p": {
+    "src": "assets/audio/sound-p.wav?v=5b979a780e6f",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:kw": {
+    "src": "assets/audio/sound-kw.wav?v=c5c9b126faeb",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:r": {
+    "src": "assets/audio/sound-r.wav?v=057d8facb7f5",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:s": {
+    "src": "assets/audio/sound-s.wav?v=27b3636991d1",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:t": {
+    "src": "assets/audio/sound-t.wav?v=82595f51980d",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:uh": {
+    "src": "assets/audio/sound-uh.wav?v=221ae0fb0106",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:v": {
+    "src": "assets/audio/sound-v.wav?v=17ed26fb1bb3",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:w": {
+    "src": "assets/audio/sound-w.wav?v=f267864bd114",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:ks": {
+    "src": "assets/audio/sound-ks.wav?v=bd70a74b4546",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:y": {
+    "src": "assets/audio/sound-y.wav?v=5063ee11f6bd",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:z": {
+    "src": "assets/audio/sound-z.wav?v=5d46ca636831",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:th": {
+    "src": "assets/audio/sound-th.wav?v=203d1bfab31d",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:dh": {
+    "src": "assets/audio/sound-dh.wav?v=d70246034f4c",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:ch": {
+    "src": "assets/audio/sound-ch.wav?v=3c3cf1ac07a2",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:sh": {
+    "src": "assets/audio/sound-sh.wav?v=cec7d74f9438",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
+  },
+  "sound:ts": {
+    "src": "assets/audio/sound-ts.wav?v=bee100f5abd0",
+    "voice": "先生の録音",
+    "kind": "teacher-recording"
   }
 };
