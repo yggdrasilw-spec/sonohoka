@@ -36,6 +36,14 @@
 
 ## 発音の参照
 
+読む体験の単語構成は、提供された「えい語を読んでみよう。.pptx」を参考にしました。スライドの画像は流用せず、12語の絵を組み込み画像生成で新規作成し、残りは本教材の既存画像を再利用しています。規則の追加と例外の確認を区別する構成は [英語教育課程のword reading](https://www.gov.uk/government/publications/national-curriculum-in-england-english-programmes-of-study/national-curriculum-in-england-english-programmes-of-study) も参照しています。
+
+### 読む体験に追加した絵のプロンプト（2026年10月4日）
+
+元画像：`exec-b473526b-d1a3-4352-988c-b8bbc0111b87.png`。最終ファイル：`words/`内のbat、mat、rat、cap、tap、bag、bug、bed、pet、mud、ship、shopのWebP。
+
+Use case illustration-story educational word cards. Generate a single atlas of TWELVE independent friendly watercolor children's dictionary illustrations, EXACTLY FOUR columns by THREE rows, twelve equal square cells, white background. Keep each entire illustration well INSIDE its cell, large blank margins, no object crosses cell boundaries, no text labels, letters, captions, borders, logos or characters from existing works. Exact row-major subjects: row1: a small cute bat animal with wings spread; a rectangular woven floor mat; a gray rat with a long tail; a baseball cap without logo. row2: a water tap/faucet by itself; a small school bag without logo; a beetle insect; a bed with pillow and blanket. row3: a friendly pet puppy; a small patch of brown mud with puddle (no shoes or people); a ship with hull on blue water; a small shop storefront without lettering. Consistent simple warm watercolor, clear easy identifiable objects, no realism or anatomy. Output landscape 4:3 grid.
+
 - [Cambridge IPA chart](https://www.cambridge.org/features/IPAchart/)
 - [University of Groningen: Defining consonants](https://opentextbooks.rug.nl/americanenglishphonetics2/chapter/8-1-defining-consonants/)
 - [JIPA: Japanese](https://www.cambridge.org/core/journals/journal-of-the-international-phonetic-association/article/japanese/EF0E01DD40A1B2779F3ADFF96B5D97E3)
