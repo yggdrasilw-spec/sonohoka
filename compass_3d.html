@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3Dコンパス 真円描画デモ</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;background:#e3ebf6;color:#16304f}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#panel{position:fixed;top:10px;right:10px;width:276px;max-height:calc(100% - 20px);overflow:auto;background:rgba(255,255,255,.93);border:1px solid #bcd0ec;border-radius:10px;padding:10px 12px 12px;font-size:13px;box-shadow:0 6px 20px rgba(20,50,100,.18)}
+h1{font-size:15px;margin:0 0 4px;color:#0b3a8c}
+h2{font-size:12px;margin:10px 0 5px;color:#3a63a8;border-bottom:1px solid #d3e1f4;padding-bottom:2px}
+.row{display:flex;flex-wrap:wrap;gap:4px}
+button{font:inherit;border:1px solid #9db9e3;background:#f2f7ff;color:#0b3a8c;border-radius:6px;padding:5px 8px;cursor:pointer}
+button:hover{background:#e3eeff}
+button.on{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
+button:focus-visible,input:focus-visible{outline:2px solid #f08a00;outline-offset:1px}
+.p6 button{flex:1 0 28%;line-height:1.25}
+label.s{display:grid;grid-template-columns:64px 1fr 58px;align-items:center;gap:4px;margin:3px 0}
+label.s output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;margin:0}
+#info{margin-top:8px;font-size:12px;line-height:1.55;background:#eef4fd;border-radius:7px;padding:6px 8px}
+@media(max-width:700px){#panel{top:auto;bottom:0;right:0;left:0;width:auto;max-height:44%;border-radius:10px 10px 0 0}}
+button{min-height:44px}a{color:#0b3a8c}@media(max-width:700px){#panel{max-height:44%;font-size:14px}#c{height:56%}}
+</style></head><body>
+<canvas id="c" aria-label="ドラッグでコンパスを動かせる3D用紙"></canvas>
+<div id="panel">
+<h1>3Dコンパス 真円描画デモ</h1>
+<h2>視点</h2>
+<div class="row" id="views"><button data-v="top">直上 90°</button><button data-v="obl" class="on">斜め</button><button data-v="side">横から(構造)</button></div>
+<label class="s"><span>斜めの角度</span><input id="el" type="range" min="45" max="75" value="58"><output id="elo">58°</output></label>
+<h2>360°構造確認</h2>
+<div class="row p6" id="pre"><button data-a="0">0°<br>正面</button><button data-a="60">60°</button><button data-a="120">120°</button><button data-a="180">180°<br>背面</button><button data-a="240">240°</button><button data-a="300">300°</button></div>
+<h2>コンパス</h2>
+<div id="sl"></div>
+<div class="row" style="margin-top:6px"><button id="pen"></button><button id="run"></button><button id="clr">用紙クリア</button><button id="snd"></button></div>
+<h2>自動描画</h2>
+<div class="row" id="pats"><button data-p="flower">フラワー・オブ・ライフ</button><button data-p="target">同心円ターゲット</button><button data-p="rosette">ロゼット</button><button data-p="stop">停止</button></div>
+<div id="info" aria-live="polite"></div><p><a href="compass_pattern.html">もようを順番に学ぶ</a> · <a href="app_links_portfolio.html">教材一覧</a></p>
+</div>
+<script src="js/vendor/three-r128.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s),PI=Math.PI,cl=(v,a,b)=>Math.min(b,Math.max(a,v));
+// 座標系: 用紙は y=0 の XZ 平面 / φ は用紙上で針→鉛筆の向き (cosφ, sinφ)
+const L=10,Q=3; // L=脚の長さ(cm) Q=鉛筆ホルダーの鉛筆先からの高さ
+let cx=3.5,cz=0,R=7,phi=PI,beta=20,spd=2.5,view='obl',obE=58,run=false,penUser=false,auto=null,pt=null,drag=null,sndOn=false,hh=9;
+
+/* ---------- Three.js 基本 ---------- */
+const cv=$('#c'),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+ren.setPixelRatio(Math.min(devicePixelRatio,2));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe3ebf6);
+const cam=new THREE.PerspectiveCamera(36,1,.5,400);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8fa0b8,.75));
+const sun=new THREE.DirectionalLight(0xffffff,.55);sun.position.set(-14,32,16);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);const sc=sun.shadow.camera;sc.left=sc.bottom=-26;sc.right=sc.top=26;sc.near=5;sc.far=90;
+sun.shadow.bias=-.0006;sun.shadow.normalBias=.04;scene.add(sun);
+
+/* ---------- 用紙(Canvasテクスチャ) ---------- */
+const PS=48,TW=1536,K=TW/PS;
+const pc=document.createElement('canvas');pc.width=pc.height=TW;const g=pc.getContext('2d');
+const tex=new THREE.CanvasTexture(pc);tex.generateMipmaps=false;tex.minFilter=THREE.LinearFilter;tex.anisotropy=ren.capabilities.getMaxAnisotropy();
+function paper(){g.fillStyle='#fff';g.fillRect(0,0,TW,TW);g.lineWidth=1;
+ for(let i=0;i<=PS;i++){g.strokeStyle=(i-24)%5?'#e6eef8':'#c6d8ee';g.beginPath();g.moveTo(i*K,0);g.lineTo(i*K,TW);g.moveTo(0,i*K);g.lineTo(TW,i*K);g.stroke();}
+ tex.needsUpdate=true;}
+paper();
+const paperM=new THREE.Mesh(new THREE.PlaneGeometry(PS,PS),new THREE.MeshLambertMaterial({map:tex}));paperM.rotation.x=-PI/2;paperM.receiveShadow=true;scene.add(paperM);
+const desk=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshLambertMaterial({color:0xaebdd2}));desk.rotation.x=-PI/2;desk.position.y=-.05;desk.receiveShadow=true;scene.add(desk);
+// 軌跡は用紙平面上の arc() で直接描くので、傾き・視点に関係なく完全な真円になる
+function arc(x,z,r,a0,a1){g.strokeStyle='rgba(35,38,48,.92)';g.lineWidth=2.6;g.lineCap='round';g.beginPath();g.arc(x*K+TW/2,z*K+TW/2,r*K,a0,a1,a1<a0);g.stroke();tex.needsUpdate=true;}
+function dot(x,z){g.fillStyle='#2b2f3a';g.beginPath();g.arc(x*K+TW/2,z*K+TW/2,2.6,0,2*PI);g.fill();tex.needsUpdate=true;}
+
+/* ---------- コンパス3Dモデル ---------- */
+const Mt=(c,sh,sp,fl)=>new THREE.MeshPhongMaterial({color:c,shininess:sh,specular:sp,flatShading:!!fl});
+const mBlue=Mt(0x4a86d8,60,0x8899bb),mNavy=Mt(0x0b3a8c,50,0x556688),mHd=Mt(0x0b3a8c,40,0x445577,1),mRib=Mt(0x4f86dc,40,0x445577),
+ mSil=Mt(0xd4d8de,90,0xffffff),mBlk=Mt(0x1c2229,40,0x667788,1),mGrn=Mt(0x20a52e,40,0x335533,1),mWd=Mt(0xf0cf94,10,0x111111,1),mLd=Mt(0x15151a,30,0x444444),mNd=Mt(0xc9ced6,100,0xffffff);
+const add=(p,geo,mat,x=0,y=0,z=0)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);p.add(m);return m;};
+const cp=new THREE.Group();scene.add(cp); // ローカル原点=針と鉛筆の中点, +x=針側, +y=ヒンジ方向, +z=表面
+function armGeo(len,w0,w1,dp){const sh=new THREE.Shape();sh.moveTo(-w0,0);sh.lineTo(w0,0);sh.lineTo(w1,-len);sh.lineTo(-w1,-len); // 直線の先細アーム
+ const ge=new THREE.ExtrudeGeometry(sh,{depth:dp,bevelEnabled:true,bevelThickness:.03,bevelSize:.03,bevelSegments:1});ge.translate(0,0,-dp/2);return ge;}
+// ヒンジヘッド+つまみ
+const head=new THREE.Group();cp.add(head);
+{const sh=new THREE.Shape();[[-.8,.6],[.8,.6],[1,-1.3],[.35,-1.3],[0,-.55],[-.35,-1.3],[-1,-1.3]].forEach((p,i)=>i?sh.lineTo(...p):sh.moveTo(...p));
+ const ge=new THREE.ExtrudeGeometry(sh,{depth:.9,bevelEnabled:true,bevelThickness:.08,bevelSize:.08,bevelSegments:2});ge.translate(0,0,-.45);add(head,ge,mNavy);}
+[1,-1].forEach(s=>{add(head,new THREE.CylinderGeometry(.27,.27,.1,20),mSil,0,-.2,s*.57).rotation.x=PI/2;});
+add(head,new THREE.CylinderGeometry(.4,.44,2.6,16),mHd,0,1.9,0);
+for(let i=0;i<8;i++){const a=i*PI/4;add(head,new THREE.BoxGeometry(.09,2.5,.15),mRib,Math.cos(a)*.45,1.9,Math.sin(a)*.45).rotation.y=-a;}
+// 針側の脚(+x) : アーム・針・16枚歯ギヤ
+const legN=new THREE.Group(),legP=new THREE.Group();cp.add(legN,legP);
+// 鉛筆脚: 鉛筆は腕に対し固定角DLで取り付け。腕長APは「ヒンジ→鉛筆先=L」から決まり、腕はH→P線よりEPSだけ外へ開く
+const DL=10*PI/180,AP=-Q*Math.cos(DL)+Math.sqrt(L*L-Q*Q*Math.sin(DL)**2),EPS=Math.atan2(Q*Math.sin(DL),AP+Q*Math.cos(DL));
+add(legN,armGeo(8.7,.36,.2,.4),mBlue);add(legP,armGeo(AP,.36,.26,.34),mBlue);
+add(legN,new THREE.CylinderGeometry(.15,0,1.3,12),mNd,0,-9.35,0); // 針は腕と同軸(腕の先端から続く)
+{const gy=-4.6,gx=0,sh=new THREE.Shape();
+ for(let i=0;i<32;i++){const a=i*PI/16,r=i%2?.55:.66,x=Math.cos(a)*r,y=Math.sin(a)*r;i?sh.lineTo(x,y):sh.moveTo(x,y);}
+ const ge=new THREE.ExtrudeGeometry(sh,{depth:.08,bevelEnabled:false});ge.translate(0,0,-.04);
+ add(legN,ge,mSil,gx,gy,-.3);add(legN,new THREE.CylinderGeometry(.14,.14,.8,12),mSil,gx,gy,-.07).rotation.x=PI/2;}
+// 鉛筆側の脚(-x) : ホルダー・ツマミネジ・六角鉛筆(先端がP)
+const pcl=new THREE.Group();pcl.position.set(Q*Math.sin(DL),-AP-Q*Math.cos(DL),0);pcl.rotation.z=DL;legP.add(pcl); // 原点=鉛筆の先(P)
+const hold=new THREE.Group();hold.position.y=Q;pcl.add(hold);
+add(hold,new THREE.BoxGeometry(1.25,1.5,1.1),mBlue);
+add(hold,new THREE.CylinderGeometry(.5,.5,.55,18),mBlk,-.95,0,0).rotation.z=PI/2;
+add(hold,new THREE.CylinderGeometry(.15,.15,.6,10),mSil,-.55,0,0).rotation.z=PI/2;
+add(pcl,new THREE.CylinderGeometry(.12,0,.5,6),mLd,0,.25,0);
+add(pcl,new THREE.CylinderGeometry(.34,.12,1,6),mWd,0,1,0);
+add(pcl,new THREE.CylinderGeometry(.34,.34,5.5,6),mGrn,0,4.25,0);
+cp.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true;});
+
+// 逆運動学: 針N・鉛筆先Pを必ず用紙面(y=0)に置き、ヒンジは二等分面上で傾ける
+const ex=new THREE.Vector3(),ey=new THREE.Vector3(),ez=new THREE.Vector3(),mt=new THREE.Matrix4();
+function pose(x,z,r,ph,bd,lift){
+ const th=Math.asin(r/(2*L)),h=Math.sqrt(L*L-r*r/4),b=bd*PI/180,c=Math.cos(ph),s=Math.sin(ph);
+ ex.set(-c,0,-s);                                   // 鉛筆→針
+ ey.set(-Math.sin(b)*s,Math.cos(b),Math.sin(b)*c);  // 鉛筆の進行方向(接線)へ傾けたヒンジ軸
+ ez.crossVectors(ex,ey);mt.makeBasis(ex,ey,ez);cp.quaternion.setFromRotationMatrix(mt);
+ cp.position.set(x+r/2*c,lift,z+r/2*s);
+ head.position.set(0,h,0);legN.position.set(0,h,0);legP.position.set(0,h,0);
+ legN.rotation.z=th;
+ legP.rotation.z=-th-EPS; // 両脚とも先端までの距離はL(逆運動学)
+ return{th,h};}
+
+/* ---------- UI ---------- */
+const ui={},setF={R:v=>R=v,phi:v=>{phi=v*PI/180;setRun(false)},beta:v=>beta=v,spd:v=>spd=v};
+[['R','半径 R',1,16,.1,'cm'],['phi','回転角 φ',0,360,1,'°'],['beta','傾き β',0,35,1,'°'],['spd','自走速度',.5,6,.1,'rad/s']].forEach(([k,l,mn,mx,st,u])=>{
+ const lb=document.createElement('label');lb.className='s';lb.innerHTML=`<span>${l}</span><input type="range" min="${mn}" max="${mx}" step="${st}"><output></output>`;
+ $('#sl').appendChild(lb);ui[k]={i:lb.children[1],o:lb.children[2],u};
+ ui[k].i.oninput=()=>{setF[k](+ui[k].i.value);if(k==='R'||k==='phi'){auto=null;pt=null;}};});
+function sync(){const v={R,phi:((phi*180/PI)%360+360)%360,beta,spd};
+ for(const k in ui){ui[k].i.value=v[k];ui[k].o.textContent=(k==='R'||k==='spd'?v[k].toFixed(1):Math.round(v[k]))+ui[k].u;}}
+function setRun(v){run=v;$('#run').textContent=v?'自走 ❚❚':'自走 ▶';$('#run').classList.toggle('on',v);if(v){auto=null;pt=null;setPen(true);}}
+function setPen(v){penUser=v;$('#pen').textContent=v?'ペンを上げる':'ペンを下ろす';$('#pen').classList.toggle('on',v);}
+setRun(false);setPen(false);
+$('#pen').onclick=()=>setPen(!penUser);
+$('#run').onclick=()=>setRun(!run);
+$('#clr').onclick=paper;
+const sndTxt=()=>{$('#snd').textContent=sndOn?'音 ON':'音 OFF';$('#snd').classList.toggle('on',sndOn);};
+$('#snd').onclick=()=>{sndOn=!sndOn;audio();sndTxt();};sndTxt();
+$$('#views button').forEach(b=>b.onclick=()=>{view=b.dataset.v;$$('#views button').forEach(x=>x.classList.toggle('on',x===b));});
+$('#el').oninput=e=>{obE=+e.target.value;$('#elo').textContent=obE+'°';view='obl';$$('#views button').forEach(x=>x.classList.toggle('on',x.dataset.v==='obl'));};
+// 0°=正面(鉛筆が左・針が右) → φ=180°
+$$('#pre button').forEach(b=>b.onclick=()=>{const t=PI+ +b.dataset.a*PI/180;setRun(false);auto=null;setPen(false);
+ pt=t+2*PI*Math.round((phi-t)/(2*PI));$$('#pre button').forEach(x=>x.classList.toggle('on',x===b));});
+$$('#pats button').forEach(b=>b.onclick=()=>{const k=b.dataset.p;auto=null;pt=null;setRun(false);setPen(false);if(k==='stop')return;const l=[],r=4;
+ if(k==='flower'){l.push({x:0,z:0,R:r});for(let i=0;i<6;i++){const a=i*PI/3;l.push({x:r*Math.cos(a),z:r*Math.sin(a),R:r});}
+  for(let i=0;i<6;i++){const a=i*PI/3,b2=a+PI/6;l.push({x:2*r*Math.cos(a),z:2*r*Math.sin(a),R:r},{x:Math.sqrt(3)*r*Math.cos(b2),z:Math.sqrt(3)*r*Math.sin(b2),R:r});}
+  l.push({x:0,z:0,R:3*r});}
+ if(k==='target')for(let q=2;q<=14;q+=2)l.push({x:0,z:0,R:q});
+ if(k==='rosette'){for(let i=0;i<12;i++){const a=i*PI/6;l.push({x:4.5*Math.cos(a),z:4.5*Math.sin(a),R:4.5});}l.push({x:0,z:0,R:9});}
+ paper();auto={l,i:0,ph:'m',t:0,f:{x:cx,z:cz,R}};});
+
+/* ---------- 鉛筆の擦れ音 (Web Audio) ---------- */
+let ac,ag,af;
+function audio(){if(ac){ac.resume&&ac.resume();return;}
+ try{ac=new(window.AudioContext||window.webkitAudioContext)();const n=ac.sampleRate*2,bf=ac.createBuffer(1,n,ac.sampleRate),d=bf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  const s=ac.createBufferSource();s.buffer=bf;s.loop=true;af=ac.createBiquadFilter();af.type='bandpass';af.frequency.value=2800;af.Q.value=.8;
+  ag=ac.createGain();ag.gain.value=0;s.connect(af);af.connect(ag);ag.connect(ac.destination);s.start();}catch(e){ac=null;}}
+document.addEventListener('pointerdown',audio);
+
+/* ---------- ドラッグ操作(針で中心移動 / 鉛筆で角度・半径) ---------- */
+const rc=new THREE.Raycaster(),pl=new THREE.Plane(new THREE.Vector3(0,1,0),0),hit=new THREE.Vector3(),mv=new THREE.Vector2();
+function pick(e){const r=cv.getBoundingClientRect();mv.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);rc.setFromCamera(mv,cam);return rc.ray.intersectPlane(pl,hit)?hit:null;}
+cv.addEventListener('pointerdown',e=>{const p=pick(e);if(!p)return;
+ const dn=Math.hypot(p.x-cx,p.z-cz),dp=Math.hypot(p.x-(cx+R*Math.cos(phi)),p.z-(cz+R*Math.sin(phi)));
+ if(Math.min(dn,dp)<2.4){drag=dp<dn?'p':'n';auto=null;pt=null;setRun(false);cv.setPointerCapture(e.pointerId);}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const p=pick(e);if(!p)return;
+ if(drag==='n'){cx=cl(p.x,-20,20);cz=cl(p.z,-20,20);}
+ else{const ph=Math.atan2(p.z-cz,p.x-cx);phi=ph+2*PI*Math.round((phi-ph)/(2*PI));if(!penUser)R=cl(Math.hypot(p.x-cx,p.z-cz),1,16);}});
+cv.addEventListener('pointerup',()=>drag=null);cv.addEventListener('pointercancel',()=>drag=null);
+
+/* ---------- メインループ ---------- */
+function rs(){const w=cv.clientWidth,h=cv.clientHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
+addEventListener('resize',rs);rs();
+const V={e:58,d:54,s:0};let last=performance.now(),pp=false,lastS='';
+function tick(now){requestAnimationFrame(tick);
+ const dt=Math.min(.05,(now-last)/1000);last=now;
+ const o=[cx,cz,R,phi];let lift=0,pen=penUser,fin=false;
+ if(auto){const c=auto.l[auto.i];
+  if(auto.ph==='m'){pen=false;auto.t=Math.min(1,auto.t+dt/.7);const k=auto.t*auto.t*(3-2*auto.t),f=auto.f;
+   cx=f.x+(c.x-f.x)*k;cz=f.z+(c.z-f.z)*k;R=f.R+(c.R-f.R)*k;lift=Math.sin(PI*k)*2.5;if(auto.t>=1){auto.ph='d';auto.sw=0;}}
+  else{pen=true;const dp=Math.min(spd*dt,2*PI-auto.sw);auto.sw+=dp;phi+=dp;fin=auto.sw>=2*PI-1e-6;}
+ }else if(pt!==null){phi+=(pt-phi)*(1-Math.exp(-dt*5));if(Math.abs(pt-phi)<.002){phi=pt;pt=null;}}
+ else if(run&&!drag)phi+=spd*dt;
+ if(pen&&!pp)dot(cx,cz);pp=pen;
+ const moved=phi!==o[3];
+ if(pen&&moved&&cx===o[0]&&cz===o[1]&&R===o[2])arc(cx,cz,R,o[3],phi);
+ const sp=pen&&moved?Math.abs(phi-o[3])*R/Math.max(dt,.001):0;
+ if(fin){auto.i++;if(auto.i>=auto.l.length)auto=null;else{auto.ph='m';auto.t=0;auto.f={x:cx,z:cz,R};}}
+ const{th,h}=pose(cx,cz,R,phi,beta,lift);hh=h;
+ // カメラ: 直上(89.9°) / 斜め / 横から(構造確認, コンパス中心を追う)
+ const tg=view==='top'?[89.9,62,0]:view==='obl'?[obE,54,0]:[10,26,1],kk=1-Math.exp(-dt*6);
+ V.e+=(tg[0]-V.e)*kk;V.d+=(tg[1]-V.d)*kk;V.s+=(tg[2]-V.s)*kk;
+ const e=V.e*PI/180,dd=V.d*Math.max(1,1.15/cam.aspect),tx=V.s*cp.position.x,ty=V.s*h/2,tz=V.s*cp.position.z;
+ cam.position.set(tx,ty+dd*Math.sin(e),tz+dd*Math.cos(e));cam.lookAt(tx,ty,tz);
+ ren.render(scene,cam);
+ if(ac&&ag){ag.gain.setTargetAtTime(sndOn&&sp>0?Math.min(.5,sp*.012):0,ac.currentTime,.05);af.frequency.value=1800+Math.min(sp,40)*45;}
+ const s=`θ=asin(R/2L)=<b>${(th*180/PI).toFixed(1)}°</b> (開き 2θ=${(2*th*180/PI).toFixed(1)}°)<br>H=√(L²−(R/2)²)=<b>${h.toFixed(2)}cm</b> (L=${L}cm)<br>針と鉛筆の先は常に用紙面。軌跡は半径${R.toFixed(1)}cmの真円`;
+ if(s!==lastS){$('#info').innerHTML=s;lastS=s;}
+ sync();}
+requestAnimationFrame(tick);
+</script></body></html>
