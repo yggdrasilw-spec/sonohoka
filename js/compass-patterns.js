@@ -6424,3 +6424,4 @@ window.COMPASS_PATTERNS = [
     "difficulty": "ふつう"
   }
 ];
+window.COMPASS_EXTRA_PATTERNS = window.COMPASS_PATTERNS.slice(4);

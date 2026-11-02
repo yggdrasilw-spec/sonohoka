@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 spec=importlib.util.spec_from_file_location('catalogue',Path(__file__).with_name('build-compass-patterns.py'))
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 text=Path('js/compass-patterns.js').read_text(encoding='utf8')
-rows=json.loads(text.split('window.COMPASS_PATTERNS = ',1)[1].rstrip(';\n'))
+rows,_=json.JSONDecoder().raw_decode(text.split('window.COMPASS_PATTERNS = ',1)[1])
 assert len(rows)==100
 keys=[module.signature(p['e']) for p in rows]
 assert len(set(keys))==100

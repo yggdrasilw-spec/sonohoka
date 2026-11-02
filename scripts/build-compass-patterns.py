@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 from copy import deepcopy
 import hashlib, json, math
 from pathlib import Path
+import re
 
 REF={
  'okiba':'https://kyozai-okiba.com/3_201.html',
@@ -272,7 +273,10 @@ def build():
    for k in ['c','a']:
     if k in e:e[k]=[round(v,6) for v in e[k]]
  manifest=[{k:v for k,v in row.items() if k!='e'}|{'strokes':len(row['e']),'geometrySHA256':hashlib.sha256(json.dumps(row['e'],sort_keys=True).encode()).hexdigest()} for row in selected]
- Path('js/compass-patterns.js').write_text('// 100 distinct geometric constructions; see docs/compass/pattern-catalog.json.\nwindow.COMPASS_PATTERNS = '+json.dumps(selected,ensure_ascii=False,indent=2)+';\n',encoding='utf8')
+ payload='// 100 distinct geometric constructions; see docs/compass/pattern-catalog.json.\nwindow.COMPASS_PATTERNS = '+json.dumps(selected,ensure_ascii=False,indent=2)+';\nwindow.COMPASS_EXTRA_PATTERNS = window.COMPASS_PATTERNS.slice(4);\n'
+ Path('js/compass-patterns.js').write_text(payload,encoding='utf8')
+ version=hashlib.sha256(payload.encode('utf8')).hexdigest()[:12]
+ html=Path('compass_pattern.html');html.write_text(re.sub(r'js/compass-patterns\.js(?:\?v=[a-f0-9]+)?',f'js/compass-patterns.js?v={version}',html.read_text(encoding='utf8')),encoding='utf8')
  Path('docs/compass/pattern-catalog.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
  Path('docs/compass/distinctness-audit.json').write_text(json.dumps(dict(count=len(selected),candidates=len(rows),uniqueCandidates=len(unique),excludedDuplicatePairs=duplicates,method='Canonical circle/arc geometry. Ignore translation, uniform scaling, arbitrary rotation, reflection, stroke order and arc subdivisions.',groups=dict(Counter(r['group'] for r in selected))),ensure_ascii=False,indent=2)+'\n',encoding='utf8')
  print('selected',len(selected),dict(Counter(r['group'] for r in selected)))
