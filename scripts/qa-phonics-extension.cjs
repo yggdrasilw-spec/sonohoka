@@ -22,7 +22,7 @@ const origin=process.env.PHONICS_ORIGIN||'http://127.0.0.1:8967';
  const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
  try{
   const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(origin+'/phonics-lab/english.html#advanced');await page.locator('[data-explore="oo"]').waitFor();
+  await page.goto(origin+'/phonics-lab/english.html#advanced');await page.locator('.story-options > summary').click();await page.locator('[data-story-practice]').click();await page.locator('[data-explore="oo"]').waitFor();
   await page.evaluate(()=>{localStorage.setItem('phonics-lab-state',JSON.stringify({letter:'z',sound:'s',vowel:'u'}));localStorage.setItem('phonics-reading-sounds','["b","ae","t"]');});
   assert.equal(await page.locator('.lesson-nav [data-mode="vowels"],.lesson-nav [data-mode="blend"]').count(),0);
   assert.equal(await page.locator('[data-explore]').count(),9);
@@ -43,7 +43,7 @@ const origin=process.env.PHONICS_ORIGIN||'http://127.0.0.1:8967';
    assert((await page.locator('.explore-summary').innerText()).includes(`${lesson.questions.length-1} / ${lesson.questions.length}`));
    await page.locator('[data-explore-back]').click();
   }
-  await page.reload();await page.locator('[data-explore="oo"]').waitFor();
+  await page.reload();await page.locator('.story-options > summary').click();await page.locator('[data-story-practice]').click();await page.locator('[data-explore="oo"]').waitFor();
   assert((await page.locator('[data-explore="oo"]').innerText()).includes('ひと回り'));
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('phonics-lab-state')).letter),'z');
   assert.equal(await page.evaluate(()=>localStorage.getItem('phonics-reading-sounds')),'["b","ae","t"]');

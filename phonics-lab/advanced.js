@@ -1,11 +1,13 @@
 'use strict';
-window.createAdvancedUI = ({esc,listen,stopAudio,hasAudio,audioSignature}) => {
+window.createAdvancedUI = ({esc,listen,stopAudio,hasAudio,audioSignature,playStoryWord}) => {
  const D=window.PHONICS_ADVANCED, KEY='english-phonics-progress-v1', REVIEW='english-phonics-audio-v1';
  let progress={}, reviews={}, lesson=null, session=null, message='', teacherWord=null, reviewOpen=false;
  const heard=new Map();
  try{const x=JSON.parse(localStorage.getItem(KEY));if(x?.version===1&&x.lessons&&typeof x.lessons==='object')progress=Object.fromEntries(Object.entries(x.lessons).filter(([id,p])=>D.lessons.some(l=>l.id===id)&&p&&typeof p==='object'&&!Array.isArray(p)));}catch{}
  try{const x=JSON.parse(localStorage.getItem(REVIEW));if(x&&typeof x==='object'&&!Array.isArray(x))reviews=x;}catch{}
  const shuffle=a=>a.map(v=>({v,r:Math.random()})).sort((a,b)=>a.r-b.r).map(x=>x.v);
+ let manual=false;
+ const story=window.createPhonicsStory?.({esc,stopAudio,playWord:playStoryWord,onPractice:()=>{manual=true;document.body.classList.remove('story-mode');}});
  const current=()=>D.lessons.find(l=>l.id===lesson);
  function save(){try{localStorage.setItem(KEY,JSON.stringify({version:1,lessons:progress}));localStorage.setItem(REVIEW,JSON.stringify(reviews));message='';}catch{message='この端末に記録を保存できません。今の画面では続けられます。';}}
  const signature=w=>audioSignature('word:'+w);
@@ -28,10 +30,14 @@ window.createAdvancedUI = ({esc,listen,stopAudio,hasAudio,audioSignature}) => {
  }
  function start(mode){const l=current();if(mode==='listen'&&!canListen(l))return;session={mode,index:0,firstCorrect:0,queue:shuffle((mode==='listen'?l.questions.filter(q=>q.id.endsWith('-group')):l.questions).map(q=>({q,options:shuffle(q.options.map((label,index)=>({label,index}))),attempts:0}))),feedback:null,heard:false};}
  return {
-  render(){const l=current();return `<div class="explore">${message?`<p role="alert">${esc(message)}</p>`:''}${l?(session?questionPage(l):lessonPage(l)):overview()}</div>`;},
+  suspend(){story?.suspend();},
+  mounted(){if(!manual)story?.mounted();},
+  render(){if(story&&!manual)return story.render();const l=current();return `<button class="secondary story-practice-return" data-story-return>← 絵と音で、自動レッスンを見る</button><div class="explore">${message?`<p role="alert">${esc(message)}</p>`:''}${l?(session?questionPage(l):lessonPage(l)):overview()}</div>`;},
   currentTarget(){return 'word:'+(teacherWord||current()?.words[0]||'cut');},
   heard(key,playedSignature){if(!key.startsWith('word:'))return;const id=key.slice(5);if(!D.words[id]||playedSignature!==signature(id))return;heard.set(id,signature(id));if(session?.mode==='listen'&&session.queue[session.index]?.q.words[0]===id){session.heard=true;document.querySelectorAll('[data-explore-answer]').forEach(b=>b.disabled=!!session.feedback?.correct);}document.querySelectorAll(`[data-audio-confirm="${id}"]`).forEach(b=>b.disabled=false);},
   click(b){
+   if(b.hasAttribute('data-story-return')){manual=false;return true;}
+   if(story&&!manual)return story.click(b);
    if(b.closest('.explore-teacher'))reviewOpen=b.closest('.explore-teacher').open;
    if(b.dataset.explore){lesson=b.dataset.explore;session=null;teacherWord=null;reviewOpen=false;return true;}
    if(b.hasAttribute('data-explore-back')){lesson=null;session=null;return true;}
