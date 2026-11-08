@@ -89,3 +89,10 @@ python scripts/build-phonics-extension.py --research-dir <展開・辞書フォ�
 2. a_e・i_e・o_e・u_eの音価差の比較を補い、ee/ea、oi/oy、oa/ow、ouの多音価。発音候補を一意に決める架空の規則は作らない。
 3. rを含む母音と米英差、音節、語末 -s/-es・-ed。条件と文法を分け、独立した例語音声を確認する。
 4. 接辞・黙字・chの別音、頻出不規則語とough。頻度と児童の既知語を基準に少数ずつ追加する。
+
+## 公開結果
+
+- 新アプリ：[英語 おとラボ](https://yggdrasilw-spec.github.io/sonohoka/phonics-lab/english.html#advanced)。教材実装コミット `3b7b6917c57ab21de37fddf8401ecda93cbfc825`、[Pages公開ジョブ](https://github.com/yggdrasilw-spec/sonohoka/actions/runs/42489084724) 成功。
+- [英検5級 English Stage](https://yggdrasilw-spec.github.io/english-stage/) のホームに入口を追加。コミット `9e4c577460767717ee27c2c46cf07e0f2f6e50fc`、[検証・公開ジョブ](https://github.com/yggdrasilw-spec/english-stage/actions/runs/42489029681) 成功。
+- `scripts/qa-phonics-public.cjs` で公開ホーム→新アプリ→ホームの往復、9探検、17語のMP3デコード、文字問題のフィードバック、未確認音声の問題停止、先生録音mの再生を確認。ページのJavaScriptエラーなし。
+- 元の英検5級作業フォルダーにも、公開前との一致を確認した3ファイル（ホームバナー、CSS、キャッシュ付き入口）の変更だけを同期。既存の他の未コミット変更は維持した。
