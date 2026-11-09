@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>主語・述語 れんしゅう</title>
+<style>
+:root{--r:#e0393e;--b:#1f6fd6;--g:#2a9d55;--ink:#27364b;--line:#d5e0ec}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden}
+body{display:flex;flex-direction:column;color:var(--ink);background:#fbfdff;font-family:"BIZ UDPGothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;user-select:none;-webkit-user-select:none}
+header{display:flex;justify-content:space-between;align-items:center;padding:6px 18px;background:var(--ink);color:#fff;font-weight:700;font-size:clamp(16px,3vh,24px)}
+main{flex:1;min-height:0;display:flex;position:relative}
+#tools{width:clamp(170px,22vw,250px);padding:12px;display:flex;flex-direction:column;gap:10px;background:#eef3f9;border-right:3px solid var(--line)}
+.tool{--c:#6b7685;font:inherit;font-size:clamp(15px,3vh,22px);font-weight:700;text-align:left;line-height:1.3;padding:8px 10px;border:4px solid var(--c);border-radius:10px;background:#fff;color:var(--ink);cursor:pointer}
+.tool small{display:block;font-size:.65em;font-weight:400}
+.tool.on{background:var(--c);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+#right{flex:1;min-width:0;display:flex;flex-direction:column}
+#stage{flex:1;min-height:0;position:relative;display:flex;justify-content:center;align-items:center;padding:12px;background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/28px 28px,#fbfdff}
+#sent{writing-mode:vertical-rl;display:flex;flex-wrap:wrap;max-height:calc(100vh - 160px);font-size:clamp(20px,6vh,44px);font-family:"UDデジタル 教科書体 N-R","UD Digi Kyokasho N-R","BIZ UDPMincho","Hiragino Mincho ProN",serif;touch-action:none}
+.ch{position:relative;margin:.18em .3em;padding:.22em .1em;border:5px dashed #aebccb;border-radius:12px;background:#fff;letter-spacing:.06em;cursor:pointer}
+.c1,.c2,.c3,.pv{border-style:solid;border-color:var(--c);background:var(--t)}
+.c1,#sent.t1 .pv{--c:var(--r);--t:#ffe6e6}
+.c2,#sent.t2 .pv{--c:var(--b);--t:#e3eeff;border-style:double}
+.c3,#sent.t3 .pv{--c:var(--g);--t:#e2f6e8}
+#sent.t0 .pv{--c:#8a94a0;--t:#eef1f4}
+#sent.t1 .pv,#sent.t3 .pv,#sent.t0 .pv{border-style:solid}
+.ok::after,.ng::after{position:absolute;left:-.45em;top:-.45em;width:1.1em;height:1.1em;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:.55em;font-weight:700;color:#fff;writing-mode:horizontal-tb;z-index:2}
+.ok::after{content:"○";background:#555}
+.ng::after{content:"×";background:#f0a500}
+.ng{animation:sh .3s 2}
+@keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#bar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#fff;border-top:3px solid var(--line);font-size:clamp(15px,2.8vh,22px)}
+#msg{flex:1}
+.btn{font:inherit;font-weight:700;padding:8px 20px;border:0;border-radius:999px;background:var(--ink);color:#fff;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.btn.sub{background:#8a94a0}
+#next{background:var(--g)}
+#maru{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:min(50vh,50vw);color:var(--r);pointer-events:none;opacity:0}
+#maru.show{animation:pop 1s}
+@keyframes pop{0%{opacity:0;transform:scale(.4)}25%,80%{opacity:.9;transform:scale(1)}100%{opacity:0}}
+#ghost{position:fixed;display:none;z-index:20;pointer-events:none;transform:translate(-50%,-50%);border:5px solid var(--c);border-radius:12px;background:var(--t);opacity:.75;box-shadow:0 6px 14px rgba(0,0,0,.25)}
+#ghost.t1{--c:var(--r);--t:rgba(224,57,62,.25)}
+#ghost.t2{--c:var(--b);--t:rgba(31,111,214,.25);border-style:double}
+#ghost.t3{--c:var(--g);--t:rgba(42,157,85,.25)}
+#ghost.t0{--c:#8a94a0;--t:rgba(138,148,160,.25);border-style:dashed}
+.tool{cursor:grab;touch-action:none;-webkit-touch-callout:none}
+body.dr,body.dr *{cursor:grabbing!important}
+#menu{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.5vh;font-size:clamp(14px,2.7vh,24px);background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/28px 28px,#fbfdff}
+#menu[hidden]{display:none}
+#menu h2{margin:0;font-size:1.2em}
+#menu .grid{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:1.2vh 1.2vw;align-items:center;width:min(94%,1000px)}
+.lh,.sl{line-height:1.3}
+.lh{text-align:center}
+.sl{text-align:right}
+.lh small,.sl small{display:block;font-size:.7em}
+.set{font:inherit;display:flex;flex-direction:column;align-items:center;padding:.4em .5em;border:4px solid var(--ink);border-radius:14px;background:#fff;color:var(--ink);cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.2)}
+.set i{font-style:normal;font-size:.8em;min-height:1.3em;color:var(--g);font-weight:700}
+#home{padding:2px 14px;margin-left:14px;font-size:.8em}
+#tools.many{display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:8px;width:clamp(200px,26vw,300px)}
+#tools.many .tool{font-size:clamp(13px,2.5vh,19px);padding:6px 8px}
+#tools.many .tool:last-child{grid-column:1/-1}
+.ch{font:inherit;color:inherit;writing-mode:inherit;text-align:center;white-space:nowrap}
+.ch small{display:block;margin-left:.5em;font-size:.38em;line-height:1.3;font-weight:700;color:var(--c)}
+.lk{cursor:default}
+#ghost{align-items:center;justify-content:center;writing-mode:vertical-rl;font-weight:700;color:var(--c)}
+.end{writing-mode:horizontal-tb;font-size:.6em;text-align:center;line-height:1.8;font-family:inherit}
+@media(max-width:700px) and (orientation:portrait){main{flex-direction:column}#tools,#tools.many{width:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;border-right:0;border-bottom:3px solid var(--line)}#tools.many{grid-template-columns:repeat(3,1fr)}.tool{font-size:14px;padding:5px 8px;border-width:3px}#tools.many .tool small{display:none}}
+body.cv header{display:none}
+header>span:first-child::before{content:"✏️ "}
+header{border-bottom:5px solid;border-image:linear-gradient(90deg,var(--r) 33.3%,var(--b) 33.3% 66.6%,var(--g) 66.6%) 1}
+.tool,.set{transition:transform .15s}@media(hover:hover){.tool:hover,.set:hover{transform:translateY(-2px)}}.tool.on{transform:translateY(-2px) scale(1.03)}.set:active{transform:translateY(2px);box-shadow:none}
+.set.gold{background:#fff6c9;border-color:#e0a800}
+.st{display:block;color:#f0a500;font-size:.8em;letter-spacing:.1em}
+#back{position:absolute;left:14px;top:12px}
+#menu h2{padding:.2em 1em;border-radius:999px;background:var(--ink);color:#fff}
+.cf{position:absolute;left:50%;top:50%;width:10px;height:14px;border-radius:2px;pointer-events:none;animation:cf 1.2s ease-out forwards}
+@keyframes cf{to{transform:translate(var(--x),var(--y)) rotate(var(--rot));opacity:0}}
+.end .stars{font-size:1.6em;color:#f0a500;letter-spacing:.1em}.end .cmt{font-weight:700;color:var(--g)}
+.cr{--c:var(--r);--t:#ffe6e6}.cb{--c:var(--b);--t:#e3eeff}.cg{--c:var(--g);--t:#e2f6e8}.cn{--c:var(--ink);--t:#fff}
+#cover{position:absolute;inset:0;z-index:40;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.4vh;padding:16px;text-align:center;font-size:clamp(14px,2.6vh,22px);background:radial-gradient(circle at 8% 10%,rgba(224,57,62,.16) 0 16%,transparent 17%),radial-gradient(circle at 94% 14%,rgba(31,111,214,.16) 0 18%,transparent 19%),radial-gradient(circle at 88% 96%,rgba(42,157,85,.18) 0 20%,transparent 21%),linear-gradient(var(--line) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/28px 28px,#fbfdff}
+#cover[hidden]{display:none}
+.fl i{position:absolute;font-style:normal;font-weight:700;padding:.2em .7em;border:3px solid var(--c);border-radius:10px;background:var(--t);opacity:.55;animation:fl var(--d) ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-14px) rotate(4deg)}}
+.cv-t,.demo{font-family:"UDデジタル 教科書体 N-R","UD Digi Kyokasho N-R","BIZ UDPMincho","Hiragino Mincho ProN",serif}
+.cv-t{position:relative;margin:0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.25em;font-size:clamp(28px,min(9vh,8vw),76px);line-height:1.3}
+.cv-t>span{padding:.05em .3em;border:5px solid var(--c);border-radius:14px;background:var(--t)}
+.cv-t>span:nth-child(1){transform:rotate(-3deg)}.cv-t>span:nth-child(3){transform:rotate(2deg)}
+.cv-s{position:relative;margin:0;font-weight:700;font-size:1.25em}.cv-n{position:relative;margin:0;font-size:.85em;color:#5d6b7c}
+.demo{position:relative;display:flex;gap:.5em;padding:.9em 1.2em;border:3px solid var(--line);border-radius:18px;background:rgba(255,255,255,.88);font-size:clamp(16px,min(5.6vh,4.8vw),48px)}
+.dm{white-space:nowrap;padding:.2em .5em;border:4px dashed #aebccb;border-radius:12px;background:#fff;animation:paint 8s infinite}
+.dm small{display:block;font-size:.45em;font-weight:700;color:var(--c);opacity:0;animation:lab 8s infinite;animation-delay:inherit}
+@keyframes paint{0%,10%{border-style:dashed;border-color:#aebccb;background:#fff}14%{transform:translateY(-.2em) scale(1.08)}18%,88%{border-style:solid;border-color:var(--c);background:var(--t);transform:none}100%{border-style:dashed;border-color:#aebccb;background:#fff}}
+@keyframes lab{0%,14%{opacity:0}20%,88%{opacity:1}100%{opacity:0}}
+.how{position:relative;display:flex;gap:1.2vw;margin:0;padding:0;list-style:none;font-weight:700}
+.how li{display:flex;align-items:center;gap:.5em;padding:.4em .9em;border-radius:999px;background:#fff;border:3px solid var(--line)}
+.how b{display:grid;place-items:center;width:1.6em;height:1.6em;border-radius:50%;background:var(--ink);color:#fff}
+#go{position:relative;font-size:1.6em;padding:.35em 1.6em;background:var(--g);animation:bounce 1.6s ease-in-out infinite}
+@keyframes bounce{50%{transform:translateY(-6px)}}
+@media(max-width:700px){.how{flex-direction:column}.fl i:nth-child(n+5){display:none}}
+html{-webkit-text-size-adjust:100%}html,body{height:100dvh}button{touch-action:manipulation}button:focus-visible{outline:4px solid #f0a500;outline-offset:2px}
+.fl{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#cover>.cv-t{margin-top:auto}#cover>.cv-n{margin-bottom:auto}
+#menu{overflow:auto}#menu>h2{margin-top:auto}#menu>.grid{margin-bottom:auto}
+.end{font-size:clamp(17px,.6em,30px)}
+#bar{flex-wrap:wrap}#msg{min-width:12em}
+@media(max-width:700px) and (orientation:portrait){header{font-size:14px;flex-wrap:wrap;gap:2px 8px}#home{margin-left:6px}#bar{padding:8px 10px;gap:6px 8px;font-size:14px}#msg{flex:1 0 100%;min-height:2.6em}#bar .btn{flex:1;padding:8px 10px}#menu{padding-top:44px}#menu .grid{grid-template-columns:minmax(0,.9fr) repeat(3,minmax(0,1fr))}.sl small,.lh small{font-size:.62em}.set{padding:.3em .1em;border-width:3px}.set i{font-size:.7em;white-space:nowrap}}
+@media(max-height:480px){header{padding:3px 12px;font-size:15px}#tools{width:150px;padding:6px;gap:6px}#tools.many{width:190px}.tool{font-size:13px;padding:4px 6px;border-width:3px}#tools.many .tool{font-size:12px}#bar{padding:6px 10px;font-size:14px}.btn{padding:6px 14px}#cover{gap:1.2vh;padding:8px}.cv-n{display:none}#menu{gap:6px}#back{top:4px;left:8px;padding:2px 10px;font-size:12px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}.cf{display:none}.dm{border-style:solid;border-color:var(--c);background:var(--t)}.dm small{opacity:1}}
+</style></head><body class="cv">
+<header><span>主語・述語 れんしゅう</span><span><span id="no"></span><button class="btn sub" id="home" hidden>セットを えらぶ</button></span></header>
+<main>
+<div id="tools" inert></div>
+<div id="right" inert>
+<div id="stage"><div id="sent" class="t1"></div><div id="maru">◯</div></div>
+<div id="bar"><span id="msg" role="status"></span><button class="btn sub" id="ans">こたえをみる</button><button class="btn" id="chk">こたえあわせ</button><button class="btn" id="next" hidden>つぎへ</button></div>
+</div>
+<div id="menu" inert><button class="btn sub" id="back">← ひょうし</button><h2>セットと レベルを えらぼう</h2><div class="grid"></div></div>
+<div id="cover">
+<div class="fl" aria-hidden="true"><i class="cr" style="left:6%;top:12%;--d:7s">だれが</i><i class="cb" style="left:80%;top:10%;--d:9s">どうする</i><i class="cg" style="left:8%;top:72%;--d:8s">どんな</i><i class="cr" style="left:84%;top:64%;--d:10s">ねこが</i><i class="cb" style="left:44%;top:90%;--d:6s">ねむる。</i><i class="cg" style="left:68%;top:84%;--d:11s">小さな</i></div>
+<h1 class="cv-t"><span class="cr"><ruby>主語<rt>しゅご</rt></ruby></span>・<span class="cb"><ruby>述語<rt>じゅつご</rt></ruby></span><span class="cn">れんしゅう</span></h1>
+<p class="cv-s">ぶんの ことばを 3つの いろに ぬりわけよう！</p>
+<div class="demo"><span class="dm cg" style="animation-delay:0s">小さな<small>くわしく</small></span><span class="dm cr" style="animation-delay:1.4s">ねこが<small>主語</small></span><span class="dm cb" style="animation-delay:2.8s">ねむる。<small>述語</small></span></div>
+<ol class="how"><li><b>1</b>ぶんを よむ</li><li><b>2</b>いろを えらんで ぶんせつを タップ</li><li><b>3</b>こたえあわせで ○×！</li></ol>
+<button class="btn" id="go">はじめる！</button>
+<p class="cv-n">しゅご・じゅつごを ならった あとの れんしゅう</p>
+</div>
+</main>
+<div id="ghost"></div>
+<script>
+// 役割: 1=主語(赤) 2=述語(青) 3=くわしくする言葉(緑) / しゅるい: S=主語 a=どうする b=どんなだ c=何だ d=ある e=いる t=いつ p=どこで o=なにを w=だれと h=どのように n=どんな m=どれくらい
+const D=[
+["からすが|なく。","12","Sa"],["いぬが|ほえる。","12","Sa"],["池が|ある。","12","Sd"],["庭に|犬が|いる。","312","pSe"],["ぼくは|小学生だ。","12","Sc"],["兄は|やさしい。","12","Sb"],["小さな|ねこが|ねむる。","312","nSa"],["赤い|花が|さいた。","312","nSa"],["弟は|公園で|あそぶ。","132","Spa"],["空が|とても|青い。","132","Smb"],
+["きのう|ぼくは|およいだ。","312","tSa"],["兄は|友だちと|走る。","132","Swa"],["この|とりは|とても|すばやい。","3132","nSmb"],["母は|台所で|ごはんを|作る。","1332","Spoa"],["きょう|わたしは|図書室で|本を|読んだ。","31332","tSpoa"],["きのう|雨が|たくさん|ふった。","3132","tSma"],["あれは|ぼくの|家だ。","132","Snc"],["かべに|大きな|絵が|ある。","3312","pnSd"],["公園に|たくさんの|子どもが|いる。","3312","pmSe"],["となりの|おばさんが|やさしく|声を|かけた。","31332","nShoa"],
+["秋の|空は|高い。","312","nSb"],["この|魚は|大きい。","312","nSb"],["ぼくの|兄は|中学生だ。","312","nSc"],["東京は|日本の|首都だ。","132","Snc"],["あの|山は|とても|高い。","3132","nSmb"],["池の|中に|さかなが|いる。","3312","npSe"],["本だなに|本が|たくさん|ある。","3132","pSmd"],["ぼくは|毎日|ピアノを|ひく。","1332","Stoa"],["夏の|海は|とても|きれいだ。","3132","nSmb"],["教室には|たくさんの|つくえが|ある。","3312","pmSd"],
+["公園で|ぼくは|あそぶ。","312","pSa"],["元気よく|弟が|およぐ。","312","hSa"],["ないているよ、|小さな|鳥が。","231","anS"],["友だちと|ぼくは|帰った。","312","wSa"],["つくえの|上に|ほんが|ある。","3312","npSd"],["あそこに|いるよ、|ぼくの|犬が。","3231","penS"],["先生だよ、|あの|人は。","231","cnS"],["きれいだなあ、|この|花は。","231","bnS"],["朝から|雨が|ふっている。","312","tSa"],["夕方に|大きな|月が|のぼった。","3312","tnSa"],
+["大きな|犬が|公園を|元気よく|走る。","31332","nSpha"],["白い|ちょうが|花の|上を|ひらひらと|とんでいる。","313332","nSnpha"],["夏休みに|ぼくは|家ぞくと|海へ|行った。","31332","tSwpa"],["日曜日の|朝に|父は|小さな|庭の|草を|ぬいた。","3313332","ntSnnoa"],["公園の|入口に|白い|ぼうしの|おじいさんが|いる。","333312","npnnSe"],["学校の|帰りに|ぼくは|友だちと|いっしょに|歩いた。","331332","ntSwha"],["先生は|いつも|みんなに|とても|やさしい。","13332","Stwmb"],["林の|中で|小鳥たちが|楽しそうに|歌っている。","33132","npSha"],["駅の|前に|大きな|ほんやが|ある。","33312","npnSd"],["これは|ぼくの|いちばん|大すきな|のりものだ。","13332","Snmnc"]
+];
+const PT={a:"どうする",b:"どんなだ",c:"何だ",d:"ある",e:"いる",t:"いつ",p:"どこ",o:"なにを",w:"だれと・だれに",h:"どのように",n:"どんな",m:"どれくらい"};
+const RL={1:"主語",2:"述語",3:"くわしく"};
+const role=t=>t=="0"?0:"123".includes(t)?+t:"abcde".includes(t)?2:3;
+const PAL=[
+ [["1","<ruby>主語<rt>しゅご</rt></ruby>","だれが・なにが"],["2","<ruby>述語<rt>じゅつご</rt></ruby>","どうする・どんなだ・なんだ・ある"],["3","くわしくする言葉","しゅご・じゅつご いがい"],["0","けしゴム",""]],
+ [["a","どうする","(うごき)"],["b","どんなだ","(ようす)"],["c","何だ","(もの)"],["d","ある",""],["e","いる",""],["0","けしゴム",""]],
+ [["t","いつ",""],["p",PT.p,"(どこで・どこへ・どこに・どこを)"],["o","なにを",""],["w",PT.w,""],["h","どのように","(ようす)"],["n","どんな","(だれの・なんの・いつの)"],["m","どれくらい","(かず・ていど)"],["0","けしゴム",""]]
+];
+const LV=[["レベル1","しゅご・じゅつご・くわしく"],["レベル2","じゅつごの しゅるい"],["レベル3","はってん：くわしくする ことばの しゅるい"]];
+const SETS=[["セット1","はじめの いっぽ"],["セット2","くわしくする ことば"],["セット3","じゅつごの いろいろ"],["セット4","ならびが かわる ぶん"],["セット5","ちょうせん！ ながい ぶん"]];
+const MSG=["いろの ボタンを ぶんせつへ ドラッグして はなそう。(ボタンを えらんで ぶんせつを タップしても OK)","いろの ついていない ぶんせつが じゅつご。どんな しゅるいか えらんで ドラッグしよう。","いろの ついていない ぶんせつが くわしくする ことば。どんな しゅるいか えらんで ドラッグしよう。"];
+const $=s=>document.querySelector(s),S=$("#sent"),G=$("#ghost"),TL=$("#tools");
+let q=0,w=[],a=[],g=[],lk=[],tool="1",tries=0,done=1,score=0,Q=D,k=0,lv=0,dt="1",q0=null,dragging=0;
+const N=10,best=[];
+const questions=(i,l)=>D.slice(i*N,i*N+N).filter(([,r])=>l!==2||r.includes("3"));
+const say=t=>$("#msg").textContent=t;
+function setTool(t){tool=t;document.querySelectorAll(".tool").forEach(x=>{const on=x.dataset.t===t;x.classList.toggle("on",on);x.setAttribute("aria-pressed",on)});S.className="t"+role(t)}
+function pal(l){
+  const P=PAL[l];
+  TL.className=P.length>5?"many":"";
+  TL.innerHTML=P.map(([id,t,s])=>`<button class="tool" data-t="${id}" style="--c:${id=="0"?"#6b7685":"var(--"+"rbg"[role(id)-1]+")"}">${t}${s?`<small>${s}</small>`:""}</button>`).join("");
+  setTool(P[0][0]);
+}
+function load(){
+  const[t,r,y]=Q[q];
+  w=t.split("|");a=[...(lv?y:r)];g=w.map(()=>"0");lk=w.map(()=>false);
+  if(lv){[...r].forEach((c,i)=>{if(lv==1?c!="2":c!="3"){g[i]=c;lk[i]=true}})}
+  tries=done=0;
+  $("#no").textContent=`セット${k+1}　レベル${lv+1}　${q+1} / ${Q.length}`;
+  $("#next").hidden=true;$("#chk").hidden=$("#ans").hidden=false;
+  say(MSG[lv]);draw();
+}
+function draw(r){
+  const focus=S.contains(document.activeElement)?document.activeElement.dataset.i:null;
+  S.className="t"+role(tool);
+  S.innerHTML=w.map((x,i)=>{
+    const v=g[i],lb=PT[v]||RL[v],tag=lk[i]?"span":"button";
+    return `<${tag}${lk[i]?"":' type="button"'} class="ch${v!="0"?" c"+role(v):""}${lk[i]?" lk":""}${r&&!lk[i]?(v==a[i]?" ok":" ng"):""}" data-i="${i}">${x}${lb?`<small>${lb}</small>`:""}</${tag}>`;
+  }).join("");
+  fit();
+  if(focus!=null)S.children[focus]?.focus();
+}
+// ドラッグ&ドロップ: ボタンから半透明の色枠が指について動き、ぶんせつへ はなすと つく(タップもできる)
+const TOL=matchMedia("(pointer:coarse)").matches?28:12;
+function hit(x,y){
+  let bi=-1,bd=1e9;
+  [...S.children].forEach((c,i)=>{
+    if(lk[i])return;
+    const r=c.getBoundingClientRect(),d=Math.hypot(Math.max(r.left-x,0,x-r.right),Math.max(r.top-y,0,y-r.bottom));
+    if(d<=TOL&&d<bd){bd=d;bi=i}
+  });
+  return bi;
+}
+TL.onpointerdown=e=>{
+  const b=e.target.closest(".tool");
+  if(!b||q0||e.button>0)return;
+  dt=b.dataset.t;q0={x:e.clientX,y:e.clientY,id:e.pointerId};dragging=0;
+  try{b.setPointerCapture(e.pointerId)}catch(_){}
+};
+TL.onclick=e=>{const b=e.target.closest(".tool");if(b)setTool(b.dataset.t)};
+TL.oncontextmenu=e=>e.preventDefault();
+addEventListener("pointermove",e=>{
+  if(q0?.id!==e.pointerId)return;
+  const lp={x:e.clientX,y:e.clientY};
+  if(!dragging){
+    if(done||Math.hypot(lp.x-q0.x,lp.y-q0.y)<=8)return;
+    dragging=1;setTool(dt);
+    const fs=parseFloat(getComputedStyle(S).fontSize);
+    G.className="t"+role(dt);G.textContent=PT[dt]||"";
+    G.style.cssText=`display:flex;width:${fs*1.7}px;height:${fs*3.4}px;font-size:${fs*.42}px`;
+    document.body.classList.add("dr");
+  }
+  G.style.left=lp.x+"px";G.style.top=lp.y+"px";
+  const h=hit(lp.x,lp.y);
+  [...S.children].forEach((c,i)=>c.classList.toggle("pv",i==h));
+});
+function up(e){
+  if(q0?.id!==e.pointerId)return;
+  const was=dragging;
+  q0=null;dragging=0;G.style.display="none";document.body.classList.remove("dr");
+  if(!was)return;
+  const i=e.type==="pointerup"&&!done?hit(e.clientX,e.clientY):-1;
+  if(i>=0)g[i]=dt;
+  draw();
+}
+addEventListener("pointerup",up);addEventListener("pointercancel",up);
+document.addEventListener("touchmove",e=>{if(dragging)e.preventDefault()},{passive:false});
+S.onclick=e=>{const c=e.target.closest(".ch");if(!c||done)return;const i=+c.dataset.i;if(!lk[i]){g[i]=tool;draw()}};
+let AC;function beep(f){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const c=AC;if(c.state=="suspended")c.resume();const o=c.createOscillator(),v=c.createGain();o.frequency.value=f;o.connect(v);v.connect(c.destination);v.gain.setValueAtTime(.2,c.currentTime);v.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);o.start();o.stop(c.currentTime+.4)}catch(e){}}
+function fin(){done=1;$("#chk").hidden=$("#ans").hidden=true;$("#next").hidden=false;$("#next").textContent=q==Q.length-1?"けっかをみる":"つぎへ";$("#next").focus()}
+$("#chk").onclick=()=>{
+  if(g.some((v,i)=>!lk[i]&&v=="0"))return say("まだ えらんでいない ぶんせつが あるよ。");
+  tries++;const n=g.filter((v,i)=>!lk[i]&&v!=a[i]).length;draw(1);
+  if(n){beep(300);say(`ちがう ところが ${n}こ あるよ。×の ところを なおして、もういちど！`)}
+  else{
+    if(tries==1)score++;
+    say(["ぜんぶ せいかい！","ピッタリ！ すごい！","かんぺき！ その ちょうし！"][Math.random()*3|0]);beep(880);boom();
+    const m=$("#maru");m.classList.remove("show");void m.offsetWidth;m.classList.add("show");fin();
+  }
+};
+$("#ans").onclick=()=>{g=g.map((v,i)=>lk[i]?v:a[i]);draw(1);say("こたえは これだよ。よく みてから つぎへ すすもう。");fin()};
+$("#menu .grid").innerHTML=`<span></span>`+LV.map((v,i)=>`<div class="lh"><b>${v[0]}</b><span class="st">${"★".repeat(i+1)}</span><small>${v[1]}</small></div>`).join("")+SETS.map((t,i)=>`<div class="sl"><b>${t[0]}</b><small>${t[1]}</small></div>`+LV.map((v,l)=>`<button class="set" data-k="${i}" data-l="${l}" aria-label="${t[0]} ${v[0]} ${questions(i,l).length}もん"><b>${questions(i,l).length}もん</b><i></i></button>`).join("")).join("");
+function menu(){
+  done=1;$("#menu").hidden=false;$("#home").hidden=true;$("#no").textContent="";
+  TL.inert=$("#right").inert=true;
+  document.querySelectorAll(".set").forEach(b=>{const i=+b.dataset.k,l=+b.dataset.l,total=questions(i,l).length,record=best[i*LV.length+l];b.querySelector("i").textContent=record==null?"":`${record===total?"👑":"★"} ${record} / ${total}`;b.classList.toggle("gold",record===total)});
+}
+function start(i,l){k=i;lv=l;Q=questions(i,l);q=0;score=0;pal(l);$("#menu").hidden=true;$("#home").hidden=false;TL.inert=$("#right").inert=false;load()}
+$("#menu").onclick=e=>{const b=e.target.closest(".set");if(b)start(+b.dataset.k,+b.dataset.l)};
+$("#home").onclick=menu;
+$("#go").onclick=()=>{beep(660);$("#cover").hidden=true;$("#menu").inert=false;document.body.classList.remove("cv")};
+$("#back").onclick=()=>{$("#cover").hidden=false;$("#menu").inert=true;document.body.classList.add("cv")};
+function fit(){
+  const stage=$("#stage").getBoundingClientRect();
+  const parts=[...S.querySelectorAll(".ch")];
+  S.style.maxHeight=Math.max(0,stage.height-24)+"px";
+  for(let size=Math.min(44,Math.max(20,Math.floor(innerHeight*.06)));size>=13;size--){
+    S.style.fontSize=size+"px";
+    if(parts.every(part=>{
+      const r=part.getBoundingClientRect();
+      return r.top>=stage.top+6&&r.bottom<=stage.bottom-6&&r.left>=stage.left+6&&r.right<=stage.right-6;
+    }))break;
+  }
+}
+new ResizeObserver(()=>{if($("#menu").hidden&&S.querySelector(".ch"))fit()}).observe($("#stage"));
+function boom(){const st=$("#stage");for(let i=0;i<26;i++){const e=document.createElement("i"),a=Math.random()*6.28,d=80+Math.random()*Math.min(innerWidth,innerHeight)*.4;e.className="cf";e.style.cssText=`--x:${Math.cos(a)*d}px;--y:${Math.sin(a)*d-40}px;--rot:${Math.random()*720-360}deg;background:${["#e0393e","#1f6fd6","#2a9d55","#f0a500"][i%4]};animation-delay:${Math.random()*.15}s`;st.appendChild(e);setTimeout(()=>e.remove(),1500)}}
+$("#next").onclick=()=>{
+  if(q<Q.length-1){q++;load()}
+  else if(q==Q.length)menu();
+  else{q++;const j=k*LV.length+lv,ratio=score/Q.length,stars=Math.round(ratio*5);best[j]=Math.max(best[j]||0,score);S.className="";S.innerHTML=`<div class="end">セット${k+1} レベル${lv+1} おわり！<br><span class="stars">${"★".repeat(stars)}${"☆".repeat(5-stars)}</span><br>いっかいで せいかい：${score} / ${Q.length}<br><span class="cmt">${ratio===1?"パーフェクト！":ratio>=.7?"よく できました！":"もういちど ちょうせんしよう！"}</span></div>`;if(ratio>=.8)boom();$("#next").textContent="セットを えらぶ";say("")}
+};
+menu();
+</script></body></html>
