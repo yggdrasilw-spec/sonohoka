@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f8fc">
+<title>ふえた分？ ぜんぶ？｜注目することばと図の動きをつなぐ文章題</title>
+<style>
+:root{
+  --ink:#20364b;--muted:#62788d;--bg:#f2f6fa;--paper:#fff;
+  --blue:#4b9bd3;--blue-dark:#286e9f;--blue-pale:#e9f5fc;
+  --pink:#e56b9a;--pink-dark:#b63c70;--pink-pale:#fff0f6;
+  --yellow:#f0c343;--yellow-dark:#8a6500;--yellow-pale:#fff7d9;
+  --line:#dce6ee;--shadow:0 8px 24px rgba(37,65,91,.09)
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif}
+body{padding:10px}
+button{font:inherit}
+.app{width:min(1360px,100%);min-height:calc(100vh - 20px);margin:auto;display:flex;flex-direction:column;gap:9px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-mark{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#294b6a;color:#fff;font-size:23px;font-weight:1000;flex:none}
+h1{font-size:clamp(18px,2vw,25px);line-height:1.15;margin:0;font-weight:950;letter-spacing:.025em}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.sound{border:1.5px solid #cbd9e5;background:#fff;color:#36536d;border-radius:12px;padding:8px 13px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap}
+.tabs{display:flex;gap:8px;justify-content:center}
+.tab{flex:1;max-width:240px;border:2px solid var(--line);background:#fff;color:#526c83;border-radius:12px;padding:9px 12px;font-size:15px;font-weight:950;cursor:pointer;transition:.15s}
+.tab.active{background:#294b6a;border-color:#294b6a;color:#fff;box-shadow:0 3px 0 #1a3954}
+.stage-card{background:var(--paper);border:1px solid #e2eaf0;border-radius:20px;box-shadow:var(--shadow);flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.stage-head{min-height:106px;padding:13px 16px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:5px}
+.stage-title{font-size:clamp(27px,3.4vw,43px);font-weight:1000;line-height:1.16;letter-spacing:.015em;margin:0}
+.stage-title .blue{color:var(--blue-dark)}.stage-title .pink{color:var(--pink-dark)}.stage-title .yellow{color:var(--yellow-dark)}
+.stage-sub{font-size:clamp(14px,1.55vw,19px);font-weight:850;color:#60778c;min-height:1.35em;margin:0}
+.learning-layout{display:grid;grid-template-columns:minmax(330px,.88fr) minmax(0,1.32fr);gap:12px;padding:10px 14px 12px;flex:1;min-height:0;align-items:stretch}
+.problem-panel{background:#fbfdff;border:2px solid #dce8f1;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;min-height:0;overflow:auto}
+.problem-label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:950;color:#54718b;margin-bottom:10px}
+.problem-label:before{content:"";width:7px;height:20px;border-radius:9px;background:#294b6a}
+.role-legend{display:flex;gap:6px;flex-wrap:wrap;margin:-3px 0 10px;font-size:11px;font-weight:950}.role-legend span{padding:4px 8px;border-radius:8px;border:1.5px solid}.legend-one{color:#286e9f;background:#edf7fd;border-color:#75b4d9!important}.legend-count{color:#ad3f70;background:#fff2f7;border-color:#e56b9a!important}.legend-total{color:#806000;background:#fff8df;border-color:#e0b52f!important}
+.problem-text{font-size:clamp(17px,1.55vw,22px);font-weight:750;line-height:1.72;letter-spacing:.005em;color:#243a4e}
+.problem-text p{margin:0 0 8px}
+.problem-text p:last-child{margin-bottom:0}
+.problem-text [data-phase]{border-radius:7px;padding:1px 3px;transition:background .3s,box-shadow .3s,color .3s}
+.problem-text .phase-focus{font-weight:1000;position:relative;box-shadow:0 0 0 3px var(--focus-edge);background:var(--focus-bg);color:var(--focus-ink);animation:textFocus .9s ease-out both}
+.problem-text .phase-seen{background:var(--seen-bg);color:var(--seen-ink)}
+.problem-text [data-phase="0"]{--focus-bg:#e7f4fc;--focus-edge:#4b9bd3;--focus-ink:#245f88;--seen-bg:#f0f8fd;--seen-ink:#386b8d}
+.problem-text [data-phase="1"],.problem-text [data-phase="2"]{--focus-bg:#fff0f6;--focus-edge:#e56b9a;--focus-ink:#a52f63;--seen-bg:#fff7fa;--seen-ink:#9b5574}
+.problem-text [data-phase="3"],.problem-text [data-phase="4"]{--focus-bg:#fff7d9;--focus-edge:#e0b52f;--focus-ink:#806000;--seen-bg:#fffbed;--seen-ink:#897329}
+.problem-text .role-one{color:#286e9f;background:#edf7fd}
+.problem-text .role-count{color:#ad3f70;background:#fff2f7}
+.problem-text .role-total{color:#876400;background:#fff8df}
+.qnum{display:inline-grid;place-items:center;width:1.55em;height:1.55em;border:2px solid #b8c9d6;border-radius:50%;font-size:.86em;font-weight:1000;margin-right:3px;color:#36566f;background:#fff}
+.problem-text ruby{ruby-position:over}.problem-text rt{font-size:.5em;font-weight:700;color:#58748a}
+.source-hint{margin-top:auto;padding-top:12px;font-size:14px;font-weight:900;color:#567188}
+.source-hint span{display:inline-block;border-radius:99px;padding:5px 10px;background:#eef4f8}
+.visual-area{min-width:0;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 2px;overflow:hidden}
+.visual{display:block;width:100%;height:auto;max-height:calc(100vh - 405px);flex:1 1 auto;min-height:0;overflow:visible}
+.math-panel{width:min(100%,760px);min-height:98px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 12px 8px;border:2px solid #dce8f1;border-radius:16px;background:#fbfdff;box-shadow:0 3px 9px rgba(37,65,91,.05);text-align:center}
+.math-panel.empty{visibility:hidden;min-height:0;height:0;padding:0;border:0}
+.math-caption{font-size:13px;font-weight:900;color:#60788d;line-height:1.1}
+.math-role-row{display:grid;grid-template-columns:1fr 34px 1fr;align-items:center;gap:4px;width:min(420px,100%);font-size:12px;font-weight:900;color:#59738a}
+.math-role-row span:first-child{color:var(--blue-dark)}.math-role-row span:last-child{color:var(--pink-dark)}
+.math-expression{display:flex;align-items:center;justify-content:center;gap:clamp(7px,1.7vw,17px);font-size:clamp(27px,3vw,39px);font-weight:1000;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.math-token{display:inline-flex;min-width:34px;justify-content:center;align-items:center}
+.math-token.one-number{color:var(--blue-dark)}.math-token.count-number{color:var(--pink-dark)}
+.math-op{color:#526b80;font-weight:900}
+.math-equals{color:#526b80;opacity:0;animation:mathReveal .35s ease-out .55s forwards}
+.math-answer{display:inline-flex;min-width:48px;justify-content:center;color:var(--yellow-dark);background:var(--yellow-pale);border:2px solid #e2bd48;border-radius:11px;padding:2px 9px;opacity:0;transform:scale(.78);animation:mathReveal .48s cubic-bezier(.2,.8,.2,1) .85s forwards}
+.math-reading{font-size:clamp(16px,1.7vw,21px);font-weight:1000;color:var(--yellow-dark);opacity:0;animation:mathReveal .4s ease-out 1.42s forwards;letter-spacing:.08em}
+.math-unit-answer{font-size:clamp(19px,2vw,25px);font-weight:1000;color:var(--yellow-dark);background:var(--yellow-pale);border:2px solid #e2bd48;border-radius:12px;padding:2px 16px;opacity:0;animation:mathReveal .4s ease-out 1.95s forwards}
+.math-panel.expression-only .math-expression .math-token:first-child{animation:tokenReveal .32s ease-out .05s both}
+.math-panel.expression-only .math-expression .math-op{animation:tokenReveal .32s ease-out .3s both}
+.math-panel.expression-only .math-expression .math-token:last-child{animation:tokenReveal .32s ease-out .55s both}
+@keyframes mathReveal{to{opacity:1;transform:scale(1)}}
+@keyframes tokenReveal{from{opacity:0;transform:translateY(8px) scale(.85)}to{opacity:1;transform:translateY(0) scale(1)}}
+.stage-foot{border-top:1px solid #edf1f4;min-height:72px;padding:10px 18px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.navleft{display:flex;align-items:center;gap:13px}
+.progress{display:flex;align-items:center;gap:5px;min-width:130px;max-width:190px;flex-wrap:nowrap}
+.pip{width:7px;height:7px;flex:0 0 7px;border-radius:99px;background:#dce5ec;transition:.2s}
+.pip.done{background:#9bbbd2}.pip.active{width:17px;flex-basis:17px;background:#294b6a}
+.navbtn{border:0;border-radius:14px;min-width:140px;padding:12px 22px;background:#294b6a;color:white;font-size:16px;font-weight:950;cursor:pointer;box-shadow:0 3px 0 #1a3954;transition:transform .12s}
+.navbtn.back{min-width:100px;background:#edf3f7;color:#526d83;box-shadow:0 3px 0 #d7e2ea}
+.navbtn:active,.tab:active,.sound:active{transform:scale(.98)}
+.navbtn:focus-visible,.tab:focus-visible,.sound:focus-visible{outline:4px solid #f1c35b;outline-offset:3px}
+.problem-text .phase-focus:focus{outline:3px solid #294b6a}
+.footer-note{font-size:12px;color:#8595a3;text-align:center;flex:1}
+/* SVG scene styles */
+.old-frame{fill:var(--pink-pale);fill-opacity:.5;stroke:var(--pink);stroke-width:5;stroke-dasharray:12 8}
+.new-frame{fill:var(--pink-pale);fill-opacity:.38;stroke:var(--pink);stroke-width:7}
+.all-frame{fill:var(--yellow-pale);fill-opacity:.42;stroke:var(--yellow);stroke-width:7}
+.item-in{opacity:0;animation:softAppear .56s cubic-bezier(.2,.8,.2,1) var(--delay,0s) forwards;transform-box:fill-box;transform-origin:center}
+.slide-in{opacity:0;animation:slideInto .72s cubic-bezier(.18,.82,.22,1) .05s forwards;transform-box:fill-box;transform-origin:center}
+.old-dim{animation:dimOld .42s ease-out forwards}
+.focus-pulse{animation:gentlePulse 1.05s ease-in-out .2s 2;transform-box:fill-box;transform-origin:center}
+.item-in.focus-pulse{animation:softAppear .56s cubic-bezier(.2,.8,.2,1) var(--delay,0s) forwards,gentlePulse 1.05s ease-in-out .8s 2;transform-box:fill-box;transform-origin:center}
+.frame-in.focus-pulse{animation:frameIn .55s ease-out both,gentlePulse 1.05s ease-in-out .6s 2;transform-box:fill-box;transform-origin:center}
+.wheel-pop.focus-pulse{animation:wheelPop .38s cubic-bezier(.2,.8,.2,1) var(--delay,0s) forwards,gentlePulse 1.05s ease-in-out .6s 2;transform-box:fill-box;transform-origin:center}
+.frame-in{animation:frameIn .55s ease-out both}
+.label-in{opacity:0;animation:labelIn .5s .2s ease-out forwards}
+.number-in{opacity:0;animation:numberIn .56s .55s cubic-bezier(.2,.8,.2,1) forwards;transform-box:fill-box;transform-origin:center}
+.wheel-pop{opacity:0;animation:wheelPop .38s cubic-bezier(.2,.8,.2,1) var(--delay,0s) forwards;transform-box:fill-box;transform-origin:center}
+@keyframes softAppear{0%{opacity:0;transform:translateY(25px) scale(.78)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes slideInto{0%{opacity:0;transform:translate(125px,-28px) scale(.76)}72%{opacity:1;transform:translate(-7px,2px) scale(1.03)}100%{opacity:1;transform:translate(0,0) scale(1)}}
+@keyframes dimOld{to{opacity:.25;filter:saturate(.55)}}
+@keyframes gentlePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(239,177,47,0))}50%{filter:drop-shadow(0 0 12px rgba(239,177,47,.9))}}
+@keyframes frameIn{from{opacity:0;stroke-dasharray:5 20}to{opacity:1}}
+@keyframes labelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes numberIn{from{opacity:0;transform:scale(.62)}to{opacity:1;transform:scale(1)}}
+@keyframes wheelPop{0%{opacity:0;transform:scale(.35)}75%{opacity:1;transform:scale(1.17)}100%{opacity:1;transform:scale(1)}}
+/* 追加の自動車：車体を先に置き、４つのタイヤが四方から集まる */
+.car-chassis-in{transform-box:fill-box;transform-origin:center;animation:chassisLand .58s cubic-bezier(.18,.86,.22,1) var(--delay,0s) both}
+.mount-guide{opacity:0;animation:mountGuide .22s ease-out var(--delay,0s) forwards}
+.tire-flight{pointer-events:none;filter:drop-shadow(0 4px 3px rgba(23,39,53,.22))}
+.tire-flight .tire-shine{opacity:.85}
+.tire-trail{fill:none;stroke:#9ab3c5;stroke-width:4;stroke-linecap:round;stroke-dasharray:5 11;opacity:0;animation:trailAppear .48s ease-out var(--delay,0s) both}
+.tire-spark{opacity:0;transform-box:fill-box;transform-origin:center;animation:sparkPop .32s cubic-bezier(.2,.8,.2,1) var(--delay,0s) both}
+.reduced-wheel-fallback{display:none}
+@keyframes chassisLand{0%{opacity:0;transform:translateY(23px) scale(.82)}72%{opacity:1;transform:translateY(-4px) scale(1.035)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes mountGuide{to{opacity:.85}}
+@keyframes trailAppear{0%{opacity:0;stroke-dashoffset:45}25%{opacity:.45}100%{opacity:0;stroke-dashoffset:0}}
+@keyframes sparkPop{0%{opacity:0;transform:scale(.25) rotate(-35deg)}60%{opacity:.95;transform:scale(1.15) rotate(10deg)}100%{opacity:0;transform:scale(.7) rotate(35deg)}}
+.fx-toggle{min-width:104px;border-color:#ead8a1;background:#fffaf0;color:#765b19}
+@media(max-width:760px){.fx-toggle{min-width:88px;padding:7px 8px;font-size:12px}}
+@media(prefers-reduced-motion:reduce){.car-chassis-in,.mount-guide,.tire-trail,.tire-spark{animation-duration:.01ms!important;animation-delay:0ms!important}.tire-flight{display:none!important}.reduced-wheel-fallback{display:inline!important}}
+@media(max-width:760px){
+ body{padding:6px}.app{min-height:calc(100vh - 12px);gap:6px}.topbar{min-height:42px}.brand-mark{width:34px;height:34px}.brand-sub{display:none}.sound{padding:7px 9px;font-size:12px}.tabs{gap:5px}.tab{padding:8px 4px;font-size:13px}.stage-card{border-radius:15px}.stage-head{min-height:82px;padding:9px 6px 2px}.learning-layout{grid-template-columns:minmax(280px,.92fr) minmax(0,1.08fr);gap:7px;padding:7px}.problem-panel{padding:10px 11px}.problem-label{margin-bottom:7px}.role-legend{gap:4px;margin:-2px 0 7px;font-size:10px}.role-legend span{padding:3px 6px}.problem-text{font-size:16px;line-height:1.62}.problem-text p{margin-bottom:6px}.source-hint{font-size:12px;padding-top:8px}.visual-area{min-height:260px;padding:0;gap:3px}.visual{max-height:calc(100vh - 350px)}.math-panel{min-height:88px;padding:5px 8px 7px}.math-caption{font-size:11px}.math-role-row{font-size:10px}.stage-foot{min-height:65px;padding:8px 9px;gap:5px}.navbtn{min-width:105px;padding:11px 13px;font-size:14px}.navbtn.back{min-width:78px}.footer-note{display:none}.navleft{gap:7px}.progress{min-width:85px;max-width:130px;gap:3px}.pip{width:5px;height:5px;flex-basis:5px}.pip.active{width:12px;flex-basis:12px}
+}
+@media(max-width:560px){
+ .learning-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(270px,1fr)}
+ .problem-panel{max-height:220px}
+ .visual-area{min-height:270px;gap:4px}
+ .visual{max-height:235px;flex:1 1 0}
+ .math-panel{min-height:90px;width:100%}
+ .stage-title{font-size:25px}
+ .stage-sub{font-size:13px}
+}
+@keyframes textFocus{0%{transform:scale(.98)}45%{transform:scale(1.025)}100%{transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Chromebook 横長画面：スクロールなしで学習画面全体を表示 */
+:root{--fit-scale:1;--outer-gap:clamp(4px,.75vh,8px)}
+@media (orientation:landscape) and (min-width:700px){
+ html,body{width:100%;height:100%;overflow:hidden}
+ body{padding:var(--outer-gap)}
+ .app{height:calc(100dvh - var(--outer-gap) - var(--outer-gap));min-height:0;gap:calc(7px * var(--fit-scale));}
+ .topbar{min-height:calc(40px * var(--fit-scale));flex:0 0 auto;}
+ .brand{gap:calc(8px * var(--fit-scale))}
+ .brand-mark{width:calc(36px * var(--fit-scale));height:calc(36px * var(--fit-scale));font-size:calc(21px * var(--fit-scale));border-radius:calc(10px * var(--fit-scale))}
+ h1{font-size:clamp(17px,calc(1.8vw * var(--fit-scale)),24px)}
+ .brand-sub{font-size:calc(10px * var(--fit-scale));margin-top:2px}
+ .sound{padding:calc(7px * var(--fit-scale)) calc(11px * var(--fit-scale));font-size:calc(13px * var(--fit-scale));border-radius:10px}
+ .tabs{flex:0 0 auto;gap:calc(7px * var(--fit-scale))}
+ .tab{padding:calc(7px * var(--fit-scale)) 12px;font-size:calc(14px * var(--fit-scale));border-radius:10px;line-height:1.15}
+ .stage-card{flex:1 1 0;min-height:0;overflow:hidden}
+ .stage-head{flex:0 0 clamp(58px,calc(9.5vh * var(--fit-scale)),88px);min-height:0;padding:calc(7px * var(--fit-scale)) 12px 2px;gap:calc(3px * var(--fit-scale));}
+ .stage-title{font-size:clamp(22px,calc(3vw * var(--fit-scale)),39px);line-height:1.08}
+ .stage-sub{font-size:clamp(12px,calc(1.35vw * var(--fit-scale)),17px);min-height:0;line-height:1.15}
+ .learning-layout{flex:1 1 0;min-height:0;overflow:hidden;grid-template-columns:minmax(300px,.88fr) minmax(0,1.32fr);gap:calc(10px * var(--fit-scale));padding:calc(7px * var(--fit-scale)) calc(10px * var(--fit-scale));}
+ .problem-panel{min-height:0;overflow:hidden;padding:calc(10px * var(--fit-scale)) calc(13px * var(--fit-scale));border-radius:14px;}
+ .problem-label{font-size:calc(13px * var(--fit-scale));margin-bottom:calc(7px * var(--fit-scale));gap:6px;}
+ .problem-label:before{width:6px;height:calc(17px * var(--fit-scale))}
+ .role-legend{gap:calc(4px * var(--fit-scale));margin:calc(-2px * var(--fit-scale)) 0 calc(7px * var(--fit-scale));font-size:calc(10px * var(--fit-scale));}
+ .role-legend span{padding:calc(3px * var(--fit-scale)) calc(6px * var(--fit-scale));border-radius:6px;}
+ .problem-text{font-size:clamp(13px,calc(1.35vw * var(--fit-scale)),19px);line-height:1.48;letter-spacing:0;}
+ .problem-text p{margin:0 0 calc(5px * var(--fit-scale));}
+ .problem-text [data-phase]{padding:0 2px;border-radius:5px;}
+ .problem-text .phase-focus{box-shadow:0 0 0 calc(2px * var(--fit-scale)) var(--focus-edge);}
+ .qnum{width:1.4em;height:1.4em;border-width:1.5px;}
+ .source-hint{font-size:calc(12px * var(--fit-scale));padding-top:calc(7px * var(--fit-scale));line-height:1.2;}
+ .source-hint span{padding:calc(4px * var(--fit-scale)) calc(8px * var(--fit-scale));}
+ .visual-area{min-width:0;min-height:0;height:100%;gap:calc(3px * var(--fit-scale));padding:0;overflow:hidden;}
+ .visual{width:100%;height:0;max-height:none;min-height:0;flex:1 1 0;display:block;}
+ .math-panel{width:min(100%,760px);min-height:calc(96px * var(--fit-scale));padding:calc(5px * var(--fit-scale)) calc(9px * var(--fit-scale));gap:calc(2px * var(--fit-scale));border-radius:13px;}
+ .math-panel.empty{min-height:0;height:0;flex:0 0 0;padding:0;border:0;}
+ .math-caption{font-size:calc(12px * var(--fit-scale));}
+ .math-role-row{font-size:calc(11px * var(--fit-scale));}
+ .math-expression{font-size:clamp(25px,calc(2.8vw * var(--fit-scale)),36px);gap:clamp(6px,calc(1.5vw * var(--fit-scale)),15px);}
+ .math-token{min-width:calc(30px * var(--fit-scale));}
+ .math-answer{min-width:calc(43px * var(--fit-scale));padding:1px calc(7px * var(--fit-scale));border-width:1.5px;border-radius:8px;}
+ .math-reading{font-size:calc(17px * var(--fit-scale));}
+ .math-unit-answer{font-size:calc(21px * var(--fit-scale));padding:1px calc(12px * var(--fit-scale));border-width:1.5px;border-radius:9px;}
+ .stage-foot{flex:0 0 auto;min-height:calc(56px * var(--fit-scale));padding:calc(7px * var(--fit-scale)) calc(13px * var(--fit-scale));gap:8px;}
+ .navleft{gap:calc(9px * var(--fit-scale));}
+ .progress{min-width:100px;max-width:175px;gap:4px;}
+ .pip{width:6px;height:6px;flex-basis:6px;}
+ .pip.active{width:15px;flex-basis:15px;}
+ .navbtn{min-width:calc(122px * var(--fit-scale));padding:calc(9px * var(--fit-scale)) calc(16px * var(--fit-scale));font-size:calc(15px * var(--fit-scale));border-radius:11px;box-shadow:0 2px 0 #1a3954;}
+ .navbtn.back{min-width:calc(88px * var(--fit-scale));}
+ .footer-note{font-size:calc(11px * var(--fit-scale));gap:8px;white-space:nowrap;}
+ .key-hint{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border:1px solid #d9e4ec;border-radius:7px;background:#f6f9fb;color:#60788d;font-weight:850;}
+}
+@media (orientation:landscape) and (min-width:700px) and (max-height:680px){
+ .stage-head{flex-basis:clamp(53px,calc(8.5vh * var(--fit-scale)),64px)}
+ .stage-foot{min-height:calc(49px * var(--fit-scale));padding-top:4px;padding-bottom:4px}
+ .problem-panel{padding-top:calc(7px * var(--fit-scale));padding-bottom:calc(7px * var(--fit-scale));}
+}
+
+/* 第７版：色は意味の手がかり、現在の注目箇所は強い枠で示す */
+.color-toggle{min-width:104px;border-color:#c6d6e2;background:#f8fbfd;color:#36536d}
+/* ONでも、注目していない文章には色のベタ塗りをしない。文字色だけを手がかりにする */
+body:not(.color-off) .problem-text .role-one:not(.phase-focus),
+body:not(.color-off) .problem-text .role-count:not(.phase-focus),
+body:not(.color-off) .problem-text .role-total:not(.phase-focus){background:transparent}
+.problem-text .phase-seen{background:transparent!important;opacity:.76}
+.problem-text .phase-focus{
+  display:inline;
+  padding:1px 5px!important;
+  border:2.5px solid var(--focus-edge);
+  border-radius:8px;
+  box-shadow:0 0 0 3px rgba(41,75,106,.10),0 2px 7px rgba(32,54,75,.10);
+  background:var(--focus-bg)!important;
+  color:var(--focus-ink)!important;
+  font-weight:1000;
+  text-decoration:underline;
+  text-decoration-thickness:2px;
+  text-underline-offset:3px;
+  -webkit-box-decoration-break:clone;
+  box-decoration-break:clone;
+  animation:textFocus .65s ease-out both;
+}
+.problem-text .qnum.phase-focus{
+  padding:0!important;
+  border:3px solid var(--focus-edge);
+  background:var(--focus-bg)!important;
+  color:var(--focus-ink)!important;
+  box-shadow:0 0 0 3px rgba(32,54,75,.12);
+  text-decoration:none;
+}
+body.color-off .role-legend{display:none}
+body.color-off .problem-text .role-one,
+body.color-off .problem-text .role-count,
+body.color-off .problem-text .role-total{color:inherit;background:transparent}
+body.color-off .problem-text .phase-focus{
+  --focus-edge:#294b6a;--focus-bg:#fff3c6;--focus-ink:#20364b;
+}
+body.color-off .stage-title .blue,
+body.color-off .stage-title .pink,
+body.color-off .stage-title .yellow{color:#294b6a}
+body.color-off .math-token.one-number,
+body.color-off .math-token.count-number,
+body.color-off .math-reading,
+body.color-off .math-unit-answer{color:#294b6a}
+body.color-off .math-role-row span:first-child,
+body.color-off .math-role-row span:last-child{color:#526b80}
+body.color-off .math-answer{color:#294b6a;background:#f0f4f7;border-color:#9aabba}
+body.color-off .visual .old-frame,
+body.color-off .visual .new-frame,
+body.color-off .visual .all-frame{fill:#edf2f5;stroke:#8193a1}
+body.color-off .visual .label-in rect{fill:#f2f5f7;stroke:#9aabba}
+body.color-off .visual .label-in text{fill:#526b80}
+@media(max-width:760px){.color-toggle{min-width:88px;padding:7px 8px;font-size:12px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark" aria-hidden="true">＋</div><div><h1>ふえた分？　ぜんぶ？</h1><div class="brand-sub">もとの文のことばと、図をむすびつけよう</div></div></div>
+    <button class="sound color-toggle" id="colorToggle" type="button" aria-pressed="true" aria-label="教科書の色分けを切り替える">色わけ：ON</button>
+    <button class="sound fx-toggle" id="fxToggle" type="button" aria-pressed="true" aria-label="効果音を切り替える">効果音：ON</button>
+    <button class="sound" id="soundBtn" type="button" aria-label="いまのことばを聞く">🔊 きく</button>
+  </header>
+  <nav class="tabs" aria-label="もんだいをえらぶ">
+    <button class="tab active" data-problem="0" type="button">おちゃ</button>
+    <button class="tab" data-problem="1" type="button">ずかん</button>
+    <button class="tab" data-problem="2" type="button">くるま</button>
+  </nav>
+  <main class="stage-card">
+    <section class="stage-head" aria-live="polite">
+      <h2 class="stage-title" id="stageTitle">１本は ２L</h2>
+      <p class="stage-sub" id="stageSub">この１本の量を見よう。</p>
+    </section>
+    <section class="learning-layout" aria-label="もとの文章と図の対応">
+      <aside class="problem-panel" aria-label="もとの文章題">
+        <div class="problem-label">もとの もんだい</div><div class="role-legend" aria-label="色のやくそく"><span class="legend-one">１つ分</span><span class="legend-count">いくつ分</span><span class="legend-total">ぜんぶの数</span></div>
+        <div class="problem-text" id="problemText"></div>
+        <div class="source-hint" id="sourceHint"><span>光った ことばを 見よう</span></div>
+      </aside>
+      <section class="visual-area" id="visualArea" aria-label="ことばに合わせて動く図"></section>
+    </section>
+    <footer class="stage-foot">
+      <div class="navleft">
+        <button class="navbtn back" id="backBtn" type="button">もどる</button>
+        <div class="progress" id="progress" aria-label="すすみぐあい"></div>
+      </div>
+      <div class="footer-note" id="footerNote">図の動きを見よう。</div>
+      <button class="navbtn" id="nextBtn" type="button">つぎへ</button>
+    </footer>
+  </main>
+</div>
+<script>
+'use strict';
+const problems = [
+  {
+    key:'tea', tab:'おちゃ', unit:'L', itemWord:'本', oneValue:2, oldN:5, oldValue:10, totalN:6, total:12,
+    oneTitle:'１本に <span class="blue">２L</span>', oneSub:'１本分の おちゃは、２L。',
+    oldReading:'に ご じゅう', addReading:'に いち が に', totalReading:'に ろく じゅうに',
+    relation:'２L が ５本分', oneRole:'１本分の量', oldCountRole:'本数', totalCountRole:'ぜんぶの本数',
+    speech:{
+      unit:'１本に、２リットル。これが、１本分の量だよ。',
+      groups:'５本あるね。',
+      relation:'２リットルが、５本分だね。',
+      oldExpression:'２かける５。',
+      oldEquation:'２かける５は１０。に、ご、じゅう。５本で１０リットルだね。',
+      addOne:'もう１本、ふえるよ。',
+      increaseFocus:'何リットルふえるかな。黄色で、ふえた量を見よう。',
+      addExpression:'２かける１。',
+      addEquation:'２かける１は２。に、いちがに。ふえた分は２リットルだね。',
+      allGroups:'ぜんぶで、６本になったよ。',
+      totalExpression:'２かける６。',
+      totalEquation:'２かける６は１２。に、ろく、じゅうに。ぜんぶで１２リットルだね。'
+    }
+  },
+  {
+    key:'books', tab:'ずかん', unit:'cm', itemWord:'さつ', oneValue:3, oldN:7, oldValue:21, totalN:8, total:24,
+    oneTitle:'１さつの あつさは <span class="blue">３cm</span>', oneSub:'１さつ分の はばは、３cm。',
+    oldReading:'さんしち にじゅういち', addReading:'さん いち が さん', totalReading:'さんぱ にじゅうし',
+    relation:'３cm が ７さつ分', oneRole:'１さつ分のあつさ', oldCountRole:'さつ数', totalCountRole:'ぜんぶのさつ数',
+    speech:{
+      unit:'１さつのあつさは、３センチメートル。これが、１さつ分だよ。',
+      groups:'７さつあるね。',
+      relation:'３センチメートルが、７さつ分だね。',
+      oldExpression:'３かける７。',
+      oldEquation:'３かける７は２１。さんしち、にじゅういち。７さつで２１センチメートルだね。',
+      addOne:'もう１さつ、ふえるよ。',
+      increaseFocus:'何センチメートルふえるかな。黄色で、ふえたはばを見よう。',
+      addExpression:'３かける１。',
+      addEquation:'３かける１は３。さん、いちがさん。ふえた分は３センチメートルだね。',
+      allGroups:'ぜんぶで、８さつになったよ。',
+      totalExpression:'３かける８。',
+      totalEquation:'３かける８は２４。さんぱ、にじゅうし。ぜんぶで２４センチメートルだね。'
+    }
+  },
+  {
+    key:'cars', tab:'くるま', unit:'こ', itemWord:'台', oneValue:4, oldN:5, oldValue:20, totalN:6, total:24,
+    oneTitle:'１台に タイヤ <span class="blue">４こ</span>', oneSub:'１台分の タイヤは、４こ。',
+    oldReading:'し ご にじゅう', addReading:'し いち が し', totalReading:'しろく にじゅうし',
+    relation:'タイヤ４こ が ５台分', oneRole:'１台分のタイヤ', oldCountRole:'台数', totalCountRole:'ぜんぶの台数',
+    speech:{
+      unit:'１台に、タイヤは４こ。これが、１台分だよ。',
+      groups:'５台分あるね。',
+      relation:'タイヤ４こが、５台分だね。',
+      oldExpression:'４かける５。',
+      oldEquation:'４かける５は２０。し、ご、にじゅう。５台分で２０こだね。',
+      addOne:'もう１台、ふえるよ。４このタイヤが、四方から飛んできて付くよ。',
+      increaseFocus:'あと何こいるかな。黄色で、ふえたタイヤを見よう。',
+      addExpression:'４かける１。',
+      addEquation:'４かける１は４。し、いちがし。ふえた分は４こだね。',
+      allGroups:'ぜんぶで、６台になったよ。',
+      totalExpression:'４かける６。',
+      totalEquation:'４かける６は２４。しろく、にじゅうし。ぜんぶで２４こだね。'
+    }
+  }
+];
+const originalProblems = {
+ tea: `
+  <p><span class="role-one" data-phase="0">２L入り</span>の ペットボトルのお茶を、<br><span class="role-count" data-phase="1">５本</span> 買いました。</p>
+  <p><span class="qnum">①</span> お茶は、<span class="role-total">ぜんぶで 何L ありますか。</span></p>
+  <p><span class="qnum" data-phase="2">②</span> <span class="role-count" data-phase="2">もう１本 買うと、</span></p>
+  <p><span class="role-total" data-phase="3">お茶は 何L ふえますか。</span></p>
+  <p><span class="role-total" data-phase="4">また、ぜんぶで 何L に なりますか。</span></p>`,
+ books: `
+  <p><span class="role-one" data-phase="0">１さつの あつさが ３cm</span> の 図かんが あります。</p>
+  <p><span class="qnum">①</span> <span class="role-count" data-phase="1">７さつ</span> ならべると、<span class="role-total">はばは 何cm に なりますか。</span></p>
+  <p><span class="qnum" data-phase="2">②</span> <span class="role-count" data-phase="2">もう１さつ ならべると、</span></p>
+  <p><span class="role-total" data-phase="3">はばは 何cm ふえますか。</span></p>
+  <p><span class="role-total" data-phase="4">また、ぜんぶで 何cm に なりますか。</span></p>`,
+ cars: `
+  <p>おもちゃの <ruby>自動車<rt>じどうしゃ</rt></ruby>を <ruby>作<rt>つく</rt></ruby>ります。</p>
+  <p><span class="role-one" data-phase="0">１台に、タイヤを ４こ</span> つけます。</p>
+  <p><span class="qnum">①</span> <span class="role-count" data-phase="1">５台分</span>では、<span class="role-total">タイヤは 何こ いりますか。</span></p>
+  <p><span class="qnum" data-phase="2">②</span> <span class="role-count" data-phase="2"><ruby>自動車<rt>じどうしゃ</rt></ruby>が もう１台 ふえると、</span></p>
+  <p><span class="role-total" data-phase="3">タイヤは あと 何こ いりますか。</span></p>
+  <p><span class="role-total" data-phase="4">また、ぜんぶで 何こ いりますか。</span></p>`
+};
+const focusHints = {
+  tea:[
+    '「２L入り」→ １本分の量',
+    '「５本」→ もともとの本数',
+    '「２L」と「５本」→ ２Lが５本分',
+    '「２L」と「５本」→ 式の２と５',
+    '２ × ５ の答えを読もう',
+    '「もう１本」→ 新しい１本',
+    '「何Lふえますか」→ 黄色で、ふえた量を見る',
+    '１本分 × ふえた本数',
+    '２ × １ の答えを読もう',
+    '「ぜんぶで」→ ６本ぜんぶ',
+    '１本分 × ぜんぶの本数',
+    '２ × ６ の答えを読もう'
+  ],
+  books:[
+    '「３cm」→ １さつ分のあつさ',
+    '「７さつ」→ もともとのさつ数',
+    '「３cm」と「７さつ」→ ３cmが７さつ分',
+    '「３cm」と「７さつ」→ 式の３と７',
+    '３ × ７ の答えを読もう',
+    '「もう１さつ」→ 新しい１さつ',
+    '「何cmふえますか」→ 黄色で、ふえたはばを見る',
+    '１さつ分 × ふえたさつ数',
+    '３ × １ の答えを読もう',
+    '「ぜんぶで」→ ８さつぜんぶ',
+    '１さつ分 × ぜんぶのさつ数',
+    '３ × ８ の答えを読もう'
+  ],
+  cars:[
+    '「タイヤ４こ」→ １台分',
+    '「５台分」→ もともとの台数',
+    '「４こ」と「５台分」→ ４こが５台分',
+    '「４こ」と「５台分」→ 式の４と５',
+    '４ × ５ の答えを読もう',
+    '「もう１台」→ その車にタイヤが４こ付く',
+    '「あと何こ」→ 黄色で、ふえたタイヤを見る',
+    '１台分 × ふえた台数',
+    '４ × １ の答えを読もう',
+    '「ぜんぶで」→ ６台ぜんぶ',
+    '１台分 × ぜんぶの台数',
+    '４ × ６ の答えを読もう'
+  ]
+};
+const steps = [
+ {id:'unit',visual:0,focus:[0],title:p=>p.oneTitle,sub:p=>p.oneSub,speech:p=>p.speech.unit},
+ {id:'groups',visual:1,focus:[1],title:p=>`もともと <span class="pink">${zen(p.oldN)}${p.itemWord}</span>`,sub:p=>`${zen(p.oldN)}${p.itemWord}が ならんでいるよ。`,speech:p=>p.speech.groups},
+ {id:'relation',visual:1,focus:[0,1],title:p=>`<span class="blue">${zen(p.oneValue)}${p.unit}</span> が <span class="pink">${zen(p.oldN)}${p.itemWord}分</span>`,sub:p=>'１つ分が、いくつ分あるかな。',speech:p=>p.speech.relation},
+ {id:'old-expression',visual:1,focus:[0,1],title:p=>'式に してみよう',sub:p=>'１つ分の量 × 本数',math:'old-expression',speech:p=>p.speech.oldExpression},
+ {id:'old-equation',visual:1,focus:[0,1],title:p=>'式を 計算しよう',sub:p=>'式を見て、九九で読もう。',math:'old-equation',speech:p=>p.speech.oldEquation},
+ {id:'add-one',visual:2,focus:[2],title:p=>`もう <span class="pink">１${p.itemWord}</span>`,sub:p=>p.key==='cars'?'タイヤが４こ、四方から集まるよ。':'新しい１つが、動いて入るよ。',speech:p=>p.speech.addOne},
+ {id:'increase-focus',visual:3,focus:[3],title:p=>p.key==='cars'?'あと <span class="yellow">何こ いる？</span>':`何${p.unit} <span class="yellow">ふえますか？</span>`,sub:p=>'黄色で、ふえた量を見よう。',speech:p=>p.speech.increaseFocus},
+ {id:'increase-expression',visual:3,focus:[3],title:p=>'式に してみよう',sub:p=>'１つ分の量 × ふえた数',math:'add-expression',speech:p=>p.speech.addExpression},
+ {id:'increase-equation',visual:3,focus:[3],title:p=>'式を 計算しよう',sub:p=>'１つ分が、１つ分ふえたよ。',math:'add-equation',speech:p=>p.speech.addEquation},
+ {id:'all-groups',visual:4,focus:[4],title:p=>`ぜんぶで <span class="yellow">何${p.unit}？</span>`,sub:p=>`もともとと新しい分。ぜんぶで ${zen(p.totalN)}${p.itemWord}。`,speech:p=>p.speech.allGroups},
+ {id:'total-expression',visual:4,focus:[4],title:p=>'式に してみよう',sub:p=>'１つ分の量 × ぜんぶの数',math:'total-expression',speech:p=>p.speech.totalExpression},
+ {id:'total-equation',visual:4,focus:[4],title:p=>'式を 計算しよう',sub:p=>'式を見て、九九で読もう。',math:'total-equation',speech:p=>p.speech.totalEquation}
+];
+let problemIndex=0,stage=0,visualStage=0;
+let lastSceneProblem=-1,lastSceneStage=-1;
+let lastProblemTextProblem=-1,lastProblemFocusKey='';
+let colorAssist=true;
+let fxEnabled=true;
+try{const saved=window.localStorage&&window.localStorage.getItem('fueru-color-assist');if(saved==='off')colorAssist=false;}catch(e){}
+try{const savedFx=window.localStorage&&window.localStorage.getItem('fueru-fx');if(savedFx==='off')fxEnabled=false;}catch(e){}
+const $=s=>document.querySelector(s);
+const zen=n=>String(n).replace(/[0-9]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0xFEE0));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function pill(x,y,w,label,type,sub=''){
+ const colors={blue:['#eaf6fd','#75b4d9','#2a719f'],pink:['#fff0f6','#e56b9a','#ad3f70'],yellow:['#fff7d9','#e0b52f','#806000'],neutral:['#f2f6f9','#d4e0e8','#476176']};
+ const c=colors[type]||colors.neutral;
+ return `<g class="label-in"><rect x="${x}" y="${y}" width="${w}" height="62" rx="20" fill="${c[0]}" stroke="${c[1]}" stroke-width="3"/><text x="${x+w/2}" y="${y+(sub?27:39)}" text-anchor="middle" font-size="${sub?20:27}" font-weight="950" fill="${c[2]}">${esc(label)}</text>${sub?`<text x="${x+w/2}" y="${y+49}" text-anchor="middle" font-size="14" font-weight="800" fill="${c[2]}">${esc(sub)}</text>`:''}</g>`;
+}
+function answerPill(x,y,w,caption,value,type){
+ const colors={pink:['#fff0f6','#e56b9a','#ad3f70'],yellow:['#fff7d9','#e0b52f','#806000'],blue:['#eaf6fd','#75b4d9','#2a719f']};
+ const c=colors[type]||colors.blue;
+ return `<g class="label-in"><rect x="${x}" y="${y}" width="${w}" height="74" rx="20" fill="${c[0]}" stroke="${c[1]}" stroke-width="3"/><text x="${x+w/2}" y="${y+25}" text-anchor="middle" font-size="17" font-weight="900" fill="${c[2]}">${esc(caption)}</text><text x="${x+w/2}" y="${y+58}" text-anchor="middle" font-size="30" font-weight="1000" fill="${c[2]}">${esc(value)}</text></g>`;
+}
+function bottle(x,y,kind='old',delay=0,scale=1){
+ const cls=kind==='new'?'slide-in':kind==='focus'?'focus-pulse':kind==='old'?'item-in':'';
+ const stroke=kind==='focus'?'#8a6500':'#7d9270';
+ return `<g class="${cls}" style="--delay:${delay}s"><g transform="translate(${x} ${y}) scale(${scale})">
+  <ellipse cx="51" cy="207" rx="43" ry="7" fill="#516b4a" opacity=".13"/>
+  <rect x="34" y="0" width="34" height="20" rx="5" fill="#5b8d42" stroke="#426c32" stroke-width="2.5"/>
+  <path d="M34 18 L68 18 L72 35 Q91 47 91 70 L91 194 Q91 207 78 207 L24 207 Q11 207 11 194 L11 70 Q11 47 30 35Z" fill="url(#petClear)" stroke="${stroke}" stroke-width="3.5"/>
+  <path d="M19 84 Q51 74 83 84 L83 190 Q83 199 74 199 L28 199 Q19 199 19 190Z" fill="url(#teaLiquid)" opacity=".98"/>
+  <path d="M19 84 Q51 74 83 84" stroke="#e0c56b" stroke-width="3" fill="none" opacity=".9"/>
+  <path d="M23 91 Q28 87 32 88 L32 188 Q32 194 27 194Z" fill="#f2df9b" opacity=".34"/>
+  <rect x="22" y="105" width="58" height="52" rx="8" fill="#f7f3d9" stroke="#8b9b62" stroke-width="1.8"/>
+  <path d="M29 117 Q35 109 44 115 Q39 126 29 126Z" fill="#71934a"/>
+  <path d="M34 122 L42 115" stroke="#e5eccd" stroke-width="1.5"/>
+  <text x="57" y="126" text-anchor="middle" font-size="12" font-weight="950" fill="#526f38">おちゃ</text>
+  <text x="51" y="148" text-anchor="middle" font-size="21" font-weight="1000" fill="#286e9f">2L</text>
+  <path d="M21 58 Q51 45 81 58" stroke="#fff" stroke-width="5" opacity=".72" fill="none"/>
+  <path d="M16 103 Q12 139 16 184" stroke="#fff" stroke-width="3" opacity=".65" fill="none"/>
+ </g></g>`;
+}
+function bookBlock(x,y,kind='old',delay=0,w=88,h=220){
+ const cls=kind==='new'?'slide-in':kind==='focus'?'focus-pulse':kind==='old'?'item-in':'';
+ const bg='#79b8df';
+ const edge=kind==='focus'?'#e0b52f':'#347eac';
+ return `<g class="${cls}" style="--delay:${delay}s"><g transform="translate(${x} ${y})">
+  <rect x="0" y="0" width="${w}" height="${h}" rx="5" fill="${bg}" stroke="${edge}" stroke-width="3.5"/>
+  <path d="M10 9 V${h-9}" stroke="#fff" stroke-width="5" opacity=".62"/>
+  <path d="M19 30 H${w-10} M19 43 H${w-17}" stroke="#fff" stroke-width="3" opacity=".48"/>
+  <path d="M${w-14} 8 V${h-8}" stroke="${edge}" stroke-width="2" opacity=".35"/>
+ </g></g>`;
+}
+function ruler(x1,x2,y,label,color='#286e9f',animate=true){
+ return `<g class="${animate?'label-in':''}"><path d="M${x1} ${y-8} V${y+5} M${x1} ${y} H${x2} M${x2} ${y-8} V${y+5}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/><path d="M${x1+8} ${y-6} L${x1} ${y} L${x1+8} ${y+6} M${x2-8} ${y-6} L${x2} ${y} L${x2-8} ${y+6}" fill="none" stroke="${color}" stroke-width="3"/><text x="${(x1+x2)/2}" y="${y-12}" text-anchor="middle" font-size="23" font-weight="1000" fill="${color}">${esc(label)}</text></g>`;
+}
+const CAR_TIRE_POSITIONS=[[30,43],[198,43],[30,130],[198,130]];
+function wheel(cx,cy,kind='old',delay=0){
+ const focus=kind==='focus';
+ const cls=kind==='new'?'wheel-pop':kind==='old'?'item-in':'';
+ const stroke=focus?'#e2b532':'#172735';
+ return `<g class="${cls}" style="--delay:${delay}s">
+  <rect x="${cx-25}" y="${cy-17}" width="50" height="34" rx="10" fill="#263746" stroke="${stroke}" stroke-width="${focus?5:3}"/>
+  <rect x="${cx-21}" y="${cy-13}" width="42" height="26" rx="7" fill="#445766" stroke="#718392" stroke-width="1.5"/>
+  <path d="M${cx-14} ${cy-10} V${cy+10} M${cx-7} ${cy-11} V${cy+11} M${cx} ${cy-11} V${cy+11} M${cx+7} ${cy-11} V${cy+11} M${cx+14} ${cy-10} V${cy+10}" stroke="#aab7bf" stroke-width="2.2" stroke-linecap="round" opacity=".7"/>
+  <rect x="${cx-5.5}" y="${cy-9}" width="11" height="18" rx="5" fill="#c5d0d7" stroke="#e7edf0" stroke-width="1.4"/>
+  <path d="M${cx-3} ${cy-5} V${cy+5}" stroke="#718392" stroke-width="1.7" stroke-linecap="round"/>
+ </g>`;
+}
+function carBody(){
+ return `<g>
+  <path d="M70 7 Q52 10 47 31 L38 73 L38 135 Q40 159 64 166 H164 Q188 159 190 135 L190 73 L181 31 Q176 10 158 7Z" fill="url(#carBodyGrad)" stroke="#2e668b" stroke-width="4"/>
+  <path d="M61 23 Q65 13 79 13 H149 Q166 14 171 28 L178 59 H53Z" fill="url(#carHoodGrad)" stroke="#6eb0d5" stroke-width="2"/>
+  <path d="M54 64 Q114 53 174 64 L169 91 Q114 99 59 91Z" fill="#b9dce9" stroke="#f4fbff" stroke-width="3"/>
+  <path d="M59 96 Q114 104 169 96 L172 130 Q166 145 151 148 H77 Q62 145 56 130Z" fill="#4e8fb8" stroke="#d8eef8" stroke-width="2.5"/>
+  <path d="M68 106 Q114 113 160 106 L157 129 Q153 137 143 138 H85 Q75 137 71 129Z" fill="#d8edf4" opacity=".88"/>
+  <path d="M46 51 L54 52 M174 52 L182 51" stroke="#fff1b5" stroke-width="7" stroke-linecap="round"/>
+  <path d="M72 153 Q114 160 156 153" stroke="#d7f0fa" stroke-width="3" opacity=".75" fill="none"/>
+  <path d="M50 79 Q46 94 49 112 M179 79 Q182 94 180 112" stroke="#fff" stroke-width="2" opacity=".28" fill="none"/>
+ </g>`;
+}
+function carUnit(x,y,kind='old',delay=0,scale=1){
+ const outerClass=kind==='new'?'slide-in':kind==='old'?'item-in':'';
+ const opacity=kind==='dim'?'.28':'1';
+ const tireKind=kind==='focus'?'focus':kind;
+ const tires=CAR_TIRE_POSITIONS.map(([wx,wy])=>wheel(wx,wy,tireKind,delay+.1)).join('');
+ return `<g class="${outerClass}" style="--delay:${delay}s" opacity="${opacity}"><g transform="translate(${x} ${y}) scale(${scale})">
+  <ellipse cx="114" cy="91" rx="104" ry="85" fill="#29475b" opacity=".13"/>
+  ${tires}
+  ${carBody()}
+ </g></g>`;
+}
+function carChassis(x,y,scale=1,delay=0){
+ return `<g transform="translate(${x} ${y}) scale(${scale})"><g class="car-chassis-in" style="--delay:${delay}s">
+  <ellipse cx="114" cy="91" rx="104" ry="85" fill="#29475b" opacity=".15"/>
+  ${carBody()}
+ </g></g>`;
+}
+function tireMountGuide(cx,cy,scale,delay=0){
+ return `<g class="mount-guide" style="--delay:${delay}s" transform="translate(${cx} ${cy}) scale(${scale})">
+  <rect x="-29" y="-21" width="58" height="42" rx="11" fill="#e7edf1" fill-opacity=".55" stroke="#aebfca" stroke-width="2.5" stroke-dasharray="5 4"/>
+ </g>`;
+}
+function flyingTire(fromX,fromY,toX,toY,delay,scale,spin){
+ const dx=toX-fromX,dy=toY-fromY;
+ const overX=toX-Math.sign(dx)*3,overY=toY-Math.sign(dy)*3;
+ const duration='.68s';
+ return `<g class="tire-flight" opacity="0">
+  <animateTransform attributeName="transform" attributeType="XML" type="translate"
+   values="${fromX} ${fromY};${overX} ${overY};${toX} ${toY}"
+   keyTimes="0;.82;1" keySplines=".18 .72 .2 1;.2 .75 .25 1" calcMode="spline"
+   dur="${duration}" begin="${delay}s" fill="freeze"/>
+  <animate attributeName="opacity" values="0;1;1" keyTimes="0;.12;1" dur="${duration}" begin="${delay}s" fill="freeze"/>
+  <g>
+   <animateTransform attributeName="transform" type="rotate" values="${spin} 0 0;${spin*.16} 0 0;0 0 0" keyTimes="0;.78;1" keySplines=".2 .7 .2 1;.2 .8 .2 1" calcMode="spline" dur="${duration}" begin="${delay}s" fill="freeze"/>
+   <g transform="scale(${scale})">${wheel(0,0,'static')}</g>
+  </g>
+ </g>`;
+}
+function tireSpark(cx,cy,delay){
+ return `<path class="tire-spark" style="--delay:${delay}s" d="M${cx} ${cy-12} l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3Z" fill="#f4c94e" stroke="#d8a927" stroke-width="1.5"/>`;
+}
+function flyingTiresForCar(x,y,scale,baseDelay=0){
+ // 各タイヤは車体の外側から、別々の方向（左・上・下・右）へ飛んでくる。
+ // タイヤ本体は車体より先に描画し、取り付け後は車体の下に半分隠れる。
+ const approach=76*scale;
+ const targets=CAR_TIRE_POSITIONS.map(([wx,wy],i)=>{
+  const tx=x+wx*scale,ty=y+wy*scale;
+  const starts=[
+   {sx:tx-approach,sy:ty,spin:-105},
+   {sx:tx,sy:ty-approach,spin:105},
+   {sx:tx,sy:ty+approach,spin:85},
+   {sx:tx+approach,sy:ty,spin:-85}
+  ];
+  return {x:tx,y:ty,...starts[i],delay:baseDelay+.12+i*.105};
+ });
+ let under='',over='';
+ targets.forEach(t=>{
+  under+=tireMountGuide(t.x,t.y,scale,Math.max(0,t.delay-.1));
+  const mx=(t.sx+t.x)/2,my=(t.sy+t.y)/2;
+  under+=`<path class="tire-trail" style="--delay:${t.delay}s" d="M${t.sx} ${t.sy} Q${mx+(t.sx<t.x?-10:t.sx>t.x?10:0)} ${my+(t.sy<t.y?-8:t.sy>t.y?8:0)} ${t.x} ${t.y}"/>`;
+  under+=flyingTire(t.sx,t.sy,t.x,t.y,t.delay,scale,t.spin);
+  const side=(t.x < x+114*scale) ? -1 : 1;
+  over+=tireSpark(t.x+side*17*scale,t.y,t.delay+.68);
+ });
+ return {under,over};
+}
+function assembledCar(x,y,scale=1,baseDelay=0){
+ const moving=flyingTiresForCar(x,y,scale,baseDelay);
+ const staticFallback=CAR_TIRE_POSITIONS.map(([wx,wy])=>wheel(wx,wy,'static')).join('');
+ return `<g>${moving.under}<g class="reduced-wheel-fallback" transform="translate(${x} ${y}) scale(${scale})">${staticFallback}</g>${carChassis(x,y,scale,baseDelay)}${moving.over}</g>`;
+}
+function tireFocusFrame(x,y,scale){
+ // wheel() と同じ CAR_TIRE_POSITIONS を使い、各タイヤの外周にぴったり合わせる。
+ const frames=CAR_TIRE_POSITIONS.map(([cx,cy])=>
+  `<rect x="${cx-29}" y="${cy-21}" width="58" height="42" rx="11" fill="none" stroke="#e0b52f" stroke-width="4" stroke-dasharray="7 5"/>`
+ ).join('');
+ return `<g class="focus-pulse" transform="translate(${x} ${y}) scale(${scale})">${frames}</g>`;
+}
+function carSlot(s,mode='static',delay=0){
+ const x=s.x+65,y=s.y+4,scale=.78;
+ const card=`<rect class="${mode==='assemble'?'item-in':''}" style="--delay:${delay}s" x="${s.x+10}" y="${s.y}" width="300" height="195" rx="20" fill="#edf7fd" fill-opacity=".22" stroke="#79b6d9" stroke-width="3"/>`;
+ const car=mode==='assemble'?assembledCar(x,y,scale,delay):carUnit(x,y,mode==='focus'?'focus':'static',0,scale);
+ return `${card}${car}`;
+}
+
+function teaScene(p){
+ const x=[48,238,428,618,808,998],y=88;let out='';
+ if(visualStage===0){out+=bottle(500,74,'old',.05,1.12);out+=pill(406,330,288,'１本分 ＝ ２L','blue');return out;}
+ for(let i=0;i<5;i++) out+=bottle(x[i],y,visualStage===1?'old':'static',.08+i*.11,.88);
+ if(visualStage>=2) out+=bottle(x[5],y,visualStage===2?'new':visualStage===3?'focus':'static',.1,.88);
+ if(visualStage===1) out+=`<rect class="old-frame frame-in" x="31" y="64" width="914" height="246" rx="25"/>`;
+ if(visualStage===2) out+=`<rect class="old-frame" x="31" y="64" width="914" height="246" rx="25"/><rect class="new-frame frame-in" x="980" y="64" width="105" height="246" rx="22"/>`;
+ if(visualStage===3) out+=`<rect class="old-frame" x="31" y="64" width="914" height="246" rx="25"/><rect class="new-frame" x="980" y="64" width="105" height="246" rx="22"/>`;
+ if(visualStage===4) out+=`<rect class="all-frame frame-in" x="26" y="57" width="1060" height="267" rx="28"/>`;
+ if(visualStage===1) out+=pill(385,350,240,'５本分','pink');
+ if(visualStage===2) out+=pill(385,350,240,'もう１本','pink');
+ if(visualStage===4) out+=pill(430,350,240,'６本ぜんぶ','pink');
+ return out;
+}
+function booksScene(p){
+ const start=150,step=100,w=100,y=82;let out='';
+ if(visualStage===0){out+=bookBlock(500,70,'old',.05,100,236);out+=ruler(500,600,345,'３cm');return out;}
+ for(let i=0;i<7;i++) out+=bookBlock(start+i*step,y,visualStage===1?'old':'static',.07+i*.09,w,226);
+ if(visualStage>=2) out+=bookBlock(start+7*step,y,visualStage===2?'new':visualStage===3?'focus':'static',.1,w,226);
+ if(visualStage===1) out+=`<rect class="old-frame frame-in" x="135" y="58" width="720" height="264" rx="22"/>`;
+ if(visualStage===2) out+=`<rect class="old-frame" x="135" y="58" width="720" height="264" rx="22"/><rect class="new-frame frame-in" x="840" y="58" width="120" height="264" rx="20"/>`;
+ if(visualStage===3) out+=`<rect class="old-frame" x="135" y="58" width="720" height="264" rx="22"/><rect class="new-frame" x="840" y="58" width="120" height="264" rx="20"/>`;
+ if(visualStage===4) out+=`<rect class="all-frame frame-in" x="135" y="48" width="830" height="282" rx="25"/>`;
+ if(visualStage===1){out+=ruler(start,start+w,343,'３cm','#357eac');out+=pill(410,392,280,'７さつ分','pink');}
+ if(visualStage===2){out+=ruler(start+7*step,start+7*step+w,343,'３cm','#286e9f');out+=pill(410,392,280,'もう１さつ','pink');}
+ if(visualStage===3) out+=ruler(start+7*step,start+7*step+w,343,'３cm','#8a6500',false);
+ if(visualStage===4){out+=ruler(start,start+7*step+w,352,'','#8a6500');out+=pill(410,392,280,'８さつぜんぶ','pink');}
+ return out;
+}
+function carsScene(p){
+ const slots=[{x:55,y:38},{x:405,y:38},{x:755,y:38},{x:55,y:262},{x:405,y:262},{x:755,y:262}];let out='';
+ if(visualStage===0){out+=carUnit(372,87,'old',.05,1.55);out+=pill(395,350,310,'タイヤ ４こ','blue','１台分');return out;}
+ if(visualStage===1){
+  // ５台が初めて並ぶ場面。１台ずつ車体が現れ、その車の４つのタイヤが四方から取り付く。
+  for(let i=0;i<5;i++) out+=carSlot(slots[i],'assemble',i*.34);
+  out+=`<path class="old-frame frame-in" style="fill:none" d="M42 25 H1065 V235 H720 V465 H42 Z"/>`;
+  out+=`<rect x="760" y="260" width="300" height="195" rx="20" fill="#f8fafc" stroke="#d7e2ea" stroke-width="4" stroke-dasharray="10 9"/>`;
+  out+=pill(385,475,250,'５台分','pink');
+ }
+ if(visualStage===2){
+  // もとの５台は完成した状態で保ち、新しく加わる６台目だけを組み立てる。
+  for(let i=0;i<5;i++) out+=carSlot(slots[i],'static');
+  const s=slots[5],cx=s.x+65,cy=s.y+4,scale=.78;
+  out+=`<rect class="new-frame frame-in" x="${s.x+10}" y="${s.y}" width="300" height="195" rx="20"/>`;
+  out+=assembledCar(cx,cy,scale,0);
+  out+=pill(385,475,250,'もう１台','pink');
+  out+=pill(770,475,230,'タイヤ ４こ','blue');
+ }
+ if(visualStage===3){
+  for(let i=0;i<5;i++) out+=carSlot(slots[i],'static');
+  const s=slots[5];out+=carSlot(s,'focus');
+  out+=`<path class="old-frame" style="fill:none" d="M42 25 H1065 V235 H720 V465 H42 Z"/>`;
+  out+=`<rect class="new-frame" style="fill:none" x="${s.x+10}" y="${s.y}" width="300" height="195" rx="20"/>`;
+  out+=tireFocusFrame(s.x+65,s.y+4,.78);
+ }
+ if(visualStage===4){
+  for(let i=0;i<6;i++) out+=carSlot(slots[i],'static');
+  out+=`<rect class="all-frame frame-in" style="fill:none" x="35" y="17" width="1030" height="450" rx="28"/>`;
+  out+=pill(385,475,250,'６台ぜんぶ','pink');
+ }
+ return out;
+}
+function scene(p){
+ let inside='';
+ if(p.key==='tea') inside=teaScene(p);
+ else if(p.key==='books') inside=booksScene(p);
+ else inside=carsScene(p);
+ return `<svg class="visual" viewBox="0 0 1100 540" role="img" aria-label="${esc(p.tab)}。青は１つ分、ピンクはいくつ分、黄色は全部の数。" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+   <linearGradient id="petClear" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dce6ce"/><stop offset=".22" stop-color="#f8f8e9"/><stop offset=".48" stop-color="#ffffff"/><stop offset=".76" stop-color="#e9efdc"/><stop offset="1" stop-color="#bdcdae"/></linearGradient>
+   <linearGradient id="teaLiquid" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#847238"/><stop offset=".2" stop-color="#a99a4b"/><stop offset=".48" stop-color="#c3b15d"/><stop offset=".72" stop-color="#b39b48"/><stop offset="1" stop-color="#79642f"/></linearGradient>
+   <linearGradient id="carBodyGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8bc9eb"/><stop offset=".45" stop-color="#4d9bc9"/><stop offset="1" stop-color="#27668f"/></linearGradient>
+   <linearGradient id="carHoodGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b4e2f5"/><stop offset="1" stop-color="#5a9fc7"/></linearGradient>
+  </defs>${inside}</svg>`;
+}
+function mathPanel(p,kind){
+ if(!kind) return `<div class="math-panel empty" aria-hidden="true"></div>`;
+ let a=p.oneValue,b,result,reading,unit,roles;
+ if(kind.startsWith('old')){b=p.oldN;result=p.oldValue;reading=p.oldReading;unit=p.unit;roles=[p.oneRole,p.oldCountRole];}
+ else if(kind.startsWith('add')){b=1;result=p.oneValue;reading=p.addReading;unit=p.unit;roles=[p.oneRole,`ふえた${p.itemWord}数`];}
+ else{b=p.totalN;result=p.total;reading=p.totalReading;unit=p.unit;roles=[p.oneRole,p.totalCountRole];}
+ const isExpression=kind.endsWith('expression');
+ const spokenUnit=unit==='L'?'リットル':unit==='cm'?'センチメートル':unit;
+ if(isExpression){
+  return `<div class="math-panel expression-only" aria-label="${zen(a)}かける${zen(b)}">
+   <div class="math-caption">この２つの数を かけるよ</div>
+   <div class="math-expression"><span class="math-token one-number">${zen(a)}</span><span class="math-op">×</span><span class="math-token count-number">${zen(b)}</span></div>
+   <div class="math-role-row"><span>${esc(roles[0])}</span><span>かける</span><span>${esc(roles[1])}</span></div>
+  </div>`;
+ }
+ return `<div class="math-panel result-stage" aria-label="${zen(a)}かける${zen(b)}は${zen(result)}${spokenUnit}。${reading}">
+  <div class="math-expression"><span class="math-token one-number">${zen(a)}</span><span class="math-op">×</span><span class="math-token count-number">${zen(b)}</span><span class="math-equals">＝</span><span class="math-answer">${zen(result)}</span></div>
+  <div class="math-reading">${esc(reading)}</div>
+  <div class="math-unit-answer">${zen(result)}${esc(unit)}</div>
+ </div>`;
+}
+function render(){
+ const p=problems[problemIndex],step=steps[stage];
+ visualStage=step.visual;
+ $('#stageTitle').innerHTML=step.title(p);
+ $('#stageSub').textContent=step.sub(p);
+ const focusKey=step.focus.join(',');
+ if(lastProblemTextProblem!==problemIndex||lastProblemFocusKey!==focusKey){
+  $('#problemText').innerHTML=originalProblems[p.key];
+  const focus=new Set(step.focus);
+  $('#problemText').querySelectorAll('[data-phase]').forEach(el=>{
+   const phase=Number(el.dataset.phase);
+   if(focus.has(phase)) el.classList.add('phase-focus');
+   else if([...focus].some(f=>f>phase)) el.classList.add('phase-seen');
+  });
+  lastProblemTextProblem=problemIndex;lastProblemFocusKey=focusKey;
+ }
+ $('#sourceHint').innerHTML=`<span>${focusHints[p.key][stage]}</span>`;
+ if(lastSceneProblem!==problemIndex||lastSceneStage!==visualStage){
+  $('#visualArea').innerHTML=scene(p)+mathPanel(p,step.math);
+  lastSceneProblem=problemIndex;lastSceneStage=visualStage;
+ }else{
+  const currentMath=$('#visualArea').querySelector('.math-panel');
+  if(currentMath) currentMath.outerHTML=mathPanel(p,step.math);
+  else $('#visualArea').insertAdjacentHTML('beforeend',mathPanel(p,step.math));
+ }
+ document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',i===problemIndex);b.setAttribute('aria-pressed',i===problemIndex?'true':'false');});
+ $('#backBtn').style.visibility=stage===0?'hidden':'visible';$('#backBtn').disabled=stage===0;
+ $('#nextBtn').textContent=stage===steps.length-1?'もういちど':'つぎへ';
+ $('#progress').innerHTML=steps.map((_,i)=>`<span class="pip ${i===stage?'active':i<stage?'done':''}"></span>`).join('');
+ $('#footerNote').innerHTML=(stage<4?'ことばと図を むすびつけよう。':stage<9?'黄色で、ふえた量を たしかめよう。':'ぜんぶの数を たしかめよう。')+' <span class=\"key-hint\">← → キーでも すすむ・もどる</span>';
+}
+// 音声用の文章は、画面表示の略号（L・cm）をそのまま読ませない。
+// 将来、表示側の表記が変わっても、音声では単位名を明示する。
+function normalizeSpeechText(text){
+ return String(text||'')
+  .replace(/L/g,'リットル')
+  .replace(/cm/g,'センチメートル')
+  .replace(/×/g,'かける')
+  .replace(/＝|=/g,'イコール')
+  .replace(/\s+/g,' ')
+  .trim();
+}
+function japaneseSpeechVoice(){
+ const voices=window.speechSynthesis.getVoices?window.speechSynthesis.getVoices():[];
+ const japanese=voices.filter(v=>/^ja(?:-|$)/i.test(v.lang||''));
+ return japanese.find(v=>(v.lang||'').toLowerCase()==='ja-jp'&&v.default)
+  ||japanese.find(v=>(v.lang||'').toLowerCase()==='ja-jp')
+  ||japanese.find(v=>v.default)
+  ||japanese[0]
+  ||null;
+}
+function speak(){
+ if(!('speechSynthesis' in window)) return;
+ const p=problems[problemIndex],step=steps[stage];
+ const phrase=normalizeSpeechText(step.speech?step.speech(p):'');
+ if(!phrase) return;
+ window.speechSynthesis.cancel();
+ const u=new SpeechSynthesisUtterance(phrase);
+ u.lang='ja-JP';
+ const voice=japaneseSpeechVoice();
+ if(voice) u.voice=voice;
+ u.rate=.82;
+ u.pitch=1.02;
+ window.speechSynthesis.speak(u);
+}
+// 追加の自動車ができる場面だけ、４つのタイヤの動きに合わせた短い効果音を鳴らす。
+// Web Audioを使うため外部音源は不要。音が不要なら上部の設定でOFFにできる。
+let fxAudioContext=null;
+function softNoiseWhoosh(ctx,when,duration=.2){
+ const length=Math.max(1,Math.floor(ctx.sampleRate*duration));
+ const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
+ const data=buffer.getChannelData(0);
+ for(let i=0;i<length;i++) data[i]=(Math.random()*2-1)*(1-i/length);
+ const source=ctx.createBufferSource();source.buffer=buffer;
+ const filter=ctx.createBiquadFilter();filter.type='bandpass';
+ filter.frequency.setValueAtTime(1500,when);filter.frequency.exponentialRampToValueAtTime(520,when+duration);
+ filter.Q.value=.7;
+ const gain=ctx.createGain();gain.gain.setValueAtTime(.0001,when);
+ gain.gain.linearRampToValueAtTime(.012,when+.035);
+ gain.gain.exponentialRampToValueAtTime(.0001,when+duration);
+ source.connect(filter);filter.connect(gain);gain.connect(ctx.destination);
+ source.start(when);source.stop(when+duration+.02);
+}
+function softRubberPop(ctx,when,index){
+ const osc=ctx.createOscillator(),gain=ctx.createGain();
+ osc.type='sine';
+ const startHz=190+index*17,endHz=82+index*7;
+ osc.frequency.setValueAtTime(startHz,when);
+ osc.frequency.exponentialRampToValueAtTime(endHz,when+.13);
+ gain.gain.setValueAtTime(.0001,when);
+ gain.gain.linearRampToValueAtTime(.055,when+.012);
+ gain.gain.exponentialRampToValueAtTime(.0001,when+.19);
+ osc.connect(gain);gain.connect(ctx.destination);osc.start(when);osc.stop(when+.21);
+ // 取り付く瞬間に、小さな明るい「コツ」を重ねる。
+ const tick=ctx.createOscillator(),tickGain=ctx.createGain();
+ tick.type='triangle';tick.frequency.setValueAtTime(620+index*35,when+.006);
+ tick.frequency.exponentialRampToValueAtTime(300,when+.055);
+ tickGain.gain.setValueAtTime(.0001,when+.006);
+ tickGain.gain.linearRampToValueAtTime(.014,when+.014);
+ tickGain.gain.exponentialRampToValueAtTime(.0001,when+.065);
+ tick.connect(tickGain);tickGain.connect(ctx.destination);tick.start(when+.006);tick.stop(when+.075);
+}
+function playTireAssemblySound(carCount=1){
+ if(!fxEnabled)return;
+ const AudioCtx=window.AudioContext||window.webkitAudioContext;
+ if(!AudioCtx)return;
+ try{
+  if(!fxAudioContext)fxAudioContext=new AudioCtx();
+  if(fxAudioContext.state==='suspended')fxAudioContext.resume().catch(()=>{});
+  const now=fxAudioContext.currentTime+.035;
+  for(let car=0;car<carCount;car++){
+   for(let i=0;i<4;i++){
+    const delay=car*.34+.12+i*.105;
+    softNoiseWhoosh(fxAudioContext,now+delay,.18);
+    softRubberPop(fxAudioContext,now+delay+.68,i);
+   }
+  }
+ }catch(e){/* 音声機能が使えない端末でも学習は続けられる */}
+}
+function applyFxMode(){
+ const button=$('#fxToggle');
+ button.textContent=`効果音：${fxEnabled?'ON':'OFF'}`;
+ button.setAttribute('aria-pressed',fxEnabled?'true':'false');
+ button.title=fxEnabled?'動きに合わせて効果音を鳴らします。押すとOFF':'効果音はOFFです。押すとON';
+ try{if(window.localStorage)window.localStorage.setItem('fueru-fx',fxEnabled?'on':'off');}catch(e){}
+}
+function goNext(){
+ const wasCars=problems[problemIndex].key==='cars';
+ const wasAtUnit=stage===0;
+ const wasAtOldEquation=stage===4;
+ stage=stage<steps.length-1?stage+1:0;
+ if(wasCars&&wasAtUnit&&stage===1)playTireAssemblySound(5);
+ else if(wasCars&&wasAtOldEquation&&stage===5)playTireAssemblySound(1);
+ render();
+}
+function goBack(){if(stage>0){stage--;render();}}
+$('#nextBtn').addEventListener('click',goNext);
+$('#backBtn').addEventListener('click',goBack);
+// 左右の矢印キーでも、画面の「つぎへ」「もどる」と同じ操作ができる。
+// 入力欄などを操作している場合は、キー入力を横取りしない。
+document.addEventListener('keydown',event=>{
+ if(event.altKey||event.ctrlKey||event.metaKey||event.repeat) return;
+ const target=event.target;
+ const tag=target&&target.tagName?target.tagName.toLowerCase():'';
+ if(['input','textarea','select'].includes(tag)||(target&&target.isContentEditable)) return;
+ if(event.key==='ArrowRight'){
+  event.preventDefault();goNext();
+ }else if(event.key==='ArrowLeft'){
+  event.preventDefault();goBack();
+ }
+});
+// 表示領域の高さから文字・余白の倍率を決め、横長画面に収める。
+function updateFitScale(){
+ const h=window.innerHeight||document.documentElement.clientHeight||768;
+ const scale=Math.max(.68,Math.min(1,(h-430)/338));
+ document.documentElement.style.setProperty('--fit-scale',scale.toFixed(3));
+}
+window.addEventListener('resize',updateFitScale,{passive:true});
+updateFitScale();
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{problemIndex=Number(b.dataset.problem);stage=0;render();if('speechSynthesis'in window)window.speechSynthesis.cancel();}));
+function applyColorMode(){
+ document.body.classList.toggle('color-off',!colorAssist);
+ const button=$('#colorToggle');
+ button.textContent=`色わけ：${colorAssist?'ON':'OFF'}`;
+ button.setAttribute('aria-pressed',colorAssist?'true':'false');
+ button.title=colorAssist?'教科書の色分けを表示中。押すとOFF':'色分けを消しています。押すとON';
+ try{if(window.localStorage)window.localStorage.setItem('fueru-color-assist',colorAssist?'on':'off');}catch(e){}
+}
+$('#colorToggle').addEventListener('click',()=>{colorAssist=!colorAssist;applyColorMode();});
+$('#fxToggle').addEventListener('click',()=>{fxEnabled=!fxEnabled;applyFxMode();});
+$('#soundBtn').addEventListener('click',speak);
+applyColorMode();
+applyFxMode();
+render();
+</script>
+</body>
+</html>

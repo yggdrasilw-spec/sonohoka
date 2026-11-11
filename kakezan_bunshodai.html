@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>かけ算の文章題・立式マスター</title>
+<style>
+:root{--b:#3b82f6;--bl:#dbeafe;--p:#ec4899;--pl:#fce7f3;--y:#eab308;--yl:#fef08a;--sp:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;height:100vh;display:flex;justify-content:center;align-items:center;background:#fff7d6;overflow:hidden;font-family:"UD デジタル 教科書体 N-R","BIZ UDPGothic","Hiragino Maru Gothic ProN",sans-serif;color:#333}
+#app{width:min(100vw,177.78vh);height:min(56.25vw,100vh);font-size:min(1vw,1.7778vh);display:grid;grid-template:7% 93%/46% 54%;background:#fffdf3}
+header{grid-column:1/3;display:flex;align-items:center;gap:1em;padding:0 2em;background:#fde68a;font-size:1.8em;font-weight:bold}
+#hd{flex:1}
+button{font:inherit;border:0;border-radius:.6em;padding:.35em .9em;background:#fff;box-shadow:0 .12em 0 #0003;cursor:pointer;transition:transform .08s}
+button:active{transform:scale(.9) translateY(.1em)}
+button:focus-visible,input:focus-visible{outline:.2em solid #f59e0b}
+#L{padding:1.6em 2em;display:flex;flex-direction:column;gap:.9em}
+#q{font-size:2.4em;line-height:1.5;margin:0;font-weight:bold}
+#bal{font-size:1.8em;background:#fff;border:.15em solid #f59e0b;border-radius:1em;padding:.4em .8em;min-height:2.6em;visibility:hidden}
+#eq{display:flex;align-items:center;gap:.4em;font-size:3em;font-weight:bold}
+#eq div{text-align:center}
+#eq small{display:block;font-size:.4em}
+input{width:2.2em;font:inherit;text-align:center;border-radius:.3em;border:.1em solid;padding:.1em}
+.b{border-color:var(--b);background:var(--bl)}.p{border-color:var(--p);background:var(--pl)}.y{border-color:var(--y);background:var(--yl)}
+#pad{display:grid;grid-template-columns:repeat(6,1fr);gap:.5em;font-size:2em}
+#bt{display:flex;gap:1em;font-size:2em}
+#ok,#nx{background:#22c55e;color:#fff}
+#R{padding:1.5em;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1em}
+#st,#lbs{display:flex;flex-wrap:wrap;gap:.8em;justify-content:center;align-items:center}
+#st{width:100%}#st svg{display:block;width:100%;height:auto}
+.gp,.an{transform-box:fill-box;transform-origin:center}
+.gp.new,.an.new,.lb.nw{animation:pop .6s var(--sp) both}
+.em{text-anchor:middle;dominant-baseline:central}
+.n{font-weight:bold;text-anchor:middle;dominant-baseline:central;fill:#333}
+.lb{font-size:2em;font-weight:bold;padding:.15em .7em;border-radius:.8em;border:.12em solid}
+.fm{font-size:4em;font-weight:bold}.fm b{display:inline-block;padding:0 .25em;border-radius:.3em;border:.06em solid}
+mark{background:none;color:inherit;border-radius:.3em;padding:0 .08em;display:inline-block;animation:mk .55s var(--sp) both}mark:nth-of-type(2){animation-delay:.15s}mark.c{background:#fed7aa;box-shadow:0 0 0 .08em #fb923c}mark.b{background:var(--bl);box-shadow:0 0 0 .08em var(--b)}mark.p{background:var(--pl);box-shadow:0 0 0 .08em var(--p)}
+@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+/* Phase3の動き: 強調 / コピーが横に増える / 具体物→ドット / 累計が順に点灯 */
+@keyframes emph{30%{transform:scale(1.1,.92)}55%{transform:scale(.96,1.06)}80%{transform:scale(1.02)}}
+@keyframes mk{from{transform:scale(.5);opacity:0}to{transform:none;opacity:1}}
+@keyframes drop{from{transform:translateY(-70px) scale(.5);opacity:0}30%{opacity:1}to{transform:none;opacity:1}}
+@keyframes hop{40%{transform:translateY(-9px) scale(1.12)}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes wig{0%,60%,100%{transform:none}15%{transform:scale(1.1) rotate(-2.5deg)}30%{transform:scale(1.1) rotate(2.5deg)}45%{transform:scale(1.08) rotate(-1deg)}}
+@keyframes cp{from{transform:translateX(var(--dx)) scale(.7) rotate(-8deg);opacity:0}25%{opacity:1}to{transform:none;opacity:1}}
+@keyframes todot{from{opacity:1;transform:none}30%{transform:scale(1.25) rotate(-10deg)}to{opacity:0;transform:scale(.2) rotate(140deg)}}
+@keyframes lit{from{opacity:.15;transform:scale(.3)}to{opacity:1;transform:none}}
+.gp.e{animation:emph .9s ease-in-out}.gp.new.e{animation:pop .6s var(--sp) both,emph .9s .6s ease-in-out}.gp.new.c{animation:cp .75s var(--sp) both}
+.it{transform-box:fill-box;transform-origin:center}.it.x{opacity:0}.it.x.mv{animation:todot .6s calc(var(--i,0)*.06s) backwards}
+.gp.new:not(.c) .it:not(.x){animation:drop .55s calc(.15s + var(--i,0)*.1s) var(--sp) backwards}
+.gp.new.c .it:not(.x){animation:hop .5s calc(var(--gd,0s) + .55s + var(--i,0)*.06s) ease-out backwards}
+.dt{fill:var(--y);stroke:#ca8a04;stroke-width:1.5;transform-box:fill-box;transform-origin:center}.dt.mv{animation:pop .5s var(--sp) calc(.3s + var(--i,0)*.06s) both}
+.an.lit{animation:lit .6s cubic-bezier(.34,1.8,.64,1) both}
+path.an{stroke-dasharray:1;stroke-dashoffset:0}path.an.new{animation:draw .9s ease-out both}
+#ok.rdy,#nx.rdy{animation:wig 1.6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.gp.new,.gp.e,.an.new,.an.lit,.it.x.mv,.dt.mv,.lb.nw,.gp.new .it,mark,#ok.rdy,#nx.rdy,.bk,.dc,.lv{animation:none!important}button{transition:none}}
+/* 表紙・レベルの入口・クリア状況 */
+.scr{width:min(100vw,177.78vh);height:min(56.25vw,100vh);font-size:min(1vw,1.7778vh);position:relative;overflow:hidden}
+#cv{background:#fff7d6}
+#cv:before,#cv:after{content:"";position:absolute;border-radius:50%}
+#cv:before{width:50em;height:50em;left:-14em;top:-24em;background:#fdeaa8}
+#cv:after{width:46em;height:46em;right:-12em;bottom:-27em;background:#d9f2d0}
+#cv>*{position:absolute;z-index:1}
+.dc{animation:bob 3.6s ease-in-out var(--d,0s) infinite}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-.35em) rotate(var(--r,0deg))}}
+@keyframes bpop{from{transform:scale(.3) rotate(calc(var(--r)*3));opacity:0}to{transform:rotate(var(--r));opacity:1}}
+#cvL{left:4em;top:2.5em;width:54em}
+.tg{display:inline-block;background:#fff;border:.15em solid #f59e0b;border-radius:2em;padding:.1em .9em;font-size:1.8em;font-weight:bold;color:#b45309}
+#ttl{margin-top:.8em}#ttl>div{display:flex;gap:.5em;margin-bottom:.5em}
+.bk{display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;font-size:4.6em;font-weight:bold;color:#fff;background:var(--c);border-radius:.22em;border-bottom:.08em solid #0003;animation:bpop .6s var(--sp) var(--d) both,bob 3.2s ease-in-out calc(var(--d) + .9s) infinite}
+.bk small{font-size:.62em;letter-spacing:-.05em}
+#cvbt{display:flex;align-items:center;gap:1.2em;margin-top:1.2em}
+#go{font-size:2.8em;background:#22c55e;color:#fff;padding:.25em 1em;border-radius:1em;line-height:1.15}
+#go small{display:block;font-size:.42em;font-weight:normal}
+#stb{font-size:2em;border:.1em solid #f59e0b}
+#cvsum{margin-top:1.1em;font-size:1.7em;font-weight:bold;color:#7c4a1e;display:flex;align-items:center;gap:.7em}
+.bar{display:inline-block;width:16em;height:.7em;background:#e5e7eb;border-radius:.4em;overflow:hidden}
+.bar i{display:block;height:100%;background:#22c55e;border-radius:.4em}
+#cvR{left:59em;top:6em;width:37em;height:26em;background:#fff;border:.25em solid #f59e0b;border-radius:2em;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:1em 1.5em;gap:.8em}
+#cvf{width:100%}#cvf svg{display:block;width:100%;height:auto}
+#cvfm{font-size:2.8em;min-height:1.5em;visibility:hidden}
+#snd2{right:2em;top:1em;font-size:1.5em}
+#lvs{left:4em;right:4em;bottom:2em}
+#lvs h2{margin:0 0 .5em;font-size:2em;color:#7c4a1e}
+#lvg{display:grid;grid-template-columns:repeat(5,1fr);gap:.9em}
+.lv{position:relative;text-align:left;padding:.7em 1em;border-radius:1.2em;background:#fff;border:.18em solid #fde68a;display:flex;flex-direction:column;gap:.5em;animation:pop .5s var(--sp) var(--d) both}
+.lv.cur{border-color:#f59e0b;background:#fff8e1}
+.lv .t{display:flex;align-items:center;gap:.6em}
+.no{display:inline-flex;align-items:center;justify-content:center;width:1.9em;height:1.9em;border-radius:50%;color:#fff;font-weight:bold;font-size:1.6em;flex:none}
+.lv em{font-style:normal;font-size:1.35em;font-weight:bold;line-height:1.1}
+.r2{display:flex;align-items:center;gap:.7em}
+.sg{flex:1;display:flex;gap:.12em}.sg i{flex:1;height:1.1em;border-radius:.3em}
+.r2 b{font-size:1.3em;white-space:nowrap}
+.lv u{position:absolute;left:.75em;top:-.75em;text-decoration:none;font-size:1.7em;transform:rotate(-14deg);pointer-events:none;animation:bpop .6s var(--sp) both;--r:-14deg}
+.s0{background:#e5e7eb}.sh{background:#fdba74}.s1{background:#4ade80}
+#sc{display:grid;grid-template-rows:5.6em 3em minmax(0,1fr);background:#fffdf3}
+.hh{display:flex;align-items:center;gap:1.2em;padding:0 2em;background:#fde68a;font-size:1.6em;font-weight:bold}.hh #bk{font-size:.85em}
+#scs{flex:1;display:flex;align-items:center;gap:.6em;font-size:.8em}
+#scs .bar{width:10em}#rs{font-size:.65em}
+#lg{display:flex;align-items:center;gap:1.6em;padding:0 2em;font-size:1.5em;color:#555}
+#lg i{display:inline-block;width:1.2em;height:1.2em;border-radius:.3em;vertical-align:middle;margin-right:.3em}
+#rows{display:flex;flex-direction:column;justify-content:space-between;gap:.35em;padding:.2em 2em .8em;min-height:0}.rw .no{font-size:1.05em}
+.rw{flex:1;min-height:0;display:flex;align-items:center;gap:1em;background:#fff;border-radius:.9em;border:.15em solid #f1e7c8;padding:0 1em}
+.rl{width:16em;display:flex;align-items:center;gap:.6em;font-size:1.25em;font-weight:bold}
+.cs{flex:1;display:flex;flex-wrap:wrap;gap:.3em}
+.ch{position:relative;width:2.2em;height:2.2em;padding:0;border-radius:.55em;font-size:1.1em;font-weight:bold}
+.ch.s0{color:#9ca3af}.ch.sh{color:#9a3412}.ch.s1{color:#14532d}
+.ch.cur{box-shadow:0 0 0 .2em #f59e0b}
+.ch i{position:absolute;right:.1em;top:-.1em;font-size:.55em;font-style:normal;color:#ca8a04}
+.rc{width:7em;text-align:right;font-size:1.4em}
+/* 確認用モード(URLの末尾に #gallery) */
+body.gal{display:block;height:auto;overflow:auto}
+#gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;padding:8px;font:14px sans-serif}
+#gal p{grid-column:1/-1;margin:0}
+#gal figure{margin:0;background:#fff;border:2px solid #e2e8f0;border-radius:8px;padding:4px}
+#gal figure.bad{border-color:#dc2626}
+#gal figcaption{padding:2px 4px}
+#gal.pt{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+#gal.pt figure{text-align:center}
+#gal.pt svg{display:inline-block;margin:2px}
+#gal figcaption b{color:#dc2626;margin-left:4px}
+#gal svg{display:block;width:100%;height:auto}
+</style></head><body>
+<!-- SVG部品(1回だけ定義して <use> で再利用)。非表示は display:none にしない。中身 i-* は 32×32、容器 c-* は 140×高さ -->
+<svg id="sp" width="0" height="0" style="position:absolute" aria-hidden="true">
+<!--髪・えり・そで--><symbol id="i-person" viewBox="0 0 32 32"><g stroke="#6b5d52" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M2.5 31.5v-4.5a13.5 9.5 0 0 1 27 0v4.5z" style="fill:var(--cl,#f59a4a)" stroke-width="1.6"/><path d="M16 17.5A13.5 9.5 0 0 1 28.4 23.2V30.4H16z" fill="#000" opacity=".12" stroke="none"/><path d="M7.2 24.6q-.6 3.4 0 6M24.8 24.6q.6 3.4 0 6" fill="none" stroke-width="1.2"/><path d="M12.4 19.4 16 24.2l3.6-4.8" fill="#fffaf2" stroke-width="1.2"/><circle cx="16" cy="10" r="7.5" fill="#fffaf2" stroke-width="1.6"/><path d="M8.6 10.2C7.8 4.6 11.4 2 16 2s8.2 2.6 7.4 8.2c-2.6-.2-5.6-1.8-6.6-4.2-1.2 2.4-4.8 3.8-8.2 4.2z" fill="#6b4a36"/><path d="M13.8 14.4q2.2 1.8 4.4 0" fill="none" stroke-width="1.2"/></g><circle cx="13.2" cy="11.6" r="1.2" fill="#6b5d52"/><circle cx="18.8" cy="11.6" r="1.2" fill="#6b5d52"/></symbol>
+<!--包み紙のねじり・丸い中身・つや--><symbol id="i-candy" viewBox="0 0 32 32"><path d="M10 16 2.5 8.5v15zM22 16l7.5-7.5v15z" fill="#f5a35c" stroke="#b8702f" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 12.6 8.4 16 6 19.4M26 12.6 23.6 16l2.4 3.4" fill="none" stroke="#b8702f" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="16" cy="16" rx="9.5" ry="8.5" fill="#e8554e"/><path d="M16 7.5a9.5 8.5 0 0 1 0 17z" fill="#cf4640"/><ellipse cx="16" cy="16" rx="9.5" ry="8.5" fill="none" stroke="#a63a33" stroke-width="1.6"/><path d="M10.4 13.4a6 5.4 0 0 1 4.6-3.3" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".8"/></symbol>
+<!--へた・葉・つや--><symbol id="i-apple" viewBox="0 0 32 32"><path d="M16 10c-4-3-11-1-11 8 0 6 5 11 11 11s11-5 11-11c0-9-7-11-11-8z" fill="#e5584f" stroke="#a23a33" stroke-width="1.6" stroke-linejoin="round"/><path d="M23.4 12.4c2 2.6 1.8 7.4-.8 11-1.8 2.4-4 3.2-6.6 3.6 4.4-2.4 7.4-8.2 7.4-14.6z" fill="#cc473f"/><path d="M16 10C16 7 17 5 18 4" fill="none" stroke="#7a5230" stroke-width="2" stroke-linecap="round"/><path d="M18 8c1-4 5-5 9-4-1 4-5 6-9 4z" fill="#5fbf6a" stroke="#3f8f4a" stroke-width="1.2" stroke-linejoin="round"/><path d="M19.4 6.8c2-1.4 4-2 5.6-2" fill="none" stroke="#3f8f4a" stroke-width=".9" stroke-linecap="round"/><path d="M9 16.4q.2-3 2.6-4.4" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".75"/></symbol>
+<!--焼き色のふち・チョコ片・まるい形--><symbol id="i-cookie" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#d9a05f" stroke="#a8703a" stroke-width="1.8"/><circle cx="16" cy="16" r="9" fill="#e8b97c"/><g fill="#7a4a2a" stroke="#7a4a2a" stroke-width=".8" stroke-linejoin="round"><path d="M9.2 11.4l3-1 1 3-3 1z"/><path d="M19.2 9.8l3.2.6-.4 3-3-.4z"/><path d="M19.6 18.6l3 .5-.6 3-3-.6z"/><path d="M10.2 19.4l3 .4-.4 3-3-.5z"/><path d="M15 14.2l2.4.4-.5 2.4-2.2-.5z"/></g></symbol>
+<!--角丸・面の塗り分け・つや--><symbol id="i-star" viewBox="0 0 32 32"><polygon points="16,3 19.5,12.2 29.3,12.7 21.7,18.9 24.2,28.3 16,23 7.8,28.3 10.3,18.9 2.7,12.7 12.5,12.2" fill="#f7a62b" stroke="#c9741a" stroke-width="1.6" stroke-linejoin="round"/><polygon points="16,5.6 18.6,12.8 26,13.3 20.2,18.3 22,25.4 16,21.2" fill="#ee8c14"/><path d="M11 12.4l3.2-.6" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></symbol>
+<!--うちわく・ひし形・すみの印--><symbol id="i-card" viewBox="0 0 32 32"><rect x="6" y="2.5" width="20" height="27" rx="3" fill="#fff" stroke="#6b5d52" stroke-width="1.6"/><rect x="8.4" y="4.9" width="15.2" height="22.2" rx="1.6" fill="none" stroke="#e1d8cd" stroke-width="1"/><path d="M16 9l5 7-5 7-5-7z" fill="#e5584f"/><path d="M16 9l5 7-5 7z" fill="#c9433d"/><path d="M11 6.4l1.2 1.7L11 9.8 9.8 8.1zM21 25.6l-1.2-1.7 1.2-1.7 1.2 1.7z" fill="#e5584f"/></symbol>
+<!--消しゴム・金具・木と芯--><symbol id="i-pencil" viewBox="0 0 32 32"><g transform="rotate(45 16 16)" stroke="#6b5d52" stroke-width="1.4" stroke-linejoin="round"><rect x="12.5" y="1.5" width="7" height="5" rx="1.8" fill="#f3eee6"/><rect x="12.5" y="6.5" width="7" height="3.5" fill="#b9bfc7"/><rect x="12.5" y="10" width="7" height="12" fill="#e5584f"/><path d="M16 10.7h2.8v10.6H16z" fill="#c9433d" stroke="none"/><path d="M12.5 22h7L16 30z" fill="#ecc994"/><path d="M14.6 26.4h2.8L16 30z" fill="#4b505a" stroke="none"/></g></symbol>
+<!--ふち・内側の円・つや--><symbol id="i-coin" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5" fill="#c9cfd6" stroke="#7d858f" stroke-width="1.8"/><circle cx="16" cy="16" r="9" fill="#e3e7ec" stroke="#98a0aa" stroke-width="1.2"/><circle cx="16" cy="16" r="3.4" fill="#c9cfd6" stroke="#98a0aa" stroke-width="1.2"/><path d="M9.4 11.8a8 8 0 0 1 4.6-3.8" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".85"/></symbol>
+<!--ふちの二重線・持ち手の穴・底の暗い面--><symbol id="c-tray" viewBox="0 0 140 150"><use href="#i-person" x="42" y="6" width="56" height="56" style="--cl:#f59a4a"/><rect x="14" y="64" width="112" height="78" rx="10" fill="#f0dcb4" stroke="#a8825a" stroke-width="2.5"/><path d="M16.5 136H123.5V137Q123.5 139.5 119 139.5H21Q16.5 139.5 16.5 137z" fill="#e0c48c"/><rect x="21" y="71" width="98" height="64" rx="6" fill="#fbf3e0"/><rect x="15.8" y="94" width="3.6" height="16" rx="1.8" fill="#a8825a"/><rect x="120.6" y="94" width="3.6" height="16" rx="1.8" fill="#a8825a"/></symbol>
+<!--ふたの折り目・テープ・取っ手穴--><symbol id="c-box" viewBox="0 0 140 150"><g stroke="#9a6b3a" stroke-width="2.5" stroke-linejoin="round"><path d="M18 24 26 8H70v16z" fill="#d6a15f"/><path d="M70 8h44l8 16H70z" fill="#c8924d"/></g><rect x="10" y="22" width="120" height="120" rx="9" fill="#e3b87d" stroke="#9a6b3a" stroke-width="2.5"/><rect x="62" y="5" width="16" height="22" rx="2" fill="#f1e2c0" stroke="#b98c55" stroke-width="1.5"/><rect x="20" y="32" width="100" height="82" rx="6" fill="#f6e7c8" stroke="#b98c55" stroke-width="2"/><path d="M10 116H130V133Q130 142 121 142H19Q10 142 10 133Z" fill="#cf9858" stroke="#9a6b3a" stroke-width="2.5" stroke-linejoin="round"/><rect x="56" y="124" width="28" height="7" rx="3.5" fill="#8a5a2c"/></symbol>
+<!--ふちの段・縁の暗い面・内側のくぼみ--><symbol id="c-plate" viewBox="0 0 140 150"><circle cx="70" cy="75" r="66" fill="#fff" stroke="#b9ae9f" stroke-width="2.5"/><path d="M125.9 95.4A59.5 59.5 0 0 1 59.7 133.6" fill="none" stroke="#ece4d8" stroke-width="7" stroke-linecap="round"/><circle cx="70" cy="75" r="60" fill="none" stroke="#e5ddd0" stroke-width="1.5"/><circle cx="70" cy="75" r="53" fill="#fffdf8" stroke="#e5ddd0" stroke-width="2"/></symbol>
+<!--しばり口のひだ・ちょうちょ結び・ふくらみの面--><symbol id="c-bag" viewBox="0 0 140 150"><path d="M52 46 42 20Q52 16 58 30Q70 12 82 30Q88 16 98 20L88 46z" fill="#eef6e9" stroke="#7f9a78" stroke-width="2.5" stroke-linejoin="round"/><path d="M58 31 62 45M70 27V45M82 31 78 45" fill="none" stroke="#7f9a78" stroke-width="1.5" stroke-linecap="round"/><path d="M48 48C20 56 8 84 10 112C12 134 30 144 70 144C110 144 128 134 130 112C132 84 120 56 92 48z" fill="#eef6e9" stroke="#7f9a78" stroke-width="2.5" stroke-linejoin="round"/><path d="M122 68C128 82 129 98 127 112" fill="none" stroke="#cfe0c6" stroke-width="4" stroke-linecap="round"/><rect x="50" y="40" width="40" height="8" rx="4" fill="#e8685f"/><circle cx="70" cy="44" r="5" fill="#d9574f"/><path d="M68 48 60 60M72 48 80 60" fill="none" stroke="#e8685f" stroke-width="3.5" stroke-linecap="round"/></symbol>
+<!--船首の反り・板の継ぎ目・縁--><symbol id="c-boat" viewBox="0 0 140 122"><path d="M4 62Q8 74 20 74H120Q132 74 136 62L122 106Q118 114 108 114H32Q22 114 18 106z" fill="#e0955a" stroke="#9a5f33" stroke-width="2.5" stroke-linejoin="round"/><path d="M21 99H119l-1.4 6.4Q115 112.6 107 112.6H33Q25 112.6 22.4 105.4z" fill="#cf7f48"/><path d="M12 86H128" stroke="#fbe8c8" stroke-width="3" stroke-linecap="round"/><path d="M18 98.5H122M52 76V98M88 76V98" fill="none" stroke="#9a5f33" stroke-width="1.5" opacity=".7"/><rect x="8" y="66" width="124" height="8" rx="4" fill="#b98550" stroke="#8a5f33" stroke-width="2"/></symbol>
+<!--ライト・ドアの線・ホイール--><symbol id="c-car" viewBox="0 0 140 100"><rect x="6" y="6" width="128" height="76" rx="18" fill="#e8685f" stroke="#9a3f38" stroke-width="2.5"/><rect x="14" y="14" width="112" height="32" rx="8" fill="#f4f7f8" stroke="#9a3f38" stroke-width="2"/><path d="M6 58H134M70 46V76" stroke="#9a3f38" stroke-width="2" opacity=".45"/><path d="M22 82a16 16 0 0 1 32 0zM86 82a16 16 0 0 1 32 0z" fill="#7a332d"/><g fill="#4b505a"><circle cx="38" cy="82" r="12"/><circle cx="102" cy="82" r="12"/></g><g fill="#c3c9d1"><circle cx="38" cy="82" r="5"/><circle cx="102" cy="82" r="5"/></g><rect x="9" y="50" width="13" height="7" rx="3.5" fill="#fff4e0" stroke="#9a3f38" stroke-width="1.5"/><rect x="118" y="50" width="13" height="7" rx="3.5" fill="#f0a35c" stroke="#9a3f38" stroke-width="1.5"/><path d="M60 63h8M72 63h8" stroke="#9a3f38" stroke-width="2.5" stroke-linecap="round"/></symbol>
+<!--座面の板の継ぎ目・脚の筋交い・足のパッド--><symbol id="c-bench" viewBox="0 0 140 106"><rect x="12" y="6" width="116" height="48" rx="7" fill="#c99a63" stroke="#8a6238" stroke-width="2.5"/><rect x="18" y="66" width="8" height="34" rx="3" fill="#8a6238"/><rect x="114" y="66" width="8" height="34" rx="3" fill="#8a6238"/><path d="M26 84H114" stroke="#8a6238" stroke-width="3"/><rect x="13" y="97" width="18" height="6" rx="3" fill="#6f4d2b"/><rect x="109" y="97" width="18" height="6" rx="3" fill="#6f4d2b"/><rect x="6" y="56" width="128" height="10" rx="5" fill="#b07f4a" stroke="#8a6238" stroke-width="2"/><path d="M12 61.5H128" stroke="#8a6238" stroke-width="1.2" opacity=".6"/></symbol>
+<!--編み目・ふちの帯・ねじれた持ち手--><symbol id="c-basket" viewBox="0 0 140 150"><g stroke="#8a6a4a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M32 52Q34 8 70 8T108 52" fill="none" stroke-width="5"/><path d="M36 50Q38 15 70 15T104 50" fill="none" stroke="#c9a56e" stroke-width="1.6"/><path d="M10 46H130L121 136Q120 144 111 144H29Q20 144 19 136Z" fill="#dcae68"/><rect x="22" y="54" width="96" height="76" rx="6" fill="#faf0d8"/><rect x="8" y="42" width="124" height="10" rx="5" fill="#c9965a"/><path d="M16 138H124M18 142H122" fill="none" opacity=".5" stroke-width="1.5"/><path d="M13 64l7 4M13 84l7 4M13 104l7 4M127 64l-7 4M127 84l-7 4M127 104l-7 4" fill="none" stroke-width="1.5" opacity=".6"/></g></symbol>
+<!--首のリング・肩のつや・足の帯--><symbol id="c-vase" viewBox="0 0 140 150"><g stroke="#9a5f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M48 72H92Q90 88 110 104Q122 118 118 134Q116 144 104 144H36Q24 144 22 134Q18 118 30 104Q50 88 48 72Z" fill="#ebb98c"/><path d="M21.6 130H118.4Q119 134 117 137Q115 142 104 142H36Q25 142 23 137Q21 134 21.6 130z" fill="#d99a6c" stroke="none"/><rect x="40" y="64" width="60" height="9" rx="4.5" fill="#d99a6c"/><path d="M27 114H113" fill="none" stroke="#fff4e4" stroke-width="5"/><path d="M34 108Q41 100 52 94" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/></g></symbol>
+<!--ふちの帯・暗い面・底の線--><symbol id="c-pot" viewBox="0 0 140 150"><g stroke="#9a5530" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M28 82H112L104 140Q103 144 98 144H42Q37 144 36 140Z" fill="#e2955f"/><path d="M96 85.6H109.4L102.6 138.4Q102 140.6 98 140.6H94z" fill="#cf7f4a" stroke="none"/><path d="M42 131H98" fill="none" stroke-width="1.5" opacity=".5"/><rect x="18" y="64" width="104" height="20" rx="6" fill="#ea9f69"/><path d="M26 78H50" fill="none" stroke="#f6c79a" stroke-width="3"/></g></symbol>
+<!--窓・床の板・かべの上の帯--><symbol id="c-room" viewBox="0 0 140 150"><g stroke="#a8825a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><rect x="8" y="8" width="124" height="110" rx="8" fill="#f8ecd4"/><path d="M9.2 14.6V16Q9.2 9.2 16 9.2H124Q130.8 9.2 130.8 16V14.6z" fill="#efdcb8" stroke="none"/><rect x="18" y="16" width="36" height="28" rx="3" fill="#fff"/><path d="M36 16V44M18 30H54" fill="none" stroke-width="2"/><path d="M8 116H132V134Q132 142 124 142H16Q8 142 8 134Z" fill="#dcb98a"/><path d="M9.2 130H130.8V134Q130.8 140.8 124 140.8H16Q9.2 140.8 9.2 134z" fill="#cfa876" stroke="none"/><path d="M34 118V129M62 118V129M90 118V129M118 118V129" fill="none" stroke="#b9915f" stroke-width="1.5"/></g></symbol>
+<!--板の継ぎ目・横の暗い面・足--><symbol id="c-shelf" viewBox="0 0 140 100"><g stroke="#8a6238" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><rect x="8" y="6" width="124" height="88" rx="8" fill="#c99a63"/><rect x="126" y="14" width="4.8" height="58" rx="2.4" fill="#b07f4a" stroke="none"/><rect x="16" y="14" width="108" height="60" rx="3" fill="#f8ecd4"/><rect x="8" y="72" width="124" height="14" rx="4" fill="#b07f4a"/><path d="M12 79H128" fill="none" stroke-width="1.2" opacity=".6"/><rect x="18" y="92" width="14" height="6" rx="2.5" fill="#8a6238" stroke="none"/><rect x="108" y="92" width="14" height="6" rx="2.5" fill="#8a6238" stroke="none"/></g></symbol>
+<!--屋根の面・底の面・つり金具--><symbol id="c-gondola" viewBox="0 0 140 104"><g stroke="#9a5f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M70 2V20" fill="none" stroke="#7d858f" stroke-width="4"/><path d="M12 36Q12 20 28 20H112Q128 20 128 36V88Q128 98 118 98H22Q12 98 12 88Z" fill="#ef9f62"/><path d="M13.2 36Q13.2 21.2 28 21.2H112Q126.8 21.2 126.8 36z" fill="#e58a4c" stroke="none"/><path d="M13.2 84H126.8V88Q126.8 96.8 118 96.8H22Q13.2 96.8 13.2 88z" fill="#e58a4c" stroke="none"/><rect x="20" y="28" width="100" height="48" rx="6" fill="#fff8ec"/></g><circle cx="70" cy="3.4" r="3.4" fill="#7d858f"/></symbol>
+<!--先端の反り・暗い面・ふちの帯--><symbol id="c-canoe" viewBox="0 0 140 84"><g stroke="#8a5530" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M4 40Q10 46 20 46H120Q130 46 136 40Q124 80 70 80Q16 80 4 40Z" fill="#d79656"/><path d="M12.6 56.6Q70 68.8 127.4 56.6Q118 76.2 70 78Q22 76.2 12.6 56.6z" fill="#c0834a" stroke="none"/><path d="M14 58Q70 70 126 58" fill="none" stroke="#f6dcae" stroke-width="3"/><path d="M10 50H130" fill="none" stroke="#b9743a" stroke-width="3"/></g></symbol>
+<!--屋根の面・屋根の継ぎ目・ペグ--><symbol id="c-tent" viewBox="0 0 140 110"><g stroke="#3f8a4a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M70 4 136 52H4Z" fill="#78c46f"/><path d="M70.6 9 130.8 51H70.6z" fill="#6bb862" stroke="none"/><path d="M70 6 38 51M70 6 102 51" fill="none" stroke-width="1.5" opacity=".6"/><rect x="10" y="50" width="120" height="56" rx="4" fill="#78c46f"/><rect x="22" y="56" width="96" height="46" rx="4" fill="#fff4dc"/><path d="M4 108H14M126 108H136" fill="none" stroke="#8a5530" stroke-width="3"/></g></symbol>
+<!--ドアの線・すその面・レールと車輪--><symbol id="c-train" viewBox="0 0 140 100"><g stroke="#4f8a45" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M4 95H136" fill="none" stroke="#7d858f" stroke-width="3"/><rect x="4" y="6" width="132" height="74" rx="14" fill="#8ccb7a"/><path d="M5.3 70H134.7V72Q134.7 78.7 128 78.7H12Q5.3 78.7 5.3 72z" fill="#78b868" stroke="none"/><rect x="12" y="14" width="116" height="42" rx="8" fill="#fbfdf6"/><path d="M4 64H136M46 56V76M94 56V76" fill="none"/><circle cx="34" cy="84" r="10" fill="#4b505a" stroke="none"/><circle cx="106" cy="84" r="10" fill="#4b505a" stroke="none"/><g fill="#c3c9d1" stroke="none"><circle cx="34" cy="84" r="3.6"/><circle cx="106" cy="84" r="3.6"/></g></g></symbol>
+<!--ちょうつがい・取っ手・足--><symbol id="c-locker" viewBox="0 0 140 150"><g stroke="#7d858f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><rect x="14" y="144" width="18" height="5" rx="2" fill="#7d858f" stroke="none"/><rect x="108" y="144" width="18" height="5" rx="2" fill="#7d858f" stroke="none"/><rect x="8" y="6" width="124" height="138" rx="8" fill="#cfd5db"/><path d="M121 8H126Q130.4 8 130.4 12.4V137.6Q130.4 142 126 142H121z" fill="#bcc3ca" stroke="none"/><rect x="9.4" y="48" width="7" height="12" rx="2.5" fill="#9aa2aa" stroke="none"/><rect x="9.4" y="100" width="7" height="12" rx="2.5" fill="#9aa2aa" stroke="none"/><path d="M42 18H98M42 26H98" fill="none"/><rect x="20" y="36" width="100" height="96" rx="4" fill="#f4f6f8"/><rect x="122.2" y="78" width="5.4" height="20" rx="2.7" fill="#8d949c" stroke="none"/></g></symbol>
+<!--背表紙・ラベル・しおり--><symbol id="i-book" viewBox="0 0 32 32"><g stroke="#3f8f4a" stroke-width="1.6" stroke-linejoin="round"><rect x="7" y="3" width="18" height="24" rx="2.5" fill="#5fbf6a"/><path d="M7 5.5A2.5 2.5 0 0 1 9.5 3H12v24H9.5A2.5 2.5 0 0 1 7 24.5z" fill="#4aa857"/><rect x="14" y="8" width="8" height="6" rx="1" fill="#fff" stroke="none"/></g><path d="M19 27v3.5l1.6-1.2 1.6 1.2V27z" fill="#e5584f" stroke="#a23a33" stroke-width="1" stroke-linejoin="round"/></symbol>
+<!--花びら3まい・くき・葉--><symbol id="i-tulip" viewBox="0 0 32 32"><path d="M16 15V31M16 27Q9 26 8 20Q14 21 16 27M16 25Q23 24 24 18Q18 19 16 25" fill="#5fbf6a" stroke="#3f8f4a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M8 4Q7 16 16 17Q25 16 24 4L19.5 8 16 3 12.5 8Z" fill="#c9473f" stroke="#a63a33" stroke-width="1.6" stroke-linejoin="round"/><path d="M12.6 8.6 16 4.4l3.4 4.2Q19 13.4 16 15.4 13 13.4 12.6 8.6z" fill="#e8685f"/></symbol>
+<!--まるい三角・のり帯・ごはん粒--><symbol id="i-onigiri" viewBox="0 0 32 32"><path d="M16 3Q19 3 22 9L29 24Q30 29 25 29H7Q2 29 3 24L10 9Q13 3 16 3Z" fill="#fff" stroke="#6b5d52" stroke-width="1.6" stroke-linejoin="round"/><path d="M17 5Q19.2 5.4 21.2 9.6L27 22.6Q27.6 26.6 24.4 26.6H17z" fill="#ebe5da"/><path d="M13.4 9.6l.6 1.8M16.6 12.4l.6 1.8M12 15.2l.6 1.8M19 16l.6 1.8" fill="none" stroke="#cfc6b6" stroke-width="1.2" stroke-linecap="round"/><path d="M8.6 21.4H23.4L25.2 29H6.8z" fill="#3f5a46" stroke="#6b5d52" stroke-width="1.2" stroke-linejoin="round"/><path d="M10.4 24.2H16" fill="none" stroke="#5f7d68" stroke-width="1.2" stroke-linecap="round"/></symbol>
+<!--トレッドの刻み・ホイール・ボルト--><symbol id="i-tire" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#4b505a" stroke="#2f333a" stroke-width="1.4"/><circle cx="16" cy="16" r="10.2" fill="none" stroke="#5f6570" stroke-width="1.2"/><path d="M16 3.6V5.4M16 26.6V28.4M3.6 16H5.4M26.6 16H28.4M7.2 7.2 8.5 8.5M23.5 23.5 24.8 24.8M24.8 7.2 23.5 8.5M8.5 23.5 7.2 24.8" stroke="#2f333a" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="16" r="6" fill="#c3c9d1" stroke="#7d858f" stroke-width="1.4"/><g fill="#7d858f"><circle cx="16" cy="12.6" r="1"/><circle cx="19.2" cy="15" r="1"/><circle cx="18" cy="18.8" r="1"/><circle cx="14" cy="18.8" r="1"/><circle cx="12.8" cy="15" r="1"/></g><circle cx="16" cy="16" r="1.4" fill="#4b505a"/></symbol>
+<!--ふくらみ・結び目・ひも--><symbol id="i-balloon" viewBox="0 0 32 32"><path d="M16 26Q12.6 28.6 16 31" fill="none" stroke="#7d858f" stroke-width="1.4" stroke-linecap="round"/><ellipse cx="16" cy="12" rx="9.5" ry="11" fill="#e8554e"/><path d="M16 1a9.5 11 0 0 1 0 22z" fill="#cf4640"/><ellipse cx="16" cy="12" rx="9.5" ry="11" fill="none" stroke="#a63a33" stroke-width="1.6"/><path d="M13 22H19L16 26Z" fill="#a63a33" stroke="#a63a33" stroke-width="1" stroke-linejoin="round"/><path d="M11 8Q12 5 15 4" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".8"/></symbol>
+<!--卵形・殻のつや・かげの面--><symbol id="i-egg" viewBox="0 0 32 32"><path d="M16 3C10 3 6 14 6 20C6 26 10 29 16 29S26 26 26 20C26 14 22 3 16 3Z" fill="#fff8ea" stroke="#a8946f" stroke-width="1.8"/><path d="M20.6 9C22.8 12.6 24 16.6 24 20c0 4.6-3.4 7-8 7 3.8-2.6 6-8.6 4.6-18z" fill="#f0e2c6"/><path d="M11 17Q11 11 14 8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M12 22h.1M17.4 24h.1" stroke="#cdbb98" stroke-width="1.4" stroke-linecap="round"/></symbol>
+<!--へた・葉・ふくらみの面--><symbol id="i-orange" viewBox="0 0 32 32"><circle cx="16" cy="17" r="12" fill="#f5a04a" stroke="#c9741a" stroke-width="1.8"/><path d="M24.6 12.6A10.5 10.5 0 0 1 16 27.5c4.6-3.2 8.2-8.6 8.6-14.9z" fill="#e88b2f"/><path d="M16 6Q20 1 25 3Q22 8 16 6Z" fill="#5fbf6a" stroke="#3f8f4a" stroke-width="1.2" stroke-linejoin="round"/><circle cx="16" cy="6.8" r="1.8" fill="#4a9a55"/><path d="M9 14Q10 10 14 9" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></symbol>
+<!--折り目・めくれた白い角・面の暗い部分--><symbol id="i-origami" viewBox="0 0 32 32"><path d="M4 4H20L28 12V28H4Z" fill="#e8685f" stroke="#a63a33" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 27.2H27.2V16z" fill="#dc5a52"/><path d="M20 4V12H28Z" fill="#fff" stroke="#a63a33" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 4V28M4 20H28" fill="none" stroke="#fff" stroke-width="1" opacity=".45"/></symbol>
+<!--山形・切れ目・焼き色の面--><symbol id="i-bread" viewBox="0 0 32 32"><path d="M3 21Q3 8 16 8T29 21Q29 28 24 28H8Q3 28 3 21Z" fill="#d9a15a" stroke="#9a6330" stroke-width="1.6" stroke-linejoin="round"/><path d="M4.4 22.4Q4.8 26.6 8 26.6H24Q27.2 26.6 27.6 22.4Q16 20.6 4.4 22.4z" fill="#c68a44"/><path d="M8.4 12Q11.4 9.4 15.2 9.4" fill="none" stroke="#ebc384" stroke-width="1.8" stroke-linecap="round"/><path d="M10 12.5 13 18M16 11.5V18M22 12.5 19 18" fill="none" stroke="#f7e1b5" stroke-width="2.2" stroke-linecap="round"/></symbol>
+<!--割り線・銀紙のめくれ・つや--><symbol id="i-choco" viewBox="0 0 32 32"><rect x="4" y="6" width="24" height="20" rx="3" fill="#8b5a3c" stroke="#4f2f1c" stroke-width="1.6"/><path d="M12 6.8V19M20 6.8V19M4.8 12.6H27.2" fill="none" stroke="#5b3822" stroke-width="1.4"/><path d="M6.4 9.4H10M14.4 9.4H18M22.4 9.4H26M6.4 15.6H10M14.4 15.6H18M22.4 15.6H26" fill="none" stroke="#c99a76" stroke-width="1.2" stroke-linecap="round"/><path d="M4 19.6 7 21.8 10 19.6 13 21.8 16 19.6 19 21.8 22 19.6 25 21.8 28 19.6V23Q28 26 25 26H7Q4 26 4 23z" fill="#c9cfd6" stroke="#7d858f" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+<!--へた・つぶ・ふくらみの面--><symbol id="i-strawberry" viewBox="0 0 32 32"><path d="M16 29C8 25 4 18 5 12Q6 9 10 9H22Q26 9 27 12C28 18 24 25 16 29Z" fill="#e5584f" stroke="#a23a33" stroke-width="1.6" stroke-linejoin="round"/><path d="M22.6 10.6Q25.6 10.8 25.8 13C26.6 18.6 22.6 24 16 27.4 21 22.6 23 16 22.6 10.6z" fill="#cc473f"/><path d="M11 15.4h.1M16.4 15h.1M21 17.6h.1M13.4 21h.1M18 21.8h.1" stroke="#fbe8c8" stroke-width="2" stroke-linecap="round"/><path d="M16 8V3.8" stroke="#3f8f4a" stroke-width="2" stroke-linecap="round"/><path d="M8.5 10 12 6 16 8.5 20 6 23.5 10 16 13Z" fill="#5fbf6a" stroke="#3f8f4a" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+<!--ストロー・屋根の折り目・ふくらみの面--><symbol id="i-juice" viewBox="0 0 32 32"><path d="M17 9V5Q17 2.5 20 2.5H24" fill="none" stroke="#e5584f" stroke-width="2.2" stroke-linecap="round"/><path d="M8 11 11 7H21L24 11V28Q24 30 22 30H10Q8 30 8 28Z" fill="#f5a04a" stroke="#c9741a" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 11.4H23V28.4Q23 29.2 22 29.2H16z" fill="#e88b2f"/><path d="M8.8 11H23.2" stroke="#c9741a" stroke-width="1.2"/><rect x="11" y="15" width="10" height="9" rx="2" fill="#fff"/><circle cx="16" cy="19.5" r="2.6" fill="#f08a2c"/><path d="M16 16.9Q18.4 15.6 19.4 17.2" fill="none" stroke="#5fbf6a" stroke-width="1.2" stroke-linecap="round"/></symbol>
+<!--高台・ふちの内側・帯--><symbol id="i-dish" viewBox="0 0 32 32"><rect x="10.5" y="22" width="11" height="5" rx="1.6" fill="#fff" stroke="#a8946f" stroke-width="1.6"/><path d="M2 12Q3 23 16 24Q29 23 30 12Z" fill="#fff" stroke="#a8946f" stroke-width="1.6" stroke-linejoin="round"/><path d="M24.6 13.6Q23.6 21 16.6 22.6Q27 21.2 28.4 13.6z" fill="#e9ece9"/><path d="M2.4 15.2Q3.2 17 4 18.2H28Q28.8 17 29.6 15.2Z" fill="#5fbf6a"/><ellipse cx="16" cy="12" rx="14" ry="3.4" fill="#eef0f2" stroke="#a8946f" stroke-width="1.6"/><ellipse cx="16" cy="12.4" rx="11.4" ry="2.3" fill="#e1e5e8"/></symbol>
+<!--ふたの折り目・テープ・持ち手穴--><symbol id="i-cardboard" viewBox="0 0 32 32"><rect x="4" y="7" width="24" height="21" rx="2.5" fill="#d6a15f" stroke="#9a6b3a" stroke-width="1.6"/><path d="M4.8 24.6H27.2V26.6Q27.2 27.2 26.4 27.2H5.6Q4.8 27.2 4.8 26.6z" fill="#c8914f"/><path d="M4 14H28" fill="none" stroke="#9a6b3a" stroke-width="1.4"/><rect x="13" y="7" width="6" height="12" fill="#f0ebe0" stroke="#9a6b3a" stroke-width="1.2"/><rect x="7" y="17.4" width="5.4" height="4" rx="1" fill="#f0ebe0" stroke="#b98c55" stroke-width=".9"/><rect x="21" y="19.6" width="4.6" height="2.2" rx="1.1" fill="#8a5a2c"/></symbol>
+<!--縫い目・つや・かげの面--><symbol id="i-ball" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5" fill="#ee8a3c" stroke="#b45f1f" stroke-width="1.8"/><path d="M24 8.6A11 11 0 0 1 16 27c5.4-3.4 8.6-9.2 8-18.4z" fill="#dd7628"/><path d="M16 3.5V28.5M3.5 16H28.5M7 7Q13 16 7 25M25 7Q19 16 25 25" fill="none" stroke="#5a3318" stroke-width="1.4"/><path d="M8.6 11.4Q10 8.4 13 7" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></symbol>
+<!--クリームのたれ・スポンジの層・いちごのへた--><symbol id="i-cake" viewBox="0 0 32 32"><g stroke="#a8793f" stroke-width="1.6" stroke-linejoin="round"><path d="M3 14H29V27Q29 29 27 29H5Q3 29 3 27Z" fill="#e7c18a"/><path d="M3.8 19H28.2V23H3.8Z" fill="#fff" stroke="none"/><path d="M3.8 26H28.2V27Q28.2 28.2 27 28.2H5Q3.8 28.2 3.8 27z" fill="#d4a96c" stroke="none"/><path d="M3 14Q3 10.5 7 10.5H25Q29 10.5 29 14Z" fill="#fff"/><path d="M8 14v2.4a1.4 1.4 0 0 0 2.8 0V14zM16 14v1.8a1.2 1.2 0 0 0 2.4 0V14zM23 14v2.6a1.4 1.4 0 0 0 2.8 0V14z" fill="#fff" stroke-width="1.2"/></g><path d="M11.5 10.5Q11.5 4.5 16 4.5T20.5 10.5Z" fill="#e5584f" stroke="#a23a33" stroke-width="1.4" stroke-linejoin="round"/><path d="M16 4.9Q19.4 5 19.8 9.8H16z" fill="#cc473f"/><path d="M13 5.8 16 3.6 19 5.8Z" fill="#5fbf6a"/><path d="M13.6 8h.1M15.4 6.8h.1M17.6 8.4h.1" stroke="#fbe8c8" stroke-width="1.2" stroke-linecap="round"/></symbol>
+<!--額ぶち・山の暗い面・茶の木--><symbol id="i-picture" viewBox="0 0 32 32"><rect x="3" y="5" width="26" height="22" rx="2.5" fill="#fff" stroke="#8a6a4a" stroke-width="1.8"/><rect x="5.6" y="7.6" width="20.8" height="16.8" rx="1" fill="none" stroke="#e1d8cd" stroke-width="1"/><circle cx="22" cy="12" r="3.4" fill="#f5a04a" stroke="#c9741a" stroke-width="1.2"/><path d="M5.5 25 13 14 19 21 22.5 17 26.5 25Z" fill="#5fbf6a" stroke="#3f8f4a" stroke-width="1.2" stroke-linejoin="round"/><path d="M13 14 19 21 15.6 25H13z" fill="#4aa857"/><path d="M8.4 25.2V21.2" stroke="#8a5f33" stroke-width="1.8" stroke-linecap="round"/><circle cx="8.4" cy="19" r="2.6" fill="#3f8f4a"/></symbol>
+<!--葉・横じわ・かげの面--><symbol id="i-carrot" viewBox="0 0 32 32"><g transform="rotate(35 16 16)"><path d="M16 9V3M16 9Q12 5 11 2M16 9Q20 5 21 2" fill="none" stroke="#5fbf6a" stroke-width="2.2" stroke-linecap="round"/><path d="M11 10Q16 8 21 10Q22 16 16 29Q10 16 11 10Z" fill="#f08a2c" stroke="#b85f12" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 9.4Q19.4 9.2 20 10.8Q20.8 16 16 27.4z" fill="#dc7418"/><path d="M12.6 14H15.2M17 18H19.4M14 21.6H16" stroke="#b85f12" stroke-width="1.2" stroke-linecap="round"/></g></symbol>
+<!--かぶせ・留め金・もち手--><symbol id="i-randoseru" viewBox="0 0 32 32"><path d="M12 5V3.6Q12 2.6 13 2.6H19Q20 2.6 20 3.6V5" fill="none" stroke="#6a1f1b" stroke-width="1.6" stroke-linecap="round"/><rect x="3.5" y="12" width="3.5" height="12" rx="1.6" fill="#8e2f2a" stroke="#6a1f1b" stroke-width="1.2"/><rect x="6" y="5" width="20" height="23" rx="4" fill="#b5413a" stroke="#6a1f1b" stroke-width="1.6"/><path d="M22.4 20V27.2H22Q25.2 27.2 25.2 24V20z" fill="#9c342e"/><path d="M6 10Q6 5 11 5H21Q26 5 26 10V18Q16 23 6 18Z" fill="#cf5a4f" stroke="#6a1f1b" stroke-width="1.4" stroke-linejoin="round"/><path d="M8.6 10.4Q8.6 7.6 11 7.6H21Q23.4 7.6 23.4 10.4" fill="none" stroke="#f2c9bf" stroke-width="1" stroke-dasharray="1.6 1.4"/><rect x="13" y="15" width="6" height="7.5" rx="1.4" fill="#b9835a" stroke="#7a5230" stroke-width="1.2"/><circle cx="16" cy="19" r="1" fill="#7a5230"/></symbol>
+<!--面取り・つや・目地--><symbol id="i-tile" viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24" rx="2.5" fill="#9db8a0" stroke="#66806b" stroke-width="1.6"/><path d="M26.4 8.4V24.4Q26.4 26.4 24.4 26.4H8.4L10.4 24.4H24V10.4z" fill="#8aa88e"/><rect x="8.5" y="8.5" width="15" height="15" rx="1.5" fill="#c4d8c6"/><path d="M10 12 12 10" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<!--ふたの面・リボンの結び・ふくらんだちょうちょ--><symbol id="c-gift" viewBox="0 0 140 150"><rect x="14" y="36" width="112" height="106" rx="9" fill="#f08a7c" stroke="#a8453a" stroke-width="2.5"/><rect x="24" y="48" width="92" height="84" rx="6" fill="#fff6ee" stroke="#d99a8f" stroke-width="2"/><rect x="8" y="14" width="124" height="26" rx="8" fill="#e5584f" stroke="#a8453a" stroke-width="2.5"/><path d="M10 35H130V36Q130 38 128 38H12Q10 38 10 36z" fill="#cf4640"/><rect x="62" y="14" width="16" height="26" fill="#fbd9b8"/><g fill="#e5584f" stroke="#a8453a" stroke-width="2" stroke-linejoin="round"><path d="M70 15C60 1 44 4 50 15z"/><path d="M70 15C80 1 96 4 90 15z"/></g><circle cx="70" cy="14" r="5" fill="#c9433d" stroke="#a8453a" stroke-width="1.5"/></symbol>
+<!--肩ボタン・下の暗い面・スタートボタン--><symbol id="c-game" viewBox="0 0 140 120"><rect x="18" y="1" width="24" height="6" rx="3" fill="#d8dde2" stroke="#8d949c" stroke-width="1.5"/><rect x="98" y="1" width="24" height="6" rx="3" fill="#d8dde2" stroke="#8d949c" stroke-width="1.5"/><rect x="6" y="4" width="128" height="112" rx="16" fill="#eceff2" stroke="#8d949c" stroke-width="2.5"/><path d="M7.2 102H132.8Q132 114.8 118 114.8H22Q8 114.8 7.2 102z" fill="#dde1e5"/><rect x="20" y="14" width="100" height="60" rx="6" fill="#454b55" stroke="#8d949c" stroke-width="2"/><path d="M26 97H44M35 88V106" stroke="#8d949c" stroke-width="6" stroke-linecap="round"/><circle cx="100" cy="100" r="7" fill="#e5584f"/><circle cx="118" cy="90" r="7" fill="#5fbf6a"/><path d="M62 100h8M74 100h8" stroke="#8d949c" stroke-width="3" stroke-linecap="round"/></symbol>
+<!--とじ穴・見出しの面・重なった紙--><symbol id="c-cal" viewBox="0 0 140 150"><rect x="12" y="14" width="116" height="128" rx="10" fill="#fff" stroke="#b9ae9f" stroke-width="2.5"/><path d="M20 145.5H120M28 148.5H112" stroke="#d9d0c4" stroke-width="2.5" stroke-linecap="round"/><path d="M12 44V24Q12 14 22 14H118Q128 14 128 24V44z" fill="#e5584f" stroke="#a8453a" stroke-width="2.5" stroke-linejoin="round"/><path d="M13.2 37H126.8V44H13.2z" fill="#cf4640"/><g fill="#8a7f74"><rect x="34" y="4" width="9" height="20" rx="4.5"/><rect x="97" y="4" width="9" height="20" rx="4.5"/></g><g fill="#fff"><circle cx="38.5" cy="30" r="2.6"/><circle cx="101.5" cy="30" r="2.6"/></g></symbol>
+<!--幹の木目・葉の暗い面・地面--><symbol id="c-tree" viewBox="0 0 140 150"><ellipse cx="70" cy="146" rx="32" ry="4" fill="#d6c9b0"/><rect x="60" y="104" width="20" height="40" rx="5" fill="#b9835a" stroke="#8a5f33" stroke-width="2.5"/><path d="M65 122V136M75 126V140" stroke="#8a5f33" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="70" cy="62" rx="62" ry="56" fill="#86d08c" stroke="#4a8f55" stroke-width="2.5"/><ellipse cx="70" cy="60" rx="52" ry="46" fill="#a8e0ad"/><path d="M113.7 94.8A57 51 0 0 1 75 112.8" fill="none" stroke="#6fbd78" stroke-width="6" stroke-linecap="round"/></symbol>
+<!--ふちの段・皿の暗い面・薬味の葉--><symbol id="c-curry" viewBox="0 0 140 150"><circle cx="70" cy="75" r="66" fill="#fff" stroke="#b9ae9f" stroke-width="2.5"/><path d="M125.9 95.4A59.5 59.5 0 0 1 59.7 133.6" fill="none" stroke="#ece4d8" stroke-width="7" stroke-linecap="round"/><circle cx="70" cy="75" r="60" fill="none" stroke="#e5ddd0" stroke-width="1.5"/><path d="M26 74C24 40 54 30 74 34C100 30 118 48 114 76C112 104 88 116 66 112C40 114 28 98 26 74z" fill="#dcae72" stroke="#a8703a" stroke-width="2.5" stroke-linejoin="round"/><path d="M38 40Q46 32 56 36Q50 44 38 40zM100 38Q108 34 112 42Q104 44 100 38z" fill="#7fb47a" stroke="#4f8a52" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+<!--ふちの二重線・ひも穴・底の暗い面--><symbol id="c-tag" viewBox="0 0 140 150"><rect x="14" y="64" width="112" height="78" rx="10" fill="#f0dcb4" stroke="#a8825a" stroke-width="2.5"/><path d="M16.5 136H123.5V137Q123.5 139.5 119 139.5H21Q16.5 139.5 16.5 137z" fill="#e0c48c"/><rect x="21" y="71" width="98" height="64" rx="6" fill="#fbf3e0"/><circle cx="70" cy="67.5" r="2.4" fill="#a8825a"/></symbol>
+<symbol id="c-pcandy" viewBox="0 0 140 150"><use href="#c-tag" width="140" height="150"/><use href="#i-candy" x="42" y="6" width="56" height="56"/></symbol>
+<symbol id="c-papple" viewBox="0 0 140 150"><use href="#c-tag" width="140" height="150"/><use href="#i-apple" x="42" y="6" width="56" height="56"/></symbol>
+<symbol id="c-pjuice" viewBox="0 0 140 150"><use href="#c-tag" width="140" height="150"/><use href="#i-juice" x="42" y="6" width="56" height="56"/></symbol>
+<symbol id="c-ponigiri" viewBox="0 0 140 150"><use href="#c-tag" width="140" height="150"/><use href="#i-onigiri" x="42" y="6" width="56" height="56"/></symbol>
+<symbol id="c-pcookie" viewBox="0 0 140 150"><use href="#c-tag" width="140" height="150"/><use href="#i-cookie" x="42" y="6" width="56" height="56"/></symbol>
+<symbol id="c-pbook" viewBox="0 0 140 150"><use href="#c-tag" width="140" height="150"/><use href="#i-book" x="42" y="6" width="56" height="56"/></symbol>
+<!--サドル・クランク・ハンドルのグリップ--><symbol id="c-bike" viewBox="0 0 140 100"><path d="M30 56 52 28H98L64 56 52 28M30 56H64M98 28 110 56M98 28 94 16H108M52 28V24" fill="none" stroke="#e5584f" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M44 19Q52 14.6 62 19.4Q60 22.8 54 22.8Q48 22.8 44 19z" fill="#4b505a"/><path d="M105 16H109.5" stroke="#4b505a" stroke-width="5" stroke-linecap="round"/><circle cx="64" cy="56" r="4.6" fill="#c3c9d1" stroke="#7d858f" stroke-width="1.5"/><path d="M59.5 61.5H69" stroke="#4b505a" stroke-width="3" stroke-linecap="round"/></symbol>
+<!--サドルの暗い面・ハンドルのグリップ・フレーム--><symbol id="c-trike" viewBox="0 0 140 150"><path d="M39 42V108M39 75H104M82 60V90" fill="none" stroke="#e5584f" stroke-width="5" stroke-linecap="round"/><rect x="50" y="64" width="22" height="22" rx="7" fill="#f59a4a" stroke="#c0713a" stroke-width="2"/><path d="M61 65.2H65Q70.8 65.2 70.8 71V79Q70.8 84.8 65 84.8H61z" fill="#e08a38"/><circle cx="82" cy="60" r="3.6" fill="#4b505a"/><circle cx="82" cy="90" r="3.6" fill="#4b505a"/></symbol>
+<!--ライト・屋根の面・窓--><symbol id="c-car4" viewBox="0 0 140 150"><rect x="26" y="30" width="88" height="92" rx="24" fill="#e8685f" stroke="#a8453a" stroke-width="2.5"/><rect x="54" y="64" width="32" height="24" rx="6" fill="#d95b52"/><rect x="52" y="46" width="36" height="16" rx="5" fill="#eef4f4" stroke="#a8453a" stroke-width="2"/><rect x="52" y="90" width="36" height="14" rx="5" fill="#eef4f4" stroke="#a8453a" stroke-width="2"/><g stroke="#a8453a" stroke-width="1.2"><rect x="56" y="33" width="10" height="5" rx="2.5" fill="#fff4e0"/><rect x="74" y="33" width="10" height="5" rx="2.5" fill="#fff4e0"/><rect x="56" y="113" width="10" height="4" rx="2" fill="#f0a35c"/><rect x="74" y="113" width="10" height="4" rx="2" fill="#f0a35c"/></g></symbol>
+<!--背もたれの板・クッション・座面の暗い面--><symbol id="c-chair" viewBox="0 0 140 150"><rect x="30" y="18" width="80" height="16" rx="8" fill="#b9835a" stroke="#8a5f33" stroke-width="2.5"/><path d="M50 21V31M70 21V31M90 21V31" stroke="#8a5f33" stroke-width="1.5" stroke-linecap="round"/><rect x="28" y="38" width="84" height="80" rx="12" fill="#d9b07a" stroke="#8a5f33" stroke-width="2.5"/><path d="M29.2 106H110.8Q110.8 116.8 100 116.8H40Q29.2 116.8 29.2 106z" fill="#c9a06a"/><rect x="38" y="47" width="64" height="52" rx="8" fill="#e3c08d"/></symbol>
+<!--年輪・ふちの面・つや--><symbol id="i-leg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#c89a68" stroke="#8a5f33" stroke-width="1.6"/><circle cx="16" cy="16" r="8.6" fill="none" stroke="#b58552" stroke-width="1.2"/><circle cx="16" cy="16" r="5" fill="#a87a4a"/><path d="M8.6 11.6a8.6 8.6 0 0 1 4.6-3.6" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></symbol>
+</svg>
+<div id="app" hidden>
+<header><span id="hd"></span><button id="home">🏠 ひょうし</button><button id="snd"></button><button id="say">🔈 よむ</button></header>
+<section id="L"><p id="q"></p><div id="bal"></div>
+<div id="eq"><div><input class="b" inputmode="numeric"><small>1つ分</small></div>×<div><input class="p" inputmode="numeric"><small>いくつ分</small></div>＝<div><input class="y" inputmode="numeric"><small>ぜんぶ</small></div></div>
+<div id="pad"></div>
+<div id="bt"><button id="ok">こたえあわせ</button><button id="hb">ヒント</button><button id="nx" hidden>つぎへ ▶</button></div></section>
+<section id="R"><div id="st"></div><div id="lbs"></div></section></div>
+<main id="cv" class="scr" hidden><svg class="dc" style="left:31em;top:3em;width:4.6em;height:4.6em;--d:0s" aria-hidden="true"><use href="#i-apple" width="100%" height="100%"/></svg><svg class="dc" style="left:38em;top:5.5em;width:5em;height:5em;--d:.5s" aria-hidden="true"><use href="#i-star" width="100%" height="100%"/></svg><svg class="dc" style="left:48em;top:2.5em;width:5em;height:5em;--d:1s" aria-hidden="true"><use href="#i-balloon" width="100%" height="100%"/></svg><svg class="dc" style="left:33.5em;top:9.5em;width:4.2em;height:4.2em;--d:1.5s" aria-hidden="true"><use href="#i-cookie" width="100%" height="100%"/></svg><svg class="dc" style="left:46em;top:10.5em;width:4.4em;height:4.4em;--d:.8s" aria-hidden="true"><use href="#i-candy" width="100%" height="100%"/></svg><svg class="dc" style="left:51em;top:16em;width:4.6em;height:4.6em;--d:1.2s" aria-hidden="true"><use href="#i-orange" width="100%" height="100%"/></svg>
+<div id="cvL"><span class="tg">2年　立式マスター</span><div id="ttl"></div><div id="cvbt"><button id="go"></button><button id="stb">⭐ クリアじょうきょう</button></div><div id="cvsum"></div></div>
+<div id="cvR"><div id="cvf"></div><div id="cvfm" class="fm"></div></div>
+<button id="snd2"></button>
+<section id="lvs"><h2>レベルを えらんで スタート！</h2><div id="lvg"></div></section></main>
+<div id="sc" class="scr" hidden>
+<div class="hh"><button id="bk">◀ ひょうし</button><span>クリアじょうきょう</span><span id="scs"></span><button id="rs">さいしょから やりなおす</button></div>
+<div id="lg"><span><i class="s1"></i>ヒントなしで クリア</span><span><i class="sh"></i>ヒントを つかった</span><span><i class="s0"></i>まだ</span><span>すうじを おすと、その もんだいへ いけるよ</span></div>
+<div id="rows"></div></div>
+<script>
+const $=i=>document.getElementById(i),K='kakezan_bunsho_v1',sp=s=>s.split(',');
+// 問題データ [レベル,分類,まとまりの絵,中身の絵,1つ分のまとまり,問題文({o}=1つ分 {g}=いくつ分),1つ分,いくつ分]
+// 分類 A:ずつ B:定員・容量 C:入り数 D:1回・1人分 E:それぞれ F:組・セット G:列・段 H:ねだん
+// 数字の登場順・「ずつ」の有無・式(1つ分×いくつ分)・ぜんぶの数は、ここから自動で作る
+const P=[
+[1,'A','🧒','🃏','1人','{g}人に、カードを{o}まいずつくばります。ぜんぶで何まいですか？',2,3],
+[1,'A','📦','🍬','1つのはこ','{g}つのはこに、あめを{o}こずつ入れます。ぜんぶで何こですか？',5,4],
+[1,'A','🧒','📄','1人','{g}人に、おりがみを{o}まいずつわたします。ぜんぶで何まいですか？',3,2],
+[2,'A','🧒','🃏','1人','カードを{o}まいずつ、{g}人にくばります。ぜんぶで何まいですか？',3,4],
+[2,'A','👜','🍬','1つのふくろ','あめを{o}こずつ、{g}つのふくろに入れます。ぜんぶで何こですか？',4,3],
+[2,'A','🧒','⭐','1人','シールを{o}まいずつ、{g}人にあげます。ぜんぶで何まいですか？',2,5],
+[3,'D','🎮','⭐','1回','1回に{o}点もらえるゲームを、{g}回します。ぜんぶで何点ですか？',4,3],
+[3,'D','🧒','🥣','1人分','1人分のおさらは{o}まいです。{g}人分よういします。ぜんぶで何まいですか？',3,4],
+[3,'D','🛒','🍎','1回','1回の買いもので、りんごを{o}こずつ買います。{g}回買いものをすると、ぜんぶで何こですか？',2,3],
+[4,'B','⛵','🧒','1そう','{g}そうのボートがあります。どのボートも{o}人のりです。ぜんぶで何人のれますか？',2,4],
+[4,'B','🚗','🧒','1台','{g}台の車があります。どの車も{o}人のりです。ぜんぶで何人のれますか？',4,3],
+[4,'B','🧺','🍎','1つのかご','{g}つのかごがあります。どのかごにも、りんごが{o}こ入ります。ぜんぶで何こですか？',3,5],
+[4,'B','🥣','🧒','1つのテーブル','{g}つのテーブルがあります。1つのテーブルに{o}人すわれます。ぜんぶで何人すわれますか？',4,2],
+[4,'C','📦','🍙','1はこ','{o}こ入りのはこが{g}はこあります。ぜんぶで何こですか？',3,4],
+[4,'C','📦','📝','1セット','{o}本入りのえんぴつセットが{g}セットあります。ぜんぶで何本ですか？',5,2],
+[4,'C','👜','🍬','1ふくろ','あめが{o}こ入りのふくろを、{g}ふくろ買いました。ぜんぶで何こですか？',4,3],
+[4,'C','🎁','🍞','1セット','{g}セット買いました。1セットにはパンが{o}こ入っています。ぜんぶで何こですか？',2,4],
+[5,'E','🏺','🌷','1つのかびん','{g}つのかびんに、それぞれ花が{o}本あります。ぜんぶで何本ですか？',3,4],
+[5,'E','🧒','⭐','1人','{g}人の子どもが、どの子もシールを{o}まい持っています。ぜんぶで何まいですか？',4,3],
+[5,'E','🪴','🌷','1つのうえきばち','{g}つのうえきばちがあります。それぞれに花が{o}本さいています。ぜんぶで何本ですか？',2,5],
+[6,'F','👥','🧒','1組','{o}人組が{g}組あります。ぜんぶで何人ですか？',3,4],
+[6,'G','🏃','🧒','1れつ','{g}れつにならんでいます。1れつに{o}人います。ぜんぶで何人ですか？',4,3],
+[6,'G','📚','📦','1だん','{g}だんにはこがならんでいます。1だんに{o}こあります。ぜんぶで何こですか？',3,4],
+[6,'F','📦','📝','1セット','{o}本組のえんぴつが{g}セットあります。ぜんぶで何本ですか？',2,5],
+[7,'H','🍬','🪙','1こ','1こ{o}円のおかしを{g}こ買います。ぜんぶで何円ですか？',2,4],
+[7,'H','📒','🪙','1さつ','1さつ{o}円のノートを{g}さつ買います。ぜんぶで何円ですか？',3,5],
+[8,'B','⛵','🧒','1そう','クラスには25人います。{g}そうのボートがあります。どのボートも{o}人のりです。ボートにぜんぶで何人のれますか？',3,4],
+[8,'E','🏺','🌷','1つのかびん','3年生のきょうしつに、かびんが{g}つあります。どのかびんにも花が{o}本あります。花はぜんぶで何本ですか？',4,3],
+[9,'B','🚗','🧒','1台','バスていに車がとまりました。車は{g}台です。どの車にも、{o}人ずつのっています。のっている人はぜんぶで何人ですか？',3,4],
+[9,'G','🪴','🌷','1こ','まどのそばに、うえきばちがならんでいます。うえきばちは{g}こです。1こに花が{o}本さいています。花はぜんぶで何本ですか？',2,4],
+// ---- 拡充分(9番目に1を入れた問題は、タイヤ2本など数が決まっているので、類題でも1つ分の数をかえない) ----
+[1,'A','🥣','🍪','1まいのおさら','{g}まいのおさらに、クッキーを{o}こずつのせます。ぜんぶで何こですか？',4,3],
+[1,'A','🧒','📗','1人','{g}人に、ノートを{o}さつずつくばります。ぜんぶで何さつですか？',2,4],
+[1,'A','🧺','🍊','1つのかご','{g}つのかごに、みかんを{o}こずつ入れます。ぜんぶで何こですか？',4,2],
+[2,'A','🧒','🍬','1人','あめを{o}こずつ、{g}人にくばります。ぜんぶで何こですか？',2,6],
+[2,'A','📦','🎈','1つのはこ','ふうせんを{o}こずつ、{g}つのはこに入れます。ぜんぶで何こですか？',3,5],
+[2,'A','🧒','📝','1人','えんぴつを{o}本ずつ、{g}人にわたします。ぜんぶで何本ですか？',2,4],
+[3,'D','🧒','🍬','1人分','1人分のおかしは{o}こです。{g}人分よういします。ぜんぶで何こですか？',3,5],
+[3,'D','🙌','🏀','1回','1回に、ボールを{o}こなげます。{g}回なげると、ぜんぶで何こなげますか？',2,5],
+[3,'D','📦','🍙','1はこ','1はこに、おにぎりを{o}こ入れます。{g}はこ作ると、おにぎりは、ぜんぶで何こになりますか？',3,4],
+[4,'B','🚡','🧒','1台','{g}台のゴンドラがあります。どのゴンドラにも、{o}人のれます。ぜんぶで何人のれますか？',4,3],
+[4,'B','🪑','🧒','1つのベンチ','ベンチが{g}つあります。どのベンチにも、{o}人すわれます。ぜんぶで何人すわれますか？',3,4],
+[4,'C','👜','🍪','1ふくろ','{o}まい入りのクッキーのふくろが、{g}ふくろあります。ぜんぶで何まいですか？',4,3],
+[4,'C','🎁','🍫','1セット','チョコが{o}こ入っているセットを、{g}セット買いました。ぜんぶで何こですか？',2,6],
+[4,'C','📦','📗','1はこ','{o}さつ入りのはこが、{g}はこあります。ぜんぶで何さつですか？',5,3],
+[5,'E','👧','🎈','1人','{g}人の子がいます。みんな、ふうせんを{o}こ持っています。ぜんぶで何こですか？',2,5],
+[5,'E','🥣','🍓','1まいのおさら','{g}まいのおさらがあります。どのおさらにも、いちごが{o}こあります。ぜんぶで何こですか？',4,3],
+[5,'E','🏠','🧒','1つのへや','{g}つのへやに、それぞれ{o}人います。ぜんぶで何人ですか？',3,4],
+[5,'E','🚲','⚫','1台','{g}台のじてんしゃがあります。どのじてんしゃにも、タイヤが{o}本ついています。ぜんぶで何本ですか？',2,4,1],
+[5,'E','🪑','⚪','1きゃく','いすが{g}きゃくあります。どのいすも、あしが{o}本です。ぜんぶで何本ですか？',4,3,1],
+[6,'F','👥','🧒','1組','{g}組のチームがあります。1組は{o}人です。ぜんぶで何人ですか？',4,3],
+[6,'G','🪑','🧒','1れつ','いすが{g}れつならんでいます。どのれつにも、{o}人すわっています。ぜんぶで何人ですか？',4,3],
+[6,'G','📚','📗','1だん','たなが{g}だんあります。どのだんにも、本が{o}さつあります。ぜんぶで何さつですか？',5,3],
+[6,'G','🌳','🍎','1本','木が{g}本あります。1本の木に、りんごが{o}こなっています。ぜんぶで何こですか？',5,4],
+[7,'H','🍎','🪙','1こ','りんごは、1こ{o}円です。{g}こ買うと、ぜんぶで何円ですか？',3,4],
+[7,'E','🛺','⚫','1台','{g}台のさんりんしゃがあります。どのさんりんしゃにも、タイヤが{o}本ついています。ぜんぶで何本ですか？',3,4,1],
+[7,'C','📦','🍎','1はこ','りんごが{o}こ入っているはこを、{g}はこもらいました。ぜんぶで何こですか？',3,5],
+[8,'A','🧒','🃏','1人','2年1組の子どもは、ぜんぶで28人います。そのうち{g}人に、カードを{o}まいずつくばります。くばったカードは、ぜんぶで何まいですか？',3,4],
+[8,'B','🚗','🧒','1台','あさ8時に、車が{g}台とまっていました。どの車にも{o}人のっています。のっている人は、ぜんぶで何人ですか？',3,5],
+[8,'H','🍪','🪙','1こ','100円をもって、おかしやさんに行きました。1こ{o}円のクッキーを{g}こ買います。クッキーは、ぜんぶで何円ですか？',4,3],
+[9,'G','🪑','🧒','1れつ','ひろばに、いすがならんでいます。いすは{g}れつあります。どのれつにも、{o}人すわれます。みんなですわると、何人すわれますか？',3,4],
+[9,'C','👜','🍬','1ふくろ','おかしやさんで、あめを買いました。あめは{g}ふくろです。1ふくろに、{o}こ入っています。あめは、ぜんぶで何こですか？',6,3],
+[9,'D','🎮','⭐','1回','ゲームで、1回ごとに、シールがもらえます。もらえるシールは{o}まいです。{g}回あそびました。シールは、ぜんぶで何まいですか？',3,4],
+[10,'D','🧒','🃏','1人','1人{o}まいで、{g}人ぶんのカードを作ります。カードは、ぜんぶで何まいいりますか？',2,5],
+[10,'G','🏊','🧒','1本のレーン','プールに、レーンが{g}本あります。どのレーンでも、{o}人がおよいでいます。およいでいる人は、ぜんぶで何人ですか？',2,4],
+[10,'B','🪑','🧒','1きゃく','{o}人がけのいすが、{g}きゃくあります。ぜんぶで何人すわれますか？',3,4],
+[10,'C','📦','🍙','1はこ','おにぎりを、1はこにつき{o}こ入れて、{g}はこ作ります。おにぎりは、ぜんぶで何こいりますか？',3,6],
+// ---- 拡充分その2 ----
+[1,'A','🧒','🍰','1人','{g}人に、ケーキを{o}こずつあげます。ぜんぶで何こですか？',2,5],
+[1,'A','📦','🥚','1つのはこ','{g}つのはこに、たまごを{o}こずつ入れます。ぜんぶで何こですか？',5,2],
+[2,'A','🧒','📄','1人','おりがみを{o}まいずつ、{g}人にくばります。ぜんぶで何まいですか？',4,3],
+[2,'A','🥣','🍓','1まいのおさら','いちごを{o}こずつ、{g}まいのおさらにのせます。ぜんぶで何こですか？',3,4],
+[3,'D','📅','🎨','1日','1日に{o}まいずつ、えをかきます。{g}日間で、何まいかけますか？',2,4],
+[3,'D','📅','📗','1日','1日に、本を{o}さつ読みます。{g}日間で、ぜんぶで何さつ読みますか？',2,5],
+[3,'D','🍛','🥕','1人分','1人分のカレーに、にんじんを{o}こ入れます。{g}人分作ると、にんじんは、ぜんぶで何こいりますか？',2,6],
+[4,'B','🛶','🧒','1そう','カヌーが{g}そうあります。どのカヌーも、{o}人のりです。ぜんぶで何人のれますか？',2,5],
+[4,'C','📦','🧃','1はこ','ジュースが{o}本入っているはこを、{g}はこ買いました。ぜんぶで何本ですか？',4,2],
+[5,'E','⛺','🧒','1つのテント','{g}つのテントがあります。どのテントにも、{o}人ねています。ぜんぶで何人ですか？',3,4],
+[5,'E','🥣','🍪','1まいのおさら','おさらが{g}まいあります。どれも、クッキーが{o}このっています。ぜんぶで何こですか？',3,4],
+[5,'E','🚗','⚫','1台','車が{g}台あります。どの車にも、タイヤが{o}本ついています。ぜんぶで何本ですか？',4,3,1],
+[5,'E','🧒','📝','1人','{g}人の子どもが、それぞれ、えんぴつを{o}本持っています。ぜんぶで何本ですか？',3,5],
+[5,'E','🧒','🍊','1人','{g}人で、おやつを食べます。みんな、みかんを{o}こ食べます。みかんは、ぜんぶで何こいりますか？',2,6],
+[6,'F','🎁','🍞','1セット','{o}こセットのパンを、{g}セット買いました。パンは、ぜんぶで何こですか？',2,4],
+[6,'F','👥','🧒','1組','1組{o}人のチームを、{g}組作ります。ぜんぶで何人いりますか？',3,5],
+[6,'G','🚪','🎒','1れつ','ロッカーが{g}れつならんでいます。1れつに{o}こあります。ぜんぶで何こありますか？',5,4],
+[7,'H','🧃','🪙','1本','ジュースは、1本{o}円です。{g}本買うと、ぜんぶで何円ですか？',4,3],
+[7,'H','🍙','🪙','1こ','{g}このおにぎりを買います。おにぎりは、1こ{o}円です。ぜんぶで何円ですか？',5,2],
+[7,'A','🥣','🍪','1まいのおさら','おさらを{g}まい出して、クッキーを{o}こずつならべます。クッキーは、ぜんぶで何こいりますか？',3,5],
+[7,'G','🧱','🟦','1れつ','タイルを、1れつに{o}まいならべます。{g}れつならべると、タイルは、ぜんぶで何まいですか？',4,3],
+[8,'C','📦','🍫','1はこ','9時に、おみせに行きました。{o}こ入りのチョコのはこを、{g}はこ買いました。チョコは、ぜんぶで何こですか？',4,3],
+[8,'E','🏠','🧒','1つのへや','ホテルには、30このへやがあります。そのうち{g}つのへやをつかいます。どのへやにも、{o}人ねます。ぜんぶで何人ですか？',3,4],
+[8,'D','🛒','🍎','1回','4月に、りんごを買いに行きました。1回に{o}こずつ、{g}回買いました。りんごは、ぜんぶで何こですか？',2,3],
+[9,'B','🎡','🧒','1台','かんらんしゃに、のりました。ゴンドラは、{g}台あります。1台に、{o}人のれます。ぜんぶで何人のれますか？',4,5],
+[9,'A','🧒','🍬','1人','{g}人の子どもがいます。先生が、あめをくばりました。1人に{o}こずつです。くばったあめは、ぜんぶで何こですか？',3,6],
+[9,'F','👥','🧒','1組','たいいくかんに、チームがあつまりました。チームは{g}組あります。どの組も、{o}人です。みんなで、何人いますか？',4,3],
+[10,'D','🧒','📄','1人','1人あたり{o}まいのおりがみを、{g}人にくばります。おりがみは、ぜんぶで何まいいりますか？',3,6],
+[10,'B','🚃','🧒','1りょう','れっしゃは、{g}りょうつながっています。どのりょうにも、{o}人のっています。のっている人は、ぜんぶで何人ですか？',4,3],
+[10,'C','👜','🍬','1ふくろ','あめを、{g}ふくろ買いました。ふくろ1つに、{o}こ入っています。あめは、ぜんぶで何こですか？',5,3],
+[10,'E','🧒','🧃','1人','{g}人で、ジュースをのみます。1人が{o}本のみます。ジュースは、ぜんぶで何本いりますか？',2,5]];
+P.sort((a,b)=>a[0]-b[0]); // やさしい順(レベル順)に並べる。同じレベルの中は、上に書いた順
+
+// 読み上げ用: 読みがゆれやすい「数+単位」をひらがなにする(1つ→ひとつ、2人→ふたり など)
+// 語頭の「は」(はこ・はな・はいって・8の読み)は、助詞の「は」(わ)とまちがえられるので、カタカナで わたす。助詞の「は」は そのまま
+const N=[,'いち','に','さん','よん','ご','ろく','なな','ハチ','きゅう'];
+const U={'人':sp('ひとり,ふたり,さんにん,よにん,ごにん,ろくにん,ななにん,ハチニン,きゅうにん'),'つ':sp('ひとつ,ふたつ,みっつ,よっつ,いつつ,むっつ,ななつ,やっつ,ここのつ'),'こ':sp('いっこ,にこ,さんこ,よんこ,ごこ,ろっこ,ななこ,ハッコ,きゅうこ'),'本':sp('いっぽん,にほん,さんぼん,よんほん,ごほん,ろっぽん,ななほん,ハッポン,きゅうほん'),'そう':sp('いっそう,にそう,さんそう,よんそう,ごそう,ろくそう,ななそう,ハッソウ,きゅうそう'),'回':sp('いっかい,にかい,さんかい,よんかい,ごかい,ろっかい,ななかい,ハッカイ,きゅうかい'),'さつ':sp('いっさつ,にさつ,さんさつ,よんさつ,ごさつ,ろくさつ,ななさつ,ハッサツ,きゅうさつ'),'円':sp('いちえん,にえん,さんえん,よえん,ごえん,ろくえん,ななえん,ハチエン,きゅうえん'),'点':sp('いってん,にてん,さんてん,よんてん,ごてん,ろくてん,ななてん,ハッテン,きゅうてん'),'日':sp('いちにち,ふつか,みっか,よっか,いつか,むいか,なのか,ようか,ここのか'),'日間':sp('いちにちかん,ふつかかん,みっかかん,よっかかん,いつかかん,むいかかん,なのかかん,ようかかん,ここのかかん'),'きゃく':sp('いっきゃく,にきゃく,さんきゃく,よんきゃく,ごきゃく,ろっきゃく,ななきゃく,ハッキャク,きゅうきゃく')};
+const NU={'人':'にん','本':'ほん','円':'えん','点':'てん','回':'かい','台':'だい','組':'くみ','年':'ねん'};
+const NA={'人':'なんにん','本':'なんぼん','こ':'なんこ','まい':'なんまい','円':'なんえん','点':'なんてん','回':'なんかい','そう':'なんそう','台':'なんだい','組':'なんくみ','さつ':'なんさつ'};
+// 「何+単位」は なんまい・なんにん・なんぼん のように明示的に置き換え、残った漢字もひらがなにする(読みのゆれ防止)
+const KJ=[['先生','せんせい'],['入ります','ハイリマス'],['入って','ハイッテ'],['入れ','いれ'],['入り','いり'],['数字','すうじ'],['数','かず'],['分','ぶん'],['生','せい'],['子ども','こども'],['子','こ'],['車','くるま'],['花','ハナ'],['買','か'],['持','も'],['人','ひと'],['先','さき'],['後','あと'],['見','み'],['中','なか'],['前','まえ'],['青','あお'],['式','しき']];
+const yomi=t=>KJ.reduce((s,[a,b])=>s.split(a).join(b),t.replace(/はこ/g,'ハコ').replace(/何(人|本|こ|まい|円|点|回|そう|台|組|さつ)/g,(m,u)=>NA[u]).replace(/(\d+)(人|つ|こ|本|そう|回|さつ|円|点|まい|台|組|れつ|だん|ハコ|ふくろ|セット|年|日間|日|きゃく|りょう)/g,(m,n,u)=>n.length>1?n+(NU[u]||u):U[u]?U[u][n-1]:N[n]+(NU[u]||u)).replace(/何/g,'なん'));
+// ===== 動きと効果音 =====(効果音は おんせい ON/OFF のスイッチと共通。音ファイルは使わず、ブラウザで鳴らす)
+const SC=[523,587,659,784,880,1047,1175,1319],SP='cubic-bezier(.34,1.56,.64,1)';let AC;
+function tone(f,t=0,d=.15,ty='sine',v=.1){if(!st.sp)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state=='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain(),s=AC.currentTime+t;o.type=ty;o.frequency.value=f;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(.001,s+d);o.connect(g);g.connect(AC.destination);o.start(s);o.stop(s+d)}catch(e){}}
+function sfx(s){if(s==1)tone(660,.1,.16,'triangle');else if(s==2)for(let k=1;k<q.g;k++)tone(SC[k%8]*.8,(k-1)*.3+.3,.16,'triangle');else if(s==3)for(let k=0;k<q.g;k++)tone(SC[k%8],.9+k*.4+.15,.24,'sine',.13)}
+function say(t){if(!st.sp||!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(yomi(t));u.lang='ja-JP';u.rate=.9;speechSynthesis.speak(u)}
+
+let st=Object.assign({p:0,o:P[0][6],g:P[0][7],h:{},sp:1},(()=>{try{return JSON.parse(localStorage.getItem(K))}catch(e){return 0}})()||{});
+let q,hl=0,lock=0,sh=0,ss=0,cur=0,wt=[]; // sh=表示済みのまとまり数 ss=表示済みの最大段階(新しく出るものだけアニメ)
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(st))}catch(e){}};
+const mk=(r,o,g)=>({t:r[5],u:(r[5].match(/\{o\}(人|こ|まい|本|点|円|さつ)/)||[,''])[1],c:r[2],i:r[3],a:r[4],o,g,total:o*g,expr:o+'×'+g,text:r[5].replace('{o}',o).replace('{g}',g),zu:r[5].includes('ずつ')});
+
+// ===== SVGの図 =====
+// 部品は body先頭の <symbol> に1回だけ定義。ART(IT/CT/CP)にない絵文字は、自動で絵文字のまま表示する
+const IT={'🧒':'person','🍬':'candy','🍎':'apple','🍪':'cookie','⭐':'star','🃏':'card','📝':'pencil','🪙':'coin','📗':'book','🌷':'tulip','🍙':'onigiri','⚫':'tire','🎈':'balloon','🥚':'egg','🍊':'orange','📄':'origami','🍞':'bread','🍫':'choco','🍓':'strawberry','🧃':'juice','🥣':'dish','📦':'cardboard','🏀':'ball','🍰':'cake','🎨':'picture','🥕':'carrot','🎒':'randoseru','🟦':'tile','⚪':'leg'}, // 中身: 絵文字→部品
+ CT={'🧒':'tray','👧':'tray','📦':'box','🥣':'plate','👜':'bag','⛵':'boat','🚗':'car','🪑':'bench','👥':'plain','🏃':'line','🧺':'basket','🛒':'basket','🏺':'vase','🪴':'pot','🏠':'room','📚':'shelf','🚡':'gondola','🎡':'gondola','🛶':'canoe','⛺':'tent','🚃':'train','🚪':'locker','🎁':'gift','🎮':'game','📅':'cal','🌳':'tree','🍛':'curry','🍬':'pcandy','🍎':'papple','🧃':'pjuice','🍙':'ponigiri','🍪':'pcookie','📒':'pbook','🚲':'bike','🛺':'trike','🏊':'line','🧱':'line'}, // まとまり: 絵文字→容器
+ CP={'🚗>⚫':'car4','🪑>⚪':'chair','🥣>🧒':'fb'}, // 「まとまり>中身」の組ごとに容器を指定(車のタイヤ・いすのあしは部品)。fb=絵文字のまま(テーブルだけ)
+ // 容器: h=高さ(幅は140) r=中身を置く内側の矩形[x,y,w,h] z=中身の最大の大きさ m=1:横一列(座席) a=部品あり e=絵文字を上に置く s=個数→座標(0〜1)の表(中身が容器の部品になる組。無い個数はSLにもどる)
+ CD={tray:{h:150,r:[22,72,96,62],z:38,a:1},box:{h:150,r:[24,36,92,74],z:36,a:1},plate:{h:150,r:[26,40,88,70],z:36,a:1},bag:{h:150,r:[28,68,84,64],z:36,a:1},
+  boat:{h:122,r:[12,8,116,58],z:48,m:1,a:1},car:{h:100,r:[16,14,108,32],z:40,m:1,a:1},bench:{h:106,r:[14,8,112,48],z:46,m:1,a:1},
+  line:{h:64,r:[10,8,120,48],z:44,m:1},plain:{h:150,r:[10,10,120,130],z:36},fb:{h:150,r:[14,50,112,92],z:30,e:1},
+  basket:{h:150,r:[26,58,88,68],z:36,a:1},vase:{h:150,r:[16,4,108,66],z:34,m:1,a:1},pot:{h:150,r:[16,4,108,66],z:34,m:1,a:1},room:{h:150,r:[14,36,112,80],z:46,m:1,a:1},shelf:{h:100,r:[16,14,108,58],z:40,m:1,a:1},
+  gondola:{h:104,r:[22,30,96,46],z:40,m:1,a:1},canoe:{h:84,r:[22,2,96,44],z:44,m:1,a:1},tent:{h:110,r:[22,56,96,46],z:36,m:1,a:1},train:{h:100,r:[14,16,112,40],z:40,m:1,a:1},locker:{h:150,r:[22,38,96,92],z:36,a:1},gift:{h:150,r:[26,50,88,80],z:36,a:1},game:{h:120,r:[22,16,96,56],z:36,a:1},cal:{h:150,r:[22,52,96,82],z:36,a:1},tree:{h:150,r:[28,26,84,72],z:32,a:1},curry:{h:150,r:[34,48,72,56],z:32,a:1},
+  bike:{h:100,r:[10,20,120,60],z:44,a:1,s:{2:[[.17,.6],[.83,.6]]}},trike:{h:150,r:[14,20,112,110],z:40,a:1,s:{3:[[.8,.5],[.22,.2],[.22,.8]]}},car4:{h:150,r:[10,22,120,100],z:40,a:1,s:{4:[[.17,.2],[.83,.2],[.17,.8],[.83,.8]]}},chair:{h:150,r:[10,22,120,100],z:30,a:1,s:{4:[[.17,.2],[.83,.2],[.17,.8],[.83,.8]]}}},
+ // さいころ配置(0〜1の座標)。1=中央 2=左右 3=横一列 4=2×2 5=四すみ+中央 6=3×2
+ SL={1:[[.5,.5]],2:[[.27,.5],[.73,.5]],3:[[.17,.5],[.5,.5],[.83,.5]],4:[[.28,.27],[.72,.27],[.28,.73],[.72,.73]],5:[[.2,.25],[.8,.25],[.5,.5],[.2,.75],[.8,.75]],6:[[.17,.27],[.5,.27],[.83,.27],[.17,.73],[.5,.73],[.83,.73]]},
+ CL=['#e5584f','#f59a4a','#5fbf6a','#9b7bd6','#b9835a','#9aa3ad']; // 人の服の色(赤・オレンジ・緑・紫・茶・灰)。青・ピンク・黄は役割色なので使わない
+['candy','apple','juice','onigiri','cookie','book'].forEach(k=>CD['p'+k]={...CD.tray}); // 1こ○円: 商品の絵+ふだ(コインを入れる)
+for(const k in CD)CD[k].id=k;
+const cd=m=>CD[CP[m.c+'>'+m.i]||CT[m.c]||'fb'],V=840,PD=10,GP=8,CH=30,ZMAX=2.2; // ZMAX=まとまりの最大拡大率
+// 中身n個の位置と大きさ。大きさは「最大値・中身どうしの間隔・縁までの距離」の最小(重ならない・はみ出さない)
+function place(n,c){const[x,y,w,h]=c.r,u=c.s&&c.s[n]||(c.m?Array.from({length:n},(_,k)=>[(k+.5)/n,.5]):SL[n]||Array.from({length:n},(_,k)=>{const o=Math.ceil(Math.sqrt(n)),a=Math.ceil(n/o);return[(k%o+.5)/o,(Math.floor(k/o)+.5)/a]}));
+ let p=u.map(([a,b])=>[x+a*w,y+b*h]),z=c.z;
+ u.forEach(([a,b],i)=>{z=Math.min(z,2*Math.min(a*w,(1-a)*w,b*h,(1-b)*h));for(let j=i+1;j<n;j++)z=Math.min(z,Math.max(Math.abs(p[i][0]-p[j][0]),Math.abs(p[i][1]-p[j][1])))});
+ z*=.94;if(c.m)p=p.map(a=>[a[0],y+h-z/2]); // 座席の列は、すわる面にそろえる
+ return{p,z}}
+// 中身1個: 部品があれば <use>、なければ絵文字(位置・大きさは共通)
+const itm=(e,k,x,y,z)=>IT[e]?`<use class="it" href="#i-${IT[e]}" x="${x-z/2}" y="${y-z/2}" width="${z}" height="${z}" style="--i:${k}${IT[e]=='person'?`;--cl:${CL[k%6]}`:''}"/>`:`<text class="it em" x="${x}" y="${y}" font-size="${z*.7}" style="--i:${k}">${e}</text>`;
+// 1まとまり(幅140×高さc.h): 枠(on=青、off=灰) + 容器 + 中身
+function one(m,on,c,d){let h=`<rect x="1.5" y="1.5" width="137" height="${c.h-3}" rx="14" stroke-width="3" style="${on?'fill:var(--bl);fill-opacity:.55;stroke:var(--b)':'fill:#fff;stroke:#cbd5e1'}"/>`;
+ h+=c.a?`<use href="#c-${c.id}" width="140" height="${c.h}"/>`:c.e?`<text class="em" x="70" y="26" font-size="34">${m.c}</text>`:'';
+ if(on){const pl=place(m.o,c);pl.p.forEach(([x,y],k)=>{const t=itm(m.i,k,x,y,pl.z);h+=d?t.replace('class="it','class="it x'+(d==1?' mv':'')):t;
+  if(d)h+=`<circle class="dt${d==1?' mv':''}" style="--i:${k}" cx="${x}" cy="${y}" r="${Math.min(14,Math.max(5,pl.z*.27)).toFixed(1)}"/>`})}
+ return h}
+// まとまりの並べ方(全問で共通): 横一列。幅Vに収まるよう拡大率zを決める。下に 黄色い累計の行・ピンクのかっこ
+function lay(m){const c=cd(m),z=Math.min(ZMAX,(V-2*PD-GP*(m.g-1))/(m.g*140)),w=140*z,cy=PD+c.h*z+6;
+ return{c,z,w,cy,by:cy+CH+8,x0:(V-m.g*w-GP*(m.g-1))/2,H:cy+CH+8+16+PD}}
+function fig(m,s,sh,dm){const L=lay(m),{c,z,w}=L,n=s>1?m.g:1,X=k=>L.x0+k*(w+GP),d=s>2?(dm===undefined?(ss<3?1:2):dm):0;let h=''; // d: 具体物→ドット 0=なし 1=動く 2=変わったまま
+ for(let k=0;k<n;k++){const nw=s&&k>=sh;h+=`<g transform="translate(${X(k)} ${PD}) scale(${z})"><g class="gp${nw?' new':''}${nw&&k?' c':''}${s==1&&!k?' e':''}" style="--dx:${(X(0)-X(k))/z}px;--gd:${nw&&k?(k-sh)*.3:0}s${nw&&k?`;animation-delay:${(k-sh)*.3}s`:''}">${one(m,s>0,c,d)}</g></g>`}
+ if(s>1){const a=X(0)+6,b=X(n-1)+w-6,mx=(a+b)/2,y=L.by; // ピンク: いくつ分のかっこ
+  h+=`<path class="an${ss<2?' new':''}" pathLength="1" d="M${a} ${y}q0 8 8 8H${mx-8}q8 0 8 8q0-8 8-8H${b-8}q8 0 8-8" fill="none" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--p);animation-delay:${(n-1)*.3+.5}s"/>`}
+ if(s>2)for(let k=0;k<n;k++){const cx=X(k)+w/2; // 黄: まとまりごとの累計
+  h+=`<g class="an${ss<3?' lit':''}" style="animation-delay:${.9+k*.4}s"><rect x="${cx-27}" y="${L.cy}" width="54" height="${CH}" rx="15" stroke-width="2.5" style="fill:var(--yl);stroke:var(--y)"/><text class="n" x="${cx}" y="${L.cy+CH/2+1}" font-size="21">${(k+1)*m.o}</text></g>`}
+ return`<svg viewBox="0 0 ${V} ${L.H}" aria-hidden="true">${h}</svg>`}
+// s: 0=場面だけ 1=1つ分(青) 2=いくつ分(ピンク) 3=ぜんぶ(黄) 4=式
+function draw(s,num){const pr=ss,nw=k=>k>pr?' nw':'';$('st').innerHTML=fig(q,s,sh);sh=Math.max(sh,s?(s>1?q.g:1):0);ss=Math.max(ss,s);if(s>pr)sfx(s);
+ $('lbs').innerHTML=(s>0?`<span class="lb b${nw(1)}">1つ分の数${num?'：'+q.o:''}</span>`:'')+(s>1?`<span class="lb p${nw(2)}">いくつ分${num?'：'+q.g:''}</span>`:'')+(s>2?`<span class="lb y${nw(3)}">ぜんぶの数：${q.total}</span>`:'')+(s>3?`<div class="fm"><b class="b">${q.o}</b>×<b class="p">${q.g}</b>＝<b class="y">${q.total}</b></div>`:'');if(s>3&&num)fly()}
+// 式の数字が、図の青枠・ピンクのかっこ・黄色い合計から、式の枠へ移る
+const RM=matchMedia('(prefers-reduced-motion:reduce)'),an=(e,k,o)=>{if(!RM.matches&&e&&e.animate)return e.animate(k,o)};
+const shake=()=>{an($('eq'),[{transform:'none'},{transform:'translateX(-.1em)'},{transform:'translateX(.1em)'},{transform:'translateX(-.06em)'},{transform:'translateX(.06em)'},{transform:'none'}],{duration:420});tone(240,0,.2,'triangle',.12)};
+// お祝い: 紙ふぶきが上へはじけて ひらひら おちる。ヒントなしの正解(big)は、数も 音も ごうかに
+function celebrate(big){if($('app').hidden)return;[523,659,784,1047].forEach((f,i)=>tone(f,i*.11,.3,'triangle',.12));if(big)tone(1319,.5,.5,'sine',.1);
+ if(RM.matches||!document.body.animate)return;
+ const r=$('R').getBoundingClientRect(),ox=r.left+r.width/2,oy=r.top+r.height*.62,n=big?44:16,C=['#ef4444','#fb923c','#22c55e','#a855f7','#b9835a','#f97316'],box=document.createElement('div');
+ box.className='cf';box.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;overflow:hidden;z-index:9';
+ for(let i=0;i<n;i++){const e=document.createElement('i'),a=-Math.PI/2+(Math.random()-.5)*2.6,v=170+Math.random()*(big?330:170),dx=Math.cos(a)*v,dy=Math.sin(a)*v,rot=(Math.random()-.5)*900,w=8+Math.random()*8,star=i%7==0;
+  e.style.cssText=`position:absolute;left:${ox}px;top:${oy}px;`+(star?`font-size:${w*2.4}px;line-height:1;font-style:normal`:`width:${w}px;height:${w*(i%2?.5:1)}px;background:${C[i%6]};border-radius:${i%3?'20%':'50%'}`);
+  if(star)e.textContent='⭐';
+  e.animate([{transform:'translate(0,0) rotate(0) scale(.4)',opacity:1,easing:'cubic-bezier(.1,.8,.3,1)'},{transform:`translate(${dx}px,${dy}px) rotate(${rot*.5}deg) scale(1)`,opacity:1,offset:.4,easing:'cubic-bezier(.5,0,1,.6)'},{transform:`translate(${dx*1.25}px,${dy+innerHeight*.7}px) rotate(${rot}deg) scale(.9)`,opacity:0}],{duration:1700+Math.random()*900,delay:Math.random()*150,fill:'both'});box.append(e)}
+ if(big){const s=document.createElement('div'),z=r.width*.2;s.textContent='⭐';s.style.cssText=`position:fixed;left:${ox-z/2}px;top:${r.top+r.height*.04}px;font-size:${z}px;line-height:1;pointer-events:none`;box.append(s);
+  s.animate([{transform:'scale(0) rotate(-180deg)',opacity:0},{transform:'scale(1.3) rotate(10deg)',opacity:1,offset:.45},{transform:'scale(1) rotate(0)',opacity:1,offset:.75},{transform:'scale(1.5)',opacity:0}],{duration:1500,easing:'ease-out'})}
+ document.body.append(box);setTimeout(()=>box.remove(),3200)}
+function fly(){if(RM.matches||!Element.prototype.animate)return;const f=$('st'),y=f.querySelectorAll('g.an rect'),bs=$('lbs').querySelectorAll('.fm b');
+ [f.querySelector('.gp rect'),f.querySelector('path.an'),y[y.length-1]].forEach((a,i)=>{const b=bs[i];if(!a||!b)return;const r=a.getBoundingClientRect(),t=b.getBoundingClientRect();
+  b.animate([{transform:`translate(${r.left+r.width/2-t.left-t.width/2}px,${r.top+r.height/2-t.top-t.height/2}px) scale(.4)`,opacity:0},{opacity:1,offset:.25},{transform:'none',opacity:1}],{duration:800,delay:i*400,easing:'ease-out',fill:'backwards'}).finished.then(()=>{tone(SC[i*2],0,.18,'sine',.1);an(b,[{transform:'none'},{transform:'scale(1.35) rotate(-5deg)'},{transform:'scale(.94)'},{transform:'none'}],{duration:500,easing:'ease-out'})}).catch(()=>0)})}
+
+// 文中の色づけ: オレンジ=注目ことば(「ずつ」型は「ずつ」、それ以外は どの〜も・入り・のり・1回に など) 青=1つ分 ピンク=いくつ分
+const UN='(?:人|こ|まい|本|そう|台|回|点|円|さつ|はこ|ふくろ|セット|組|れつ|だん|日間|日|つ)?',CN=/ど(?:の[^。、]{1,8}?|れ)も|それぞれ|みんな|\d+(?:人|こ|本|まい|さつ)(?:入り|入って|のり|組|すわれ|がけ|セット)|1(?:回|人分|人|だん|れつ|こ|さつ|セット|つの|はこ|ふくろ|台|組|本|日)/g;
+const KW=[[/セット/,'「〜こセット」は、1セットに 入っている 数の ことだよ。'],[/どの|どれ/,'「どの〜も」「どれも」は、ぜんぶ おなじ数、という ことだよ。'],[/それぞれ/,'「それぞれ」は、ひとつひとつが おなじ数、という ことだよ。'],[/みんな/,'「みんな」は、ひとりひとりが おなじ数、という ことだよ。'],[/がけ/,'「〜人がけ」は、ひとつに すわれる 人数の ことだよ。'],[/入/,'「入り」は、ひとつの 中に 入っている 数の ことだよ。'],[/のり|すわれ/,'ひとつに のれる(すわれる)数の ことだよ。'],[/組/,'「組」は、1組に いくつ いるか、という ことだよ。'],[/^1/,'「1〜」は、1つ分の ことを いっているよ。']];
+function qh(md){const m=q;
+ if(md=='c')return m.text.replace(m.zu?/ずつ/g:CN,x=>`<mark class="c">${x}</mark>`);
+ const w=(c,n,u)=>md.includes(c)?`<mark class="${c=='o'?'b':'p'}">${n}${u}</mark>`:n+u;
+ return m.t.replace('{o}','\u0001').replace('{g}','\u0002').replace(new RegExp('\u0001('+UN+')'),(x,u)=>w('o',m.o,u)).replace(new RegExp('\u0002('+UN+')'),(x,u)=>w('g',m.g,u))}
+// ヒント [ことば,図の段階,色づけ]: 「ずつ」を見つける→頭の中で絵にする→図でたしかめる / 「ずつ」なしは、問いかけ→ことばを読みとく→「ずつ」に言いかえる
+function hints(m){const a=m.a,e=`${a}に ${m.o}${m.u}ずつ`,
+ g=['おなじものが いくつ分 あるかな？ ピンクの ところを みてね。',2,'g'],z=['1つ分の数を さきに かいて、いくつ分を あとに かくよ。',2,'og'],
+ f=[`えを みて たしかめよう。${a}に ${m.o}${m.u}。`,1,'o'];
+ if(m.zu)return[['まず「ずつ」を さがそう。オレンジの ところだよ。',0,'c'],[`「ずつ」の まえの 数が 1つ分。「${e}」だね。あたまの中で えに してみよう。`,0,'o'],f,g,z];
+ const k=(m.text.match(CN)||[''])[0];
+ return[['「ずつ」が ないね。どうなるかな？ オレンジの ことばに ちゅうもくしよう。',0,'c'],[`${(KW.find(x=>x[0].test(k))||[0,'1つ分の 数が、かくれているよ。'])[1]} この 文は「${e}」と おなじ いみだよ。`,0,'c'],['あたまの中で えに してみよう。1つ分が 青い ところだよ。',0,'o'],f,g,z]}
+function msg(t){const b=$('bal');b.textContent=t;b.style.visibility='visible';an(b,[{transform:'scale(.8)',opacity:.3},{transform:'scale(1.05)',opacity:1,offset:.6},{transform:'none'}],{duration:450,easing:'ease-out'});say(t)}
+function hint(n){const H=hints(q);hl=Math.min(H.length,n?Math.max(hl,n):hl+1);const[t,s,md]=H[hl-1];msg(t);$('q').innerHTML=qh(md);draw(s,0)}
+
+function check(){if(lock)return;const v=ins.map(i=>i.value);if(v.some(x=>x===''))return msg('すうじを 3つ 入れてね。');
+ const[a,b,c]=v.map(Number);
+ if(a==q.o&&b==q.g&&c==q.total)return win();
+ shake();
+ if(a==q.g&&b==q.o&&a!=b){hl=Math.max(hl,hints(q).findIndex(h=>h[1]==1)+1);msg('数は見つけられたね！では、1つ分の数はどちらかな？');$('q').innerHTML=qh('o');draw(1,0)}
+ else if(a==q.o&&b==q.g)msg('式はあっているよ。ぜんぶの数を、もういちど たしかめてみよう。');
+ else hint()}
+
+function win(){lock=1;const hd=hl>0;sh=ss=0;rdy();ins.forEach((e,i)=>an(e,[{transform:'none'},{transform:'scale(1.25)'},{transform:'none'}],{duration:400,delay:i*120,easing:'ease-out'}));$('q').innerHTML=qh('og');const was=st.h[st.p]==1;st.h[st.p]=hd?(st.h[st.p]||0):1;save();const lv=P[st.p][0],lc=!hd&&!was&&LV[lv].every(i=>st.h[i]==1),TO=(f,ms)=>wt.push(setTimeout(f,ms));$('ok').hidden=$('hb').hidden=true;$('bal').style.visibility='hidden';
+ const t=1600+q.g*350;draw(1,1);TO(()=>draw(2,1),1500);TO(()=>draw(3,1),t+1000);
+ TO(()=>{draw(4,1);msg(lc?`レベル${lv}、ぜんぶ クリア！ おめでとう！`:hd?'できたね！つぎは 数をかえて、もういちどやってみよう。':'すごい！ぜんぶ じぶんで できたね。');$('nx').hidden=false;$('nx').classList.add('rdy');an($('nx'),[{transform:'scale(.4)',opacity:0},{transform:'scale(1.15)',opacity:1,offset:.6},{transform:'none'}],{duration:500,easing:'ease-out'});celebrate(!hd);if(lc)TO(()=>celebrate(1),900)},t+2300+q.g*400);
+ say(`${N[q.o]}かける${N[q.g]}は${q.total}`)}
+
+// ヒントなしで正解→次の問題へ / ヒントありで正解→同じ数量関係で数字をかえた類題
+function vary(r){let o,g,k=0;do{o=r[8]?r[6]:2+Math.floor(Math.random()*4);g=2+Math.floor(Math.random()*5)}while((o==g||o==st.o&&g==st.g||o==r[6]&&g==r[7])&&++k<60);return[o,g]}
+function nextQ(){
+ if(st.p>=P.length){st.p=0;st.o=P[0][6];st.g=P[0][7];save();return cover()}
+ if(hl>0)[st.o,st.g]=vary(P[st.p]);
+ else{st.p++;if(st.p>=P.length){save();return done()}st.o=P[st.p][6];st.g=P[st.p][7]}
+ save();load()}
+function done(){const n=Object.values(st.h).filter(x=>x).length;$('q').textContent='🎉 ぜんぶ おわったよ！';$('st').innerHTML='<div class="fm">⭐</div>';$('lbs').innerHTML=`<span class="lb y nw">ヒントなしで ${n}もん できたよ</span>`;
+ $('eq').hidden=$('pad').hidden=$('ok').hidden=$('hb').hidden=true;$('bal').style.visibility='hidden';$('nx').hidden=false;$('nx').textContent='ひょうしへ';$('hd').textContent='おわり';celebrate(1);setTimeout(()=>celebrate(1),800);an($('st').firstChild,[{transform:'scale(.2) rotate(-200deg)'},{transform:'scale(1.3) rotate(15deg)',offset:.6},{transform:'none'}],{duration:900,easing:'ease-out'});$('nx').classList.add('rdy')}
+function load(){if(st.p>=P.length)return done();q=mk(P[st.p],st.o,st.g);hl=lock=sh=ss=0;$('nx').classList.remove('rdy');$('q').innerHTML=qh('');$('bal').style.visibility='hidden';ins.forEach(i=>i.value='');ins[cur=0].focus();
+ $('ok').hidden=$('hb').hidden=false;$('nx').hidden=true;$('hd').textContent=`Lv.${P[st.p][0]}　もんだい ${st.p+1}／${P.length}`;draw(0);rdy();an($('q'),[{transform:'translateY(.5em)',opacity:0},{transform:'none',opacity:1}],{duration:380,easing:'ease-out'});an($('st'),[{transform:'scale(.8)',opacity:0},{transform:'none',opacity:1}],{duration:520,easing:SP});say(q.text)}
+
+// 操作(全角・半角どちらの数字でも入力できる)
+const ins=[...document.querySelectorAll('input')],rdy=()=>$('ok').classList.toggle('rdy',!lock&&ins.every(i=>i.value!==''));
+ins.forEach((e,k)=>{e.maxLength=2;e.onfocus=()=>cur=k;e.oninput=()=>{e.value=e.value.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/\D/g,'');rdy()};e.onkeydown=ev=>{if(ev.key=='Enter')check()}});
+$('pad').innerHTML=[...'1234567890'].map(k=>`<button>${k}</button>`).join('')+'<button>⌫</button>';
+$('pad').onclick=e=>{if(e.target.tagName!='BUTTON'||lock)return;const k=e.target.textContent,el=ins[cur];
+ el.value=k=='⌫'?el.value.slice(0,-1):(el.value+k).slice(-2);an(el,[{transform:'scale(1.3)'},{transform:'none'}],{duration:200,easing:'ease-out'});tone(700,0,.05,'sine',.05);rdy();if(k!='⌫'&&cur<2)ins[++cur].focus()};
+$('ok').onclick=check;$('hb').onclick=()=>{if(!lock)hint()};$('nx').onclick=nextQ;$('say').onclick=()=>say(q.text);
+const sn=()=>{$('snd').textContent=$('snd2').textContent=st.sp?'🔊 おんせい ON':'🔇 おんせい OFF'};
+$('snd').onclick=$('snd2').onclick=()=>{st.sp^=1;save();sn();if(!st.sp&&window.speechSynthesis)speechSynthesis.cancel()};
+
+// ===== 表紙・レベルの入口・クリア状況 =====
+// 記録 st.h[問題番号]: 1=ヒントなしでクリア / 0=ヒントを使った(まだヒントなしでは できていない) / なし=まだ。いちど クリアした記録は、あとでヒントを使っても さがらない
+const LN=[,'ずつ','ずつ(ならびかえ)','1回・1人ぶん','のれる・入り','それぞれ','組・れつ・だん','ねだん','いらない数もある','ながい文','いいかたがちがう'],LV=[],BKC=['#e5584f','#f59a4a','#5fbf6a','#9b7bd6'],
+ sOf=i=>st.h[i]==1?'s1':st.h[i]===0?'sh':'s0',nClr=()=>P.filter((_,i)=>st.h[i]==1).length,cnt=idx=>idx.filter(i=>st.h[i]==1).length;
+P.forEach((r,i)=>(LV[r[0]]=LV[r[0]]||[]).push(i));
+// 表紙のデモ図: 実際の問題の図を、1つ分→いくつ分→ぜんぶ の順に見せて くりかえす
+const DM=[['👜','🍬'],['⛵','🧒'],['🧺','🍎'],['🧒','🃏'],['🪑','🧒']].map(([c,i])=>P.findIndex(r=>r[2]==c&&r[3]==i)).filter(i=>i>=0),
+ fml=m=>`<b class="b">${m.o}</b>×<b class="p">${m.g}</b>＝<b class="y">${m.total}</b>`;
+let dmT=[],dmN=0;const demoStop=()=>{dmT.forEach(clearTimeout);dmT=[]};
+function demo(){demoStop();const r=P[DM[dmN++%DM.length]],m=mk(r,r[6],r[7]),el=$('cvf'),fm=$('cvfm'),at=(f,ms)=>dmT.push(setTimeout(f,ms));let s0=0;ss=0;fm.style.visibility='hidden';
+ if(RM.matches){el.innerHTML=fig(m,3,99,0);fm.innerHTML=fml(m);fm.style.visibility='visible';return}
+ const paint=s=>{el.innerHTML=fig(m,s,s0);s0=Math.max(s0,s>1?m.g:1);ss=Math.max(ss,s)},t3=1500+m.g*300+1400,t4=t3+900+m.g*400;
+ an(el,[{opacity:0,transform:'scale(.9)'},{opacity:1,transform:'none'}],{duration:350});paint(1);
+ at(()=>paint(2),1500);at(()=>paint(3),t3);
+ at(()=>{fm.innerHTML=fml(m);fm.style.visibility='visible';an(fm,[{transform:'scale(.5)',opacity:0},{transform:'none',opacity:1}],{duration:500,easing:SP})},t4);
+ at(demo,t4+3200)}
+function show(id){demoStop();document.querySelectorAll('.cf').forEach(e=>e.remove());['app','cv','sc'].forEach(k=>$(k).hidden=k!=id);an($(id),[{opacity:0},{opacity:1}],{duration:260})}
+function go(i,keep){st.p=i;if(!keep){st.o=P[i][6];st.g=P[i][7]}save();show('app');$('eq').hidden=$('pad').hidden=false;$('nx').textContent='つぎへ ▶';load()}
+function enter(L){const idx=LV[L],i=idx.find(i=>st.h[i]!=1);go(i===undefined?idx[0]:i)}
+function cover(){wt.forEach(clearTimeout);wt=[];if(window.speechSynthesis)speechSynthesis.cancel();
+ if(st.p>=P.length){st.p=0;st.o=P[0][6];st.g=P[0][7];save()}
+ show('cv');const n=nClr(),started=n>0||Object.keys(st.h).length>0||st.p>0,cl=P[st.p][0];
+ $('ttl').innerHTML=[['か','け','算','の'],['ぶ','ん','しょ','う','だ','い']].map((row,ri)=>`<div>${row.map((c,k)=>{const j=ri*4+k;return`<span class="bk" style="--c:${BKC[j%4]};--r:${[-4,3,-2,4,2,-3,3,-4,2,-2][j%10]}deg;--d:${(j*.08+.1).toFixed(2)}s">${c.length>1?`<small>${c}</small>`:c}</span>`}).join('')}</div>`).join('');
+ $('go').innerHTML=started?`▶ つづきから<small>Lv.${cl}　もんだい ${st.p+1}</small>`:'▶ はじめる';
+ $('cvsum').innerHTML=n==P.length?'ぜんぶ クリア！　すごい！ 👑':`ヒントなしで クリア：${n}／${P.length}もん<span class="bar"><i style="width:${n/P.length*100}%"></i></span>`;
+ $('lvg').innerHTML=LV.map((idx,L)=>{const c=cnt(idx);return`<button class="lv${L==cl?' cur':''}" data-l="${L}" style="--d:${(L*.05).toFixed(2)}s"><span class="t"><b class="no" style="background:${BKC[(L-1)%4]}">${L}</b><em>${LN[L]}</em></span><span class="r2"><span class="sg">${idx.map(i=>`<i class="${sOf(i)}"></i>`).join('')}</span><b>${c}／${idx.length}</b></span>${c==idx.length?'<u>👑</u>':''}</button>`}).join('');
+ demo()}
+function stat(){show('sc');const n=nClr();
+ $('scs').innerHTML=`<span>ヒントなしで ${n}／${P.length}もん クリア</span><span class="bar"><i style="width:${n/P.length*100}%"></i></span>`;
+ $('rows').innerHTML=LV.map((idx,L)=>{const c=cnt(idx);return`<div class="rw"><div class="rl"><b class="no" style="background:${BKC[(L-1)%4]}">${L}</b><span>${LN[L]}</span></div><div class="cs">${idx.map(i=>`<button class="ch ${sOf(i)}${i==st.p?' cur':''}" data-i="${i}">${i+1}${st.h[i]==1?'<i>★</i>':''}</button>`).join('')}</div><b class="rc">${c}／${idx.length}${c==idx.length?' 👑':''}</b></div>`}).join('')}
+$('go').onclick=()=>go(st.p,1);$('stb').onclick=stat;$('bk').onclick=cover;
+$('home').onclick=cover;
+$('lvg').onclick=e=>{const b=e.target.closest('button.lv');if(b)enter(+b.dataset.l)};
+$('rows').onclick=e=>{const b=e.target.closest('.ch');if(b)go(+b.dataset.i)};
+{let rt=0;$('rs').onclick=()=>{if(!rt){$('rs').textContent='ほんとうに けす？ もういちど おす';rt=setTimeout(()=>{rt=0;$('rs').textContent='さいしょから やりなおす'},4000);return}
+ clearTimeout(rt);rt=0;$('rs').textContent='さいしょから やりなおす';st.h={};st.p=0;st.o=P[0][6];st.g=P[0][7];save();stat()}}
+
+// データ検査: 1つ分×いくつ分=ぜんぶ、式の順番、図のまとまり数・中身の数、文中の数字の位置
+function validate(){const e=[];P.forEach((r,i)=>{const t=r[5];
+ if((t.match(/\{o\}/g)||[]).length!=1||(t.match(/\{g\}/g)||[]).length!=1)e.push(i+':文中の数字の位置');
+ const m=mk(r,r[6],r[7]);
+ if(m.o*m.g!=m.total||m.expr!=r[6]+'×'+r[7])e.push(i+':式・ぜんぶの数');
+ const h=fig(m,4,0); // まとまり数=いくつ分、中身の数=1つ分×いくつ分、累計の数字=いくつ分
+ if((h.match(/class="gp[ "]/g)||[]).length!=m.g||(h.match(/class="it[ "]/g)||[]).length!=m.g*m.o||(h.match(/class="n"/g)||[]).length!=m.g||(h.match(/class="dt[ "]/g)||[]).length!=m.g*m.o)e.push(i+':図のまとまり');
+ if(!t.includes('何'))e.push(i+':問い');
+ if(!m.u)e.push(i+':単位');if(!m.zu&&!m.text.match(CN))e.push(i+':注目ことば')});
+ // 図の幾何: 全容器×中身1〜6個で、中身が内側の矩形からはみ出さない・重ならない
+ for(const k in CD){const c=CD[k],[x,y,w,h]=c.r;for(let n=1;n<=6;n++){const{p,z}=place(n,c);
+  p.forEach(([a,b],i)=>{if(a-z/2<x-.01||a+z/2>x+w+.01||b-z/2<y-.01||b+z/2>y+h+.01)e.push(k+n+':はみ出し');
+   for(let j=i+1;j<n;j++)if(Math.abs(a-p[j][0])<z-.01&&Math.abs(b-p[j][1])<z-.01)e.push(k+n+':重なり')})}}
+ return e}
+// 確認用: URLの末尾に #gallery で全問のstage4の図を一覧(#gallery-max は 1つ分6×いくつ分6 の最大表示)
+function gallery(){document.body.className='gal';ss=9;/* 動きなし */$('app').hidden=true;const mx=/max/.test(location.hash),bd=new Set(validate().map(x=>parseInt(x))),d=document.createElement('div');d.id='gal';
+ d.innerHTML='<p><a href="#gallery">もとの数</a>　<a href="#gallery-max">さいだい(6×6)</a>　赤い枠=データ検査NG</p>'+P.map((r,i)=>{const m=mk(r,mx&&!r[8]?6:r[6],mx?6:r[7]);
+  return`<figure${bd.has(i)?' class="bad"':''}><figcaption>${i+1}　Lv.${r[0]}　${m.o}×${m.g}＝${m.total}　${r[2]}→${r[3]}</figcaption>${fig(m,4,99,0)}</figure>`}).join('');document.body.append(d)}
+// 確認用: URLの末尾に #parts で i-/c- の全部品を「大(約120px)」と「実寸(24px)」で並べる。役割色(青190〜260°・ピンク300〜345°・黄43〜62°)に近く彩度(HSV)が.25以上の色は赤く警告
+function hsv(h){h=h.slice(1);if(h.length==3)h=h.replace(/./g,'$&$&');const[r,g,b]=[0,2,4].map(i=>parseInt(h.substr(i,2),16)/255),x=Math.max(r,g,b),d=x-Math.min(r,g,b);return[60*(d?x==r?((g-b)/d+6)%6:x==g?(b-r)/d+2:(r-g)/d+4:0),x?d/x:0]}
+const roleHue=([t,s])=>s>=.25?t>=190&&t<=260?'青':t>=300&&t<=345?'ピンク':t>=43&&t<=62?'黄':'':'';
+function parts(){document.body.className='gal';ss=9;$('app').hidden=true;const w=[],d=document.createElement('div'),sy=[...document.querySelectorAll('#sp symbol')];d.id='gal';d.className='pt';
+ const fg=sy.map(s=>{const v=s.viewBox.baseVal,bad=[...new Set(s.outerHTML.match(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/gi)||[])].map(c=>[c,roleHue(hsv(c))]).filter(x=>x[1]),sz=n=>`<svg style="width:${n}px;height:${Math.round(n*v.height/v.width)}px" viewBox="0 0 ${v.width} ${v.height}"><use href="#${s.id}" width="${v.width}" height="${v.height}"/></svg>`;
+  if(bad.length)w.push(s.id+':'+bad.map(x=>x.join('=')).join(','));
+  return`<figure${bad.length?' class="bad"':''}>${sz(120)}<br>${sz(24)}<figcaption>${s.id}${bad.map(x=>`<b>${x[0]}=${x[1]}</b>`).join('')}</figcaption></figure>`}).join(''),
+ no=[...new Set([...Object.values(IT).map(n=>'i-'+n),...Object.values(CT).map(n=>'c-'+n).filter(n=>n!='c-plain'&&n!='c-line'),...Object.keys(CD).filter(k=>CD[k].a).map(k=>'c-'+k)])].filter(n=>!document.getElementById(n));
+ d.innerHTML=`<p>部品${sy.length}個　色の警告 ${w.length}件${w.length?'：'+w.join(' / '):''}　IT・CTの未定義 ${no.length}件${no.length?'：'+no.join(','):''}　<a href="#gallery">ギャラリー</a>　赤い枠=青・ピンク・黄に近い色あり</p>`+fg;document.body.append(d);
+ window.partWarn=w;window.partMissing=no;if(w.length||no.length)console.error('部品検査NG',w,no);else console.log('部品検査OK',sy.length+'個')}
+const bad=validate();
+if(bad.length)console.error('データ検査NG',bad);else console.log('データ検査OK',P.length+'問');
+addEventListener('hashchange',()=>location.reload());
+if(/^#parts/.test(location.hash))parts();else if(/^#gallery/.test(location.hash))gallery();else{sn();cover()}
+</script></body></html>
