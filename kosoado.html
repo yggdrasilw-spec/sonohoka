@@ -245,6 +245,8 @@ body{background:radial-gradient(900px 420px at 12% -8%,#fff 0,rgba(255,255,255,0
 .al>span{background:#fff;border:3px solid var(--c);border-radius:16px;padding:.15em .7em;box-shadow:0 3px 0 rgba(30,42,58,.15)}
 .al .an{flex:none;color:#fff;background:var(--c);border-radius:12px;padding:.1em .6em;font-size:.68em;align-self:center}
 .al.on>span{background:#FFFBE6;box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 28%,transparent)}
+.adv-context{margin:0 0 4px;padding:4px 8px;background:#fff;border-radius:8px;font-size:clamp(13px,1.6vw,18px);line-height:1.5;font-weight:500}
+.stage:has(.shop-scene){background:#FFF1E5}.stage:has(.room-scene){background:#EDF3EC}
 .fl2{color:var(--li);border-bottom:4px solid var(--li);padding:0 .15em}
 .blk2{display:inline-block;min-width:1.5em;text-align:center;color:#aaa;border-bottom:4px dotted #bbb}
 .stage svg{min-height:110px}
@@ -778,113 +780,1052 @@ ICONS.cat=c=>`<path d="M-20-12L-17-32-5-20M20-12L17-32 5-20" fill="#fff" stroke=
 ICONS.bench=c=>`<rect x="-36" y="-6" width="72" height="12" rx="3" fill="#C98F52" stroke="${C.ink}" stroke-width="3"/><path d="M-28 6v22M28 6v22" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>`;
 /* [題名, 場面, 人物名, 物[型,位置a/b/mid/far/th/th2,色,大きさ], 会話[話者a/b, 文{n}, 指す先], 空欄[系列,答えの番号,ヒント,理由]] */
 const ADV=[
-{t:'かして ほしいな',env:'day',objs:[['eraser','a',C.sp],['book','b',C.li]],
- lines:[['a','{1}は ぼくの けしゴムだよ。','a'],['b','あ、{2}を かしてくれる？','a'],['a','いいよ。さくらの 前の {3}本は なに？','b']],
- bl:[['obj',0,'ゆうとは 自分の ものを しょうかいしているよ。','話している ゆうとの 近くだから「これ」'],['obj',1,'さくらから 見て、けしゴムは だれの 近くかな？','さくらから 見ると、聞き手(ゆうと)の 近くだから「それ」'],['mod',1,'ゆうとから 見て、本は だれの 近くかな？','ゆうとから 見ると、聞き手(さくら)の 近くだから「その」']]},
-{t:'おべんとうは どこで？',env:'day',objs:[['tree','b','#5DB56A',1.1]],
- lines:[['a','{1}は 日なたで あついね。',''],['b','{2}は 木かげで すずしいよ。おいでよ！','b'],['a','ほんとだ。{3}へ 行くね。','b']],
- bl:[['place',0,'ゆうとが 立っている ばしょを 言っているよ。','話している ゆうとの いる ばしょだから「ここ」'],['place',0,'いま 話しているのは さくら。さくらの いる ばしょは？','さくらが 自分の いる ばしょを 言うから「ここ」。同じ言葉でも、話す人で 指す場所が かわるよ'],['dir',1,'ゆうとから 見て、さくらの ほうこうは？','相手(さくら)の ほうこうだから「そっち」']]},
-{t:'ねこを 見たよ',env:'day',objs:[['cat','th','#fff',.8],['bench','th2','#fff',.55]],
- lines:[['a','きのう、公園で 白い ねこを 見たよ。ベンチの 上で ねていたんだ。','th'],['b','へえ！ {1}ねこは どんな ねこだったの？','th'],['b','わたしも {2}ねこに 会いたいな。','th'],['a','じゃあ あした 行こう。{3}へ 行けば 会えるかも！','th2']],
- bl:[['mod',1,'さくらは ねこを 見ていないよ。ゆうとの 話に 出てきた ねこ。','いま 話に出た ものを 受けるから「その」'],['state',1,'ゆうとが 話した ようすの ねこ、だね。','話に出た ようすを 受けるから「そんな」'],['place',1,'話に出てきた ばしょは どこだったかな。','話に出た ばしょを 受けるから「そこ」']]},
-{t:'なつの はなび',env:'night',objs:[],
- lines:[['a','ねえ、夏休みの {1}花火、おぼえてる？',''],['b','うん！ {2}ときの 空いっぱいの 花火、きれいだったね。',''],['a','また {3}花火を 見たいな。','']],
- bl:[['mod',2,'ふたりとも 知っている、思い出の 花火だよ。','ふたりが 知っている 思い出は「あ」の言葉だから「あの」'],['mod',2,'さくらも おぼえている、同じ 思い出だよ。','ふたりの 思い出だから「あの」'],['state',2,'思い出の 花火の ようすを 思いうかべよう。','ふたりの 思い出の ようすだから「あんな」']]},
-{t:'どちらですか？',env:'day',n:['おきゃく','先生'],objs:[['house','far',C.far,.8]],
- lines:[['a','すみません、校長室は {1}ですか？',''],['b','校長室は、{2}です。あの 奥の 建物に あります。','far'],['a','ありがとうございます。{3}ですね。','far']],
- bl:[['polite',3,'わからない ことを ていねいに たずねる 言葉は？','ていねいに たずねるから「どちら」'],['polite',2,'ふたりから 遠い ところを ていねいに。','ふたりから 遠いから「あちら」'],['polite',2,'先生が 教えてくれた 遠い ところだよ。','ふたりから 遠いから「あちら」']]},
-{t:'かみを おろう',env:'day',demo:'fold',objs:[['paper','a','#F08A24',1.1]],
- lines:[['a','{1}おって、はしを あわせてね。','a'],['b','{2}？ ちょっと やってみるね。','b'],['a','うん、{3}！ じょうずだよ。','b']],
- bl:[['way',0,'ゆうとが 自分で やって 見せているよ。','今 やって見せる やり方だから「こう」'],['way',0,'さくらが 自分で やってみて たしかめる 言い方。','自分で やってみる やり方だから「こう」'],['way',1,'さくらが やった やり方を ゆうとが 見ているよ。','相手の やり方を 受けるから「そう」']]},
-{t:'あの 山に のぼりたい',env:'day',objs:[['mountain','far',C.far,1.2]],
- lines:[['a','見て！ {1}に 大きな 山が あるよ。','far'],['b','ほんとだ。{2}山は 何ていう 名前かな？','far'],['a','{3}大きな 山に のぼってみたいな。','far']],
- bl:[['place',2,'ふたりから 遠い ところだね。','ふたりから 遠いから「あそこ」'],['mod',2,'さくらも 同じ 山を 見ているよ。','ふたりから 遠いから「あの」'],['state',2,'遠くに 見える 山の ようすだね。','ふたりから 遠いから「あんな」']]},
-{t:'でんわで はなそう',env:'phone',objs:[],
- lines:[['a','もしもし。{1}は 雨が ふっているの？',''],['b','うん、{2}は 雨だよ。{3}は 晴れているんだね。',''],['a','うん、{4}は とても いい 天気だよ。','']],
- bl:[['polite',1,'ゆうとが 聞いているのは、さくらの いる ばしょ。','相手(さくら)の いる ばしょだから「そちら」'],['polite',0,'さくらが 自分の いる ばしょを 言うよ。','話している さくらの いる ばしょだから「こちら」'],['polite',1,'さくらから 見て、ゆうとの いる ばしょは？','相手(ゆうと)の いる ばしょだから「そちら」'],['polite',0,'ゆうとが 自分の いる ばしょを 言うよ。','話している ゆうとの いる ばしょだから「こちら」']]},
-{t:'かばんは どれ？',env:'day',objs:[['bag','a','#E0445A'],['bag','b','#2E9E6B']],
- lines:[['a','さくらの かばんは {1}？',''],['b','{2}だよ。ゆうとの 前に ある、赤い かばん。','a'],['a','じゃあ、{3}を わたすね。','a']],
- bl:[['obj',3,'どれか わからないから たずねているよ。','わからない ものを たずねるから「どれ」'],['obj',1,'赤い かばんは、さくらから 見て だれの 近く？','さくらから 見ると、聞き手(ゆうと)の 近くだから「それ」'],['obj',0,'いま ゆうとが わたそうとしている かばんだよ。','ゆうとの 前に あるから「これ」']]},
-{t:'あの お店',env:'day',objs:[['house','far',C.far,.8]],
- lines:[['a','{1}に 見える 赤い やねの お店、知ってる？','far'],['b','うん。{2}お店の ケーキは おいしいよね。','far'],['a','{3}お店は ほかに ないかな。','far']],
- bl:[['place',2,'ふたりから 遠い ところだね。','ふたりから 遠いから「あそこ」'],['mod',2,'さくらも 同じ お店を 見ているよ。','ふたりから 遠いから「あの」'],['kind',2,'遠くの お店と 同じ 種類の お店。','ふたりから 遠い ものと 同じ 種類だから「ああいう」']]},
-{t:'何の 本？',env:'day',objs:[['book','b',C.li]],
- lines:[['a','{1}は 何の 本？ ぼくも 読みたいな。','b'],['b','いいよ。{2}本は 動物の しゃしんが たくさん のっているんだ。','b'],['a','へえ。{3}ようすの ライオンも のっている？','b']],
- bl:[['obj',1,'ゆうとから 見て、本は だれの 近くかな？','ゆうとから 見ると、聞き手(さくら)の 近くだから「それ」'],['mod',0,'さくらが 自分の 本を 紹介しているよ。','話している さくらの 近くだから「この」'],['state',3,'まだ しらない ようすを たずねているよ。','まだ しらない ようすを たずねるから「どんな」']]},
-{t:'みちあんない',env:'day',n:['おきゃく','駅いん'],objs:[['tree','far',C.far,.9]],
- lines:[['a','すみません、公園へは {1}行けば いいですか？',''],['b','{2}木の ところまで まっすぐ 進んでください。','far'],['b','{3}まで 行くと、公園の 入口が 見えますよ。','far'],['a','{4}ですね。ありがとうございます。','']],
- bl:[['way',3,'行き方が わからないから たずねているよ。','行き方を たずねるから「どう」'],['mod',2,'ふたりから 遠くに 見える 木だよ。','ふたりから 遠いから「あの」'],['place',1,'いま 言った 木の ところの ことだよ。','話に出た ばしょを 受けるから「そこ」'],['way',1,'教えてもらった ことを 受けて 答える 言い方。','相手の 話を 受けるから「そう」']]},
-{t:'でんわで たずねよう',env:'phone',objs:[],
- lines:[['a','もしもし。{1}は 学校だよ。さくらは いま {2}に いるの？',''],['b','{3}は わたしの 家だよ。{4}の 学校は もう おわったの？',''],['a','うん、もう おわったよ。四時に おわったんだ。','']],
- bl:[['polite',0,'ゆうとが 自分の いる ばしょを 言うよ。','話している ゆうとの いる ばしょだから「こちら」'],['place',3,'さくらの いる ばしょが わからないから たずねているよ。','わからない ばしょを たずねるから「どこ」'],['place',0,'さくらが 自分の いる ばしょを 言うよ。','話している さくらの いる ばしょだから「ここ」'],['polite',1,'さくらから 見て、ゆうとの いる ばしょは？','相手(ゆうと)の いる ばしょだから「そちら」']]},
-{t:'せんせいと プリント',env:'day',n:['ゆうと','先生'],objs:[['paper','a','#F08A24',1.1]],
- lines:[['b','{1}は だれの プリントかな？','a'],['a','{2}は ぼくのです。','a'],['b','なるほど、{3}書いたんだね。くふうを 教えてくれる？','a']],
- bl:[['obj',1,'先生から 見て、プリントは だれの 近くかな？','先生から 見ると、聞き手(ゆうと)の 近くだから「それ」'],['obj',0,'ゆうとが 自分の プリントを 言っているよ。','話している ゆうとの 近くだから「これ」'],['way',1,'先生は、ゆうとの プリントの 書き方を 見ているよ。','相手の 書き方を 受けるから「そう」']]},
-{t:'おかいもの',env:'day',n:['おきゃく','店いん'],objs:[['cake','b','#F7D5B0'],['cake','far',C.far,.6]],
- lines:[['a','{1}ケーキを ください。','b'],['b','はい。{2}ケーキは 一つ 三百円です。','b'],['a','{3}ケーキも いっしょに ください。','far']],
- bl:[['mod',1,'おきゃくから 見て、ケーキは だれの 近くかな？','おきゃくから 見ると、聞き手(店いん)の 近くだから「その」'],['mod',0,'店いんが 自分の ケーキを 言っているよ。','話している 店いんの 近くだから「この」'],['mod',2,'ふたりから 遠くに ある ケーキだよ。','ふたりから 遠いから「あの」']]},
-{t:'きれいな 花',env:'day',objs:[['flower','a','#F29CA3'],['flower','far','#F29CA3',.7]],
- lines:[['a','{1}花を 見つけたよ。ほら、小さくて ピンクなんだ。','a'],['b','わあ、{2}花は はじめて 見たよ。','a'],['b','あっ、{3}にも 同じ 花が 咲いているよ。','far']],
- bl:[['state',0,'ゆうとが 自分の 近くの 花の ようすを 言うよ。','話している ゆうとの 近くの ようすだから「こんな」'],['state',1,'さくらから 見て、ゆうとの 近くに ある 花だね。','さくらから 見ると、聞き手(ゆうと)の 近くだから「そんな」'],['place',2,'ふたりから 遠い ところだよ。','ふたりから 遠いから「あそこ」']]},
-{t:'おばあちゃんの 家',env:'day',objs:[['house','th','#fff',.6]],
- lines:[['a','おばあちゃんの 家は 海の 近くに あるんだ。','th'],['b','{1}家には 何が あるの？','th'],['a','大きな 庭が あって、{2}庭で まいとし すいかを 食べるよ。','th'],['b','いいなあ。{3}ところなら 夏が 楽しそう！','th'],['a','こんど 来る？ {4}へ 一しょに 行こうよ。','th']],
- bl:[['mod',1,'さくらは 家を 見ていないよ。ゆうとの 話に 出てきた 家。','いま 話に出た ものを 受けるから「その」'],['mod',1,'いま 話に出た 庭の ことだよ。','話に出た ものを 受けるから「その」'],['state',1,'ゆうとが 話した ようすの ところだよ。','話に出た ようすを 受けるから「そんな」'],['place',1,'話に出てきた おばあちゃんの 家の ある ばしょ。','話に出た ばしょを 受けるから「そこ」']]}
+ {
+  "t": "かして ほしいな",
+  "env": "classroom",
+  "context": "ゆうとの 近くに けしゴム、さくらの 近くに 本が あります。",
+  "objs": [
+   [
+    "eraser",
+    "a",
+    "#2F6FDE"
+   ],
+   [
+    "book",
+    "b",
+    "#2E9E6B"
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "{1}は ぼくの けしゴムだよ。",
+    "a"
+   ],
+   [
+    "b",
+    "あ、{2}を かしてくれる？",
+    "a"
+   ],
+   [
+    "a",
+    "いいよ。{3}本は、何の 本？",
+    "b"
+   ]
+  ],
+  "bl": [
+   [
+    "obj",
+    0,
+    "けしゴムは、話している ゆうとの 近くに あるよ。",
+    "ゆうとが 自分の 近くの けしゴムを 指して「これ」と 言っているね。"
+   ],
+   [
+    "obj",
+    1,
+    "さくらから 見ると、けしゴムは 相手の 近くだね。",
+    "同じ けしゴムでも、さくらからは 相手の 近くなので「それ」だね。"
+   ],
+   [
+    "mod",
+    1,
+    "ゆうとは、さくらの 近くに ある 本を 指しているよ。",
+    "相手の 近くの 本を 指して「その本」と 言っているね。"
+   ]
+  ]
+ },
+ {
+  "t": "おべんとうは どこで？",
+  "env": "day",
+  "context": "ゆうとは 日なた、さくらは 木かげに います。",
+  "objs": [
+   [
+    "tree",
+    "b",
+    "#5DB56A",
+    1.1
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "どこで 食べようか。{1}は 日なたで あついね。",
+    "a"
+   ],
+   [
+    "b",
+    "{2}は 木かげで すずしいよ。おいでよ！",
+    "b"
+   ],
+   [
+    "a",
+    "ほんとだ。今から {3}へ 行くね。",
+    "b"
+   ]
+  ],
+  "bl": [
+   [
+    "place",
+    0,
+    "ゆうとが 自分の 立っている ばしょを 言うよ。",
+    "自分の いる ばしょは「ここ」だね。"
+   ],
+   [
+    "place",
+    0,
+    "今は さくらが、自分の いる 木かげの ことを 言うよ。",
+    "さくらも、自分の いる ばしょを「ここ」と 言えるね。"
+   ],
+   [
+    "dir",
+    1,
+    "ゆうとから、さくらの いる ほうへ 行くよ。",
+    "相手の いる ほうを 指して「そっち」と 言っているね。"
+   ]
+  ]
+ },
+ {
+  "t": "ねこを 見たよ",
+  "env": "day",
+  "context": "ゆうとだけが きのう 見た ねこについて 話しています。さくらは まだ 見たことが ありません。",
+  "objs": [
+   [
+    "cat",
+    "th",
+    "#fff",
+    0.8
+   ],
+   [
+    "bench",
+    "th2",
+    "#fff",
+    0.55
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "きのう、公園の ベンチで 白い ねこを 見たよ。",
+    "th"
+   ],
+   [
+    "b",
+    "へえ！ {1}ねこは、人に なれているの？",
+    "th"
+   ],
+   [
+    "a",
+    "うん。近くに 来てくれたよ。",
+    "th"
+   ],
+   [
+    "b",
+    "わたしも 会ってみたいな。",
+    "th"
+   ],
+   [
+    "a",
+    "じゃあ、あした {2}へ 行ってみよう。",
+    "th2"
+   ]
+  ],
+  "bl": [
+   [
+    "mod",
+    1,
+    "さくらは、ゆうとの 話に 出てきた ねこの ことを 聞いているよ。",
+    "話に 出た ねこを 受けて「そのねこ」と 言っているね。",
+    {
+     "mode": "topic"
+    }
+   ],
+   [
+    "place",
+    1,
+    "今 話している 公園の ベンチの ところだね。話を 受けても、思い出しても 言えるよ。",
+    "話に 出た ばしょを 受ける「そこ」も、ゆうとが 思い出す「あそこ」も 使えるね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "そこ",
+      "あそこ"
+     ],
+     "why": {
+      "そこ": "「そこ」は、今 話に 出た 公園の ベンチの ところを 受けているよ。「あそこ」も 使えるね。",
+      "あそこ": "「あそこ」は、ゆうとが きのうの ばしょを 思い出して 言っているよ。「そこ」も 使えるね。"
+     }
+    }
+   ]
+  ]
+ },
+ {
+  "t": "なつの はなび",
+  "env": "memory",
+  "context": "二人は、去年 いっしょに 見た 花火を 思い出して 話しています。",
+  "objs": [],
+  "lines": [
+   [
+    "a",
+    "去年の 花火大会、おぼえてる？",
+    ""
+   ],
+   [
+    "b",
+    "うん。{1}とき、空いっぱいに 花火が 広がったね。",
+    ""
+   ],
+   [
+    "a",
+    "また {2}花火を 見たいね。",
+    ""
+   ]
+  ],
+  "bl": [
+   [
+    "mod",
+    2,
+    "去年 二人で 行った 花火大会の ときだね。思い出しても、今の 話を 受けても 言えるよ。",
+    "思い出す「あのとき」も、話を 受ける「そのとき」も 自然だね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "あの",
+      "その"
+     ],
+     "why": {
+      "あの": "二人の 思い出を 指して「あのとき」だね。今の 話を 受ける「そのとき」も 使えるよ。",
+      "その": "今 話に 出た 花火大会を 受けて「そのとき」だね。思い出す「あのとき」も 自然だよ。"
+     }
+    }
+   ],
+   [
+    "state",
+    2,
+    "思い出の 花火と 同じ ようすの 花火を、また 見たいんだね。",
+    "思い出して「あんな花火」、前の 話を 受けて「そんな花火」の 両方が 使えるね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "あんな",
+      "そんな"
+     ],
+     "why": {
+      "あんな": "思い出の ようすを 思いうかべて「あんな花火」だね。話を 受ける「そんな花火」も 使えるよ。",
+      "そんな": "今 話した ようすを 受けて「そんな花火」だね。思い出す「あんな花火」も 使えるよ。"
+     }
+    }
+   ]
+  ]
+ },
+ {
+  "t": "どちらですか？",
+  "env": "day",
+  "context": "おきゃくさんと 先生が、二人から はなれた 奥の 建物を 見ています。",
+  "objs": [
+   [
+    "house",
+    "far",
+    "#F08A24",
+    0.8
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "すみません。校長室は {1}ですか？",
+    ""
+   ],
+   [
+    "b",
+    "校長室は {2}です。あの 奥の 建物に あります。",
+    "far"
+   ],
+   [
+    "a",
+    "あの 建物ですね。ありがとうございます。",
+    "far"
+   ]
+  ],
+  "bl": [
+   [
+    "polite",
+    3,
+    "校長室の ばしょが わからないので、ていねいに たずねているよ。",
+    "ばしょを たずねる「どちら」だね。"
+   ],
+   [
+    "polite",
+    2,
+    "先生は、二人から はなれた 建物を 指しているよ。",
+    "はなれた 建物の ほうを 指して「あちら」と 言っているね。"
+   ]
+  ],
+  "n": [
+   "おきゃく",
+   "先生"
+  ]
+ },
+ {
+  "t": "かみを おろう",
+  "env": "classroom",
+  "context": "ゆうとが おり方を 見せ、さくらも 自分の 紙で やってみます。",
+  "objs": [
+   [
+    "paper",
+    "a",
+    "#F08A24",
+    1.1
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "紙を 半分に おるよ。{1}やって、はしを あわせてね。",
+    "a"
+   ],
+   [
+    "b",
+    "{2}かな？ はしを あわせてみたよ。",
+    "b"
+   ],
+   [
+    "a",
+    "うん、そう！ ぴったり あっているね。",
+    "b"
+   ]
+  ],
+  "bl": [
+   [
+    "way",
+    0,
+    "ゆうとが、自分の おり方を やって 見せているよ。",
+    "自分で やって 見せる ときの「こう」だね。"
+   ],
+   [
+    "way",
+    0,
+    "さくらは、自分で 紙を おりながら たしかめているよ。",
+    "自分の やり方を 見せて たしかめる「こうかな？」だね。"
+   ]
+  ],
+  "demo": "fold"
+ },
+ {
+  "t": "あの 山に のぼりたい",
+  "env": "day",
+  "context": "二人から はなれた 大きな 山を 見ています。",
+  "objs": [
+   [
+    "mountain",
+    "far",
+    "#F08A24",
+    1.2
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "見て！ {1}に 大きな 山が あるよ。",
+    "far"
+   ],
+   [
+    "b",
+    "ほんとだ。{2}山に のぼってみたいね。",
+    "far"
+   ],
+   [
+    "a",
+    "今度、いっしょに 行こう。",
+    "far"
+   ]
+  ],
+  "bl": [
+   [
+    "place",
+    2,
+    "初めて 話に 出す、遠くに 見える 山の ばしょだよ。",
+    "二人から はなれた ばしょを 指して「あそこ」だね。"
+   ],
+   [
+    "mod",
+    2,
+    "遠くの 山を 指す 言い方と、今の 話を 受ける 言い方が あるよ。",
+    "遠くの 山を 指す「あの山」も、話を 受ける「その山」も 自然だね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "あの",
+      "その"
+     ],
+     "why": {
+      "あの": "遠くに 見える 山を 指して「あの山」だね。「その山」と 話を 受けても 言えるよ。",
+      "その": "ゆうとが 今 話した 山を 受けて「その山」だね。遠くを 指す「あの山」も 使えるよ。"
+     }
+    }
+   ]
+  ]
+ },
+ {
+  "t": "でんわで はなそう",
+  "env": "phone",
+  "context": "ゆうとの いる ところは 晴れ、さくらの いる ところは 雨です。",
+  "objs": [],
+  "lines": [
+   [
+    "a",
+    "もしもし。{1}は 雨が ふっているの？",
+    ""
+   ],
+   [
+    "b",
+    "うん、{2}は 雨だよ。ゆうとの いる ところは？",
+    ""
+   ],
+   [
+    "a",
+    "{3}は 晴れているよ。",
+    ""
+   ]
+  ],
+  "bl": [
+   [
+    "polite",
+    1,
+    "ゆうとは、相手の さくらが いる ばしょの 天気を 聞いているよ。",
+    "相手の いる ばしょを 指して「そちら」だね。"
+   ],
+   [
+    "polite",
+    0,
+    "さくらが、自分の いる ばしょの 天気を 答えるよ。",
+    "自分の いる ばしょを 指して「こちら」だね。"
+   ],
+   [
+    "polite",
+    0,
+    "今は ゆうとが、自分の いる ばしょの 天気を 答えるよ。",
+    "ゆうとも、自分の いる ばしょは「こちら」と 言えるね。"
+   ]
+  ]
+ },
+ {
+  "t": "かばんは どれ？",
+  "env": "classroom",
+  "context": "三つの かばんが あります。ゆうとは、さくらの かばんを 知りません。",
+  "objs": [
+   [
+    "bag",
+    "a",
+    "#E0445A"
+   ],
+   [
+    "bag",
+    "b",
+    "#2E9E6B"
+   ],
+   [
+    "bag",
+    "mid",
+    "#2F6FDE"
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "さくらの かばんは {1}？",
+    ""
+   ],
+   [
+    "b",
+    "{2}だよ。ゆうとの 前に ある、赤い かばん。",
+    "a"
+   ],
+   [
+    "a",
+    "じゃあ、{3}を わたすね。",
+    "a"
+   ]
+  ],
+  "bl": [
+   [
+    "obj",
+    3,
+    "三つの 中の どの かばんか、まだ わからないよ。",
+    "どの かばんかを たずねる「どれ」だね。"
+   ],
+   [
+    "obj",
+    1,
+    "赤い かばんは、さくらから 見ると 相手の 近くだね。",
+    "相手の 近くに ある 赤い かばんを 指して「それ」だね。"
+   ],
+   [
+    "obj",
+    0,
+    "自分の 近くを 指しても、相手が 言った ものを 話で 受けても 言えるよ。",
+    "自分の 近くを 指す「これ」と、相手の 話を 受ける「それ」の 両方が 使えるね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "これ",
+      "それ"
+     ],
+     "why": {
+      "これ": "自分の 近くの 赤い かばんを 指して「これ」だね。相手の 話を 受ける「それ」も 使えるよ。",
+      "それ": "相手が 今 言った 赤い かばんを 話で 受けて「それ」だね。自分の 近くを 指す「これ」も 自然だよ。"
+     }
+    }
+   ]
+  ]
+ },
+ {
+  "t": "あの お店",
+  "env": "day",
+  "context": "二人は、遠くに 見える 赤い やねの お店を 見ています。",
+  "objs": [
+   [
+    "house",
+    "far",
+    "#F08A24",
+    0.8
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "見て。{1}に ケーキ屋さんが あるよ。",
+    "far"
+   ],
+   [
+    "b",
+    "うん。{2}お店、赤い やねが 目じるしだね。",
+    "far"
+   ],
+   [
+    "a",
+    "帰りに よってみようか。",
+    "far"
+   ]
+  ],
+  "bl": [
+   [
+    "place",
+    2,
+    "初めて 話に 出す、遠くに 見える お店の ばしょだよ。",
+    "二人から はなれた ばしょを 指して「あそこ」だね。"
+   ],
+   [
+    "mod",
+    2,
+    "遠くの お店を 指しても、今 出た 話を 受けても 言えるよ。",
+    "遠くを 指す「あのお店」も、話を 受ける「そのお店」も 自然だね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "あの",
+      "その"
+     ],
+     "why": {
+      "あの": "遠くに 見える お店を 指して「あのお店」だね。「そのお店」も 使えるよ。",
+      "その": "今 話に 出た お店を 受けて「そのお店」だね。「あのお店」も 使えるよ。"
+     }
+    }
+   ]
+  ]
+ },
+ {
+  "t": "何の 本？",
+  "env": "classroom",
+  "context": "さくらの 近くに ある 本について、ゆうとが 聞いています。",
+  "objs": [
+   [
+    "book",
+    "b",
+    "#2E9E6B"
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "{1}は 何の 本？",
+    "b"
+   ],
+   [
+    "b",
+    "{2}本は、動物の くらしを 紹介しているんだ。",
+    "b"
+   ],
+   [
+    "a",
+    "へえ。ライオンは {3}くらしを しているの？",
+    "b"
+   ],
+   [
+    "b",
+    "むれで 暮らしているんだって。",
+    "b"
+   ]
+  ],
+  "bl": [
+   [
+    "obj",
+    1,
+    "ゆうとが、さくらの 近くの 本を 指しているよ。",
+    "相手の 近くの 本を 指して「それ」だね。"
+   ],
+   [
+    "mod",
+    0,
+    "さくらが 自分の 近くの 本について 答えるよ。",
+    "自分の 本を 指す「この本」が 自然だね。相手が 話した 本を 受ける「その本」も 使えるよ。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "この",
+      "その"
+     ],
+     "why": {
+      "この": "さくらが 自分の 近くの 本を 指して「この本」だね。「その本」と 話を 受けても 言えるよ。",
+      "その": "相手が 聞いた 本を 受けて「その本」と 答えられるね。自分の 本を 指す「この本」も 自然だよ。"
+     }
+    }
+   ],
+   [
+    "state",
+    3,
+    "ライオンの くらし方は、まだ 教えてもらっていないよ。",
+    "まだ わからない くらしの ようすを たずねる「どんな」だね。"
+   ]
+  ]
+ },
+ {
+  "t": "みちあんない",
+  "env": "day",
+  "context": "二人から はなれた 木を 目じるしに、公園への 道を 教えています。",
+  "objs": [
+   [
+    "tree",
+    "far",
+    "#F08A24",
+    0.9
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "すみません。公園へは {1}行けば いいですか？",
+    ""
+   ],
+   [
+    "b",
+    "{2}木の ところまで、まっすぐ 進んでください。",
+    "far"
+   ],
+   [
+    "b",
+    "{3}まで 行くと、公園の 入口が 見えますよ。",
+    "far"
+   ],
+   [
+    "a",
+    "わかりました。ありがとうございます。",
+    ""
+   ]
+  ],
+  "bl": [
+   [
+    "way",
+    3,
+    "公園への 行き方が わからないので たずねているよ。",
+    "行き方を たずねる「どう行けば」だね。"
+   ],
+   [
+    "mod",
+    2,
+    "駅いんさんが、遠くに 見える 木を 指しているよ。",
+    "二人から はなれた 木を 指して「あの木」だね。"
+   ],
+   [
+    "place",
+    1,
+    "木の ところを、前の 話で 受けても、遠くを 指しても 言えるよ。",
+    "話を 受ける「そこまで」と、遠くを 指す「あそこまで」の 両方が 使えるね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "そこ",
+      "あそこ"
+     ],
+     "why": {
+      "そこ": "今 言った 木の ところを 受けて「そこまで」だね。「あそこまで」も 使えるよ。",
+      "あそこ": "遠くに 見える 木の ところを 指して「あそこまで」だね。「そこまで」も 使えるよ。"
+     }
+    }
+   ]
+  ],
+  "n": [
+   "おきゃく",
+   "駅いん"
+  ]
+ },
+ {
+  "t": "でんわで さそおう",
+  "env": "phoneHome",
+  "context": "ゆうとは 学校、さくらは 家から 電話しています。",
+  "objs": [],
+  "lines": [
+   [
+    "a",
+    "もしもし。ぼくは まだ 学校に いるよ。さくらは {1}に いるの？",
+    ""
+   ],
+   [
+    "b",
+    "家だよ。{2}へ 来て、いっしょに 宿題を しない？",
+    "b"
+   ],
+   [
+    "a",
+    "いいね。今から {3}へ 行くね。",
+    "b"
+   ]
+  ],
+  "bl": [
+   [
+    "place",
+    3,
+    "さくらが いる ばしょを、まだ 知らないので 聞くよ。",
+    "ばしょを たずねる「どこ」だね。"
+   ],
+   [
+    "dir",
+    0,
+    "さくらが、自分の いる 家の ほうへ さそっているよ。",
+    "自分の いる ほうへ さそう「こっちへ 来て」だね。"
+   ],
+   [
+    "dir",
+    1,
+    "ゆうとは、相手の さくらが いる 家の ほうへ 行くよ。",
+    "相手の いる ほうを 指す「そっちへ 行くね」だね。"
+   ]
+  ]
+ },
+ {
+  "t": "せんせいと プリント",
+  "env": "classroom",
+  "context": "ゆうとの 近くに ある プリントを、先生が 指しています。",
+  "objs": [
+   [
+    "paper",
+    "a",
+    "#F08A24",
+    1.1
+   ]
+  ],
+  "lines": [
+   [
+    "b",
+    "{1}は、だれの プリントかな？",
+    "a"
+   ],
+   [
+    "a",
+    "{2}は ぼくのです。大きな 字で 書きました。",
+    "a"
+   ],
+   [
+    "b",
+    "よく 読めるね。みんなにも 見せてくれる？",
+    "a"
+   ]
+  ],
+  "bl": [
+   [
+    "obj",
+    1,
+    "先生から 見ると、プリントは 相手の 近くだね。",
+    "先生が、ゆうとの 近くの プリントを 指して「それ」と 言っているね。"
+   ],
+   [
+    "obj",
+    0,
+    "自分の 近くを 指しても、相手が 言った ものを 話で 受けても 言えるよ。",
+    "自分の 近くを 指す「これ」と、相手の 話を 受ける「それ」の 両方が 使えるね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "これ",
+      "それ"
+     ],
+     "why": {
+      "これ": "自分の 近くの プリントを 指して「これ」だね。相手の 話を 受ける「それ」も 使えるよ。",
+      "それ": "相手が 今 言った プリントを 話で 受けて「それ」だね。自分の 近くを 指す「これ」も 自然だよ。"
+     }
+    }
+   ]
+  ],
+  "n": [
+   "ゆうと",
+   "先生"
+  ]
+ },
+ {
+  "t": "ケーキ屋さんで",
+  "env": "shop",
+  "context": "店の 中です。店いんの 近くに いちごの ケーキ、奥の 棚に チョコケーキが あります。",
+  "objs": [
+   [
+    "cake",
+    "b",
+    "#F7D5B0"
+   ],
+   [
+    "cake",
+    "far",
+    "#805039",
+    0.6
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "すみません。{1}ケーキは いくらですか？",
+    "b"
+   ],
+   [
+    "b",
+    "{2}ケーキは、一つ 三百円です。",
+    "b"
+   ],
+   [
+    "a",
+    "では、それを 一つ ください。奥の {3}ケーキは、何味ですか？",
+    "far"
+   ],
+   [
+    "b",
+    "チョコレート味です。",
+    "far"
+   ]
+  ],
+  "bl": [
+   [
+    "mod",
+    1,
+    "おきゃくさんが、店いんの 近くの いちごの ケーキを 指しているよ。",
+    "相手の 近くの ケーキを 指して「そのケーキ」だね。"
+   ],
+   [
+    "mod",
+    0,
+    "店いんが、自分の 近くの ケーキの 値段を 答えるよ。",
+    "自分の 近くを 指す「このケーキ」も、おきゃくさんの 話を 受ける「そのケーキ」も 使えるね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "この",
+      "その"
+     ],
+     "why": {
+      "この": "店いんが 手元の ケーキを 指して「このケーキ」だね。「そのケーキ」と 話を 受けても 言えるよ。",
+      "その": "おきゃくさんが たずねた ケーキを 受けて「そのケーキ」だね。手元を 指す「このケーキ」も 自然だよ。"
+     }
+    }
+   ],
+   [
+    "mod",
+    2,
+    "さっきの いちごの ケーキとは 別の、奥の 棚の ケーキだよ。",
+    "二人から はなれた 奥の ケーキを 指して「あのケーキ」だね。"
+   ]
+  ],
+  "n": [
+   "おきゃく",
+   "店いん"
+  ]
+ },
+ {
+  "t": "きれいな 花",
+  "env": "day",
+  "context": "ゆうとが 手元の 花を 見せています。さくらは はなれた ところに います。",
+  "objs": [
+   [
+    "flower",
+    "a",
+    "#F29CA3"
+   ],
+   [
+    "flower",
+    "far",
+    "#F29CA3",
+    0.7
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "見て。{1}花、ピンク色で かわいいね。",
+    "a"
+   ],
+   [
+    "b",
+    "ほんとだ。{2}花、何ていう 名前かな？",
+    "a"
+   ],
+   [
+    "a",
+    "何だろうね。向こうにも 同じ 花が 咲いているよ。",
+    "far"
+   ]
+  ],
+  "bl": [
+   [
+    "mod",
+    0,
+    "ゆうとが、自分の 手元の 花を 指しているよ。",
+    "自分の 近くの 花を 指して「この花」だね。"
+   ],
+   [
+    "mod",
+    1,
+    "さくらからは 相手の 手元の 花だね。今 話に 出た 花でも あるよ。",
+    "相手の 手元の 花を 指す「その花」が 自然だね。話題の 花を 取り上げる「この花」も 使えるよ。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "その",
+      "この"
+     ],
+     "why": {
+      "その": "相手の 手元の 花、今 話した 花を 受けて「その花」だね。「この花」と 話題を 取り上げても 言えるよ。",
+      "この": "今 話題に なった 花を 取り上げて「この花」とも 言えるね。相手の 手元を 指す「その花」も 自然だよ。"
+     }
+    }
+   ]
+  ]
+ },
+ {
+  "t": "おばあちゃんの 家",
+  "env": "day",
+  "context": "ゆうとが おばあちゃんの 家の 話を しています。さくらは まだ 行ったことが ありません。",
+  "objs": [
+   [
+    "house",
+    "th",
+    "#fff",
+    0.6
+   ]
+  ],
+  "lines": [
+   [
+    "a",
+    "おばあちゃんの 家には、大きな 庭が あるんだ。夏は 庭で すいかを 食べるよ。",
+    "th"
+   ],
+   [
+    "b",
+    "いいね。{1}庭で、わたしも 食べてみたいな。",
+    "th"
+   ],
+   [
+    "a",
+    "今度、{2}へ いっしょに 行こうよ。",
+    "th"
+   ],
+   [
+    "b",
+    "うん、楽しみ！",
+    ""
+   ]
+  ],
+  "bl": [
+   [
+    "mod",
+    1,
+    "さくらは、ゆうとの 話に 出てきた 庭の ことを 言っているよ。",
+    "初めて 聞いた 庭を、話で 受けて「その庭」と 言っているね。",
+    {
+     "mode": "topic"
+    }
+   ],
+   [
+    "place",
+    1,
+    "話に 出た ばしょを 受けても、ゆうとが ばしょを 思い出しても 言えるよ。",
+    "話を 受ける「そこへ」も、ゆうとが 思い出す「あそこへ」も 自然だね。",
+    {
+     "mode": "mixed",
+     "accept": [
+      "そこ",
+      "あそこ"
+     ],
+     "why": {
+      "そこ": "今 話に 出た 家の ある ばしょを 受ける「そこへ」だね。「あそこへ」も 使えるよ。",
+      "あそこ": "ゆうとが おばあちゃんの 家の ばしょを 思い出す「あそこへ」だね。「そこへ」も 使えるよ。"
+     }
+    }
+   ]
+  ]
+ }
 ];
-ADV.forEach((q,i)=>{q.id='adv_'+(i+1);let n=0;q.bk=[];q.lines.forEach((l,li)=>(l[1].match(/\{\d\}/g)||[]).forEach(()=>{const b=q.bl[n++]||[];q.bk.push({li,f:b[0],a:(WORD_SETS[b[0]]||[])[b[1]],h:b[2],w:b[3]})}))});
-[[3,[0,1,2],'t'],[4,[0,1,2],'m'],[6,[2],'t'],[12,[2,3],'t'],[17,[0,1,2,3],'t']].forEach(([n,is,c])=>is.forEach(i=>{ADV[n-1].bk[i].c=c}));
+ADV.forEach((q,i)=>{q.id='adv_'+(i+1);let n=0;q.bk=[];q.lines.forEach((l,li)=>(l[1].match(/\{\d\}/g)||[]).forEach(()=>{const b=q.bl[n++]||[],m=b[4]||{},a=(WORD_SETS[b[0]]||[])[b[1]];q.bk.push({li,f:b[0],a,h:b[2],w:b[3],accept:m.accept||[a],why:m.why||{},c:m.mode||''})}))});
+const advAccepts=(b,w)=>b.accept.includes(w);
+const advExplanation=(b,w)=>b.why[w]||b.w;
 /* まちがえた言葉に合わせて、なぜちがうかを短く返す(こ=0 そ=1 あ=2 ど=3) */
 function advWhy(q,b,w){const F=WORD_SETS[b.f],a=F.indexOf(b.a),x=F.indexOf(w),N=q.n||['ゆうと','さくら'],ln=q.lines[b.li][0]==='a',sp=N[ln?0:1],ls=N[ln?1:0];
- if(x===3)return '「ど」は たずねる 言葉。ここでは たずねていないよ。';
- if(b.c==='t')return x===2?'「あ」は ふたりが 知っている ときや、遠い ときの 言葉。ここは 話に出た ことを 受けるよ。':'「こ」は 話している 人の 近くの もの。ここは 話に出た ことを 受ける 言葉だよ。';
- if(b.c==='m')return '思い出は ふたりとも 知っている こと。近くの ものを 指す「こ」「そ」では ないよ。';
+ if(x===3)return '「ど」は、どれかが わからない ときの 言葉。この空欄では、もう 話に 出た ものや、絵で 指している ものを 言うよ。';
+ if(b.c)return b.h;
  if(a===3)return 'わからない ことを たずねているから「ど」の 言葉だよ。';
  if(a===0)return x===1?'「そ」は 聞き手の 近く。'+sp+'は 自分の 近くの ことを 言っているよ。':'「あ」は 遠い ときの 言葉。これは '+sp+'の 近くだよ。';
  if(a===1)return x===0?'「こ」は 話している '+sp+'の 近く。これは '+ls+'の 近くの ことだよ。':'「あ」は 遠い ときの 言葉。これは '+ls+'の 近くだよ。';
  return 'ふたりの どちらの 近くでも ない、遠い ところだよ。'}
-function validateAdv(){const e=[];ADV.forEach(q=>{const n=q.lines.map(l=>l[1]).join('').match(/\{\d\}/g).length;if(n!==q.bl.length)e.push(q.id+': 空欄数と答えの数が不一致');q.bk.forEach(b=>{if(!b.a)e.push(q.id+': 答えが不正')});q.lines.forEach(l=>{if(l[2]&&!['a','b','mid','far','th','th2'].includes(l[2]))e.push(q.id+': 指す先が不正')});q.objs.forEach(o=>{if(!ICONS[o[0]])e.push(q.id+': SVGがない')})});return e}
+function validateAdv(){const e=[];ADV.forEach(q=>{const marks=q.lines.map(l=>l[1]).join('').match(/\{\d\}/g)||[];if(marks.length!==q.bl.length||marks.some((m,i)=>m!==`{${i+1}}`))e.push(q.id+': 空欄の数・順序が不正');if(!q.context)e.push(q.id+': 場面の説明がない');q.bk.forEach(b=>{if(!b.a||!b.accept.includes(b.a)||new Set(b.accept).size!==b.accept.length||b.accept.some(w=>!WORD_SETS[b.f].includes(w)))e.push(q.id+': 答えが不正');if(b.accept.length>1&&b.accept.some(w=>!b.why[w]))e.push(q.id+': 別解の説明がない')});q.lines.forEach(l=>{if(l[2]&&!['a','b','mid','far','th','th2'].includes(l[2]))e.push(q.id+': 指す先が不正')});q.objs.forEach(o=>{if(!ICONS[o[0]])e.push(q.id+': SVGがない')})});return e}
 const cloud=(x,y,s,f,k)=>{const c=[[-40,8,20],[-16,-8,26],[18,-12,28],[44,6,21],[2,14,26]],o=()=>c.map(([a,b,r])=>`<circle cx="${a}" cy="${b}" r="${r}"/>`).join('')+'<rect x="-60" y="12" width="124" height="28" rx="14"/>';
  return `<g transform="translate(${x} ${y}) scale(${s})"><g fill="${k}" stroke="${k}" stroke-width="7" stroke-linejoin="round">${o()}</g><g fill="${f}">${o()}</g><path d="M-52 33Q2 43 58 31" fill="none" stroke="#1E2A3A" stroke-opacity=".1" stroke-width="9" stroke-linecap="round"/><path d="M-32-2q9-15 26-13M16-27q10-4 20 3" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/></g>`};
 const advN=()=>ADV.filter(q=>(P.adv&&P.adv[q.id]||{}).ok>0).length;
 function advRec(id,k){P.adv=P.adv||{};const o=P.adv[id]||(P.adv[id]={ok:0,miss:0});o[k]=(o[k]|0)+1;saveProgress()}
 const advBG=nt=>`<defs><linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="150"><stop offset="0" stop-color="${nt?'#1B2A5C':'#7CCBF2'}"/><stop offset="1" stop-color="${nt?'#4A5FA0':'#DDF3FC'}"/></linearGradient><linearGradient id="grs" gradientUnits="userSpaceOnUse" x1="0" y1="150" x2="0" y2="400"><stop offset="0" stop-color="${nt?'#3E6B4F':'#BDE6A0'}"/><stop offset="1" stop-color="${nt?'#27493A':'#7FC76B'}"/></linearGradient></defs><rect x="-2000" y="-2000" width="4800" height="2150" fill="url(#sky)"/><path d="M-2000 150V140Q-100 98 120 136T520 126T900 134T2800 140V150z" fill="${nt?'#355E48':'#C9EBB4'}"/><rect x="-2000" y="150" width="4800" height="2250" fill="url(#grs)"/>`+(nt?[[60,30],[300,20],[500,40],[720,26],[240,100],[560,110],[760,90],[100,90]].map(([x,y],i)=>`<circle class="st" style="animation-delay:-${i*.3}s" cx="${x}" cy="${y}" r="2.6" fill="#FFF3B0"/>`).join(''):`<g class="dr" style="animation-delay:-3s">${cloud(110,84,.55,'#fff','#BFDDF0')}</g><g class="dr" style="animation-delay:-7s;animation-duration:12s">${cloud(690,90,.65,'#fff','#BFDDF0')}</g>`);
 function advScene(q,fl,li,h){
- const ph=q.env==='phone',nt=q.env==='night',ax=ph?(fl?700:100):(fl?640:160),bx=ph?(fl?100:700):(fl?160:640),toC=ax<400?1:-1,
+ const ph=q.env.startsWith('phone'),nt=q.env==='night',shop=q.env==='shop',room=q.env==='classroom',ax=ph?(fl?700:100):(fl?640:160),bx=ph?(fl?100:700):(fl?160:640),toC=ax<400?1:-1,
  PS={a:[ax+toC*100,308],b:[bx-toC*100,308],mid:[400,308],far:[400,175],th:[ax+toC*110,112],th2:[ax+toC*168,136]},
  L=q.lines[li],w=L[0],sx=w==='a'?ax:bx,lx=w==='a'?bx:ax,sc=w==='a'?C.sp:C.li,tg=L[2]&&PS[L[2]],N=q.n||['ゆうと','さくら'],
  un=(a,b)=>{const d=Math.hypot(a,b)||1;return{x:a/d,y:b/d}};
- let g=advBG(nt);
+ if(shop)PS.far=[400,103];
+ let g=shop?`<g data-scene="shop"><rect width="800" height="400" fill="#FFF1E5"/><path d="M0 150H800V400H0Z" fill="#DDBFA2"/><path d="M0 232H800M0 315H800M100 150L0 400M300 150L250 400M500 150L550 400M700 150L800 400" stroke="#CBA98A" stroke-width="2"/><path d="M0 0H800V32H0Z" fill="#FFF"/><path d="M0 0H800" stroke="#D96F7D" stroke-width="20" stroke-dasharray="40 40"/><rect x="285" y="44" width="230" height="120" rx="8" fill="#FFF9EF" stroke="#916348" stroke-width="4"/><path d="M285 125H515" stroke="#916348" stroke-width="6"/><text x="400" y="72" text-anchor="middle" font-size="18" font-weight="700" fill="#6B4431">ケーキやさん</text><text x="400" y="151" text-anchor="middle" font-size="15" fill="#6B4431">おくの たな</text></g>`:room?`<g data-scene="classroom"><rect width="800" height="400" fill="#F4F3DD"/><path d="M0 150H800V400H0Z" fill="#D7BB92"/><path d="M0 230H800M0 320H800" stroke="#BE9C73" stroke-width="2"/><rect x="240" y="25" width="320" height="108" rx="5" fill="#356C58" stroke="#997148" stroke-width="8"/><text x="400" y="88" text-anchor="middle" font-size="27" fill="#FFF">きょうしつ</text></g>`:q.env==='phoneHome'?`<rect width="400" height="400" fill="#E8F0EA"/><rect x="400" width="400" height="400" fill="#FFF0E0"/><path d="M400 0V400" stroke="#8DA7B3" stroke-width="5" stroke-dasharray="10 8"/><text x="${ax}" y="80" text-anchor="middle" font-size="30" fill="${C.ink}">学校</text><text x="${bx}" y="80" text-anchor="middle" font-size="30" fill="${C.ink}">家</text>`:advBG(nt);
+ if(shop||room)q.objs.filter(o=>['a','b','mid'].includes(o[1])&&o[0]!=='tree').forEach(o=>{const x=PS[o[1]][0];g+=`<g class="scene-table"><path d="M${x-52} 340H${x+52}V352H${x-52}Z" fill="${shop?'#B77650':'#A77E4C'}" stroke="${C.ink}" stroke-width="2"/><path d="M${x-40} 352V383M${x+40} 352V383" stroke="#855E3C" stroke-width="7"/></g>`});
  if(nt)g+=[[200,72,C.far,0],[410,44,C.unk,.8],[610,78,'#F2B632',1.6],[110,118,C.li,2]].map(([x,y,c,d])=>`<g transform="translate(${x} ${y})"><g class="fk" style="animation-delay:${d}s">${Array.from({length:12},(_,i)=>`<path d="M0-10V-${i%2?34:46}" transform="rotate(${i*30})" stroke="${c}" stroke-width="5" stroke-linecap="round"/>`).join('')}</g></g>`).join('');
- if(ph){g+=`<g transform="translate(${ax} 72)"><g class="sun"><circle r="26" fill="#FFD24D" stroke="${C.ink}" stroke-width="3"/>${Array.from({length:8},(_,i)=>`<path d="M0-34V-44" transform="rotate(${i*45})" stroke="#F2B632" stroke-width="5" stroke-linecap="round"/>`).join('')}</g></g>${cloud(bx,58,.9,'#B9C6D6','#4E5C70')}`+Array.from({length:9},(_,i)=>`<path class="rn" style="animation-delay:-${i*.11}s" d="M${bx-40+i*10} 96l-3 10" stroke="#4F8FD8" stroke-width="3.5" stroke-linecap="round"/>`).join('')+`<path class="dsh" d="M${sx} 150Q400 10 ${lx} 150" fill="none" stroke="${sc}" stroke-width="5" stroke-dasharray="1 11" stroke-linecap="round"/>`+(reduced()?'':[0,.7,1.4].map(d=>`<circle r="6" fill="${sc}" stroke="#fff" stroke-width="2"><animateMotion dur="2.1s" begin="${d}s" repeatCount="indefinite" path="M${sx} 150Q400 10 ${lx} 150"/></circle>`).join(''))}
+ if(q.env==='phone'){g+=`<g transform="translate(${ax} 72)"><g class="sun"><circle r="26" fill="#FFD24D" stroke="${C.ink}" stroke-width="3"/>${Array.from({length:8},(_,i)=>`<path d="M0-34V-44" transform="rotate(${i*45})" stroke="#F2B632" stroke-width="5" stroke-linecap="round"/>`).join('')}</g></g>${cloud(bx,58,.9,'#B9C6D6','#4E5C70')}`+Array.from({length:9},(_,i)=>`<path class="rn" style="animation-delay:-${i*.11}s" d="M${bx-40+i*10} 96l-3 10" stroke="#4F8FD8" stroke-width="3.5" stroke-linecap="round"/>`).join('')+`<path class="dsh" d="M${sx} 150Q400 10 ${lx} 150" fill="none" stroke="${sc}" stroke-width="5" stroke-dasharray="1 11" stroke-linecap="round"/>`+(reduced()?'':[0,.7,1.4].map(d=>`<circle r="6" fill="${sc}" stroke="#fff" stroke-width="2"><animateMotion dur="2.1s" begin="${d}s" repeatCount="indefinite" path="M${sx} 150Q400 10 ${lx} 150"/></circle>`).join(''))}
  if(q.objs.some(o=>o[1]==='th'))g+=cloud(PS.th[0]+30,96,1.6,'#fff',C.ink)+cloud(ax+toC*64,172,.2,'#fff',C.ink)+cloud(ax+toC*42,194,.11,'#fff',C.ink);
  if(h>=2&&!ph)g+=[[ax,C.sp,N[0]],[bx,C.li,N[1]]].map(([x,k,n])=>`<ellipse cx="${x+toC*(x===ax?12:-12)}" cy="318" rx="150" ry="58" fill="${k}" fill-opacity=".14" stroke="${k}" stroke-opacity=".8" stroke-width="3.5" stroke-dasharray="10 8"/><text x="${x+toC*(x===ax?12:-12)}" y="388" text-anchor="middle" font-size="15" font-weight="800" fill="${k}">${n}の ばしょ</text>`).join('');
  const pr=(wh,x,col,nm,who)=>{const me=w===wh,po={gaze:me?(tg?un(tg[0]-x,tg[1]-206):un(lx-x,0)):un(sx-x,0)};if(me&&tg){const sd=Math.sign(tg[0]-x)||toC;po.arm={s:sd,a:Math.atan2(tg[1]-244,tg[0]-(x+24*sd)),cue:'point'}}return `<g class="${me?'bn':''}">${person(x,col,nm,who,po)}</g>`};
  g+=pr('a',ax,C.sp,N[0],'sp')+pr('b',bx,C.li,N[1],'li');
  if(ph)g+=[ax,bx].map(x=>{const d=x<400?1:-1,me=x===sx;return `<g transform="translate(${x+d*30} 202) rotate(${d*14})"><rect x="-9" y="-26" width="18" height="52" rx="6" fill="#2B3445" stroke="${C.ink}" stroke-width="2.5"/><rect x="-6" y="-21" width="12" height="38" rx="2.5" fill="${me?'#FFF3B0':'#8FD3FF'}"/><circle cy="21.5" r="2" fill="#8FD3FF"/></g><circle cx="${x+d*24}" cy="214" r="6" fill="${SK}" stroke="${C.ink}" stroke-width="2"/><path class="${me?'st':''}" d="M${x+d*48} 190q${d*9} 12 0 24M${x+d*58} 183q${d*14} 19 0 38" fill="none" stroke="${me?sc:'#9AA7B8'}" stroke-width="3.5" stroke-linecap="round"/>`}).join('');
- q.objs.forEach(([t,k,c,s])=>{if(q.demo==='fold'&&t==='paper'){const performer=li===0?'a':'b',x=performer==='a'?ax:bx;g+=PDEMO('fold',x,258,.9,performer==='a'?C.sp:C.li,x<400?1:-1);return}const[x,y]=PS[k];g+=ic(t,x,y,s||1,c||C.far,'pop')});
+ q.objs.forEach(([t,k,c,s])=>{if(q.demo==='fold'&&t==='paper'){const performer=li===0?'a':'b',x=performer==='a'?ax:bx;g+=PDEMO('fold',x,258,.9,performer==='a'?C.sp:C.li,x<400?1:-1);return}const[x,y]=PS[k];let art=ic(t,x,y,s||1,c||C.far,'pop');if(shop&&k==='far')art=art.replace('fill="#fff"','fill="#805039"').replace('fill="#E0445A"','fill="#5B3523"');g+=art});
  if(h>=1&&tg)g+=`<path class="dsh" d="M${sx} 176Q${(sx+tg[0])/2} ${Math.min(176,tg[1])-50} ${tg[0]} ${tg[1]-48}" fill="none" stroke="${sc}" stroke-width="6" stroke-dasharray="1 12" stroke-linecap="round"/>`;
  if(h>=2&&tg)g+=`<circle cx="${tg[0]}" cy="${tg[1]}" r="48" fill="none" stroke="${C.far}" stroke-width="5" stroke-dasharray="8 6"/>`;
- return `<svg viewBox="0 0 800 400" style="overflow:hidden" role="img" aria-label="ふたりの 会話の 場面">${g}</svg>`}
+ return `<svg class="${shop?'shop-scene':room?'room-scene':''}" viewBox="0 0 800 400" style="overflow:hidden" role="img" aria-label="${q.context}">${g}</svg>`}
 const jumpSc=c=>{const s=$('#sc svg');if(!s)return;s.classList.remove('cheer','sad');void s.getBoundingClientRect();s.classList.add(c);setTimeout(()=>s.classList.remove(c),900)};
 function advStart(){SFX.go();const td=ADV.filter(q=>!((P.adv&&P.adv[q.id]||{}).ok>0));S={adv:1,queue:td.length?td:shuffle(ADV),i:0,stars:0};advShow()}
 function advShow(){CUR='adv';const q=S.queue[S.i];if(!q)return advFinish();
- Object.assign(S,{mc:0,bad:[],bi:0,flip:Math.random()<.5,h:0,hinted:false,missed:false,clean:true,answered:false,lock:0,fill:[],ch:shuffle(WORD_SETS[q.bk[0].f])});
- app.innerHTML=`<div class="top"><span>おうようへん　${S.i+1} / ${S.queue.length}</span><b>${q.t}</b>${rdBtn()}${sndBtn()}<button class="btn" id="bk">やめる</button></div><div class="stage"><div id="sc" style="flex:1;display:flex;flex-direction:column;min-height:0"></div></div><div class="choices" id="ach"></div><div class="msg"><span id="msg" aria-live="polite">話している 人に 気をつけて、①から 入れてみよう。</span><span><button class="btn" id="ahb" style="font-size:inherit;padding:.2em .7em">ヒント</button> <button class="btn pri" id="anx" hidden style="font-size:inherit;padding:.2em .8em">つぎへ</button></span></div>`;
- $('#bk').onclick=menu;if($('#rdq'))$('#rdq').onclick=()=>{const q=S.queue[S.i],li=S.bi>=q.bk.length?q.lines.length-1:q.bk[S.bi].li;TTS.say(q.lines.slice(0,li+1).map((_,k)=>advIt(q,k)),1)};$('#ahb').onclick=advHint;$('#anx').onclick=()=>{S.i++;advShow()};advDraw();TTS.say(q.lines.slice(0,q.bk[0].li+1).map((_,k)=>advIt(q,k)));if(S.i)SFX.pop()}
+ Object.assign(S,{mc:0,bad:[],bi:0,flip:Math.random()<.5,h:0,hinted:false,missed:false,clean:true,answered:false,lock:0,lastWhy:'',fill:[],ch:shuffle(WORD_SETS[q.bk[0].f])});
+ app.innerHTML=`<div class="top"><span>おうようへん　${S.i+1} / ${S.queue.length}</span><b>${q.t}</b>${rdBtn()}${sndBtn()}<button class="btn" id="bk">やめる</button></div><div class="stage"><div id="sc" style="flex:1;display:flex;flex-direction:column;min-height:0"></div></div><div class="choices" id="ach"></div><div class="msg"><span id="msg" aria-live="polite">会話に 合う 言葉を 選ぼう。正解が 二つ ある ところも あるよ。</span><span><button class="btn" id="ahb" style="font-size:inherit;padding:.2em .7em">ヒント</button> <button class="btn pri" id="anx" hidden style="font-size:inherit;padding:.2em .8em">つぎへ</button></span></div>`;
+ $('#bk').onclick=menu;if($('#rdq'))$('#rdq').onclick=()=>{const q=S.queue[S.i],li=S.bi>=q.bk.length?q.lines.length-1:q.bk[S.bi].li;TTS.say(q.lines.slice(0,li+1).map((_,k)=>advIt(q,k)),1)};$('#ahb').onclick=advHint;$('#anx').onclick=()=>{S.i++;advShow()};advDraw();TTS.say([[q.context,1,.9],...q.lines.slice(0,q.bk[0].li+1).map((_,k)=>advIt(q,k))]);if(S.i)SFX.pop()}
 function advDraw(){const hadFocus=document.activeElement?.closest('#ach'),focusWord=document.activeElement?.dataset.w;const q=S.queue[S.i],dn=S.bi>=q.bk.length,li=dn?q.lines.length-1:q.bk[S.bi].li,N=q.n||['ゆうと','さくら'],M=['①','②','③','④'];
  const dl=q.lines.slice(0,li+1).map(([w,t],k)=>`<div class="al ${(w==='a')!==S.flip?'la':'lb'}${k===li?' on':''}" style="--c:${w==='a'?C.sp:C.li}"><b class="an">${N[w==='a'?0:1]}</b><span>${t.replace(/\{(\d)\}/g,(_,d)=>{const j=d-1;return S.fill[j]?`<span class="fl2">${S.fill[j]}</span>`:j===S.bi?`<span class="blank">${M[j]}</span>`:`<span class="blk2">${M[j]}</span>`})}</span></div>`).join('');
- $('#sc').innerHTML=`<div class="adg">${dl}</div>${advScene(q,S.flip,li,S.h)}`;
+ $('#sc').innerHTML=`<div class="adg"><p class="adv-context">${q.context}</p>${dl}</div>${advScene(q,S.flip,li,S.h)}`;
  $('#ach').innerHTML=dn?'':S.ch.map((w,i)=>{const bd=(S.bad||[]).includes(w);return `<button class="btn${bd?' bad':''}" data-w="${w}"${bd?' disabled':''}><i class="kn">${i+1}</i>${w}</button>`}).join('');
  document.querySelectorAll('#ach .btn').forEach(b=>b.onclick=()=>advPick(b));const a=$('#sc .adg');if(a)a.scrollTop=a.scrollHeight;if(hadFocus){const buttons=[...document.querySelectorAll('#ach .btn:not(:disabled)')];(buttons.find(b=>b.dataset.w===focusWord)||buttons[0])?.focus()}}
 function advHint(){if(S.answered||S.lock)return;const b=S.queue[S.i].bk[S.bi];S.hinted=true;S.clean=false;S.h=Math.min(S.h+1,2);SFX.hint();
- {const m='ヒント'+S.h+'：'+(S.h<2?'いま 話している 人は だれかな？ はねている 人と ふきだしの 色を 見よう。':b.h);$('#msg').textContent=m;TTS.say([[m,1,.9]])}advDraw();if(S.h>=2)$('#ahb').disabled=true}
+ {const m='ヒント'+S.h+'：'+(S.h<2?(b.c?'前の 話や 思い出を 受ける 言い方も 考えてみよう。':'今 話している 人と、指している ものの ばしょを 見よう。'):b.h);$('#msg').textContent=m;TTS.say([[m,1,.9]])}advDraw();if(S.h>=2)$('#ahb').disabled=true}
 function advPick(btn){if(S.answered||S.lock)return;const session=S,q=S.queue[S.i],b=q.bk[S.bi];
- if(btn.dataset.w===b.a){S.lock=1;S.fill[S.bi]=b.a;fly(btn,1);SFX.ok();$('#msg').innerHTML='<span><b class="okw">せいかい！</b> '+b.w+'</span>';S.bi++;S.h=0;
+ if(advAccepts(b,btn.dataset.w)){S.lock=1;S.fill[S.bi]=btn.dataset.w;S.lastWhy=advExplanation(b,btn.dataset.w);fly(btn,1);SFX.ok();$('#msg').innerHTML='<span><b class="okw">せいかい！</b> '+S.lastWhy+'</span>';S.bi++;S.h=0;
   setTimeout(()=>{if(CUR!=='adv'||S!==session||S.queue[S.i]!==q)return;S.lock=0;S.mc=0;S.bad=[];const nb=q.bk[S.bi],nl=nb?nb.li:q.lines.length-1,it=[];if(!nb||nb.li!==b.li)it.push(advIt(q,b.li));for(let k=b.li+1;k<=nl;k++)it.push(advIt(q,k));if(it.length)TTS.say(it);if(S.bi>=q.bk.length)return advDone();S.ch=shuffle(WORD_SETS[q.bk[S.bi].f]);$('#ahb').disabled=false;advDraw()},430)}
- else{S.missed=true;S.clean=false;jumpSc('sad');btn.classList.add('bad','shake');btn.disabled=true;advRec(q.id,'miss');fly(btn,0);SFX.ng();S.mc++;S.bad.push(btn.dataset.w);let ex='';if(S.mc>=3){S.h=2;ex=' ヒント：'+b.h}else if(S.mc>=2){S.h=Math.max(S.h,1);ex=' (ゆびさしの さきも 見てね)'}
+ else{S.missed=true;S.clean=false;jumpSc('sad');btn.classList.add('bad','shake');btn.disabled=true;advRec(q.id,'miss');fly(btn,0);SFX.ng();S.mc++;S.bad.push(btn.dataset.w);let ex='';if(S.mc>=3){S.h=2;ex=' ヒント：'+b.h}else if(S.mc>=2){S.h=Math.max(S.h,1);ex=b.c?' 前の 話も 見てみよう。':' 指している ばしょも 見てみよう。'}
   const m='おしい！ '+advWhy(q,b,btn.dataset.w)+ex;$('#msg').textContent=m;TTS.say([[m,1,.9]]);if(S.mc>=2){advDraw();$('#ahb').disabled=S.h>=2}}}
 function advDone(){const q=S.queue[S.i];S.answered=true;advRec(q.id,'ok');P.adv[q.id].pf=S.clean?1:0;if(S.clean)S.stars++;saveProgress();advDraw();jumpSc('cheer');
  const st=$('.stage');if(st)burst(st,st.clientWidth/2,st.clientHeight/2,34);SFX.fan();buzz([14,34,24]);
- $('#msg').innerHTML='<span><b class="okw">ぜんぶ せいかい！</b> '+(S.clean?'★ ノーヒント・ノーミス！':'')+'</span>';$('#anx').hidden=false;$('#anx').focus();$('#ahb').hidden=true}
+ $('#msg').innerHTML='<span><b class="okw">ぜんぶ せいかい！</b> '+(S.clean?'★ ノーヒント・ノーミス！':'')+' '+S.lastWhy+'</span>';$('#anx').hidden=false;$('#anx').focus();$('#ahb').hidden=true}
 function advFinish(){CUR='fin';const n=S.queue.length,s=S.stars,r=advN()/ADV.length,nm=r>=1&&!P.advMedal;if(nm){P.advMedal=1;saveProgress()}
  app.innerHTML=`<div class="center"><h1>おうようへん クリア！</h1><svg viewBox="-70 -75 140 110" style="flex:none;width:clamp(64px,min(16vw,21vh),170px);height:auto">${GLOW}${chest(r,1)}</svg><svg viewBox="0 0 ${n*46} 40" style="flex:none;width:clamp(200px,40vw,420px);height:auto">${Array.from({length:n},(_,i)=>`<path class="pop" style="animation-delay:${i*.12}s" transform="translate(${i*46+3} 0)" d="M20 2l5.5 12 13 1.5-9.7 9 2.7 13L20 30l-11.5 7.5 2.7-13-9.7-9 13-1.5z" fill="${i<s?'#F2B632':'#fff'}" stroke="${C.ink}" stroke-width="2.5" stroke-linejoin="round"/>`).join('')}</svg><p class="total">ノーヒント・ノーミスは ${s} / ${n} もん</p>${nm?MEDAL+'<p class="total">おうよう ぜんぶ クリア！<br><b class="rank">よみとりの めいじん</b></p>':''}<p class="sub">${s===n?'ぜんぶ かんぺき！ 話している 人を よみとる 名人だね。':'話している 人に 気をつけると、「こそあど」は もっと わかるよ。<br>もう一度 ちょうせんしてみよう。'}</p><button class="btn pri" id="m">たからのちずへ</button></div>`;
  $('#m').onclick=menu;$('#m').focus();SFX.fan();buzz([20,40,20,40,90]);burst(app,app.clientWidth/2,app.clientHeight*.4,46)}
