@@ -24,7 +24,7 @@ for i in range(5):
     matches = np.flatnonzero(diff < best + 1.5)
     if not len(matches):
         raise ValueError(f'Scene {i} not found')
-    start = float(matches[0]) / 20 + .1
+    start = max(0, float(matches[0]) / 20 - .7) if i == 1 else float(matches[0]) / 20 + .1
     # Use a stable 1.7-second portion; all scenes were held for over two seconds.
     starts.append(start)
     evidence.append({'scene': i, 'start': start, 'mse': best,
