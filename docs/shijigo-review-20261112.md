@@ -66,4 +66,6 @@
 
 GitHub Pagesの既存公開経路を使用する。アプリ：`https://yggdrasilw-spec.github.io/sonohoka/shijigo.html`。作品集：`https://yggdrasilw-spec.github.io/sonohoka/app_links_portfolio.html#app-112`。
 
-ローカル検証は全項目合格。24問×５サイズで縦横のスクロールなし、48回答場面、24文の固定期待値、タッチ・キーボード・保存拒否・オフラインを確認。作品集のPC／390px検証も合格。動画は全編デコードと編集境界・字幕を目視確認済み。公開後の配信確認は追記する。
+ローカル検証は全項目合格。24問×５サイズで縦横のスクロールなし、48回答場面、24文の固定期待値、タッチ・キーボード・保存拒否・オフラインを確認。作品集のPC／390px検証も合格。動画は全編デコードと編集境界・字幕を目視確認済み。公開後の検証もPC／390pxともに合格。アプリHTML・JS・CSS・動画・画像の配信SHA-256をローカルと照合し、ホバー／タップ再生・終盤シーク・Range/206・作品集からの起動を確認した。
+
+公開コードのコミット：`50be9326b4017298ab87b80ca12ffe0470d9cafe`。GitHub Pagesの実行 `43223354758` は completed / success。公開後の検証コマンド：`node scripts/qa-portfolio-112.cjs https://yggdrasilw-spec.github.io/sonohoka/`。
