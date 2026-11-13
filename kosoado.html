@@ -308,12 +308,12 @@ const RAW=[
 ['kind',0,'ball','わたしは{b}遊びが好きだよ。','trio'],['kind',1,'ball','{b}遊びが好きなんだね。','trio'],
 ['kind',2,'ball','あの子たちは{b}遊びをしているんだね。','trio'],['kind',3,'ball','{b}遊びが好きなの？'],
 /* --- もの：これ・それ・あれ・どれ --- */
-['obj',0,'cake','{b}は、わたしが作ったケーキだよ。'],['obj',0,'scissors','{b}で、紙を切るよ。'],
-['obj',1,'bottle','{b}は、あなたの水とうかな？'],['obj',1,'eraser','{b}を取ってくれる？'],
+['obj',0,'cake','{b}は、わたしが作ったケーキだよ。','desk'],['obj',0,'scissors','{b}で、紙を切るよ。','hand'],
+['obj',1,'bottle','{b}は、あなたの水とうかな？'],['obj',1,'eraser','{b}を取ってくれる？','desk'],
 ['obj',2,'tree','{b}は、とても大きな木だね。'],['obj',2,'house','{b}は、わたしの家だよ。'],
 ['obj',3,'book','あなたが読みたいのは{b}？'],['obj',3,'cake','食べたいケーキは{b}？'],
 /* --- ものの名前：この・その・あの・どの --- */
-['mod',0,'pencil','{b}えんぴつを使ってね。'],['mod',0,'cake','{b}ケーキ、おいしそうでしょ。'],
+['mod',0,'pencil','{b}えんぴつを使ってね。','desk'],['mod',0,'cake','{b}ケーキ、おいしそうでしょ。','desk'],
 ['mod',1,'ball','{b}ボールを投げてくれる？'],['mod',1,'bottle','{b}水とうは、あなたのですか。'],
 ['mod',2,'tree','{b}木に、鳥がとまっているよ。'],['mod',2,'house','{b}家は、だれの家かな？'],
 ['mod',3,'bag','たくさんあるかばんの中で、{b}かばんがほしい？'],['mod',3,'cake','ケーキがみっつあるよ。{b}ケーキを食べる？'],
@@ -418,7 +418,7 @@ const PDEMO=(k,x,y,s,col,d)=>{const R=reduced(),st=`stroke="${C.ink}" stroke-wid
  :k==='plane'?`<g class="bob"><path d="M-36 4L38-20 8 24z" fill="#fff" stroke-linejoin="round" ${st}/><path d="M-36 4L8 24 6 2z" fill="#DCEBFA" stroke-linejoin="round" ${st}/></g>`
  :`<g class="rl"${R?' style="transform:scaleX(.42)"':''}><rect x="-30" y="-24" width="60" height="48" rx="4" fill="#fff" ${st}/><path d="M-30-8h60M-30 8h60" stroke="${col}" stroke-width="2.5" opacity=".5"/></g>`;
  return `<g transform="translate(${x} ${y}) scale(${s*(k==='cut'&&d>0?-1:1)} ${s})"><g class="pop">${b}</g></g>`};
-const TRIO=(ty,x,y,r,col)=>{const n=r===2,sp=n?40:48,sc=n?.5:.7,w=sp+34*sc+10,h=44*sc+12;let o=`<rect x="${x-w}" y="${y-h}" width="${2*w}" height="${2*h+8}" rx="18" fill="${col}" fill-opacity=".1" stroke="${col}" stroke-width="3" stroke-dasharray="8 6"/>`;[-1,0,1].forEach((k,i)=>{o+=ic(ty,x+k*sp,y,sc,col,'pop').replace('class="pop"',`class="pop" style="animation-delay:${i*.18}s"`)});return o};
+const TRIO=(ty,x,y,r,col)=>{const n=r===2,sp=n?40:48,sc=n?.5:.7,w=sp+34*sc+10,h=44*sc+12;let o=`<rect x="${x-w}" y="${y-h}" width="${2*w}" height="${2*h+8}" rx="18" fill="${col}" fill-opacity=".1" stroke="${col}" stroke-width="3" stroke-dasharray="8 6"/>`;if(['cake','book'].includes(ty))o+=`<rect x="${x-w}" y="${y+24}" width="${2*w}" height="10" rx="4" fill="#C98F52" stroke="${C.ink}" stroke-width="2.5"/><path d="M${x-w+16} ${y+34}v24M${x+w-16} ${y+34}v24" stroke="#A8743F" stroke-width="6" stroke-linecap="round"/>`;[-1,0,1].forEach((k,i)=>{o+=ic(ty,x+k*sp,y,sc,col,'pop').replace('class="pop"',`class="pop" style="animation-delay:${i*.18}s"`)});return o};
 const KID=(k,col)=>{const ha=-.5,x=32+46*Math.cos(ha),y=220+46*Math.sin(ha);return `<g transform="translate(400 15) scale(.6)">${person(0,col,'あの子','li',{arm:{s:1,a:ha,cue:'hold'},gaze:{x:0,y:.4}})}${PDEMO(k==='kidplane'?'plane':'fold',x,y,.95,col,1)}</g>`};
 const DESK=o=>`<rect x="${o-78}" y="288" width="156" height="13" rx="5" fill="#C98F52" stroke="#1E2A3A" stroke-width="3"/><path d="M${o-62} 301v38M${o+62} 301v38" stroke="#1E2A3A" stroke-width="10" stroke-linecap="round"/><path d="M${o-62} 301v38M${o+62} 301v38" stroke="#A8743F" stroke-width="5" stroke-linecap="round"/>`;
 const SHELF=o=>`<path d="M${o-44} 243v20l18-20zM${o+44} 243v20l-18-20z" fill="#A8743F" stroke="#1E2A3A" stroke-width="2.5" stroke-linejoin="round"/><rect x="${o-60}" y="232" width="120" height="11" rx="4" fill="#C98F52" stroke="#1E2A3A" stroke-width="3"/>`;
@@ -434,8 +434,10 @@ function renderScene(q,flip,hl,fill,cue){
   [[40,365],[290,372],[420,388],[520,360],[740,378],[330,322],[470,318]].map(([x,y])=>`<path transform="translate(${x} ${y})" d="M0 0l-5-12 5 7 4-10 3 14z" fill="#5FAE50"/>`).join('')+
   [[80,330,'#FFB3C7'],[250,352,'#FFE27A'],[560,335,'#FFB3C7'],[700,322,'#FFE27A'],[390,352,'#fff'],[610,388,'#FFB3C7']].map(([x,y,c])=>`<circle cx="${x}" cy="${y}" r="4.5" fill="${c}" stroke="#5FAE50" stroke-width="1.5"/>`).join('')+BFLY;
  if(rm||rw)g=rw?ROOM_W:ROOM;let tx,tyy,col;
+ const r3t=r===3&&['cake','book','scissors','paper'].includes(ty),r3f=r===3&&ty==='bag';
+ if(r3t||r3f)g=ROOM;if(tr&&['cake','book'].includes(ty))g=ROOM;
  if(r===0){tx=sx+toC*110;tyy=Y+8;col=C.sp}else if(r===1){tx=lx-toC*110;tyy=Y+8;col=C.li}
- else if(r===2){tx=400;tyy=175;col=C.far}else{tx=400;tyy=Y+8;col=C.unk}
+ else if(r===2){tx=400;tyy=175;col=C.far}else{tx=400;tyy=r3t?266:Y+8;col=C.unk}
  let HA=null;if(hd){const o=r?lx:sx,d=r?-toC:toC,ha=d>0?-.5:Math.PI+.5;HA={s:d,a:ha,cue:'hold'};tx=o+24*d+46*Math.cos(ha)+d*8;tyy=244+46*Math.sin(ha)-24}
  if(fk){tx=443;tyy=133}if(wi){tx=r?lx:sx;tyy=266}let PROP='';if(rm){const o=r?lx-toC*110:sx+toC*110,dk=t.place==='desk';tx=o;tyy=dk?259:203;PROP=dk?DESK(o):SHELF(o)}
  const G=ar?(r===0?[sx+toC*50,Y]:r===1?[lx-toC*50,Y]:r===2?[400,160]:[400,Y]):[tx,tyy],sd=Math.sign(G[0]-sx)||toC,
@@ -451,10 +453,11 @@ function renderScene(q,flip,hl,fill,cue){
   else if(r===2)g+=arrow(400,Y+10,400,160,C.far,'pop')+ic('house',400,125,.8,C.far);
   else g+=arrow(400,Y,300,Y,C.unk,'pop')+arrow(400,Y,500,Y,C.unk,'pop')+`<text x="400" y="${Y-30}" text-anchor="middle" font-size="60" font-weight="700" fill="${C.unk}">？</text>`;
  }else if(r===3){
-  const pool=ty==='pin'?['pin','pin','pin']:[ty,ty,ty];
-  [300,400,500].forEach((x,i)=>{g+=ic(pool[i],x,Y+6,ty==='mountain'?.6:.85,C.unk,'pop')+`<text x="${x}" y="${Y-52}" text-anchor="middle" font-size="40" font-weight="700" fill="${C.unk}">？</text>`});
+  const pool=ty==='pin'?['pin','pin','pin']:[ty,ty,ty],xs=q.family==='way'?[400]:[300,400,500],iy=r3t?258:Y+6;
+  if(r3t)g+=`<rect x="192" y="292" width="416" height="12" rx="5" fill="#C98F52" stroke="#1E2A3A" stroke-width="3"/><path d="M222 304v38M578 304v38" stroke="#1E2A3A" stroke-width="10" stroke-linecap="round"/><path d="M222 304v38M578 304v38" stroke="#A8743F" stroke-width="5" stroke-linecap="round"/>`;
+  xs.forEach((x,i)=>{g+=ic(pool[i],x,iy,ty==='mountain'?.6:.85,C.unk,'pop')+`<text x="${x}" y="${iy-56}" text-anchor="middle" font-size="40" font-weight="700" fill="${C.unk}">？</text>`});
  }else{
-  const s=wi?1.25:tr?(r===2?.5:.7):hd?(dm?.95:.6):rm?.85:rw?(ty==='mountain'?.5:.42):r===2?(ty==='mountain'?1.2:.7):1;
+  const s=wi?1.25:tr?(r===2?.5:.7):hd?(dm?.95:.6):rm?.85:rw?(ty==='mountain'?.5:.42):r===2?(ty==='mountain'?1.2:ty==='tree'?1.05:.7):1;
   if(r===2&&!rw&&!fk&&!tr)g+=`<ellipse cx="400" cy="192" rx="70" ry="10" fill="none" stroke="${C.far}" stroke-width="3" stroke-dasharray="3 9"/>`;
   g+=fk?'':tr?TRIO(ty,tx,tyy,r,col):hd&&dm?PDEMO(t.place,tx,tyy,s,col,HA.s):hd||rm||rw||wi?ic(ty,tx,tyy,s,col,'pop').replace('<ellipse cy="36" rx="38" ry="8" fill="#1E2A3A" opacity=".13"/>',''):ic(ty,tx,tyy,s,col,'pop');
  }
@@ -838,14 +841,8 @@ const ADV=[
   "t": "おべんとうは どこで？",
   "env": "day",
   "context": "ゆうとは 日なた、さくらは 木かげに います。",
-  "objs": [
-   [
-    "tree",
-    "b",
-    "#5DB56A",
-    1.1
-   ]
-  ],
+  "objs": [],
+  "shade": 1,
   "lines": [
    [
     "a",
@@ -1407,7 +1404,7 @@ const ADV=[
     "tree",
     "far",
     "#F08A24",
-    0.9
+    1.25
    ]
   ],
   "lines": [
@@ -1793,6 +1790,7 @@ function advScene(q,fl,li,h){
  un=(a,b)=>{const d=Math.hypot(a,b)||1;return{x:a/d,y:b/d}};
  if(shop)PS.far=[400,103];
  let g=shop?`<g data-scene="shop"><rect width="800" height="400" fill="#FFF1E5"/><path d="M0 150H800V400H0Z" fill="#DDBFA2"/><path d="M0 232H800M0 315H800M100 150L0 400M300 150L250 400M500 150L550 400M700 150L800 400" stroke="#CBA98A" stroke-width="2"/><path d="M0 0H800V32H0Z" fill="#FFF"/><path d="M0 0H800" stroke="#D96F7D" stroke-width="20" stroke-dasharray="40 40"/><rect x="285" y="44" width="230" height="120" rx="8" fill="#FFF9EF" stroke="#916348" stroke-width="4"/><path d="M285 125H515" stroke="#916348" stroke-width="6"/><text x="400" y="72" text-anchor="middle" font-size="18" font-weight="700" fill="#6B4431">ケーキやさん</text><text x="400" y="151" text-anchor="middle" font-size="15" fill="#6B4431">おくの たな</text></g>`:room?`<g data-scene="classroom"><rect width="800" height="400" fill="#F4F3DD"/><path d="M0 150H800V400H0Z" fill="#D7BB92"/><path d="M0 230H800M0 320H800" stroke="#BE9C73" stroke-width="2"/><rect x="240" y="25" width="320" height="108" rx="5" fill="#356C58" stroke="#997148" stroke-width="8"/><text x="400" y="88" text-anchor="middle" font-size="27" fill="#FFF">きょうしつ</text></g>`:q.env==='phoneHome'?`<rect width="400" height="400" fill="#E8F0EA"/><rect x="400" width="400" height="400" fill="#FFF0E0"/><path d="M400 0V400" stroke="#8DA7B3" stroke-width="5" stroke-dasharray="10 8"/><text x="${ax}" y="80" text-anchor="middle" font-size="30" fill="${C.ink}">学校</text><text x="${bx}" y="80" text-anchor="middle" font-size="30" fill="${C.ink}">家</text>`:advBG(nt);
+ if(q.shade){const tcx=bx-toC*54;g+=`<ellipse cx="${bx}" cy="332" rx="170" ry="30" fill="#2E5B33" opacity=".26"/><g data-scene="shade-tree"><rect x="${tcx-13}" y="148" width="26" height="172" fill="#8A5A33" stroke="${C.ink}" stroke-width="3"/><path d="M${tcx-4} 214L${tcx-54} 152M${tcx+4} 198L${tcx+58} 140" stroke="#8A5A33" stroke-width="11" stroke-linecap="round"/><circle cx="${tcx-56}" cy="120" r="60" fill="#5DB56A" stroke="${C.ink}" stroke-width="3"/><circle cx="${tcx+52}" cy="108" r="70" fill="#67C374" stroke="${C.ink}" stroke-width="3"/><circle cx="${tcx-2}" cy="62" r="56" fill="#5DB56A" stroke="${C.ink}" stroke-width="3"/></g><g transform="translate(${ax} 64)"><circle r="23" fill="#FFD24D" stroke="${C.ink}" stroke-width="3"/>${Array.from({length:8},(_,i)=>`<path d="M0-31V-41" transform="rotate(${i*45})" stroke="#F2B632" stroke-width="5" stroke-linecap="round"/>`).join('')}</g>`}
  if(shop||room)q.objs.filter(o=>['a','b','mid'].includes(o[1])&&o[0]!=='tree').forEach(o=>{const x=PS[o[1]][0];g+=`<g class="scene-table"><path d="M${x-52} 340H${x+52}V352H${x-52}Z" fill="${shop?'#B77650':'#A77E4C'}" stroke="${C.ink}" stroke-width="2"/><path d="M${x-40} 352V383M${x+40} 352V383" stroke="#855E3C" stroke-width="7"/></g>`});
  if(nt)g+=[[200,72,C.far,0],[410,44,C.unk,.8],[610,78,'#F2B632',1.6],[110,118,C.li,2]].map(([x,y,c,d])=>`<g transform="translate(${x} ${y})"><g class="fk" style="animation-delay:${d}s">${Array.from({length:12},(_,i)=>`<path d="M0-10V-${i%2?34:46}" transform="rotate(${i*30})" stroke="${c}" stroke-width="5" stroke-linecap="round"/>`).join('')}</g></g>`).join('');
  if(q.env==='phone'){g+=`<g transform="translate(${ax} 72)"><g class="sun"><circle r="26" fill="#FFD24D" stroke="${C.ink}" stroke-width="3"/>${Array.from({length:8},(_,i)=>`<path d="M0-34V-44" transform="rotate(${i*45})" stroke="#F2B632" stroke-width="5" stroke-linecap="round"/>`).join('')}</g></g>${cloud(bx,58,.9,'#B9C6D6','#4E5C70')}`+Array.from({length:9},(_,i)=>`<path class="rn" style="animation-delay:-${i*.11}s" d="M${bx-40+i*10} 96l-3 10" stroke="#4F8FD8" stroke-width="3.5" stroke-linecap="round"/>`).join('')+`<path class="dsh" d="M${sx} 150Q400 10 ${lx} 150" fill="none" stroke="${sc}" stroke-width="5" stroke-dasharray="1 11" stroke-linecap="round"/>`+(reduced()?'':[0,.7,1.4].map(d=>`<circle r="6" fill="${sc}" stroke="#fff" stroke-width="2"><animateMotion dur="2.1s" begin="${d}s" repeatCount="indefinite" path="M${sx} 150Q400 10 ${lx} 150"/></circle>`).join(''))}
