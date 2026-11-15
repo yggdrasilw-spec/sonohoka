@@ -286,3 +286,7 @@ Meta Museで更新された `origin/main` を `git pull --ff-only` で取り込�
 再収録は `node scripts/capture-portfolio-113-114.cjs`（事前に本体の最新チェックアウトを `work/mojimoji-bouken-demo`、`work/mojiochi-demo` に用意）、時間合わせは `python scripts/align-portfolio-113-114.py`、出力は `python scripts/encode-portfolio-missing.py 113 114`。
 
 `node scripts/qa-portfolio-113-114.cjs` で全カードの件数・ID・ローカル素材の存在と、対象2枚の検索・教科・学年・リンク・画像・PCホバー・モバイル操作・モーダル再生・9.2秒へのシーク・閉じた後の解放・Range/206を確認。公開URLを第1引数に指定すると、公開動画・画像のSHA-256もローカルと照合する。書き出し動画の字幕・場面切替とスマートフォン幅のモーダルを目視確認した。実機確認は未実施。
+
+## 2026年11月15日 教材115「ふえるぶん たんけん」を追加
+
+本体HTML（kakezan_fueru.html、単一ファイル・約20KB）をこのリポジトリに追加し、ポートフォリオに教材115として掲載。掲載件数を111本から112本へ更新。小学2年・算数（かけ算のきまり：かける数を1ふやすと答えはかけられる数だけふえる）。サムネイルはアプリの配色（かけられる数=青／かける数=ピンク／答え=黄）で構成した静止画（media/portfolio-115-intro.png）。紹介動画は未作成で、カードの参照先（portfolio-115-intro.mp4）のみ設定済み。実写サムネイルと動画は本人の収録環境での差し替え待ち。QAスクリプトの全件実行は未実施。

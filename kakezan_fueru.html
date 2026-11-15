@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ふえるぶん たんけん</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#dfe8f1;font-family:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Yu Gothic",sans-serif;height:100vh;overflow:hidden}
+#st{position:absolute;width:1280px;height:720px;background:#fff;transform-origin:0 0}
+#top{height:56px;background:#2d4a6b;color:#fff;display:flex;align-items:center;gap:6px;padding:0 14px}
+#top b{margin-right:auto;font-size:21px}
+button{font:inherit;cursor:pointer;border:2px solid #9ab;border-radius:10px;background:#fff;padding:6px 14px;color:#234}
+#top button{font-size:15px;padding:4px 9px}
+#top .on{background:#ffd75e;border-color:#c90}
+#q{height:90px;padding:14px 24px;font-size:30px;line-height:1.5}
+#sv{display:block;margin:0 20px}
+#hp{display:none;margin:6px 24px;height:408px;font-size:26px}
+#ctl{padding:6px 24px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;height:80px}
+#ctl button{font-size:26px;padding:8px 22px}
+#msg{padding:2px 24px;font-size:26px;height:60px;color:#234}
+.main{background:#ff6fa0;color:#fff;border-color:#d4537e}
+.bl,.pk,.am{border-radius:6px;padding:0 6px}
+.bl{background:#cfe3fb;color:#0c447c}.pk{background:#fbd0e0;color:#72243e}.am{background:#fde2a6;color:#633806}
+#q u{text-decoration:none;cursor:pointer;border-bottom:3px dotted #456;padding:0 4px;border-radius:6px}
+.br{display:flex;align-items:center;gap:8px;margin:12px 0}.br i{width:130px;font-style:normal;font-size:20px;color:#567}
+#hp .t{padding:4px 10px;border-radius:8px;cursor:pointer;background:#eee}
+#hp .t.bl{background:#cfe3fb}#hp .t.pk{background:#fbd0e0}#hp .t.am{background:#fde2a6}
+.h-bl .t:not(.bl),.h-pk .t:not(.pk),.h-am .t:not(.am){opacity:.2}
+select{font:inherit;font-size:26px;border-radius:8px;padding:2px}
+@keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+.pop{animation:pop .45s;transform-box:fill-box;transform-origin:center}
+#fx{position:absolute;left:0;top:0;pointer-events:none}
+#fx i{position:absolute;width:14px;height:14px;border-radius:50%;animation:bs 1s ease-out forwards}
+@keyframes bs{to{transform:translate(var(--x),var(--y)) scale(.3);opacity:0}}
+@keyframes dp{0%{transform:scale(0)}70%{transform:scale(1.3)}100%{transform:scale(1)}}
+.dp{animation:dp .4s backwards;transform-box:fill-box;transform-origin:center}
+@keyframes fi{from{opacity:0}}
+.nm{animation:fi .3s backwards}
+@keyframes wv{40%{transform:translateY(-18px) scale(1.15)}}
+.wv{animation:wv .5s ease-in-out backwards;transform-box:fill-box;transform-origin:center}
+@keyframes fy{0%{opacity:1}80%{opacity:1}to{transform:translate(460px,-90px);opacity:0}}
+.fy{animation:fy .9s ease-in forwards}
+@keyframes cv{from{transform:scaleX(var(--r))}}
+.cv{animation:cv .5s ease-out;transform-box:fill-box;transform-origin:right center}
+#cb{position:absolute;right:24px;top:62px;font-size:30px;font-weight:700;color:#e0457b}
+.cbp{animation:pop2 .5s}
+@keyframes pop2{0%{transform:scale(.3)}70%{transform:scale(1.3)}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}
+@keyframes pl{50%{transform:scale(1.07)}}
+.gate{animation:pl 1s infinite}
+@keyframes sl{from{transform:translateY(var(--dy))}}
+.sl{animation:sl .55s ease-in-out backwards}
+@keyframes si{from{transform:translateY(var(--dy));opacity:0}}
+.si{animation:si .55s ease-out backwards}
+@keyframes so{to{transform:translateY(var(--dy));opacity:0}}
+.so{animation:so .5s ease-in forwards}
+@keyframes fd{from{opacity:0}}
+.fd{animation:fd .3s .5s backwards}
+</style></head>
+<body><div id="st"><div id="top"><b>ふえるぶん たんけん</b></div><div id="q"></div><svg id="sv" width="1240" height="420" viewBox="0 0 1240 420"></svg><div id="hp"></div><div id="ctl"></div><div id="msg"></div><div id="cb"></div><div id="fx"></div></div>
+<script>
+const $=i=>document.getElementById(i),rnd=n=>Math.random()*n|0,shuf=a=>a.sort(()=>Math.random()-.5);
+const C={bl:['#cfe3fb','#3b82d0','#0c447c'],pk:['#fbd0e0','#d4537e','#72243e'],am:['#fde2a6','#d98e04','#633806']};
+const U=['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'],H=['','ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ'];
+const num=n=>n<10?U[n]:(n>=20?U[n/10|0]:'')+'じゅう'+(n%10?U[n%10]:'');
+const yomi=s=>s.replace(/<[^>]*>/g,'').replace(/(\d)つ/g,(m,d)=>H[d]).replace(/\d+/g,m=>num(+m)).replace(/×/g,'かける').replace(/かけられる数/g,'かけられるかず').replace(/かける数/g,'かけるかず').replace(/答え/g,'こたえ').replace(/段/g,'だん').replace(/数/g,'かず').replace(/分/g,'ぶん').replace(/＝/g,'は').replace(/◯/g,'まる').replace(/□/g,'しかく');
+let AC,G={s:0,a:3,k:4,pend:0,rev:1,fx:0,ch:0,nx:0,fi:0,hit:0,ky:0,sn:1,vo:1,tg:1,row:1,qi:0,dq:[5,2,4,7],di:0,pv:3,mv:0,cb:0,cn:0,wv:0,cu:0,fy:0,px:null,dn:[],tr:0};
+function se(f){if(!G.sn)return;try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.25);o.stop(AC.currentTime+.25)}catch(e){}}
+function say(t){if(!G.vo||!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(yomi(t));u.lang='ja-JP';const v=speechSynthesis.getVoices().find(x=>x.lang.startsWith('ja'));if(v)u.voice=v;clearTimeout(say.t);say.t=setTimeout(()=>speechSynthesis.speak(u),80)}
+const q=(t,sp)=>{$('q').innerHTML=t;if(sp)say(t)},msg=(t,sp)=>{$('msg').innerHTML=t;if(sp)say(t)};
+const R=(x,y,w,h,t,c,f,id)=>`<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${C[c][0]}" stroke="${C[c][1]}" stroke-width="2"/><text ${id?`id="${id}" `:''}x="${x+w/2}" y="${y+h/2}" fill="${C[c][2]}" font-size="${f}" font-weight="700" text-anchor="middle" dominant-baseline="central">${t}</text></g>`;
+const T=(x,y,t,f,c,a)=>`<text x="${x}" y="${y}" font-size="${f}" fill="${c||'#234'}" text-anchor="${a||'middle'}" dominant-baseline="central">${t}</text>`;
+function draw(){const{a,k,pend,rev}=G,c=a>6?30:40,X=90,Y=58,vis=pend&&!rev?k-1:k,fs=c>36?18:15,mvd=G.mv&&k>1,L=G.px,fy=G.fy,dr=G.sl,pm=G.pm;G.fy=0;G.sl=0;
+ let s='<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="2"/></marker></defs>';
+ for(let i=0;i<a;i++)s+=R(32,Y+i*c+3,44,c-6,i+1,'bl',c>36?22:18);
+ if(G.tg)s+=R(X+2,0,104,24,'かける数 →','pk',17)+`<g transform="translate(14 ${Y+a*c/2}) rotate(90)">${R(-64,-13,128,26,'かけられる数 →','bl',16)}</g>`;
+ for(let j=1;j<=vis;j++){const x=X+(j-1)*c,n=mvd&&j==k&&(G.fx==k||pend);
+  s+=`<g class="${n?'pop':''}">${R(x+2,Y-30,c-4,24,j,'pk',c>36?20:17)}<rect x="${x+1}" y="${Y}" width="${c-2}" height="${a*c}" rx="6" fill="${C.bl[0]}" stroke="${C.bl[1]}" stroke-width="${n?5:1}"/></g>`;
+  for(let i=0;i<a;i++)s+=`<g class="${n?'dp':''}" style="animation-delay:${i*.12}s"><circle cx="${x+c/2}" cy="${Y+i*c+c/2}" r="${c*.35}" fill="#f5a623" stroke="#b86e00" stroke-width="2"/>${n&&G.cn?`<text class="nm" style="animation-delay:${i*.45}s" x="${x+c/2}" y="${Y+i*c+c/2}" font-size="${c*.4}" font-weight="700" fill="#fff" text-anchor="middle" dominant-baseline="central">${i+1}</text>`:''}</g>`}
+ if(vis<9){const nx=X+vis*c,nw=(9-vis)*c,mv=L!=null&&L<vis;
+  s+=`<g${mv?` class="cv" style="--r:${(9-L)/(9-vis)}"`:''}><rect x="${nx}" y="${Y-30}" width="${nw}" height="${a*c+30}" rx="6" fill="#e5e7eb"/></g>`+T(nx+nw/2,Y+a*c/2,'かくし',22,'#778')}
+ const y0=Y+a*c+22;
+ if(G.s>0){s+=T(60,y0+15,'答え',18)+T(60,y0+51,'ふえる',18);
+  for(let j=1;j<=vis;j++){const x=X+(j-1)*c,un=pend&&j==k;s+=`<g class="${G.wv?'wv':''}" style="animation-delay:${j*.09}s">`+R(x+2,y0,c-4,30,un?'?':a*j,'am',fs)+(j>1&&!un?R(x+2,y0+36,c-4,30,'+'+a,'bl',fs-2):'')+'</g>'}}
+ const lx=660,y1=70,y2=250;
+ if(G.tg)s+=T(lx+45,40,'かけられる数',20,C.bl[2])+T(lx+195,40,'かける数',20,C.pk[2])+T(lx+365,40,'答え',20,C.am[2]);
+ const row=(y,kk,u,id)=>R(lx,y,90,70,a,'bl',40)+T(lx+120,y+35,'×',36)+R(lx+150,y,90,70,kk,'pk',40)+T(lx+270,y+35,'＝',36)+R(lx+300,y,130,70,u?'?':id&&G.cu?G.cu.f:a*kk,'am',40,id);
+ if(mvd){const f=dr>0,A=(cl,dy,dl,x)=>`<g class="${cl}" style="--dy:${dy}px;animation-delay:${dl}s">${x}</g>`;let T1=row(y1,k-1),B1=row(y2,k,pend,'cnt'),gh='';
+  if(dr){B1=A(f?'si':'sl',f?100:-180,f?.1:0,B1);if(pm){T1=A(f?'sl':'si',f?180:-100,f?0:.1,T1);gh=A('so',f?-90:90,0,f?row(y1,k-2):row(y2,k+1))}}
+  const ar=`<path d="M${lx+195} ${y1+76}V${y2-8}" stroke="${C.pk[1]}" stroke-width="4" fill="none" marker-end="url(#ar)"/>`+T(lx+212,196,'1ふえる',22,C.pk[2],'start')+`<path d="M${lx+45} ${y1+76}V${y2-8}" stroke="${C.bl[1]}" stroke-width="3" stroke-dasharray="7 6" fill="none"/>`+T(lx+58,196,'かわらない',20,C.bl[2],'start');
+  s+=gh+T1+B1+(dr?`<g class="fd">${ar}</g>`:ar);
+  if(!pend)s+=`<path d="M${lx+430} ${y1+35}C${lx+500} ${y1+35} ${lx+510} 140 ${lx+510} 160M${lx+510} 230C${lx+510} 260 ${lx+500} ${y2+35} ${lx+430} ${y2+35}" stroke="${C.am[1]}" stroke-width="4" fill="none" marker-end="url(#ar)"/><g class="pop">${R(lx+460,160,100,70,'+'+a,'bl',34)}</g>`+T(lx+510,248,'ふえる',20,C.bl[2])+(fy?`<g class="fy">${R(lx,y2,90,70,a,'bl',40)}</g>`:'')}
+ else s+=row(y1,k);
+ $('sv').innerHTML=s;G.px=vis;G.pm=mvd;cnt()}
+function cnt(){const e=$('cnt'),u=G.cu;G.cu=0;if(!e||!u)return;for(let i=1;i<=G.a;i++)setTimeout(()=>{e.textContent=u.f+i;se(380+i*45)},180+i*130)}
+function burst(x,y,n){const f=$('fx');for(let i=0;i<(n||16);i++){const p=document.createElement('i'),r=Math.random()*6.28,d=80+Math.random()*150;p.style.cssText=`left:${x}px;top:${y}px;background:${['#ff6fa0','#3b82d0','#f5a623','#4cc46a'][i%4]};--x:${Math.cos(r)*d}px;--y:${Math.sin(r)*d-40}px`;f.appendChild(p);setTimeout(()=>p.remove(),1000)}}
+const fan=()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>se(f),i*140));
+function done(s){G.dn[s]=1;document.querySelectorAll('.tab')[s].textContent='★'+TB[s].slice(1)}
+function badge(){const b=$('cb');b.className='';if(G.cb>1){b.innerHTML='🔥 れんぞく '+G.cb;void b.offsetWidth;b.className='cbp'}else b.innerHTML=''}
+const mkch=(a,k,e)=>{const o=[...new Set([a,1,k-1,e||a*k])];while(o.length<4){const r=2+rnd(10);if(!o.includes(r))o.push(r)}return shuf(o)};
+function ask(){const a=G.a,k=G.k;
+ q(`<span class=bl>${a}</span>×<span class=pk>${k-1}</span>から<span class=bl>${a}</span>×<span class=pk>${k}</span>になると、<span class=am>答え</span>はいくつふえる？`,1);
+ G.ch=mkch(a,k,G.s==2&&G.hit==0?G.pv:0);G.cn=0;msg('');ctl()}
+function pick(v){const a=G.a,k=G.k;
+ if(v==a){Object.assign(G,{pend:0,rev:1,fx:k,ch:0,cn:0,fy:1,cu:{f:a*(k-1),t:a*k}});if(k!=a&&k-1!=a)G.hit++;G.cb++;badge();se(660);msg(`そのとおり！ <span class=bl>${a}</span>。<span class=bl>かけられる数の${a}</span>と おなじだね。`,1);draw();burst(1190,341);if(G.s==0)done(0);after()}
+ else{G.cb=0;badge();G.rev=1;G.cn=1;se(180);msg(v==1?'かける数が 1ふえたんだね。じゃあ、ふえた おはじきは？ 光った 1れつを かぞえよう。':v==k-1?'それは かける数だね。ふえた ぶんは？ 光った 1れつを かぞえてみよう。':'それは 答え(ぜんぶの数)だよ。ふえた ぶんだけ かぞえよう。');draw();for(let i=1;i<=a;i++)setTimeout(()=>se(420+i*30),i*450);document.querySelectorAll('#ctl button').forEach(b=>{if(b.textContent==v){b.disabled=true;b.style.opacity=.35}})}}
+function gate(l,f){G.tr={l,f};ctl()}
+function trn(){const f=G.tr.f;G.tr=0;f()}
+function after(){const s=G.s;
+ if(s==0)G.nx=1;
+ if(s==1&&G.k==9&&!G.nx)return gate('まとめの もんだいへ ▶',fin1);
+ if(s==2&&G.hit>=2&&!G.nx){const n=G.dq[G.di+1];msg(`そのとおり！ <span class=bl>${G.a}</span>の段は いつも ${G.a}ふえるね。`,1);return gate(n?`つぎは ${n}の段で かんがえてみよう ▶`:'まとめの もんだいへ ▶',nd)}
+ if(s==4){G.ch=0;ctl();$('ctl').innerHTML=`<button class=main onclick="nq()">${G.qi>=8?'おわる':'つぎの もんだい'} ▶</button>`;return}
+ ctl()}
+function fill(t,o,c,m){o=o.slice();o.splice(rnd(o.length+1),0,c);G.fl={c,m};G.fi=1;q(t,1);msg('');$('ctl').innerHTML=o.map(x=>`<button onclick="fl('${x}')">${x}</button>`).join('')}
+function fl(x){if(x==G.fl.c){G.fi=0;done(G.s);fan();burst(640,300,40);if(G.s==1){G.wv=1;draw();setTimeout(()=>G.wv=0,1500)}msg(G.fl.m,1);G.nx=1;ctl()}else{se(180);msg('もういちど かんがえてみよう。')}}
+function fin1(){fill('<span class=bl>3</span>の段は、<span class=pk>いつも</span> □ ふえる。',[1,9],3,'そう！ <span class=bl>3</span>の段は いつも 3ふえる。')}
+function nd(){G.pv=G.a;G.di++;
+ if(G.di<4){G.a=G.dq[G.di];G.k=1;G.hit=0;G.mv=0;G.px=null;draw();q(`つぎは <span class=bl>${G.a}</span>の段で かんがえてみよう。`,1);msg(`<span class=bl>${G.pv}</span>の段は いつも ${G.pv}ふえたね。<span class=bl>${G.a}</span>の段も おなじかな？ ボタンを おして ためそう。`);ctl()}
+ else fill('<span class=bl>◯</span>の段は、<span class=pk>いつも</span> <span class=bl>◯</span>ふえる。◯に入るのは？',['ちがう数'],'同じ数','そう！ ◯の段は いつも ◯ふえる。これが「あいことば」！')}
+const BR=[['あいことば',[['bl','4の段は'],['pk','いつも'],['bl','4'],['am','ふえる']]],['段で聞く',[['bl','4のだんは'],['pk','かける数が1つふえると'],['am','答えは'],['bl','いくつ'],['am','ふえますか']]],['式で聞く',[['bl','4'],['','×'],['pk','5'],['','の'],['pk','かける数が1ふえると'],['am','答えは'],['bl','いくつ'],['am','ふえますか']]],['きまりの文',[['','どの段でも'],['pk','かける数が1ふえると'],['am','答えは'],['bl','かけられる数の分'],['am','だけふえる']]]];
+function bridge(){$('hp').innerHTML=BR.slice(0,G.row).map(r=>`<div class=br><i>${r[0]}</i>`+r[1].map(t=>`<span class="t ${t[0]}" onclick="hl('${t[0]}')">${t[1]}</span>`).join('')+'</div>').join('');
+ if(G.row<4){q('おなじ いみの 言い方を、色で そろえて みていこう。');msg('色を タップすると、おなじ色が 光るよ。');$('ctl').innerHTML='<button class=main onclick="G.row++;bridge()">つぎの 言い方 ▶</button>'}
+ else{const o='<option></option><option>かける数</option><option>かけられる数</option><option>答え</option>',st=c=>G.tg?`style="background:${C[c][0]}"`:'';
+  q(`<select id=s0 ${st('pk')}>${o}</select>が1ふえると、<select id=s1 ${st('am')}>${o}</select>は<select id=s2 ${st('bl')}>${o}</select>の分だけふえる。`);
+  msg('「◯の段は いつも ◯ふえる」の ◯ に なまえを つけたのが、かけられる数 だよ。');$('ctl').innerHTML='<button class=main onclick="chk()">こたえあわせ</button>'}}
+function hl(r){if(!r)return;const e=$('hp');e.className=e.className=='h-'+r?'':'h-'+r}
+function chk(){if([0,1,2].map(i=>$('s'+i).value).join()=='かける数,答え,かけられる数'){done(3);fan();burst(640,300,40);se(660);msg('かんぺき！ これが「きまり」の文。',1);G.nx=1;ctl()}else{se(180);msg('色を ヒントに、もういちど。')}}
+function nq(){if(G.qi>=8){G.pend=0;done(4);fan();burst(640,300,50);q('ぜんぶ おわり！ どんな 言い方でも、ふえる数は <span class=bl>かけられる数</span>と おなじだったね。',1);msg('');G.nx=1;ctl();return}
+ let a,b;do{a=2+rnd(8);b=2+rnd(6)}while(a==b||a==b+1);
+ const t=G.qi++%4;Object.assign(G,{a,k:b+1,pend:1,rev:0,fx:0,ky:0,ch:0,mv:1,px:null,cn:0});draw();
+ const N=(v,c)=>`<u class="${c||''}" onclick="key(${v})">${v}</u>`,P=w=>`<span class=pk>かける数が${N(1)}つ${w}</span>`,A='<span class=am>答え</span>';
+ q([`${N(a,'bl')}×${N(b,'pk')}の${P('ふえる')}と、${A}はいくつふえますか？`,`${N(a,'bl')}のだんは、${P('ふえる')}と、${A}はいくつふえますか？`,`${N(a,'bl')}×${N(b,'pk')}から${N(a,'bl')}×${N(b+1,'pk')}になると、${A}はいくつふえますか？`,`${N(a,'bl')}×${N(b+1,'pk')}の${P('へる')}と、${A}はいくつへりますか？`][t],1);
+ msg('まず、答えの ふえ方を きめる数を タップしよう。');$('ctl').innerHTML=''}
+function key(v){if(G.s!=4||G.ky||!G.pend)return;const a=G.a,b=G.k-1;
+ if(v==a){G.ky=1;se(520);msg(`そう、<span class=bl>${a}</span>が かけられる数。じゃあ、答えは いくつ ふえる？`);G.ch=mkch(a,G.k,0);ctl()}
+ else{se(180);msg(v==b||v==b+1?`${v}は かける数だよ。かける数が いくつでも ふえる数は おなじだったね。`:'1ふえるのは かける数だよ。答えが いくつふえるかを きめる数は どれかな？')}}
+function step(d){const n=G.k+d;if(G.s==3||G.s==4||n<1||n>9||G.pend||G.fi||G.tr)return;G.k=n;G.fx=0;G.cn=0;se(300+n*40);
+ if(d<0){G.rev=1;G.sl=-1;draw();return}
+ G.mv=1;G.sl=1;
+ if(G.s==5||(G.s==1&&(n<3||n==G.a||n-1==G.a))){G.pend=0;G.rev=1;G.fx=n;if(n>1){G.cu={f:G.a*(n-1),t:G.a*n};msg(`ふえたのは <span class=bl>${G.a}</span>`)}draw()}
+ else{G.pend=1;G.rev=0;ask();draw()}}
+function dan(n){Object.assign(G,{a:n,k:1,pend:0,rev:1,fx:0,mv:0,px:null,cu:0,pm:0,sl:0});draw();msg(`<span class=bl>${n}</span>の段`)}
+function ctl(){if(G.fi)return;if(G.tr){$('ctl').innerHTML=`<button class="main gate" onclick="trn()">${G.tr.l}</button>`;return}let h='';
+ if(G.ch&&G.pend)h=G.ch.map(v=>`<button onclick="pick(${v})">${v}</button>`).join('');
+ else if(G.s<3||G.s==5){const z=G.s==5?' style="font-size:20px;padding:6px 12px"':'';h=`<button${z} onclick="step(-1)">◀ もどす</button><button${z} class=main onclick="step(1)">かける数を 1ふやす ▶</button>`;if(G.s==5)for(let n=1;n<10;n++)h+=`<button${z} onclick="dan(${n})">${n}の段</button>`}
+ if(G.nx)h+=`<button class=main onclick="go(${G.s+1})">つぎへ ▶</button>`;
+ $('ctl').innerHTML=h}
+function go(s){window.speechSynthesis&&speechSynthesis.cancel();Object.assign(G,{s,pend:0,rev:1,fx:0,ch:0,nx:0,fi:0,hit:0,ky:0,mv:0,px:null,cn:0,wv:0,cu:0,fy:0,cb:0,tr:0,sl:0,pm:0});$('cb').innerHTML='';
+ document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',i==s));
+ $('hp').style.display=s==3?'block':'none';$('sv').style.display=s==3?'none':'block';$('hp').className='';msg('');
+ if(s==3){G.row=1;bridge();return}
+ if(s==4){G.qi=0;nq();return}
+ if(s==0){G.a=3;G.k=4;q('<span class=bl>3</span>×<span class=pk>4</span>の おはじき。ボタンで <span class=pk>かける数</span>を 1ふやして、<span class=am>答え</span>が いくつふえるか 見つけよう。')}
+ else if(s==1){G.a=3;G.k=1;q('かける数を どんどん ふやそう。とちゅうから「つぎは いくつふえる？」を よそうしてね。')}
+ else if(s==2){Object.assign(G,{di:0,pv:3,a:5,k:1});q('つぎは <span class=bl>5</span>の段で かんがえてみよう。');msg('<span class=bl>3</span>の段は いつも 3ふえたよね。5の段も おなじかな？')}
+ else{G.a=4;G.k=1;q('段を えらんで、かける数を ふやそう。ふえた分は いつも <span class=bl>かけられる数</span>と おなじ！')}
+ draw();ctl()}
+function tg(k,b,n){G[k]=G[k]?0:1;b.textContent=n+(G[k]?' ON':' OFF');if(G.s!=3)draw()}
+const TB=['① みつける','② いつも','③ ほかの段','④ ことばの橋','⑤ 言いかえ','⑥ たんけん'];TB.forEach((n,i)=>$('top').insertAdjacentHTML('beforeend',`<button class=tab onclick="go(${i})">${n}</button>`));
+[['sn','音'],['vo','読み上げ'],['tg','ヒント']].forEach(x=>$('top').insertAdjacentHTML('beforeend',`<button onclick="tg('${x[0]}',this,'${x[1]}')">${x[1]} ON</button>`));
+function fit(){const s=Math.min(innerWidth/1280,innerHeight/720),e=$('st').style;e.transform=`scale(${s})`;e.left=(innerWidth-1280*s)/2+'px';e.top=(innerHeight-720*s)/2+'px'}
+onresize=fit;fit();
+onkeydown=e=>{if(e.key=='ArrowRight')step(1);if(e.key=='ArrowLeft')step(-1)};
+go(0);
+</script></body></html>
