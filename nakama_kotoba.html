@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>なかまに なる ことば</title>
+<style>
+:root{--bg:#fdf6e3;--ink:#33302a;--teal:#2c9a96;--tealbg:#e3f4f2;--org:#ef8a3a;--orgbg:#fff1d9;--ok:#2f9d57;--ng:#d6544f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic","Hiragino Maru Gothic ProN","Yu Gothic UI",Meiryo,sans-serif}
+main{max-width:900px;margin:0 auto;padding:14px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:bold;font-size:1.2rem}
+h1{margin:0;font-size:1.5rem;color:var(--teal)}
+button{font:inherit;cursor:pointer}
+button:focus-visible{outline:4px solid #1a6fd1;outline-offset:2px}
+.card{background:#fff;border:3px solid var(--teal);border-radius:22px;padding:18px;margin:12px 0;text-align:center}
+.q{font-size:1.35rem;font-weight:bold;margin-bottom:12px}
+.set{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.t{min-width:130px;padding:16px 12px;border-radius:16px;background:var(--tealbg);border:3px solid var(--teal);font-size:2.1rem;font-weight:bold}
+.t.m{background:var(--orgbg);border:3px dashed var(--org);color:var(--org)}
+.t.m.on{border-style:solid;animation:pop .35s}
+@keyframes pop{50%{transform:scale(1.15)}}
+.ch{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.c{padding:20px 8px;font-size:2.1rem;font-weight:bold;border-radius:18px;border:3px solid var(--teal);background:#fff;color:var(--ink)}
+.c:hover:not(:disabled){background:var(--tealbg)}
+.c.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.c.ng{background:#eee;border-color:#ccc;color:#999;animation:sh .3s}
+@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.fb{min-height:3em;margin:12px 0;font-size:1.3rem;font-weight:bold;text-align:center}
+.go{padding:12px 32px;font-size:1.4rem;font-weight:bold;border:0;border-radius:30px;background:var(--org);color:#fff}
+.sm{padding:6px 16px;font-size:1rem;border:2px solid var(--teal);border-radius:20px;background:#fff;color:var(--teal);font-weight:bold}
+.all{margin-top:10px;font-size:1.15rem;font-weight:normal;line-height:2.1;color:#555}
+.rv{text-align:left;padding:5px 0;border-bottom:1px dashed #ddd;font-size:1.15rem;line-height:2}
+.rv span{display:inline-block;width:1.6em;font-weight:bold;color:var(--org)}
+.rv-h{margin-top:18px;font-weight:bold;text-align:left}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.g>div{border:2px solid var(--tealbg);border-radius:14px;padding:10px;line-height:2;font-size:1.05rem}
+h3{margin:18px 0 6px;color:var(--teal)}
+.nopic .pic{display:none}
+.pic{display:block;margin:0 auto 4px}
+.pic svg{display:block;width:100%;height:auto}
+.pic.em{width:auto!important;font-size:2.4rem;line-height:1.2}
+.t .pic{width:92px}
+.c .pic{width:70px}
+.c .pic.em{font-size:2rem}
+.w{display:inline-block;width:92px;margin:6px 2px;text-align:center;vertical-align:top;font-weight:bold;font-size:1rem;line-height:1.5}
+.w .pic{width:64px}
+.w .pic.em{font-size:1.8rem}
+.cover{text-align:center;padding:22px 10px 12px;border-radius:26px;border:3px solid var(--teal);background:linear-gradient(160deg,#fff 0%,#e3f4f2 55%,#fff1d9 100%)}
+.grade{display:inline-block;background:var(--org);color:#fff;font-weight:bold;border-radius:20px;padding:4px 16px}
+.ttl{font-size:clamp(2rem,8vw,3.2rem);margin:.3em 0;letter-spacing:.04em}
+.sub{margin:0;font-size:1.2rem;font-weight:bold;color:#6b6252}
+.bubs{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:16px 0}
+.bub{width:78px;height:78px;border-radius:50%;background:#fff;box-shadow:0 3px 8px #0002;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:fl 3s ease-in-out infinite}
+.bub svg{width:92%;height:auto}
+.bub span{font-size:2.4rem}
+@keyframes fl{50%{transform:translateY(-7px)}}
+.cover .go{min-width:min(86%,420px);margin:4px 0}
+.go small{display:block;font-size:.95rem;font-weight:normal}
+.go.k{background:var(--teal)}
+.go.r{background:#7b5fc9}
+rt{font-size:.42em;font-weight:normal}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<main>
+<div class="bar"><h1>なかまに なる ことば</h1><span><button class="sm" id="pc">🖼 え ON</button> <button class="sm" id="snd">🔊 こえ ON</button></span></div>
+<div id="app"></div>
+</main>
+<script>
+// [なかまの名前, グループ, ことば…]  ことばは「漢字|よみ」の形。よみ(ひらがな)をふりがなと読み上げに使う。
+// 同じグループ(例: 時に関する言葉)どうしは、まちがいの選択肢に出さない。ことばは自由に足せる(各なかま4つ以上)。
+const C=[
+["きせつ","t","春|はる","夏|なつ","秋|あき","冬|ふゆ"],
+["時|とき","t","朝|あさ","昼|ひる","夜|よる","おととい","きのう","今日|きょう","あした","あさって","夕方|ゆうがた"],
+["ようび","t","月曜日|げつようび","火曜日|かようび","水曜日|すいようび","木曜日|もくようび","金曜日|きんようび","土曜日|どようび","日曜日|にちようび"],
+["てんき","t","晴れ|はれ","くもり","雨|あめ","雪|ゆき","風|かぜ"],
+["方角|ほうがく","d","東|ひがし","西|にし","南|みなみ","北|きた"],
+["教科|きょうか","s","国語|こくご","算数|さんすう","生活|せいかつ","音楽|おんがく","図工|ずこう","体いく|たいいく"],
+["がっき","s","ピアノ","たいこ","リコーダー","カスタネット","オルガン","すず"],
+["ぶんぼうぐ","s","えんぴつ","けしゴム","ノート","じょうぎ","はさみ","のり"],
+["家ぞく|かぞく","h","親|おや","子|こ","母|はは","父|ちち","兄|あに","姉|あね","弟|おとうと","妹|いもうと","自分|じぶん","母さん|かあさん","父さん|とうさん","兄さん|にいさん","姉さん|ねえさん","兄弟|きょうだい","おじいさん","おばあさん"],
+["どうぶつ","a","犬|いぬ","ねこ","うさぎ","さる","くま","ぞう","馬|うま"],
+["むし","a","ちょうちょ","とんぼ","せみ","バッタ","てんとうむし","かぶとむし"],
+["くだもの","f","りんご","みかん","ぶどう","もも","いちご","すいか","バナナ"],
+["やさい","f","にんじん","だいこん","きゅうり","トマト","なす","ピーマン","キャベツ"],
+["のりもの","o","電車|でんしゃ","バス","車|くるま","ひこうき","船|ふね","じてんしゃ"],
+["からだ","b","頭|あたま","顔|かお","手|て","足|あし","目|め","口|くち","耳|みみ","おなか"],
+["いろ","c","赤|あか","青|あお","黄色|きいろ","みどり","白|しろ","黒|くろ"],
+["はな","p","さくら","チューリップ","ひまわり","あさがお","たんぽぽ","コスモス"],
+["まちの ばしょ","m","公園|こうえん","えき","びょういん","ゆうびんきょく","スーパー","学校|がっこう"],
+["うみの いきもの","a","たこ","いか","えび","かに","くじら","いるか"],
+["とり","a","すずめ","にわとり","ペンギン","ふくろう","あひる","はくちょう"],
+["のみもの","f","ぎゅうにゅう","おちゃ","ジュース","みず","こうちゃ"],
+["おかし","f","アメ","チョコレート","ケーキ","クッキー","ドーナツ","アイスクリーム"],
+["みに つけるもの","w","シャツ","ズボン","ワンピース","くつした","ぼうし","てぶくろ","コート","マフラー"],
+["スポーツ","g","サッカー","やきゅう","バスケットボール","テニス","バレーボール","すいえい"],
+["はたらく ひと","j","せんせい","いしゃ","おまわりさん","しょうぼうし","コックさん","パンやさん","ゆうびんやさん"],
+["がっこうの ばしょ","m","きょうしつ","としょしつ","ほけんしつ","おんがくしつ","ずこうしつ","たいいくかん","こうてい","プール"],
+["かたち","z","まる","さんかく","しかく","ほし","ハート"],
+["月|つき","t","1月|いちがつ","2月|にがつ","3月|さんがつ","4月|しがつ","5月|ごがつ","6月|ろくがつ","7月|しちがつ","8月|はちがつ","9月|くがつ","10月|じゅうがつ","11月|じゅういちがつ","12月|じゅうにがつ"]
+];
+// ===== 挿絵。キーは「よみ」。SVG文字列でも絵文字でもよい(足すときは ICON["よみ"]=… と書く) =====
+let pics=true;
+const S=b=>`<svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">${b}</svg>`;
+const A=(n,f)=>Array.from({length:n},(_,i)=>f(i*360/n)).join("");
+const px=(a,r)=>50+r*Math.cos(a*Math.PI/180),py=(a,r)=>35+r*Math.sin(a*Math.PI/180);
+// あさ・ひる・ゆうがた・よる: 空とお日さま(お月さま)の位置
+const tod=(bg,x,y,c,n)=>S(`<rect width="100" height="70" fill="${bg}"/>${n?`<circle cx="70" cy="20" r="11" fill="#fff6c8"/><circle cx="76" cy="16" r="10" fill="${bg}"/><g fill="#fff"><circle cx="20" cy="14" r="1.6"/><circle cx="40" cy="28" r="1.6"/><circle cx="50" cy="10" r="1.6"/></g>`:`<circle cx="${x}" cy="${y}" r="11" fill="${c}"/>`}<g opacity="${n?0.5:1}"><ellipse cx="30" cy="72" rx="55" ry="18" fill="#6bbf59"/><ellipse cx="80" cy="74" rx="45" ry="16" fill="#58a84a"/></g>`);
+// おととい〜あさって: 5日ぶんのカレンダーで、きょうを基準に位置を示す
+const cal=k=>S([-2,-1,0,1,2].map((d,j)=>`<rect x="${4+j*19}" y="12" width="17" height="30" rx="3" fill="${d==k?"#ef8a3a":"#fff"}" stroke="${d?"#bbb":"#2c9a96"}" stroke-width="${d?1.2:2.5}"/>`).join("")+`<path d="M50.5 46l-4 6h8z" fill="#2c9a96"/><text x="50.5" y="64" font-size="9" text-anchor="middle" fill="#2c9a96">きょう</text>`);
+// 東西南北: 方位磁針(上=北)
+const comp=d=>S(`<circle cx="50" cy="35" r="22" fill="#fff" stroke="#2c9a96" stroke-width="2"/>`+[[0,-1,"北"],[1,0,"東"],[0,1,"南"],[-1,0,"西"]].map(([x,y,t],j)=>{const c=j==d||d<0?"#e8553f":"#bbb";return`<path d="M${50+x*20} ${35+y*20}L${50-y*6} ${35+x*6}L${50+y*6} ${35-x*6}z" fill="${c}"/><text x="${50+x*31}" y="${38+y*29}" font-size="10" text-anchor="middle" fill="${c}">${t}</text>`}).join(""));
+const SE={
+ はる:S(A(5,a=>`<circle cx="${px(a,14)}" cy="${py(a,14)}" r="10" fill="#ffb3c7"/>`)+`<circle cx="50" cy="35" r="5" fill="#ffe36e"/>`),
+ なつ:S(A(8,a=>`<path d="M${px(a,19)} ${py(a,19)}L${px(a,28)} ${py(a,28)}" stroke="#ffa800" stroke-width="4" stroke-linecap="round"/>`)+`<circle cx="50" cy="35" r="14" fill="#ffc933"/>`),
+ あき:S(`<path d="M50 6C74 20 84 40 50 64C16 40 26 20 50 6z" fill="#e2572b"/><path d="M50 14V68" stroke="#8a2d12" stroke-width="2"/>`),
+ ふゆ:S(A(3,a=>`<path d="M${px(a,27)} ${py(a,27)}L${px(a+180,27)} ${py(a+180,27)}" stroke="#5aa9e6" stroke-width="3.5" stroke-linecap="round"/>`)+`<circle cx="50" cy="35" r="5" fill="#bfe0f8"/>`)
+};
+const SU={
+ こくご:S(`<rect x="26" y="8" width="48" height="54" rx="4" fill="#e8553f"/><rect x="31" y="12" width="40" height="46" rx="2" fill="#fff"/><text x="51" y="46" font-size="28" text-anchor="middle" fill="#e8553f">あ</text>`),
+ さんすう:S(`<rect x="10" y="8" width="80" height="48" rx="4" fill="#2f7d5b" stroke="#c89b5c" stroke-width="4"/><text x="50" y="40" font-size="20" text-anchor="middle" fill="#fff">1+2=3</text><rect x="22" y="58" width="56" height="5" fill="#c89b5c"/>`),
+ せいかつ:S(`<path d="M50 54V30" stroke="#4a9a3c" stroke-width="3"/><path d="M50 38C36 38 30 28 32 18C44 18 50 28 50 38z" fill="#6bbf59"/><path d="M50 32C62 32 68 22 66 12C54 12 50 22 50 32z" fill="#8ad06a"/><path d="M33 54h34l-4 12H37z" fill="#c8794a"/>`),
+ おんがく:S(`<text x="22" y="56" font-size="52" fill="#7b5fc9">♪</text><text x="60" y="40" font-size="30" fill="#2c9a96">♫</text>`),
+ ずこう:S(`<path d="M50 8C22 8 10 28 14 44C18 60 38 64 46 56C50 52 46 46 54 44C70 42 90 46 90 32C90 18 72 8 50 8z" fill="#f3d9a4" stroke="#c89b5c" stroke-width="2"/><circle cx="32" cy="26" r="5" fill="#e8553f"/><circle cx="50" cy="19" r="5" fill="#ffc933"/><circle cx="68" cy="26" r="5" fill="#2c9a96"/><circle cx="29" cy="44" r="5" fill="#4a7de0"/><path d="M58 64L86 22" stroke="#8a5a2b" stroke-width="4" stroke-linecap="round"/>`),
+ たいいく:S(`<circle cx="50" cy="35" r="26" fill="#ef8a3a"/><g stroke="#fff" stroke-width="2.5" fill="none"><path d="M24 35H76M50 9V61"/><path d="M32 17C42 28 42 42 32 53M68 17C58 28 58 42 68 53"/></g>`)
+};
+// 家ぞく: 上=おや(母・父)、下=こ(弟・妹・自分・姉・兄)。そのことばの人だけ光らせる
+const FAM=[["m",36,22,1.25,"#f08ab0"],["f",64,22,1.25,"#4a7de0"],["y",14,52,0.8,"#4a9a3c"],["i",32,52,0.8,"#ff9ac1"],["j",50,52,0.95,"#ffb400"],["s",68,52,1.05,"#a679d6"],["b",86,52,1.1,"#2c9a96"]];
+const fam=on=>S([...FAM].sort((a,b)=>on.includes(a[0])-on.includes(b[0])).map(([k,x,y,s,c])=>{const h=on.includes(k);return`<g opacity="${h?1:0.3}" transform="translate(${x} ${y}) scale(${s})">${h?`<circle cy="-1" r="12" fill="#ffe08a"/>`:""}<circle cy="-9" r="5" fill="#f6c9a0"/><path d="M-7 12V0Q-7-4 0-4Q7-4 7 0V12z" fill="${c}"/></g>`}).join(""));
+const FM={はは:"m",かあさん:"m",ちち:"f",とうさん:"f",あに:"b",にいさん:"b",あね:"s",ねえさん:"s",おとうと:"y",いもうと:"i",じぶん:"j",おや:"mf",こ:"yijsb",きょうだい:"yisb"};
+const ICON={あさ:tod("#ffe2a6",24,46,"#ff9f3a"),ひる:tod("#9fd8ff",50,14,"#ffd23f"),ゆうがた:tod("#ff9a6e",78,50,"#e8402f"),よる:tod("#27386b",0,0,"",1),
+ おととい:cal(-2),きのう:cal(-1),きょう:cal(0),あした:cal(1),あさって:cal(2),きた:comp(0),ひがし:comp(1),みなみ:comp(2),にし:comp(3),...SE,...SU};
+for(const k in FM)ICON[k]=fam(FM[k]);
+// 身近な言葉は、いまは絵文字(あとでSVGに差しかえ可)
+"げつようび:🌙,かようび:🔥,すいようび:💧,もくようび:🌳,きんようび:🪙,どようび:⛰️,にちようび:☀️,はれ:☀️,くもり:☁️,あめ:☔,ゆき:⛄,かぜ:💨,ピアノ:🎹,オルガン:🎹,たいこ:🥁,すず:🔔,えんぴつ:✏️,ノート:📓,じょうぎ:📏,はさみ:✂️,のり:🧴,おじいさん:👴,おばあさん:👵,いぬ:🐶,ねこ:🐱,うさぎ:🐰,さる:🐵,くま:🐻,ぞう:🐘,うま:🐴,ちょうちょ:🦋,バッタ:🦗,てんとうむし:🐞,かぶとむし:🪲,りんご:🍎,みかん:🍊,ぶどう:🍇,もも:🍑,いちご:🍓,すいか:🍉,バナナ:🍌,にんじん:🥕,きゅうり:🥒,トマト:🍅,なす:🍆,ピーマン:🫑,キャベツ:🥬,でんしゃ:🚃,バス:🚌,くるま:🚗,ひこうき:✈️,ふね:🚢,じてんしゃ:🚲,あたま:🧒,かお:😀,て:✋,あし:🦶,め:👁️,くち:👄,みみ:👂,あか:🟥,あお:🟦,きいろ:🟨,みどり:🟩,しろ:⬜,くろ:⬛,さくら:🌸,チューリップ:🌷,ひまわり:🌻,たんぽぽ:🌼,こうえん:🌳,えき:🚉,びょういん:🏥,ゆうびんきょく:📮,スーパー:🏪,がっこう:🏫".split(",").forEach(p=>{const[a,b]=p.split(":");ICON[a]=b});
+// 絵がぬけていた言葉と、読み方れんしゅうの言葉
+Object.assign(ICON,{
+ おなか:S(`<rect x="20" y="8" width="60" height="60" rx="22" fill="#f6c9a0"/><path d="M20 34Q20 8 50 8Q80 8 80 34Q50 28 20 34z" fill="#4a7de0"/><path d="M20 52Q50 60 80 52Q80 68 50 68Q20 68 20 52z" fill="#2f7d5b"/><ellipse cx="50" cy="43" rx="2.5" ry="3.5" fill="#d9a077"/><circle cx="50" cy="43" r="11" fill="none" stroke="#ef8a3a" stroke-width="2.5" stroke-dasharray="4 3"/>`),
+ けしゴム:S(`<g transform="rotate(-20 50 35)"><rect x="14" y="22" width="72" height="28" rx="5" fill="#fff"/><rect x="36" y="22" width="28" height="28" fill="#4a7de0"/><rect x="14" y="22" width="72" height="28" rx="5" fill="none" stroke="#bbb" stroke-width="2"/></g><g fill="#ccc"><circle cx="62" cy="60" r="2"/><circle cx="72" cy="62" r="1.6"/><circle cx="54" cy="63" r="1.4"/></g>`),
+ リコーダー:S(`<g transform="rotate(-25 50 35)"><rect x="4" y="27" width="92" height="16" rx="7" fill="#f3d9a4" stroke="#c89b5c" stroke-width="2"/><rect x="4" y="25" width="20" height="20" rx="5" fill="#c89b5c"/>${[40,52,64,76].map(x=>`<circle cx="${x}" cy="35" r="2.6" fill="#7a5a2c"/>`).join("")}</g>`),
+ カスタネット:S(`<path d="M16 34A34 24 0 0 1 84 34z" fill="#e8553f"/><path d="M16 39A34 24 0 0 0 84 39z" fill="#4a7de0"/><circle cx="50" cy="20" r="4" fill="#ffd0c8"/><circle cx="50" cy="53" r="4" fill="#bcd0ff"/><path d="M16 36C4 34 4 56 16 56" stroke="#555" stroke-width="2" fill="none"/>`),
+ とんぼ:S(`<g fill="#d3eefa" stroke="#8fc3d6" stroke-width="1.2"><ellipse cx="29" cy="25" rx="22" ry="6"/><ellipse cx="31" cy="35" rx="20" ry="5.5"/><ellipse cx="71" cy="25" rx="22" ry="6"/><ellipse cx="69" cy="35" rx="20" ry="5.5"/></g><rect x="48" y="12" width="4" height="52" rx="2" fill="#c0392b"/><circle cx="50" cy="12" r="6" fill="#2f7d5b"/><circle cx="46" cy="10" r="2.2" fill="#e8553f"/><circle cx="54" cy="10" r="2.2" fill="#e8553f"/>`),
+ せみ:S(`<rect x="0" y="54" width="100" height="8" fill="#8a5a2b"/><ellipse cx="52" cy="40" rx="27" ry="13" fill="#5a3d26"/><circle cx="24" cy="38" r="10" fill="#5a3d26"/><circle cx="20" cy="34" r="3.2" fill="#e8553f"/><ellipse cx="60" cy="30" rx="30" ry="10" transform="rotate(12 60 30)" fill="#d9f0f7" opacity="0.85" stroke="#8fc3d6" stroke-width="1.2"/><path d="M36 50L30 58M52 51L50 58M66 50L72 58" stroke="#3a2818" stroke-width="2.5" stroke-linecap="round"/>`),
+ だいこん:S(`<path d="M50 24C38 24 36 36 38 46C40 58 46 67 50 69C54 67 60 58 62 46C64 36 62 24 50 24z" fill="#f6f6f1" stroke="#d6d6cf" stroke-width="1.5"/><path d="M50 26C40 16 34 10 28 6C36 18 44 24 50 26zM50 26C49 14 49 8 50 2C55 10 55 18 50 26zM50 26C60 16 66 10 72 6C64 18 56 24 50 26z" fill="#4a9a3c"/>`),
+ あさがお:S(`<circle cx="50" cy="35" r="26" fill="#7b5fc9"/><circle cx="50" cy="35" r="13" fill="#d9ccf7"/>${A(5,a=>`<path d="M50 35L${px(a,26)} ${py(a,26)}" stroke="#5a3fb0" stroke-width="1.6"/>`)}<circle cx="50" cy="35" r="3" fill="#fff6c8"/>`),
+ コスモス:S(A(8,a=>`<ellipse cx="${px(a,18)}" cy="${py(a,18)}" rx="11" ry="7" transform="rotate(${a} ${px(a,18)} ${py(a,18)})" fill="#ff8fb8"/>`)+`<circle cx="50" cy="35" r="6" fill="#ffd23f"/>`),
+ とうざいなんぼく:comp(-1),
+ しゅんかしゅうとう:S([["はる",0,0],["なつ",50,0],["あき",0,35],["ふゆ",50,35]].map(([k,x,y])=>SE[k].replace("<svg ",`<svg x="${x}" y="${y}" width="50" height="35" `)).join(""))
+});
+// はってん用のことばの絵
+Object.assign(ICON,{
+ まる:S(`<circle cx="50" cy="35" r="26" fill="#ef8a3a"/>`),
+ さんかく:S(`<path d="M50 8L86 62H14z" fill="#2c9a96"/>`),
+ しかく:S(`<rect x="22" y="8" width="56" height="54" rx="3" fill="#4a7de0"/>`),
+ ほし:S(`<path d="M50 5L61 27L86 30L68 47L73 66L50 54L27 66L32 47L14 30L39 27z" fill="#ffc933"/>`),
+ ハート:S(`<path d="M50 62C14 38 20 10 40 14C46 15 50 20 50 22C50 20 54 15 60 14C80 10 86 38 50 62z" fill="#e8553f"/>`)
+});
+"たこ:🐙,いか:🦑,えび:🦐,かに:🦀,くじら:🐳,いるか:🐬,すずめ:🐦,にわとり:🐔,ペンギン:🐧,ふくろう:🦉,あひる:🦆,はくちょう:🦢,ぎゅうにゅう:🥛,おちゃ:🍵,ジュース:🧃,みず:💧,こうちゃ:☕,アメ:🍬,チョコレート:🍫,ケーキ:🍰,クッキー:🍪,ドーナツ:🍩,アイスクリーム:🍦,シャツ:👕,ズボン:👖,ワンピース:👗,くつした:🧦,ぼうし:🧢,てぶくろ:🧤,コート:🧥,マフラー:🧣,サッカー:⚽,やきゅう:⚾,バスケットボール:🏀,テニス:🎾,バレーボール:🏐,すいえい:🏊,せんせい:🧑‍🏫,いしゃ:🧑‍⚕️,おまわりさん:👮,しょうぼうし:🧑‍🚒,コックさん:🧑‍🍳,パンやさん:🥖,ゆうびんやさん:📮,としょしつ:📚,ほけんしつ:🩹,おんがくしつ:🎼,ずこうしつ:🎨,たいいくかん:🤸,プール:🏊".split(",").forEach(p=>{const[a,b]=p.split(":");ICON[a]=b});
+// 教室・校庭・月(カレンダー。きせつの色: 春=ピンク 夏=オレンジ 秋=赤 冬=青)
+Object.assign(ICON,{
+ きょうしつ:S(`<rect x="10" y="6" width="80" height="32" rx="3" fill="#2f7d5b" stroke="#c89b5c" stroke-width="3"/><path d="M24 30h14M46 22h22" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="14" y="48" width="26" height="8" rx="2" fill="#d9a066"/><rect x="60" y="48" width="26" height="8" rx="2" fill="#d9a066"/><path d="M20 56v10M34 56v10M66 56v10M80 56v10" stroke="#8a5a2b" stroke-width="2"/>`),
+ こうてい:S(`<rect width="100" height="70" fill="#e8c98c"/><ellipse cx="50" cy="35" rx="40" ry="24" fill="none" stroke="#fff" stroke-width="5"/><ellipse cx="50" cy="35" rx="26" ry="11" fill="#6bbf59"/>`)
+});
+"いちがつ,にがつ,さんがつ,しがつ,ごがつ,ろくがつ,しちがつ,はちがつ,くがつ,じゅうがつ,じゅういちがつ,じゅうにがつ".split(",").forEach((k,j)=>{
+ const c=["#5aa9e6","#5aa9e6","#ff9ac1","#ff9ac1","#ff9ac1","#ffa800","#ffa800","#ffa800","#e2572b","#e2572b","#e2572b","#5aa9e6"][j];
+ ICON[k]=S(`<rect x="22" y="8" width="56" height="56" rx="6" fill="#fff" stroke="#ccc" stroke-width="2"/><path d="M22 14Q22 8 28 8H72Q78 8 78 14V26H22z" fill="${c}"/><text x="50" y="54" font-size="26" font-weight="bold" text-anchor="middle" fill="#33302a">${j+1}</text>`)});
+const pic=w=>{const f=ICON[yomi(w)];return f?`<span class="pic${f[0]=="<"?"":" em"}">${f}</span>`:""};
+const N=["ぜろ","いち","に","さん","よん","ご","ろく","なな","はち","きゅう","じゅう"];
+// 教科書の「ちゅういする 読み方」「とくべつな 読み方」(よみかた れんしゅう用)
+const R=["とくべつな よみかた","x","東西南北|とうざいなんぼく","春夏秋冬|しゅんかしゅうとう","兄弟|きょうだい","兄さん|にいさん","姉さん|ねえさん","母さん|かあさん","父さん|とうさん"];
+const M={a:"なかまの ことばを えらぼう",b:"なんの なかま？ あてよう",c:"よみかた れんしゅう",e:"なまえを みて ことばを えらぼう"};
+const L={a:"えらぶ",b:"あてる",c:"よむ",e:"なまえ"};
+// 教科書のなかま=「きほん」。ほかのなかまが「はってん」(上位語=なかまの名前、下位語=そのなかまのことば)
+const TB=["時|とき","きせつ","方角|ほうがく","教科|きょうか","家ぞく|かぞく"];
+const isTB=c=>TB.includes(c[0]);
+const pool=()=>C.filter(c=>isTB(c)==(course=="k"));
+// きろく: r=さいきんのあそび, s=なかまごとの[もんすう,いっぱつせいかい], x=まちがえた問題(正答つき)。localStorageに保存
+let D={r:[],s:{},x:{}};
+try{D=Object.assign(D,JSON.parse(localStorage.getItem("nakama_kotoba_v1")||"{}"))}catch(e){}
+const save=()=>{try{localStorage.setItem("nakama_kotoba_v1",JSON.stringify(D))}catch(e){}};
+const $=s=>document.querySelector(s);
+const sh=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
+const yomi=w=>w.split("|").pop();
+const rb=w=>{const[k,y]=w.split("|");return y?`<ruby>${k}<rt>${y}</rt></ruby>`:k};
+const row=q=>`${q.set.map(w=>rb(w)).join(" ")} → <b>${rb(q.ans)}</b>`;
+let voice=true,mode="a",course="k",Q=[],H=[],i=0,score=0,miss=0,done=false;
+
+function rec(q,ok){
+  const s=D.s[q.name]=D.s[q.name]||[0,0];s[0]++;if(ok)s[1]++;
+  const k=q.m+q.ans;if(ok)delete D.x[k];else D.x[k]={m:q.m,set:q.set,ans:q.ans};
+  H.push({q,ok});save();
+}
+function review(){
+  const nm=c=>[c[0],c.slice(2)],B=[...C.filter(isTB),R].map(nm),V=C.filter(c=>!isTB(c)).map(nm),all=[...B,...V];
+  const st=n=>{const s=D.s[n]||[0,0];return s[0]?(s[0]>=3&&s[1]/s[0]>=.8?"⭐":"🔸"):"⚪"};
+  const g=a=>`<div class="g">${a.map(([n,w])=>{const s=D.s[n]||[0,0];return`<div><b>${st(n)} ${rb(n)}</b> <small>${s[1]} / ${s[0]}</small><br>${w.map(x=>rb(x)).join("　")}</div>`}).join("")}</div>`;
+  const X=Object.values(D.x).slice(-20).reverse();
+  $("#app").innerHTML=`<div class="card" style="text-align:left"><button class="sm" id="cov">◀ ひょうしへ</button>
+<div class="q" style="margin-top:12px">ふりかえり</div>
+<p><b>⭐ ${all.filter(x=>st(x[0])=="⭐").length} / ${all.length}</b> の なかまが できたよ<br><small>⭐=3もん いじょう やって、8わり いじょう いっぱつで せいかい　🔸=れんしゅう ちゅう　⚪=まだ</small></p>
+<h3>さいきんの あそび</h3>${D.r.slice(0,5).map(r=>`<div class="rv">${r.d}　${r.c=="h"?"はってん":"きほん"}　${L[r.m]}　<b>${r.s} / ${r.n}</b></div>`).join("")||`<div class="rv">まだ あそんでいません</div>`}
+<h3>まちがえた もんだい と せいかい</h3>${X.map(x=>`<div class="rv">${row(x)}</div>`).join("")||`<div class="rv">なし！</div>`}
+<h3>きほん: なかまごとの きろく</h3>${g(B)}<h3>はってん: なかまごとの きろく</h3>${g(V)}
+<p style="text-align:center"><button class="sm" id="clr">きろくを けす</button></p></div>`;
+}
+function say(t){
+  if(!voice||!window.speechSynthesis)return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.rate=.85;speechSynthesis.speak(u);
+}
+// まちがいの選択肢は、ちがうグループから1つずつ(紛らわしくならないように)
+const pk=c=>{const seen=new Set([c[1]]),r=[];for(const o of sh(pool())){if(seen.has(o[1]))continue;seen.add(o[1]);r.push(o);if(r.length==3)break}return r};
+function make(c,m){
+  const ws=sh(c.slice(2)),d=pk(c),q={m,name:c[0],all:c.slice(2)},dw=()=>d.map(o=>sh(o.slice(2))[0]);
+  if(m=="b"){
+    q.t="これは なんの なかま？";q.set=ws.slice(0,4);q.ans=c[0];
+    q.ch=sh([c[0],...d.map(o=>o[0])]);
+    q.ok=`これは 「${rb(c[0])}」の なかま！`;q.say="これは、"+yomi(c[0])+"の なかま";
+  }else if(m=="e"){
+    q.t=`「${rb(c[0])}」の なかまは どれ？`;q.sp=yomi(c[0])+"の なかまは どれ";q.set=[c[0]];q.ans=ws[0];
+    q.ch=sh([ws[0],...dw()]);
+    q.ok=`${rb(ws[0])} は 「${rb(c[0])}」の なかま！`;q.say=yomi(ws[0])+"は、"+yomi(c[0])+"の なかま";
+  }else{
+    q.t="なかまに なる ことばは どれ？";q.set=ws.slice(0,3);q.ans=ws[3];
+    q.ch=sh([ws[3],...dw()]);
+    q.ok=`${rb(ws[3])} も 「${rb(c[0])}」の なかまだね`;q.say=yomi(ws[3])+"も、"+yomi(c[0])+"の なかま";
+  }
+  return q;
+}
+// よみかた(きほんのみ): 同じなかまの中のことばの読みを、まちがいの選択肢にする
+function makeR(){
+  const G=[...C.filter(isTB),R].map(c=>[c[0],c.slice(2).filter(w=>w.includes("|"))]).filter(x=>x[1].length>3);
+  const[name,g]=sh(G)[0],s=sh(g),w=s[0];
+  return{m:"c",name,pw:w,all:[],t:"この ことばの よみかたは どれ？",set:[w.split("|")[0]],ans:yomi(w),ch:sh(s.slice(0,4).map(yomi)),ok:`「${rb(w)}」は 「${yomi(w)}」と よむよ`,say:yomi(w)};
+}
+function start(m){
+  H=[];mode=m;const P=pool();
+  Q=m=="c"?Array.from({length:10},makeR):(P.length<10?[...sh(P),...sh(P)]:sh(P)).slice(0,10).map(c=>make(c,m));
+  i=0;score=0;show();
+}
+function cover(){
+  const bub=["はる","りんご","いぬ","でんしゃ","ひがし","さくら","ぞう","あに"].map((k,j)=>`<div class="bub" style="animation-delay:${j*.35}s">${ICON[k][0]=="<"?ICON[k]:`<span>${ICON[k]}</span>`}</div>`).join("");
+  $("#app").innerHTML=`<div class="cover"><div class="grade">2ねんせい</div>
+<h2 class="ttl"><span style="color:var(--teal)">なかまに</span> <span style="color:var(--org)">なる</span> <span style="color:#7b5fc9">ことば</span></h2>
+<p class="sub">ことばを なかまに わけて みよう！</p>
+<div class="bubs">${bub}</div>
+<p><button class="go k" data-e="k">きほん<small>きょうかしょの ことば</small></button></p>
+<p><button class="go" data-e="h">はってん<small>ほかの なかまの ことば</small></button></p>
+<p><button class="go r" data-e="r">ふりかえり<small>きろくを みる</small></button></p></div>`;
+}
+function home(c){
+  course=c;
+  $("#app").innerHTML=`<div class="card"><button class="sm" id="cov">◀ ひょうしへ</button><div class="q" style="margin-top:12px">${c=="h"?"はってん：ほかの なかまの ことば":"きほん：きょうかしょの ことば"}</div>${[...(c=="h"?"abe":"abc")].map(k=>`<p><button class="go" data-m="${k}">${M[k]}</button></p>`).join("")}</div>`;
+}
+function read(){const q=Q[i];say((q.m=="c"||q.m=="e"?"":q.set.map(yomi).join("、")+"。")+(q.sp||q.t)+"。"+q.ch.map(yomi).join("、"))}
+function show(){
+  const q=Q[i];miss=0;done=false;
+  $("#app").innerHTML=`<div class="bar"><span>${i+1} / ${Q.length} もんめ</span><span>⭐ ${score}</span></div>
+<div class="card"><div class="q">${q.t}</div>
+<div class="set">${q.set.map(w=>`<div class="t">${pic(q.m=="c"?q.pw:w)}${rb(w)}</div>`).join("")}${q.m=="a"?`<div class="t m">？</div>`:""}</div>
+<button class="sm" id="re" style="margin-top:14px">🔊 もういちど きく</button></div>
+<div class="ch">${q.ch.map((w,k)=>`<button class="c" data-k="${k}">${"ae".includes(q.m)?pic(w):""}${rb(w)}</button>`).join("")}</div>
+<div class="fb" id="fb"></div><div style="text-align:center" id="nx"></div>`;
+  read();
+}
+function pick(b){
+  const q=Q[i],w=q.ch[+b.dataset.k];
+  if(w==q.ans){
+    done=true;b.classList.add("ok");if(!miss)score++;rec(q,!miss);
+    const m=$(".t.m");if(m){m.innerHTML=pic(w)+rb(w);m.classList.add("on")}
+    $("#fb").innerHTML=`<span style="color:var(--ok)">せいかい！</span><br>${q.ok}`+(q.all.length?`<div class="all">${q.all.map(x=>`<span class="w">${pic(x)}${rb(x)}</span>`).join("")}</div>`:"");
+    $("#nx").innerHTML=`<button class="go" id="nxt">${i+1<Q.length?"つぎへ ▶":"けっかを みる"}</button>`;
+    say("せいかい。"+q.say);
+  }else{
+    miss++;b.classList.add("ng");b.disabled=true;
+    $("#fb").innerHTML=`<span style="color:var(--ng)">ちがうよ。もういちど えらんでね</span>${miss>1&&q.m=="a"?`<br>ヒント：「${rb(q.name)}」の なかまだよ`:""}`;
+    say("ちがうよ。もういちど");
+  }
+}
+function end(){
+  D.r.unshift({d:new Date().toLocaleDateString("ja-JP"),m:mode,c:course,s:score,n:Q.length});D.r=D.r.slice(0,10);save();
+  const m=score>=9?"すごい！ ことばはかせ だね！":score>=6?"よく できました！":"もういちど ちょうせん してみよう！";
+  $("#app").innerHTML=`<div class="card"><div class="q">けっか</div><div style="font-size:2.4rem;font-weight:bold;color:var(--org)">${score} / ${Q.length} もん せいかい！</div><div style="font-size:2rem;margin:8px">${"⭐".repeat(score)}</div><p class="q">${m}</p><button class="go" id="st">もういちど</button> <button class="sm" id="menu">あそびかたを えらぶ</button> <button class="sm" id="cov">ひょうしへ</button><div class="rv-h">ふりかえり　◯=いっぱつで せいかい　△=まちがえた</div>${H.map(h=>`<div class="rv"><span>${h.ok?"◯":"△"}</span>${row(h.q)}</div>`).join("")}</div>`;
+  say(N[score]+"もん せいかい。"+m);
+}
+$("#app").onclick=e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.e)b.dataset.e=="r"?review():home(b.dataset.e);
+  else if(b.dataset.m)start(b.dataset.m);
+  else if(b.id=="st")start(mode);
+  else if(b.id=="menu")home(course);
+  else if(b.id=="cov")cover();
+  else if(b.id=="clr"){if(confirm("きろくを ぜんぶ けしますか？")){D={r:[],s:{},x:{}};save();review()}}
+  else if(b.id=="re")read();
+  else if(b.id=="nxt"){++i<Q.length?show():end()}
+  else if(b.dataset.k&&!done)pick(b);
+};
+$("#snd").onclick=()=>{voice=!voice;if(window.speechSynthesis)speechSynthesis.cancel();$("#snd").textContent="🔊 こえ "+(voice?"ON":"OFF")};
+$("#pc").onclick=()=>{pics=!pics;document.body.classList.toggle("nopic",!pics);$("#pc").textContent="🖼 え "+(pics?"ON":"OFF")};
+cover();
+</script>
+</body>
+</html>
