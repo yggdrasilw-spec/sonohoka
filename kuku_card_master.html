@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>くくカード・マスター</title>
+  <link rel="stylesheet" href="css/kuku-card-master.css">
+  <script src="vendor/vue-3.5.25.global.prod.js"></script>
+
+  <style>
+    /* 小さい画面ではアプリ内のスクロールを許可する。 */
+    html, body {
+      height: 100vh;
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      background-color: #fcf8f2;
+    }
+    .kuku-header { padding-block: .35rem; }
+    #app { height: 100dvh; }
+    button:disabled { opacity: .6; }
+    @media (max-width: 760px), (max-height: 610px) {
+      #app { overflow-x: hidden; overflow-y: auto; }
+      #app main { flex: 0 0 auto; overflow: visible; }
+      .kuku-home > div { min-height: 26rem; }
+      .kuku-home .grid-cols-9 { grid-auto-rows: minmax(1.8rem, auto); }
+      .kuku-play > .relative > div { min-height: 25rem; }
+      .kuku-drill > div + div > div { min-height: 24rem; }
+      .kuku-result > div { min-height: 24rem; }
+    }
+    @media (max-width: 760px) {
+      .kuku-header, .kuku-header > div { flex-wrap: wrap; gap: .35rem; }
+      .kuku-home, .kuku-result { flex-direction: column; }
+      .kuku-home > div, .kuku-result > div { width: 100%; }
+    }
+    @media (max-width: 560px) {
+      .kuku-progress { flex-wrap: wrap; gap: .25rem; padding-block: .35rem; }
+      .kuku-progress button { white-space: nowrap; }
+      .kuku-play > .relative, .kuku-drill > div + div { flex-direction: column; }
+      .kuku-play > .relative > div, .kuku-drill > div + div > div {
+        width: 100%;
+        height: auto;
+        min-height: 18rem;
+      }
+      .kuku-equation { font-size: clamp(1.85rem, 8vw, 3rem); gap: .3rem; }
+      .kuku-input { min-width: 3.5rem; height: 3.5rem; font-size: 1.85rem; }
+      .kuku-keypad button { min-height: 2.75rem; }
+      .kuku-drill .leading-snug, .kuku-drill [aria-hidden="true"] { font-size: 1.55rem; }
+    }
+    @media (max-width: 420px) {
+      .kuku-play .kuku-progress > div:nth-child(2) { order: 1; width: 100%; }
+      .kuku-play .kuku-progress > div:nth-child(2) span { white-space: nowrap; }
+      .kuku-play > .relative > div:first-child { min-height: 12rem; }
+      .kuku-play > .relative > div:first-child:has([data-answer-action]) { min-height: 17rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    .shadow-pop {
+      box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.12);
+    }
+    .shadow-pop:active:not(:disabled) {
+      box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.12);
+      transform: translateY(3px);
+    }
+  </style>
+</head>
+<body class="font-sans text-slate-800 h-screen w-screen overflow-hidden">
+
+  <div id="app" class="h-full w-full flex flex-col p-2 sm:p-3 overflow-hidden box-border">
+
+    <div class="contents" :inert="customModal.show">
+    <!-- ================= 共通ヘッダー（スクロールなし・高さ固定） ================= -->
+    <header class="kuku-header min-h-12 shrink-0 bg-white rounded-xl px-3 flex items-center justify-between shadow-sm border-2 border-amber-200 mb-2 z-10">
+      <!-- アプリロゴ（いつでもホームへ戻る） -->
+      <button type="button" aria-label="くくカード・マスター ホーム" class="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform" @click="goHome">
+        <span class="text-2xl">🐱</span>
+        <span class="text-lg font-black text-amber-600 tracking-wider">くくカード・マスター</span>
+      </button>
+
+      <!-- コントローラー群（完全ひらがな） -->
+      <div class="flex items-center gap-2">
+        <!-- 目標秒数設定 -->
+        <div class="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-xs">
+          <span class="font-bold text-slate-600">⏱️ もくひょう:</span>
+          <button :disabled="currentScreen !== 'home'" @click="changeTargetTime(-1)" class="w-5 h-5 bg-white rounded border font-black text-slate-600 shadow-sm flex items-center justify-center active:scale-95">ー</button>
+          <span class="font-black text-amber-700 min-w-12 whitespace-nowrap text-center text-sm font-mono">{{ targetTime }}びょう</span>
+          <button :disabled="currentScreen !== 'home'" @click="changeTargetTime(1)" class="w-5 h-5 bg-white rounded border font-black text-slate-600 shadow-sm flex items-center justify-center active:scale-95">＋</button>
+        </div>
+
+        <!-- 音声ON/OFF -->
+        <button
+          :aria-pressed="soundOn" @click="toggleSound"
+          class="flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs border transition-all active:scale-95"
+          :class="soundOn ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-400 border-slate-300'"
+        >
+          <span>{{ soundOn ? '🔊 おと ON' : '🔇 おと OFF' }}</span>
+        </button>
+
+        <!-- おためしデータ＆リセット -->
+        <div v-if="currentScreen === 'home'" class="flex items-center gap-1">
+          <button v-if="!hasHistory" @click="confirmSampleData" class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 hover:bg-slate-200 font-bold active:scale-95">おためしきろく</button>
+          <button @click="confirmClearData" class="text-xs bg-rose-50 text-rose-600 px-2 py-1 rounded border border-rose-200 hover:bg-rose-100 font-bold active:scale-95">リセット</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= 1. ホーム画面（1画面完結・漢字ゼロ） ================= -->
+    <main v-if="currentScreen === 'home'" class="kuku-home flex-1 min-h-0 flex gap-3 overflow-hidden animate-pop">
+
+      <!-- 左カラム（幅 50%）：設定 ＆ モード選択 ＆ スタート -->
+      <div class="w-1/2 h-full flex flex-col justify-between gap-2 overflow-hidden bg-white rounded-2xl p-3 border-2 border-slate-100 shadow-sm">
+
+        <!-- ① どの段を練習する？ -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xs font-black text-slate-700 flex items-center gap-1">
+              <span>🎯</span> どの だん を れんしゅう する？
+            </h2>
+            <div class="flex gap-1.5">
+              <button @click="selectAllTables" class="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200 active:scale-95">ぜんぶ</button>
+              <button @click="clearTables" class="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded border border-slate-200 active:scale-95">クリア</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5">
+            <button
+              v-for="n in 9"
+              :key="n"
+              @click="toggleTable(n)"
+              class="py-2 rounded-xl font-black text-base border-2 transition-all flex items-center justify-center relative shadow-sm active:scale-95"
+              :class="selectedTables.includes(n)
+                ? 'bg-amber-400 border-amber-500 text-white scale-[1.02]'
+                : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'"
+            >
+              <span>{{ n }} の だん</span>
+              <span v-if="selectedTables.includes(n)" class="absolute top-0.5 right-1 text-xs bg-white text-amber-600 rounded-full w-4 h-4 flex items-center justify-center font-bold">✓</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ② でる じゅんばん（右の81マスボードと完全連動） -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-black text-slate-700 flex items-center justify-between">
+            <span>🎲 でる じゅんばん (きろくも かわります)</span>
+          </label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button
+              v-for="opt in orderOptions"
+              :key="opt.id"
+              @click="setOrderMode(opt.id)"
+              class="py-1.5 text-xs font-bold rounded-xl border-2 transition-all text-center active:scale-95"
+              :class="orderMode === opt.id ? 'bg-sky-400 border-sky-500 text-white font-black scale-[1.02]' : 'bg-slate-50 border-slate-200 text-slate-500'"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- ③ モード選択（現在の「じゅんばん」の苦手のみ抽出・1問10回） -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-black text-slate-700">🚀 モードを えらぶ</label>
+
+          <div class="grid grid-cols-1 gap-1.5">
+            <!-- ふつうの れんしゅう -->
+            <button
+              @click="setModeType('normal')"
+              class="py-2 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-between transition-all active:scale-[.98]"
+              :class="selectedModeType === 'normal' ? 'bg-emerald-50 border-emerald-400 text-emerald-800 font-black ring-2 ring-emerald-300' : 'bg-slate-50 border-slate-200 text-slate-600'"
+            >
+              <span class="flex items-center gap-1.5"><span>🟢</span> ふつうの れんしゅう （えらんだ だん）</span>
+              <span class="text-xs bg-emerald-100 px-2 py-0.5 rounded-full text-emerald-700 font-black">きほん</span>
+            </button>
+
+            <!-- まちがえた もんだい だけ とっくん（1問につき10回！） -->
+            <button
+              @click="setModeType('wrong')"
+              :disabled="wrongTargetProblems.length === 0"
+              class="py-2 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-between transition-all disabled:opacity-50 active:scale-[.98]"
+              :class="selectedModeType === 'wrong' ? 'bg-rose-50 border-rose-400 text-rose-800 font-black ring-2 ring-rose-300' : 'bg-slate-50 border-slate-200 text-slate-600'"
+            >
+              <span class="flex items-center gap-1.5"><span>🔥</span> まちがい とっくん [{{ currentOrderLabel }}]</span>
+              <span class="bg-rose-400 text-white px-2 py-0.5 rounded-full text-xs font-black">{{ wrongTargetProblems.length }}もん</span>
+            </button>
+
+            <!-- まちがい ＋ 時間かかった問題 とっくん（1問につき10回！） -->
+            <button
+              @click="setModeType('slow_wrong')"
+              :disabled="slowOrWrongTargetProblems.length === 0"
+              class="py-2 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-between transition-all disabled:opacity-50 active:scale-[.98]"
+              :class="selectedModeType === 'slow_wrong' ? 'bg-purple-50 border-purple-400 text-purple-800 font-black ring-2 ring-purple-300' : 'bg-slate-50 border-slate-200 text-slate-600'"
+            >
+              <span class="flex items-center gap-1.5"><span>🐢</span> おそい・まちがい とっくん [{{ currentOrderLabel }}]</span>
+              <span class="bg-purple-400 text-white px-2 py-0.5 rounded-full text-xs font-black">{{ slowOrWrongTargetProblems.length }}もん</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ④ スタートボタン -->
+        <button
+          @click="startSession(selectedModeType)"
+          :disabled="isStartDisabled"
+          class="w-full py-3 bg-emerald-400 hover:bg-emerald-500 disabled:bg-slate-300 text-white font-black text-xl rounded-xl shadow-pop border-b-4 border-emerald-600 active:border-b-0 transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <span>✨</span>
+          <span>れんしゅうを はじめる！</span>
+        </button>
+
+      </div>
+
+      <!-- 右カラム（幅 50%）：81マス くくひょう (出題順ごとに独立したヒートマップ) -->
+      <div class="w-1/2 h-full flex flex-col justify-between overflow-hidden bg-white rounded-2xl p-3 border-2 border-slate-100 shadow-sm">
+
+        <!-- ヘッダー＆出題順切り替えタブ ＆ はんれい -->
+        <div class="flex flex-col gap-1.5 mb-1">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xs font-black text-slate-700 flex items-center gap-1">
+              <span>📊</span> 81マス きろくボード
+            </h2>
+            <!-- 出題順連動タブ -->
+            <div class="flex gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button
+                v-for="opt in orderOptions"
+                :key="opt.id"
+                @click="setOrderMode(opt.id)"
+                class="px-2 py-0.5 text-xs font-bold rounded-md transition-all"
+                :class="orderMode === opt.id ? 'bg-white text-sky-600 font-black shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- バッジカウント（現在の出題順専用） -->
+          <div class="flex justify-between text-xs font-bold bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+            <span class="flex items-center gap-1"><span class="font-black bg-amber-300 border border-amber-400" aria-hidden="true">★</span>ますたー: <strong class="text-amber-700 font-mono font-black">{{ modeCounts.gold }}</strong></span>
+            <span class="flex items-center gap-1"><span class="font-black bg-sky-200 border border-sky-300" aria-hidden="true">○</span>できた: <strong class="text-sky-700 font-mono font-black">{{ modeCounts.sky }}</strong></span>
+            <span class="flex items-center gap-1"><span class="font-black bg-rose-300 border border-rose-400" aria-hidden="true">!</span>にがて: <strong class="text-rose-700 font-mono font-black">{{ modeCounts.pink }}</strong></span>
+            <span class="flex items-center gap-1"><span class="font-black bg-slate-100 border border-slate-200" aria-hidden="true">–</span>まだ: <strong class="text-slate-500 font-mono font-black">{{ modeCounts.gray }}</strong></span>
+          </div>
+        </div>
+
+        <p class="text-xs font-bold text-slate-600">「にがて」は、とっくんを そつぎょうすると きえるよ。</p>
+
+        <!-- 81マス グリッド -->
+        <div class="flex-1 min-h-0 grid grid-cols-9 gap-1 my-1">
+          <template v-for="i in 9" :key="i">
+            <button
+              v-for="j in 9"
+              :key="j"
+              @click="selectProblemCell(i, j)"
+              :aria-label="i + ' かける ' + j + '、' + getGridStatus(i, j).label"
+              class="w-full h-full rounded flex flex-col items-center justify-center text-xs font-black transition-all border shadow-sm"
+              :class="[
+                getGridStatus(i, j).className,
+                selectedCell && selectedCell.a === i && selectedCell.b === j ? 'ring-2 ring-slate-800 scale-105 z-10' : ''
+              ]"
+            >
+              <span>{{ i }}×{{ j }} <span aria-hidden="true">{{ getGridStatus(i, j).mark }}</span></span>
+            </button>
+          </template>
+        </div>
+
+        <!-- マス詳細ステータスバー -->
+        <div class="h-11 shrink-0 bg-slate-50 rounded-xl p-2 border border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+          <template v-if="selectedCellInfo">
+            <div class="flex items-center gap-2">
+              <span class="text-base font-black text-amber-600 font-mono">{{ selectedCellInfo.a }}×{{ selectedCellInfo.b }}＝{{ selectedCellInfo.a * selectedCellInfo.b }}</span>
+              <span class="text-xs text-slate-500">
+                [{{ currentOrderLabel }}] さいこう:
+                <span class="font-mono text-amber-700 font-black">{{ selectedCellInfo.bestTime ? selectedCellInfo.bestTime + 'びょう' : 'ー' }}</span>
+              </span>
+            </div>
+            <div class="flex gap-2 text-xs">
+              <span>まちがい: <span class="text-rose-600 font-black">{{ selectedCellInfo.failCount }}かい</span></span>
+              <span>じょうたい: <span class="px-1.5 py-0.5 rounded text-xs font-black" :class="selectedCellInfo.statusBadgeClass">{{ selectedCellInfo.statusLabel }}</span></span>
+            </div>
+          </template>
+          <template v-else>
+            <span class="text-slate-400 text-xs">マスを タップすると 「{{ currentOrderLabel }}」の きろくが みえるよ！</span>
+          </template>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- ================= 2. れんしゅう/とっくん画面（1画面完結・スクロールゼロ） ================= -->
+    <!-- ================= 2. れんしゅう/とっくん画面（1画面完結・スクロールゼロ） ================= -->
+    <main v-if="currentScreen === 'play'" class="kuku-play flex-1 min-h-0 flex flex-col gap-2 overflow-hidden animate-pop">
+
+      <!-- 上部スリムバー（やめるボタンは絶対ロックされない） -->
+      <div class="kuku-progress min-h-10 shrink-0 bg-white rounded-xl px-3 flex items-center justify-between border-2 border-slate-100 shadow-sm text-xs font-bold z-10">
+        <button @click="goHome" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded-lg active:scale-95 flex items-center gap-1 cursor-pointer">
+          <span>🏠</span> やめる（ホームへ）
+        </button>
+
+        <!-- 全体進捗メーター ＆ モード出題順バッジ -->
+        <div class="flex items-center gap-3">
+          <span class="bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-black text-xs">【{{ currentOrderLabel }}】</span>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500">ぜんたい のこり: <strong class="text-amber-600 font-black text-sm font-mono">{{ totalRemainingCards }}</strong> もん</span>
+            <div class="w-24 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div class="h-full bg-amber-400 transition-all duration-300" :style="{ width: sessionProgressPercent + '%' }"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- タイマー -->
+        <div class="flex items-center gap-1 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 font-mono text-amber-700 font-black">
+          <span>⏱️</span>
+          <span>{{ elapsedTime.toFixed(1) }}s</span>
+        </div>
+      </div>
+
+      <!-- メインエリア（左右2カラム） -->
+      <!-- メインエリア（左右2カラム） -->
+      <div class="flex-1 min-h-0 flex gap-3 overflow-hidden relative">
+
+        <!-- 左カラム（幅 55%）：カード ＆ 1問10回メーター ＆ 注目演出 ＆ ヒント -->
+        <div class="w-[55%] h-full flex flex-col items-center justify-between bg-white rounded-2xl p-4 border-2 border-slate-100 shadow-sm relative overflow-hidden">
+
+          <!-- とっくんモード用：1問につき10回練習＆連続正解メーター -->
+          <div v-if="sessionMode !== 'normal'" class="w-full bg-purple-50 border border-purple-200 rounded-xl p-2 flex items-center justify-between text-xs font-bold text-purple-900">
+            <div class="flex items-center gap-1">
+              <span>🎯 この もんだい:</span>
+              <span class="font-black text-purple-700 font-mono text-sm">
+                {{ activeCardTrack ? (activeCardTrack.sessionCount > 10 ? 'えんちょう' : activeCardTrack.sessionCount + ' / 10') : '1 / 10' }}
+              </span>
+              <span v-if="!activeCardTrack || activeCardTrack.sessionCount <= 10">かいめ</span>
+            </div>
+
+            <!-- 10個の星ドットメーター -->
+            <div class="flex items-center gap-0.5 text-xs">
+              <span v-for="st in 10" :key="st" :class="activeCardTrack && st <= activeCardTrack.sessionCount ? 'text-amber-400 font-black scale-110' : 'text-slate-300'">★</span>
+            </div>
+
+            <!-- 連続正解（2回で卒業） -->
+            <div class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-purple-200">
+              <span class="text-xs text-slate-500">れんぞく:</span>
+              <span :class="activeCardTrack && activeCardTrack.consecutive >= 1 ? 'text-emerald-500 font-black' : 'text-slate-300'">🟢</span>
+              <span :class="activeCardTrack && activeCardTrack.consecutive >= 2 ? 'text-emerald-500 font-black' : 'text-slate-300'">🟢</span>
+            </div>
+          </div>
+
+          <!-- 注目リベンジ演出バッジ -->
+          <div class="h-7 flex items-center">
+            <div v-if="cardGimmick.active" class="bg-amber-400 text-white font-black text-xs px-3 py-1 rounded-full shadow-sm animate-bounce-short border border-white">
+              🔥 {{ cardGimmick.message }}
+            </div>
+          </div>
+
+          <!-- 九九カード本体 -->
+          <div
+            class="w-full max-w-md flex-1 min-h-0 bg-gradient-to-b from-amber-50/50 to-white rounded-3xl border-4 flex flex-col items-center justify-center relative shadow-md transition-all duration-300 my-1"
+            :class="[cardGimmick.borderClass, cardGimmick.animClass]"
+          >
+            <!-- 問題表示 -->
+            <div class="kuku-equation flex items-center justify-center gap-3 font-black text-5xl sm:text-6xl text-slate-700 tracking-wider font-mono">
+              <span>{{ currentCard.a }}</span>
+              <span class="text-amber-500">×</span>
+              <span>{{ currentCard.b }}</span>
+              <span class="text-slate-300">＝</span>
+              <!-- 解答入力枠 -->
+              <div
+                class="kuku-input min-w-[100px] h-20 bg-white border-4 border-dashed rounded-2xl flex items-center justify-center font-mono text-5xl shadow-inner px-2 transition-colors"
+                :class="playState === 'correct_anim' ? 'border-amber-200 text-amber-400 opacity-80' : 'border-amber-400 text-amber-600'"
+              >
+                {{ userInput }}
+              </div>
+            </div>
+
+            <!-- リベンジ成功スタンプ -->
+            <div v-if="showRevengeStamp" class="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center animate-pop z-10 rounded-2xl pointer-events-none">
+              <div class="text-4xl sm:text-5xl border-4 border-rose-500 text-rose-500 font-black px-4 py-2 rounded-2xl transform -rotate-12 shadow-lg">
+                リベンジ せいこう！🎉
+              </div>
+            </div>
+
+            <!-- 卒業スタンプ -->
+            <div v-if="showGraduationStamp" class="absolute inset-0 bg-amber-100/95 backdrop-blur-sm flex flex-col items-center justify-center animate-pop z-10 rounded-2xl pointer-events-none">
+              <div class="text-3xl sm:text-4xl text-amber-600 font-black text-center leading-relaxed">
+                🎓 {{ currentCard.a }}×{{ currentCard.b }}<br>そつぎょう おめでとう！✨
+              </div>
+            </div>
+          </div>
+
+          <!-- 交換法則ヒント (4秒経過時) -->
+          <div class="h-6 flex items-center">
+            <div v-if="showExchangeHint && playState === 'answering'" class="bg-sky-400 text-white font-black text-xs px-3 py-0.5 rounded-full shadow-sm animate-pop">
+              💡 ヒント: {{ currentCard.b }} × {{ currentCard.a }} と おなじだよ！
+            </div>
+          </div>
+
+          <!-- (C) ミス時ヒントモーダル (wrong_feedback) - ロック無効、ボタン確実にクリック可能 -->
+          <div v-if="playState === 'wrong_feedback'" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20 animate-pop rounded-2xl">
+            <div class="bg-white rounded-2xl p-4 w-full max-w-sm text-center border-4 border-rose-300 shadow-xl flex flex-col items-center gap-3">
+              <div class="text-3xl">💭</div>
+              <h3 class="text-base font-black text-rose-500">{{ retried ? 'こたえを たしかめよう' : 'もう１かい かんがえてみる？' }}</h3>
+              <div class="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs font-bold text-slate-700 leading-relaxed w-full">
+                {{ wrongAnswerDetails ? wrongAnswerDetails.message : '' }}
+              </div>
+              <div class="flex flex-col gap-2 w-full pt-1">
+                <!-- ボタン1: もう一度自分で挑戦 -->
+                <button
+                  v-if="!retried" data-answer-action @click="retryCurrentCard"
+                  class="w-full py-2.5 bg-amber-400 hover:bg-amber-500 active:scale-[.98] text-white font-black text-sm rounded-xl shadow-pop border-b-4 border-amber-600 active:border-b-0 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>✏️</span> もう１かい かんがえてみよう！
+                </button>
+                <!-- ボタン2: 正解を見て次へ -->
+                <button
+                  data-answer-action @click="showAnswerState"
+                  class="w-full py-2 bg-slate-100 hover:bg-slate-200 active:scale-[.98] text-slate-600 font-bold text-xs rounded-xl border border-slate-300 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <span>💡</span> こたえを みる
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- (D) 正解表示モーダル (showing_answer) -->
+          <div v-if="playState === 'showing_answer'" class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20 animate-pop rounded-2xl">
+            <div class="bg-white rounded-2xl p-4 w-full max-w-sm text-center border-4 border-sky-400 shadow-xl flex flex-col items-center gap-3">
+              <div class="text-3xl">📖</div>
+              <h3 class="text-sm font-black text-slate-500">せいかいの こたえ</h3>
+              <div class="bg-sky-50 border-2 border-sky-200 rounded-xl py-3 px-4 font-mono font-black text-3xl text-sky-700 w-full">
+                {{ currentCard.a }} × {{ currentCard.b }} ＝ {{ currentCard.a * currentCard.b }}
+              </div>
+              <button
+                data-answer-action @click="nextAfterAnswer"
+                class="w-full py-2.5 bg-sky-400 hover:bg-sky-500 active:scale-[.98] text-white font-black text-sm rounded-xl shadow-pop border-b-4 border-sky-600 active:border-b-0 transition-all flex items-center justify-center gap-1 cursor-pointer"
+              >
+                つぎの もんだいへ ➡️
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 右カラム（幅 45%）：電卓風テンキーパネル -->
+        <div class="w-[45%] h-full flex flex-col justify-between bg-white rounded-2xl p-3 border-2 border-slate-100 shadow-sm">
+
+          <!-- 入力モード表示 ＆ オート判定切替 -->
+          <div class="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-200 mb-1">
+            <span class="text-xs font-bold text-slate-500">⌨️ キーボードでも にゅうりょく できるよ</span>
+            <button
+              @click="autoJudge = !autoJudge"
+              class="text-xs font-bold px-2.5 py-1 rounded-lg border transition-all active:scale-95 cursor-pointer"
+              :class="autoJudge ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-slate-200 text-slate-700 border-slate-300'"
+            >
+              {{ autoJudge ? '⚡ じどう はんてい' : '🔘 けってい ボタン' }}
+            </button>
+          </div>
+
+          <!-- テンキーグリッド -->
+          <div class="kuku-keypad flex-1 grid grid-cols-3 gap-2 my-1">
+            <button
+              v-for="num in [7,8,9, 4,5,6, 1,2,3]"
+              :key="num"
+              @click="pressNum(num)"
+              :disabled="playState === 'correct_anim' || playState === 'showing_answer' || (playState === 'wrong_feedback' && retried)"
+              class="bg-slate-50 hover:bg-amber-100 active:bg-amber-200 disabled:bg-slate-100 disabled:text-slate-300 text-slate-700 font-black text-3xl rounded-xl border-b-4 border-slate-200 active:border-b-0 shadow-sm transition-all flex items-center justify-center font-mono cursor-pointer"
+            >
+              {{ num }}
+            </button>
+
+            <!-- けす -->
+            <button
+              @click="pressClear"
+              :disabled="playState !== 'answering'"
+              class="bg-rose-100 hover:bg-rose-200 disabled:bg-slate-100 disabled:text-slate-300 text-rose-700 font-black text-base rounded-xl border-b-4 border-rose-200 active:border-b-0 shadow-sm transition-all flex items-center justify-center cursor-pointer"
+            >
+              けす
+            </button>
+
+            <!-- 0 -->
+            <button
+              @click="pressNum(0)"
+              :disabled="playState === 'correct_anim' || playState === 'showing_answer' || (playState === 'wrong_feedback' && retried)"
+              class="bg-slate-50 hover:bg-amber-100 active:bg-amber-200 disabled:bg-slate-100 disabled:text-slate-300 text-slate-700 font-black text-3xl rounded-xl border-b-4 border-slate-200 active:border-b-0 shadow-sm transition-all flex items-center justify-center font-mono cursor-pointer"
+            >
+              0
+            </button>
+
+            <!-- けってい -->
+            <button
+              @click="pressSubmit"
+              :disabled="autoJudge || playState !== 'answering'"
+              class="text-white font-black text-base rounded-xl border-b-4 shadow-sm transition-all flex items-center justify-center cursor-pointer"
+              :class="autoJudge || playState !== 'answering' ? 'bg-slate-200 border-slate-300 text-slate-400' : 'bg-emerald-400 hover:bg-emerald-500 border-emerald-600 active:border-b-0'"
+            >
+              けってい
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- ================= 2.5 まちがえた もんだい 10かい いってみよう画面（10かい いうまで すすめない） ================= -->
+    <main v-if="currentScreen === 'drill'" class="kuku-drill flex-1 min-h-0 flex flex-col gap-2 overflow-hidden animate-pop">
+
+      <!-- 上部スリムバー -->
+      <div class="kuku-progress min-h-10 shrink-0 bg-white rounded-xl px-3 flex items-center justify-between border-2 border-rose-200 shadow-sm text-xs font-bold z-10">
+        <span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-black text-sm">🗣️ まちがえた もんだい を 10かい ずつ いってみよう！</span>
+        <span class="text-slate-500">
+          もんだい <strong class="text-rose-600 font-black text-sm font-mono">{{ drillIndex + 1 }}</strong> / {{ drillQueue.length }}
+        </span>
+      </div>
+
+      <div class="flex-1 min-h-0 flex gap-3 overflow-hidden">
+
+        <!-- 左カラム（幅 60%）：九九カード（ひらがなの よみ つき） -->
+        <div class="w-[60%] h-full flex flex-col items-center justify-center gap-5 bg-white rounded-2xl p-4 border-2 border-rose-200 shadow-sm">
+          <div class="font-mono font-black text-4xl sm:text-5xl text-slate-500 tracking-wider">
+            {{ currentDrillProblem.a }} × {{ currentDrillProblem.b }} ＝ {{ currentDrillProblem.a * currentDrillProblem.b }}
+          </div>
+          <div
+            class="w-full max-w-2xl bg-gradient-to-b from-rose-50 to-white rounded-3xl border-4 py-8 px-4 text-center shadow-md transition-colors duration-300"
+            :class="drillSpeaking ? 'border-rose-400' : 'border-rose-200'"
+          >
+            <div class="font-black text-4xl sm:text-5xl leading-snug tracking-wider">
+              <span class="text-rose-600">{{ currentDrillYomi.prefix }}</span>{{ ' ' }}<span class="text-slate-700 ml-3">{{ currentDrillYomi.answer }}</span>
+            </div>
+          </div>
+          <p class="text-sm font-bold text-slate-500">こえに だして、いっしょに いってね</p>
+        </div>
+
+        <!-- 右カラム（幅 40%）：なんかいめ ＆ すすむボタン（10かい おわるまで ボタンは でない） -->
+        <div class="w-[40%] h-full flex flex-col justify-between bg-white rounded-2xl p-4 border-2 border-slate-100 shadow-sm">
+
+          <div class="text-center">
+            <div class="text-xs font-black text-slate-500">いま</div>
+            <div class="font-mono font-black text-6xl text-rose-500 leading-none mt-1">
+              {{ drillShownCount }}<span class="text-2xl text-slate-400"> / {{ drillRepeat }}</span>
+            </div>
+            <div class="text-sm font-black text-slate-600 mt-1">{{ drillDone ? 'ぜんぶ いえたね！' : 'かいめ' }}</div>
+          </div>
+
+          <div class="flex justify-center gap-1 text-3xl" aria-hidden="true">
+            <span
+              v-for="n in drillRepeat"
+              :key="n"
+              :class="n <= drillCount ? 'text-amber-400' : (n === drillCount + 1 && drillSpeaking ? 'text-rose-300 animate-pulse' : 'text-slate-200')"
+            >★</span>
+          </div>
+
+          <div class="min-h-[3.5rem] flex items-center justify-center text-center" aria-live="polite">
+            <p v-if="drillDone" class="text-base font-black text-emerald-600">🎉 10かい いえたね！ ボタンを おしてね</p>
+            <p v-else-if="drillSilentReason === 'off'" class="text-sm font-black text-slate-600 leading-relaxed">🔇 おとが OFF だよ。<br>じぶんの こえで 10かい いってね！</p>
+            <p v-else-if="drillSilentReason === 'error'" class="text-sm font-black text-slate-600 leading-relaxed">こえが でないよ。<br>じぶんの こえで 10かい いってね！</p>
+            <p v-else-if="drillSpeaking" class="text-base font-black text-rose-500">🔊 いっしょに いってね！</p>
+            <p v-else class="text-base font-black text-slate-500">⏳ つぎも いっしょに いってね</p>
+          </div>
+
+          <div class="h-24 flex items-center">
+            <button
+              v-if="drillDone"
+              @click="nextDrillProblem"
+              class="w-full h-full bg-emerald-400 hover:bg-emerald-500 text-white font-black text-lg rounded-2xl shadow-pop border-b-4 border-emerald-600 active:border-b-0 transition-all flex items-center justify-center gap-2 cursor-pointer animate-pop"
+            >
+              <span class="text-2xl">✅</span>
+              <span class="leading-tight">10かい いえた！<br>すすむ ➡️</span>
+            </button>
+            <div
+              v-else
+              class="w-full h-full rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-sm font-bold text-slate-500 text-center px-2 leading-relaxed"
+            >
+              10かい いえたら<br>ボタンが でるよ！
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+    <!-- ================= 3. せいちょう ほめほめ けっか画面（絶対ロックなし・100%押せる） ================= -->
+    <main v-if="currentScreen === 'result'" class="kuku-result flex-1 min-h-0 flex gap-3 overflow-hidden animate-pop z-10">
+
+      <!-- 左カラム（幅 40%）：成績サマリー -->
+      <div class="w-[40%] h-full flex flex-col justify-between bg-white rounded-2xl p-4 border-2 border-slate-100 shadow-sm">
+
+        <div class="text-center bg-gradient-to-r from-amber-400 to-orange-400 rounded-2xl p-3 text-white shadow-sm">
+          <div class="text-3xl mb-1">🎉</div>
+          <h2 class="text-xl font-black">よく がんばったね！</h2>
+          <p class="text-xs text-amber-100 font-bold">きょうの れんしゅうの まとめだよ</p>
+        </div>
+
+        <!-- 数字グリッド -->
+        <div class="grid grid-cols-2 gap-2 my-2">
+          <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100 text-center">
+            <div class="text-xs font-bold text-slate-400">やった もんだい</div>
+            <div class="text-xl font-black text-amber-600 font-mono">{{ sessionSummary.total }}もん</div>
+          </div>
+          <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100 text-center">
+            <div class="text-xs font-bold text-slate-400">せいかい</div>
+            <div class="text-xl font-black text-emerald-600 font-mono">{{ sessionSummary.correct }}もん</div>
+          </div>
+          <div class="bg-sky-50 p-2.5 rounded-xl border border-sky-100 text-center">
+            <div class="text-xs font-bold text-slate-400">へいきん タイム</div>
+            <div class="text-xl font-black text-sky-600 font-mono">{{ sessionSummary.avgTime }}びょう</div>
+          </div>
+          <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-100 text-center">
+            <div class="text-xs font-bold text-slate-400">そつぎょう・リベンジ</div>
+            <div class="text-xl font-black text-purple-600 font-mono">{{ sessionSummary.badges }}こ</div>
+          </div>
+        </div>
+
+        <!-- アクションボタン（ロック無効、100%クリック可能） -->
+        <div class="flex flex-col gap-2">
+          <button
+            v-if="canRepeatTraining" @click="startSession(sessionMode)"
+            class="w-full py-2.5 bg-emerald-400 hover:bg-emerald-500 active:scale-[.98] text-white font-black text-sm rounded-xl shadow-pop border-b-4 border-emerald-600 active:border-b-0 transition-all flex items-center justify-center gap-1 cursor-pointer"
+          >
+            <span>🔄</span> もう いっかい れんしゅう する
+          </button>
+
+          <button
+            @click="goHome"
+            class="w-full py-2.5 bg-amber-400 hover:bg-amber-500 active:scale-[.98] text-white font-black text-sm rounded-xl shadow-pop border-b-4 border-amber-600 active:border-b-0 transition-all flex items-center justify-center gap-1 cursor-pointer"
+          >
+            <span>🏠</span> {{ canRepeatTraining ? 'ホームへ もどる' : 'ホームで れんしゅうを えらぶ' }}
+          </button>
+        </div>
+
+      </div>
+
+      <!-- 右カラム（幅 60%）：ほめほめノート -->
+      <div class="w-[60%] h-full flex flex-col justify-between bg-white rounded-2xl p-4 border-2 border-slate-100 shadow-sm overflow-hidden">
+
+        <h3 class="text-xs font-black text-slate-700 flex items-center gap-1.5 shrink-0">
+          <span>🌟</span> あなたの すごい せいちょう！ （ほめほめ ノート）
+        </h3>
+
+        <!-- 褒めメッセージカードリスト -->
+        <div class="flex-1 min-h-0 grid grid-cols-1 gap-2 my-2 overflow-hidden">
+          <template v-if="praiseMessages.length > 0">
+            <div
+              v-for="(msg, idx) in praiseMessages"
+              :key="idx"
+              class="bg-amber-50/70 rounded-xl p-2.5 border border-amber-200 flex items-start gap-2.5 animate-pop"
+            >
+              <span class="text-2xl shrink-0">{{ msg.icon }}</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-black text-amber-700 mb-0.5">{{ msg.title }}</div>
+                <p class="text-xs font-bold text-slate-700 leading-tight">{{ msg.body }}</p>
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="bg-emerald-50 rounded-xl p-3 border border-emerald-200 flex items-center gap-3">
+              <span class="text-3xl">👏</span>
+              <div>
+                <div class="text-xs font-black text-emerald-700 mb-0.5">さいごまで しゅうちゅう できたね！</div>
+                <p class="text-xs font-bold text-slate-600">なんかいも れんしゅう すると、どんどん スピードが はやくなるよ！また やってみよう！</p>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="text-center text-xs text-slate-400 font-bold shrink-0">
+          まえの きろくと くらべて じどうで せいちょうを はっけん しているよ！
+        </div>
+
+      </div>
+
+    </main>
+
+    </div>
+
+    <!-- ================= 4. アプリ内 カスタムモーダル（ダイアログ） ================= -->
+    <div v-if="customModal.show" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-pop">
+      <div role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-message" class="bg-white rounded-2xl p-5 w-full max-w-sm text-center border-4 border-amber-300 shadow-2xl flex flex-col items-center gap-3">
+        <div class="text-3xl">{{ customModal.icon }}</div>
+        <h3 id="modal-title" class="text-base font-black text-slate-800">{{ customModal.title }}</h3>
+        <p id="modal-message" class="text-xs font-bold text-slate-600 leading-relaxed">{{ customModal.message }}</p>
+
+        <div class="flex gap-2 w-full pt-2">
+          <button
+            id="modal-cancel" v-if="customModal.type === 'confirm'"
+            @click="closeModal(false)"
+            class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl border border-slate-300 active:scale-95"
+          >
+            {{ customModal.cancelLabel }}
+          </button>
+          <button
+            id="modal-ok" @click="closeModal(true)"
+            class="flex-1 py-2 bg-amber-400 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow-pop border-b-4 border-amber-600 active:border-b-0"
+          >
+            {{ customModal.okLabel }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Vue 3 アプリケーション本体 -->
+  <script>
+    const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
+
+    // 九九のよみ（ひらがな）。[かけ算のよみ, こたえのよみ]  ※ KUKU_YOMI[かけられる数][かける数 - 1]
+    // 画面の表示も音声のよみあげも、ひらがなでそろえる（教科書とよみが違う所はここを直す）
+    const KUKU_YOMI = {
+      1: [['いんいちが','いち'],['いんにが','に'],['いんさんが','さん'],['いんしが','し'],['いんごが','ご'],['いんろくが','ろく'],['いんしちが','しち'],['いんはちが','はち'],['いんくが','く']],
+      2: [['にいちが','に'],['ににんが','し'],['にさんが','ろく'],['にしが','はち'],['にご','じゅう'],['にろく','じゅうに'],['にしち','じゅうし'],['には','じゅうろく'],['にく','じゅうはち']],
+      3: [['さんいちが','さん'],['さんにが','ろく'],['さざんが','く'],['さんし','じゅうに'],['さんご','じゅうご'],['さぶろく','じゅうはち'],['さんしち','にじゅういち'],['さんぱ','にじゅうし'],['さんく','にじゅうしち']],
+      4: [['しいちが','し'],['しにが','はち'],['しさん','じゅうに'],['しし','じゅうろく'],['しご','にじゅう'],['しろく','にじゅうし'],['ししち','にじゅうはち'],['しは','さんじゅうに'],['しく','さんじゅうろく']],
+      5: [['ごいちが','ご'],['ごに','じゅう'],['ごさん','じゅうご'],['ごし','にじゅう'],['ごご','にじゅうご'],['ごろく','さんじゅう'],['ごしち','さんじゅうご'],['ごは','しじゅう'],['ごっく','しじゅうご']],
+      6: [['ろくいちが','ろく'],['ろくに','じゅうに'],['ろくさん','じゅうはち'],['ろくし','にじゅうし'],['ろくご','さんじゅう'],['ろくろく','さんじゅうろく'],['ろくしち','しじゅうに'],['ろくは','しじゅうはち'],['ろっく','ごじゅうし']],
+      7: [['しちいちが','しち'],['しちに','じゅうし'],['しちさん','にじゅういち'],['しちし','にじゅうはち'],['しちご','さんじゅうご'],['しちろく','しじゅうに'],['しちしち','しじゅうく'],['しちは','ごじゅうろく'],['しちく','ろくじゅうさん']],
+      8: [['はちいちが','はち'],['はちに','じゅうろく'],['はちさん','にじゅうし'],['はちし','さんじゅうに'],['はちご','しじゅう'],['はちろく','しじゅうはち'],['はちしち','ごじゅうろく'],['はっぱ','ろくじゅうし'],['はっく','しちじゅうに']],
+      9: [['くいちが','く'],['くに','じゅうはち'],['くさん','にじゅうしち'],['くし','さんじゅうろく'],['くご','しじゅうご'],['くろく','ごじゅうし'],['くしち','ろくじゅうさん'],['くは','しちじゅうに'],['くく','はちじゅういち']]
+    };
+
+    const getKukuYomi = (a, b) => {
+      const pair = KUKU_YOMI[a] && KUKU_YOMI[a][b - 1];
+      if (!pair) return { prefix: '', answer: '', speech: '' };
+      const [prefix, answer] = pair;
+      // 音声のよみあげ用だけ、末尾の「は(8)」を「ハ」にする
+      // （ひらがなの「は」だと助詞として「わ」と読まれることがあるため。画面の表示はひらがなのまま）
+      const speechPrefix = prefix.replace(/は$/, 'ハ');
+      return { prefix, answer, speech: `${speechPrefix}、${answer}。` };
+    };
+
+    createApp({
+      setup() {
+        // --- Web Audio API 効果音合成 ---
+        const soundOn = ref(true);
+        let audioCtx = null;
+
+        const initAudio = () => {
+          if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+        };
+
+        const playTone = (freq, type = 'sine', duration = 0.1, delay = 0) => {
+          if (!soundOn.value) return;
+          try {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + delay);
+            osc.stop(audioCtx.currentTime + delay + duration);
+          } catch (e) {}
+        };
+
+        const playSound = (name) => {
+          if (!soundOn.value) return;
+          if (name === 'click') playTone(600, 'triangle', 0.04);
+          else if (name === 'clear') playTone(300, 'sawtooth', 0.06);
+          else if (name === 'correct') {
+            playTone(523.25, 'sine', 0.1, 0);
+            playTone(659.25, 'sine', 0.1, 0.08);
+            playTone(783.99, 'sine', 0.2, 0.16);
+          } else if (name === 'wrong') {
+            playTone(220, 'sawtooth', 0.12, 0);
+            playTone(196, 'sawtooth', 0.2, 0.1);
+          } else if (name === 'revenge') {
+            playTone(587.33, 'triangle', 0.08, 0);
+            playTone(739.99, 'triangle', 0.08, 0.06);
+            playTone(880.00, 'triangle', 0.25, 0.12);
+          } else if (name === 'fanfare') {
+            [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+              playTone(f, 'triangle', 0.18, i * 0.08);
+            });
+          }
+        };
+
+        const toggleSound = () => soundOn.value = !soundOn.value;
+
+        // --- 画面状態とplayStateの完全分離 ---
+        const currentScreen = ref('home');
+        const playState = ref('idle');
+        let animTimeoutId = null;
+
+        const clearPendingTimeout = () => {
+          if (animTimeoutId !== null) {
+            clearTimeout(animTimeoutId);
+            animTimeoutId = null;
+          }
+        };
+
+        // 基本設定
+        const selectedTables = ref([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        const orderMode = ref('random'); // 'order' | 'random' | 'reverse'
+        const targetTime = ref(4);
+        const autoJudge = ref(true);
+        const selectedModeType = ref('normal');
+        const sessionMode = ref('normal');
+
+        const orderOptions = [
+          { id: 'order', label: 'じゅんばん' },
+          { id: 'random', label: 'ばらばら' },
+          { id: 'reverse', label: 'さかさま' }
+        ];
+
+        const currentOrderLabel = computed(() => {
+          const opt = orderOptions.find(o => o.id === orderMode.value);
+          return opt ? opt.label : '';
+        });
+
+        // --- 履歴＆特訓状態の構造化（出題順ごとの完全独立データ） ---
+        // historyData[orderMode][key] = [ records... ]
+        // trainingFlags[orderMode][key] = boolean (true: 特訓対象の苦手フラグ)
+        const historyData = ref({ order: {}, random: {}, reverse: {} });
+        const trainingFlags = ref({ order: {}, random: {}, reverse: {} });
+
+        const hasHistory = computed(() => Object.values(historyData.value)
+          .some(group => Object.values(group).some(records => records.length > 0)));
+
+        const loadSettings = () => {
+          try {
+            const settings = JSON.parse(localStorage.getItem('kuku_card_settings')) || {};
+            if (Number.isInteger(settings.targetTime) && settings.targetTime >= 1 && settings.targetTime <= 15) {
+              targetTime.value = settings.targetTime;
+            }
+            if (typeof settings.soundOn === 'boolean') soundOn.value = settings.soundOn;
+            if (orderOptions.some(option => option.id === settings.orderMode)) orderMode.value = settings.orderMode;
+          } catch (e) {}
+        };
+
+        const saveSettings = () => {
+          try {
+            localStorage.setItem('kuku_card_settings', JSON.stringify({
+              targetTime: targetTime.value, soundOn: soundOn.value, orderMode: orderMode.value
+            }));
+          } catch (e) {}
+        };
+
+        const loadHistory = () => {
+          try {
+            const savedHist = localStorage.getItem('kuku_chromebook_hist_v6');
+            const savedFlags = localStorage.getItem('kuku_chromebook_flags_v6');
+            if (savedHist) historyData.value = JSON.parse(savedHist);
+            if (savedFlags) trainingFlags.value = JSON.parse(savedFlags);
+            let migrated = false;
+            // 旧記録は目標秒数を持たないため、初回読込時の目標で固定する。
+            for (const group of Object.values(historyData.value)) {
+              for (const records of Object.values(group)) {
+                for (const record of records) {
+                  if (Number.isFinite(record.targetTime)) continue;
+                  record.targetTime = targetTime.value;
+                  migrated = true;
+                }
+              }
+            }
+            if (migrated) saveHistory();
+          } catch (e) {}
+        };
+
+        const saveHistory = () => {
+          try {
+            localStorage.setItem('kuku_chromebook_hist_v6', JSON.stringify(historyData.value));
+            localStorage.setItem('kuku_chromebook_flags_v6', JSON.stringify(trainingFlags.value));
+          } catch (e) {}
+        };
+
+        // 出題順(order)ごとの統計とステータス取得
+        const getProblemStats = (a, b, order = orderMode.value) => {
+          const key = `${a}_${b}`;
+          const orderHist = historyData.value[order] || {};
+          const orderFlags = trainingFlags.value[order] || {};
+          const records = orderHist[key] || [];
+
+          const needTraining = orderFlags[key] === true;
+
+          if (records.length === 0) {
+            return {
+              status: 'gray',
+              totalCount: 0,
+              failCount: 0,
+              consecutive: 0,
+              lastRecord: null,
+              bestTime: null,
+              hasFailedEver: false,
+              needTraining: false
+            };
+          }
+
+          let failCount = 0;
+          let consecutive = 0;
+          let bestTime = null;
+          let hasFailedEver = false;
+
+          for (let i = 0; i < records.length; i++) {
+            const r = records[i];
+            if (!r.isCorrect) {
+              failCount++;
+              hasFailedEver = true;
+              consecutive = 0;
+            } else {
+              consecutive++;
+              if (!r.assisted && (bestTime === null || r.timeSec < bestTime)) {
+                bestTime = r.timeSec;
+              }
+            }
+          }
+
+          const lastRecord = records[records.length - 1];
+          let status = 'gray';
+
+          // 「にがて」（ピンク）: 直近が不正解、またはneedTrainingがtrue
+          if (needTraining || (lastRecord && !lastRecord.isCorrect)) {
+            status = 'pink';
+          } else if (lastRecord && lastRecord.isCorrect) {
+            if (!lastRecord.assisted && lastRecord.timeSec <= lastRecord.targetTime) {
+              status = 'gold'; // マスター
+            } else {
+              status = 'sky';  // できた
+            }
+          }
+
+          return {
+            status,
+            totalCount: records.length,
+            failCount,
+            consecutive,
+            lastRecord,
+            bestTime: bestTime !== null ? Number(bestTime.toFixed(1)) : null,
+            hasFailedEver,
+            needTraining
+          };
+        };
+
+        // 現在選択中の出題順における各カウント
+        const modeCounts = computed(() => {
+          let gold = 0, sky = 0, pink = 0, gray = 0;
+          for (let a = 1; a <= 9; a++) {
+            for (let b = 1; b <= 9; b++) {
+              const st = getProblemStats(a, b, orderMode.value).status;
+              if (st === 'gold') gold++;
+              else if (st === 'sky') sky++;
+              else if (st === 'pink') pink++;
+              else gray++;
+            }
+          }
+          return { gold, sky, pink, gray };
+        });
+
+        // 選択中の出題順における「まちがい とっくん」対象問題
+        const wrongTargetProblems = computed(() => {
+          const list = [];
+          for (let a = 1; a <= 9; a++) {
+            for (let b = 1; b <= 9; b++) {
+              const stats = getProblemStats(a, b, orderMode.value);
+              if (stats.status === 'pink') {
+                list.push({ a, b });
+              }
+            }
+          }
+          return list;
+        });
+
+        // 選択中の出題順における「おそい・まちがい とっくん」対象問題
+        const slowOrWrongTargetProblems = computed(() => {
+          const list = [];
+          for (let a = 1; a <= 9; a++) {
+            for (let b = 1; b <= 9; b++) {
+              const stats = getProblemStats(a, b, orderMode.value);
+              if (stats.status === 'pink' || stats.status === 'sky') {
+                list.push({ a, b });
+              }
+            }
+          }
+          return list;
+        });
+
+        const isStartDisabled = computed(() => {
+          if (selectedModeType.value === 'normal') return selectedTables.value.length === 0;
+          if (selectedModeType.value === 'wrong') return wrongTargetProblems.value.length === 0;
+          if (selectedModeType.value === 'slow_wrong') return slowOrWrongTargetProblems.value.length === 0;
+          return false;
+        });
+
+        const gridStatuses = {
+          gray: { label: 'まだ', mark: '–', className: 'bg-slate-100 border-slate-200 text-slate-600' },
+          pink: { label: 'にがて', mark: '!', className: 'bg-rose-300 border-rose-400 text-rose-900' },
+          gold: { label: 'ますたー', mark: '★', className: 'bg-amber-300 border border-amber-400 text-amber-900 font-black' },
+          sky: { label: 'できた', mark: '○', className: 'bg-sky-200 border-sky-300 text-sky-900' }
+        };
+        const getGridStatus = (a, b) => gridStatuses[getProblemStats(a, b).status];
+
+        const selectedCell = ref(null);
+        const selectedCellInfo = computed(() => {
+          if (!selectedCell.value) return null;
+          const { a, b } = selectedCell.value;
+          const stats = getProblemStats(a, b, orderMode.value);
+          let statusLabel = 'まだ';
+          let statusBadgeClass = 'bg-slate-200 text-slate-600';
+          if (stats.status === 'gold') { statusLabel = 'ますたー'; statusBadgeClass = 'bg-amber-400 text-white'; }
+          else if (stats.status === 'sky') { statusLabel = 'できた'; statusBadgeClass = 'bg-sky-400 text-white'; }
+          else if (stats.status === 'pink') { statusLabel = 'にがて'; statusBadgeClass = 'bg-rose-400 text-white'; }
+
+          return { a, b, ...stats, statusLabel, statusBadgeClass };
+        });
+
+        const selectProblemCell = (a, b) => {
+          playSound('click');
+          selectedCell.value = { a, b };
+        };
+
+        const toggleTable = (n) => {
+          playSound('click');
+          if (selectedTables.value.includes(n)) {
+            selectedTables.value = selectedTables.value.filter(t => t !== n);
+          } else {
+            selectedTables.value.push(n);
+          }
+        };
+
+        const selectAllTables = () => {
+          playSound('click');
+          selectedTables.value = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        };
+
+        const clearTables = () => {
+          playSound('click');
+          selectedTables.value = [];
+        };
+
+        const changeTargetTime = (delta) => {
+          if (currentScreen.value !== 'home' || customModal.value.show) return;
+          playSound('click');
+          const val = targetTime.value + delta;
+          if (val >= 1 && val <= 15) targetTime.value = val;
+        };
+
+        const setOrderMode = (id) => {
+          playSound('click');
+          orderMode.value = id;
+        };
+
+        const setModeType = (type) => {
+          playSound('click');
+          selectedModeType.value = type;
+        };
+
+        // --- カスタムモーダル状態 ---
+        const customModal = ref({ show: false, type: 'alert', title: '', message: '', icon: '💡', okLabel: 'OK！', cancelLabel: 'やめる', onConfirm: null, onCancel: null });
+
+        let modalTrigger = null;
+        const openModal = (options) => {
+          if (customModal.value.show) return;
+          modalTrigger = document.activeElement;
+          customModal.value = {
+            show: true,
+            type: options.type || 'alert',
+            title: options.title || '',
+            message: options.message || '',
+            icon: options.icon || '💡',
+            okLabel: options.okLabel || 'OK！',
+            cancelLabel: options.cancelLabel || 'やめる',
+            onConfirm: options.onConfirm || null,
+            onCancel: options.onCancel || null
+          };
+          nextTick(() => document.getElementById(options.safeCancel ? 'modal-cancel' : 'modal-ok')?.focus());
+        };
+
+        const closeModal = (confirmed) => {
+          if (!customModal.value.show) return;
+          playSound('click');
+          const cb = confirmed ? customModal.value.onConfirm : customModal.value.onCancel;
+          customModal.value.show = false;
+          if (cb) cb();
+          const trigger = modalTrigger;
+          nextTick(() => trigger?.focus());
+        };
+
+        // --- セッション＆カード進行管理 ---
+        const deck = ref([]);
+        const currentCard = ref({ a: 1, b: 1 });
+        const userInput = ref('');
+        const timerInterval = ref(null);
+        const elapsedTime = ref(0);
+        const retried = ref(false);
+        const currentCardStartTime = ref(0);
+        const showExchangeHint = ref(false);
+        const cardGimmick = ref({ active: false, borderClass: 'border-amber-200', animClass: '', message: '' });
+        const wrongAnswerDetails = ref(null);
+        const showRevengeStamp = ref(false);
+        const showGraduationStamp = ref(false);
+
+        const problemTracker = ref({});
+        const totalSessionInitialCards = ref(0);
+        const currentSessionResults = ref([]);
+        const historySnapshotBeforeSession = ref({});
+
+        const activeCardTrack = computed(() => {
+          if (!currentCard.value) return null;
+          const key = `${currentCard.value.a}_${currentCard.value.b}`;
+          return problemTracker.value[key] || null;
+        });
+
+        const totalRemainingCards = computed(() => deck.value.length);
+        const sessionProgressPercent = computed(() => {
+          if (totalSessionInitialCards.value === 0) return 0;
+          const done = totalSessionInitialCards.value - deck.value.length;
+          return Math.min(100, Math.max(0, (done / totalSessionInitialCards.value) * 100));
+        });
+
+        const targetsForMode = (mode) => {
+          if (mode === 'wrong') return wrongTargetProblems.value;
+          if (mode === 'slow_wrong') return slowOrWrongTargetProblems.value;
+          return [...selectedTables.value].sort((a, b) => a - b)
+            .flatMap(a => Array.from({ length: 9 }, (_, i) => ({ a, b: i + 1 })));
+        };
+        const canRepeatTraining = computed(() => targetsForMode(sessionMode.value).length > 0);
+
+        const arrangeCards = (cards) => {
+          if (orderMode.value === 'reverse') cards.reverse();
+          if (orderMode.value === 'random') {
+            for (let i = cards.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [cards[i], cards[j]] = [cards[j], cards[i]];
+            }
+          }
+          return cards;
+        };
+
+        const startSession = (mode = 'normal') => {
+          if (customModal.value.show || !['home', 'result'].includes(currentScreen.value)) return;
+          const targets = targetsForMode(mode);
+          if (!targets.length) return;
+
+          playSound('click');
+          clearPendingTimeout();
+          stopDrillSpeech();
+          sessionMode.value = mode;
+          currentSessionResults.value = [];
+          historySnapshotBeforeSession.value = JSON.parse(JSON.stringify(historyData.value));
+          problemTracker.value = {};
+          if (mode !== 'normal') {
+            for (const { a, b } of targets) {
+              problemTracker.value[cardKey({ a, b })] = { a, b, sessionCount: 0, consecutive: 0, graduated: false };
+            }
+          }
+          const cards = mode === 'normal' ? [...targets] :
+            targets.flatMap(({ a, b }) => Array.from({ length: 10 }, () => ({ a, b })));
+          deck.value = arrangeCards(cards);
+          totalSessionInitialCards.value = cards.length;
+          currentScreen.value = 'play';
+          popNextCard();
+        };
+
+        const cardKey = ({ a, b }) => `${a}_${b}`;
+
+        const scheduleTrainingCard = () => {
+          const track = activeCardTrack.value;
+          if (!track || track.graduated || deck.value.some(card => cardKey(card) === cardKey(track))) return;
+          const card = { a: track.a, b: track.b };
+          if (orderMode.value === 'random') deck.value.push(card);
+          else deck.value.unshift(card);
+        };
+
+        const popNextCard = () => {
+          clearPendingTimeout();
+          if (deck.value.length === 0) {
+            finishSession();
+            return;
+          }
+
+          const nextCard = deck.value.shift();
+          currentCard.value = nextCard;
+          if (activeCardTrack.value) activeCardTrack.value.sessionCount++;
+          setupCard();
+        };
+
+        const setupCard = () => {
+          userInput.value = '';
+          elapsedTime.value = 0;
+          retried.value = false;
+          showExchangeHint.value = false;
+          wrongAnswerDetails.value = null;
+          showRevengeStamp.value = false;
+          showGraduationStamp.value = false;
+
+          const card = currentCard.value;
+          const stats = getProblemStats(card.a, card.b, orderMode.value);
+
+          if (stats.status === 'pink' || stats.hasFailedEver) {
+            const messages = [
+              `まえは『${currentOrderLabel.value}』で まちがえたけど、いけるかな？`,
+              `リベンジ チャンス！ [${currentOrderLabel.value}]`,
+              'こんどこそ できるかな？',
+              'ここ、まえに まちがえたよ！'
+            ];
+            const gimmicks = [
+              { borderClass: 'border-rose-400', animClass: 'animate-shake' },
+              { borderClass: 'border-amber-400', animClass: 'animate-rainbow' },
+              { borderClass: 'border-purple-400', animClass: 'animate-spin-once' },
+              { borderClass: 'border-sky-400', animClass: 'animate-bounce-short' }
+            ];
+            const randG = gimmicks[Math.floor(Math.random() * gimmicks.length)];
+            const randM = messages[Math.floor(Math.random() * messages.length)];
+            cardGimmick.value = { active: true, borderClass: randG.borderClass, animClass: randG.animClass, message: randM };
+          } else {
+            cardGimmick.value = { active: false, borderClass: 'border-amber-200', animClass: '', message: '' };
+          }
+
+          currentCardStartTime.value = performance.now();
+          clearInterval(timerInterval.value);
+          timerInterval.value = setInterval(() => {
+            if (playState.value === 'answering' && currentScreen.value === 'play') {
+              elapsedTime.value = (performance.now() - currentCardStartTime.value) / 1000;
+              if (elapsedTime.value >= 4.0 && card.a !== card.b && !showExchangeHint.value) {
+                showExchangeHint.value = true;
+              }
+            }
+          }, 100);
+
+          playState.value = 'answering';
+        };
+
+        // 入力制御
+        const canAnswer = () => currentScreen.value === 'play' && !customModal.value.show;
+
+        const pressNum = (num) => {
+          if (!canAnswer()) return;
+          if (playState.value === 'wrong_feedback') retryCurrentCard();
+          if (playState.value !== 'answering' || userInput.value.length >= 2) return;
+
+          playSound('click');
+          userInput.value += String(num);
+          const digitCount = String(currentCard.value.a * currentCard.value.b).length;
+          if (autoJudge.value && userInput.value.length >= digitCount) checkAnswer();
+        };
+
+        const pressClear = () => {
+          if (!canAnswer() || playState.value !== 'answering') return;
+          playSound('clear');
+          userInput.value = '';
+        };
+
+        const pressSubmit = () => {
+          if (canAnswer() && playState.value === 'answering' && userInput.value !== '') checkAnswer();
+        };
+
+        const retryCurrentCard = () => {
+          if (!canAnswer() || playState.value !== 'wrong_feedback' || retried.value) return;
+          playSound('click');
+          retried.value = true;
+          wrongAnswerDetails.value = null;
+          userInput.value = '';
+          playState.value = 'answering';
+        };
+
+        const showAnswerState = () => {
+          if (!canAnswer() || playState.value !== 'wrong_feedback') return;
+          playSound('click');
+          playState.value = 'showing_answer';
+        };
+
+        const nextAfterAnswer = () => {
+          if (!canAnswer() || playState.value !== 'showing_answer') return;
+          playSound('click');
+          if (sessionMode.value === 'normal' && !currentCard.value.review) {
+            deck.value.push({ ...currentCard.value, review: true });
+          }
+          scheduleTrainingCard();
+          popNextCard();
+        };
+
+        const handleKeyDown = (e) => {
+          if (e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
+          if (customModal.value.show) {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              closeModal(!document.getElementById('modal-cancel') || currentScreen.value === 'drill');
+            } else if (e.key === 'Tab') {
+              const buttons = [...document.querySelectorAll('[role="dialog"] button')];
+              const index = buttons.indexOf(document.activeElement);
+              e.preventDefault();
+              buttons[(index + (e.shiftKey ? buttons.length - 1 : 1)) % buttons.length]?.focus();
+            } else if (e.repeat && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+            }
+            return;
+          }
+          if (currentScreen.value === 'drill') {
+            if (e.key === 'Enter' || e.key === ' ') {
+              if (!e.repeat && e.target.closest?.('button')) return;
+              e.preventDefault();
+              if (!e.repeat) nextDrillProblem();
+            }
+            return;
+          }
+          if (currentScreen.value !== 'play') return;
+
+          if (/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+            if (!e.repeat) pressNum(Number(e.key));
+          } else if (e.key === 'Backspace' || e.key === 'Delete') {
+            e.preventDefault();
+            pressClear();
+          } else if (e.key === 'Enter') {
+            if (!e.repeat && e.target.closest?.('header button, [data-answer-action]')) return;
+            e.preventDefault();
+            if (e.repeat) return;
+            if (playState.value === 'showing_answer') nextAfterAnswer();
+            else if (playState.value === 'answering' && !autoJudge.value) pressSubmit();
+            else if (playState.value !== 'answering' && !e.target.closest?.('button')) {
+              document.querySelector('[data-answer-action]')?.focus();
+            }
+          }
+        };
+
+        // 解答判定（出題順ごとに独立して保存）
+        const checkAnswer = () => {
+          if (playState.value !== 'answering') return;
+
+          const card = currentCard.value;
+          const userAns = parseInt(userInput.value, 10);
+          const targetAns = card.a * card.b;
+          const finalTime = Number(((performance.now() - currentCardStartTime.value) / 1000).toFixed(1));
+          elapsedTime.value = finalTime;
+          const isCorrect = (userAns === targetAns);
+
+          const now = new Date();
+          const dateStr = `${now.getMonth() + 1}がつ ${now.getDate()}にち ${now.getHours()}じ ${now.getMinutes()}ふん`;
+
+          const key = `${card.a}_${card.b}`;
+          const currentOrder = orderMode.value;
+
+          if (!historyData.value[currentOrder]) historyData.value[currentOrder] = {};
+          if (!historyData.value[currentOrder][key]) historyData.value[currentOrder][key] = [];
+          if (!trainingFlags.value[currentOrder]) trainingFlags.value[currentOrder] = {};
+
+          // 間違えた場合はその出題順の苦手フラグをオン
+          if (!isCorrect) {
+            trainingFlags.value[currentOrder][key] = true;
+          }
+
+          const record = { timestamp: Date.now(), dateStr, isCorrect, timeSec: finalTime, targetTime: targetTime.value, assisted: retried.value || !!card.review, userAnswer: userAns };
+          historyData.value[currentOrder][key].push(record);
+
+          currentSessionResults.value.push({ a: card.a, b: card.b, order: currentOrder, ...record });
+
+          // 特訓モードトラッカー更新
+          if (sessionMode.value !== 'normal' && problemTracker.value[key]) {
+            const tr = problemTracker.value[key];
+            if (isCorrect && !retried.value) tr.consecutive++;
+            else tr.consecutive = 0;
+
+            if (tr.sessionCount >= 10 && tr.consecutive >= 2 && !tr.graduated) {
+              tr.graduated = true;
+              showGraduationStamp.value = true;
+              // 特訓卒業時にその出題順での苦手フラグを解除
+              trainingFlags.value[currentOrder][key] = false;
+              deck.value = deck.value.filter(item => cardKey(item) !== key);
+            }
+          }
+
+          saveHistory();
+
+          if (isCorrect) {
+            scheduleTrainingCard();
+            playState.value = 'correct_anim';
+            if (cardGimmick.value.active) {
+              playSound('revenge');
+              showRevengeStamp.value = true;
+            } else {
+              playSound('correct');
+            }
+
+            const delay = (showRevengeStamp.value || showGraduationStamp.value) ? 1100 : 400;
+            animTimeoutId = setTimeout(() => {
+              popNextCard();
+            }, delay);
+
+          } else {
+            playSound('wrong');
+            generateWrongHint(card.a, card.b);
+            playState.value = 'wrong_feedback';
+          }
+        };
+
+        const generateWrongHint = (a, b) => {
+          wrongAnswerDetails.value = {
+            message: retried.value ? 'くくを よんで、こたえを たしかめよう。' :
+              `${a} が ${b}こ あるよ。くくを となえて かんがえよう。`
+          };
+        };
+
+        const leaveToHome = () => {
+          clearPendingTimeout();
+          clearInterval(timerInterval.value);
+          stopDrillSpeech();
+          playState.value = 'idle';
+          currentScreen.value = 'home';
+        };
+
+        const goHome = () => {
+          playSound('click');
+          // 「10かい いってみよう」のとちゅうは、まちがえて おしても すぐには ぬけられない
+          if (currentScreen.value === 'drill') {
+            openModal({
+              type: 'confirm',
+              icon: '🗣️',
+              title: 'まだ れんしゅうの とちゅうだよ！',
+              message: 'ここで ホームへ もどると、まちがえた もんだいの 10かい れんしゅうが おわらないよ。',
+              okLabel: 'つづける',
+              cancelLabel: 'ホームへ もどる',
+              onCancel: leaveToHome
+            });
+            return;
+          }
+          leaveToHome();
+        };
+
+        // --- 「まちがえた もんだい 10かい いってみよう」（九九の音声よみあげ） ---
+        // セッション終了後、このセッションでまちがえた問題だけを対象に、該当の九九を10回よみあげる。
+        // 10回おわるまで「すすむ」ボタンは出さない（かならず練習させてから、次へ進ませる）。
+        const DRILL_REPEAT = 10;           // 1問あたりの回数
+        const DRILL_START_DELAY_MS = 700;  // 画面が出てから最初のよみあげまで
+        const DRILL_GAP_MS = 800;          // 1回よんでから次のよみあげまで
+        const DRILL_MIN_ONE_MS = 1800;     // 1回ぶんの最短時間（声が一瞬で終わってもカウントが飛ばないように）
+        const DRILL_WATCHDOG_MS = 8000;    // onend が来ないときの保険
+        const DRILL_SILENT_ONE_MS = 3000;  // 声なし（おと OFF・声が出せない）のとき1回ぶんにかける時間（自分の声で言う）
+        const DRILL_RATE = 0.85;           // よみあげの速さ（1.0 が標準）
+
+        const drillQueue = ref([]);          // [{ a, b }, ...] まちがえた問題
+        const drillIndex = ref(0);
+        const drillCount = ref(0);           // 読み終えた回数 0..10
+        const drillSpeaking = ref(false);
+        const drillDone = ref(false);
+        const drillSilentReason = ref('');   // '' | 'off'（おと OFF） | 'error'（声が出せない）
+        let drillRunId = 0;                  // 古いコールバックを無効にするための番号
+        let drillTimerId = null;
+        let drillWatchdogId = null;
+        let drillUtterance = null;           // GCで onend が消えないように参照を保持
+        let drillVoiceFailed = false;
+
+        const currentDrillProblem = computed(() => drillQueue.value[drillIndex.value] || { a: 1, b: 1 });
+        const currentDrillYomi = computed(() => getKukuYomi(currentDrillProblem.value.a, currentDrillProblem.value.b));
+        const drillShownCount = computed(() => drillDone.value ? DRILL_REPEAT : Math.min(DRILL_REPEAT, drillCount.value + 1));
+
+        const canUseSpeech = () =>
+          soundOn.value && !drillVoiceFailed &&
+          typeof window.speechSynthesis !== 'undefined' &&
+          typeof window.SpeechSynthesisUtterance === 'function';
+
+        const stopDrillSpeech = () => {
+          drillRunId++;
+          clearTimeout(drillTimerId); drillTimerId = null;
+          clearTimeout(drillWatchdogId); drillWatchdogId = null;
+          drillSpeaking.value = false;
+          drillUtterance = null;
+          try {
+            if (typeof window.speechSynthesis !== 'undefined') window.speechSynthesis.cancel();
+          } catch (e) {}
+        };
+
+        const pickJapaneseVoice = () => {
+          try {
+            const voices = window.speechSynthesis.getVoices() || [];
+            return voices.find(v => /^ja[-_]JP$/i.test(v.lang)) || voices.find(v => /^ja/i.test(v.lang)) || null;
+          } catch (e) {
+            return null;
+          }
+        };
+
+        // 1回ぶんのよみあげ。おわったら回数を進め、10回に達したら「すすむ」を出す
+        const speakDrillOnce = (runId) => {
+          if (runId !== drillRunId || currentScreen.value !== 'drill') return;
+
+          drillSpeaking.value = true;
+          const startedAt = Date.now();
+          let finished = false;
+
+          const finishOne = () => {
+            if (finished || runId !== drillRunId) return;
+            finished = true;
+            clearTimeout(drillWatchdogId);
+            const wait = Math.max(0, DRILL_MIN_ONE_MS - (Date.now() - startedAt));
+            drillTimerId = setTimeout(() => {
+              if (runId !== drillRunId) return;
+              drillSpeaking.value = false;
+              drillCount.value++;
+              if (drillCount.value >= DRILL_REPEAT) {
+                drillDone.value = true;
+                playSound('correct');
+              } else {
+                drillTimerId = setTimeout(() => speakDrillOnce(runId), DRILL_GAP_MS);
+              }
+            }, wait);
+          };
+
+          if (canUseSpeech()) {
+            drillSilentReason.value = '';
+            try {
+              const synth = window.speechSynthesis;
+              if (synth.paused) synth.resume();
+              const u = new window.SpeechSynthesisUtterance(currentDrillYomi.value.speech);
+              u.lang = 'ja-JP';
+              u.rate = DRILL_RATE;
+              const voice = pickJapaneseVoice();
+              if (voice) u.voice = voice;
+              u.onend = finishOne;
+              u.onerror = (ev) => {
+                if (runId !== drillRunId || finished) return;
+                const err = ev && ev.error;
+                if (err === 'canceled' || err === 'interrupted') return;
+                // 声が出せない → 「自分の声で言う」に切りかえ、時間でカウントを進める
+                drillVoiceFailed = true;
+                drillSilentReason.value = 'error';
+                clearTimeout(drillWatchdogId);
+                drillWatchdogId = setTimeout(finishOne, DRILL_SILENT_ONE_MS);
+              };
+              drillUtterance = u;
+              drillWatchdogId = setTimeout(() => {
+                u.onend = null;
+                u.onerror = null;
+                drillVoiceFailed = true;
+                drillSilentReason.value = 'error';
+                try { synth.cancel(); } catch (e) {}
+                drillWatchdogId = setTimeout(finishOne, DRILL_SILENT_ONE_MS);
+              }, DRILL_WATCHDOG_MS);
+              synth.speak(u);
+            } catch (e) {
+              clearTimeout(drillWatchdogId);
+              drillVoiceFailed = true;
+              drillSilentReason.value = 'error';
+              drillWatchdogId = setTimeout(finishOne, DRILL_SILENT_ONE_MS);
+            }
+          } else {
+            drillSilentReason.value = soundOn.value ? 'error' : 'off';
+            drillWatchdogId = setTimeout(finishOne, DRILL_SILENT_ONE_MS);
+          }
+        };
+
+        // 1問ぶんの「10かい いってみよう」を はじめる
+        const beginDrillProblem = () => {
+          stopDrillSpeech();               // runId を進めて、前のよみあげを止める
+          drillCount.value = 0;
+          drillDone.value = false;
+          const runId = drillRunId;
+          drillTimerId = setTimeout(() => speakDrillOnce(runId), DRILL_START_DELAY_MS);
+        };
+
+        const startDrill = (problems) => {
+          drillVoiceFailed = false;
+          drillSilentReason.value = '';
+          drillQueue.value = problems;
+          drillIndex.value = 0;
+          currentScreen.value = 'drill';
+          beginDrillProblem();
+        };
+
+        const showResult = () => {
+          currentScreen.value = 'result';
+          playSound('fanfare');
+        };
+
+        // 「10かい いえた！ すすむ」：10回おわるまでは、何をしても進めない
+        const nextDrillProblem = () => {
+          if (currentScreen.value !== 'drill' || !drillDone.value || customModal.value.show) return;
+          playSound('click');
+          if (drillIndex.value + 1 < drillQueue.value.length) {
+            drillIndex.value++;
+            beginDrillProblem();
+          } else {
+            stopDrillSpeech();
+            showResult();
+          }
+        };
+
+        // --- 結果画面と進歩言語化メッセージ ---
+        const praiseMessages = ref([]);
+        const sessionSummary = ref({ total: 0, correct: 0, avgTime: '0.0', badges: 0 });
+
+        const finishSession = () => {
+          clearPendingTimeout();
+          clearInterval(timerInterval.value);
+          playState.value = 'idle';
+
+          const results = currentSessionResults.value;
+          const total = results.length;
+          const correctCount = results.filter(r => r.isCorrect).length;
+          const sumTime = results.reduce((acc, r) => acc + r.timeSec, 0);
+          const avg = total > 0 ? (sumTime / total).toFixed(1) : '0.0';
+
+          let badgesCount = 0;
+          const praises = [];
+
+          Object.values(problemTracker.value).forEach(tr => {
+            if (tr.graduated) {
+              badgesCount++;
+              praises.push({
+                icon: '🎓',
+                title: `[${currentOrderLabel.value}] とっくん そつぎょう！`,
+                body: `『${tr.a} × ${tr.b}』：10かい れんしゅうして 2かい れんぞく せいかい！「${currentOrderLabel.value}」の とっくんを そつぎょう できたね！`
+              });
+            }
+          });
+
+          results.forEach(res => {
+            if (!res.isCorrect || res.assisted) return;
+
+            const key = `${res.a}_${res.b}`;
+            const pastOrderHist = (historySnapshotBeforeSession.value[res.order] || {})[key] || [];
+
+            if (pastOrderHist.length > 0) {
+              const pastFail = [...pastOrderHist].reverse().find(r => !r.isCorrect);
+              if (pastFail && sessionMode.value === 'normal') {
+                badgesCount++;
+                praises.push({
+                  icon: '👑',
+                  title: `[${currentOrderLabel.value}] リベンジ せいこう！`,
+                  body: `『${res.a} × ${res.b}』：まえ（${pastFail.dateStr}）の「${currentOrderLabel.value}」では まちがえていたけど、こんかいは できたね！`
+                });
+              }
+
+              const pastSuccesses = pastOrderHist.filter(r => r.isCorrect && !r.assisted);
+              if (pastSuccesses.length > 0) {
+                const prevRecord = pastSuccesses[pastSuccesses.length - 1];
+                if (prevRecord.timeSec - res.timeSec >= 0.8) {
+                  praises.push({
+                    icon: '🚀',
+                    title: `[${currentOrderLabel.value}] スピード アップ！`,
+                    body: `『${res.a} × ${res.b}』：「${currentOrderLabel.value}」で まえは ${prevRecord.timeSec}びょう だったのが、${res.timeSec}びょう に なったよ！`
+                  });
+                }
+              }
+            }
+          });
+
+          sessionSummary.value = { total, correct: correctCount, avgTime: avg, badges: badgesCount };
+
+          const uniquePraises = [];
+          const seenTitles = new Set();
+          praises.forEach(p => {
+            const k = p.title + p.body;
+            if (!seenTitles.has(k)) {
+              seenTitles.add(k);
+              uniquePraises.push(p);
+            }
+          });
+          praiseMessages.value = uniquePraises.slice(0, 4);
+
+          // このセッションで1回でもまちがえた問題（まちがえた順）
+          const wrongList = [];
+          const wrongSeen = new Set();
+          results.forEach(r => {
+            const k = `${r.a}_${r.b}`;
+            if (!r.isCorrect && !wrongSeen.has(k)) {
+              wrongSeen.add(k);
+              wrongList.push({ a: r.a, b: r.b });
+            }
+          });
+
+          // まちがいがあれば「10かい いってみよう」をぜんぶ終えてから結果画面へ。なければそのまま結果画面
+          if (wrongList.length > 0) startDrill(wrongList);
+          else showResult();
+        };
+
+        const confirmSampleData = () => {
+          if (currentScreen.value !== 'home' || hasHistory.value) return;
+          openModal({
+            type: 'confirm',
+            icon: '🧪',
+            title: 'おためし きろくを いれますか？',
+            message: '「じゅんばん」「ばらばら」「さかさま」に それぞれ べつの おためし きろくを いれます。',
+            safeCancel: true,
+            onConfirm: () => {
+              if (hasHistory.value) return;
+              const sampleHist = { order: {}, random: {}, reverse: {} };
+              const sampleFlags = { order: {}, random: {}, reverse: {} };
+              const date1 = '11がつ 18にち 16じ 20ふん';
+
+              // じゅんばん: 7x8が苦手
+              sampleHist.order['7_8'] = [{ timestamp: Date.now() - 86400000*2, dateStr: date1, isCorrect: false, timeSec: 7.8, targetTime: targetTime.value, userAnswer: 54 }];
+              sampleFlags.order['7_8'] = true;
+
+              // ばらばら: 6x7, 8x9が苦手
+              sampleHist.random['6_7'] = [{ timestamp: Date.now() - 86400000*2, dateStr: date1, isCorrect: false, timeSec: 6.5, targetTime: targetTime.value, userAnswer: 40 }];
+              sampleFlags.random['6_7'] = true;
+              sampleHist.random['8_9'] = [{ timestamp: Date.now() - 86400000*2, dateStr: date1, isCorrect: false, timeSec: 8.2, targetTime: targetTime.value, userAnswer: 74 }];
+              sampleFlags.random['8_9'] = true;
+
+              // さかさま: 9x8がマスター
+              sampleHist.reverse['9_8'] = [{ timestamp: Date.now() - 86400000*2, dateStr: date1, isCorrect: true, timeSec: 2.1, targetTime: targetTime.value, userAnswer: 72 }];
+
+              historyData.value = sampleHist;
+              trainingFlags.value = sampleFlags;
+              saveHistory();
+            }
+          });
+        };
+
+        const confirmClearData = () => {
+          if (currentScreen.value !== 'home') return;
+          openModal({
+            type: 'confirm',
+            icon: '⚠️',
+            title: 'ほんとうに データを ぜんぶ けしますか？',
+            message: 'これまでの がんばった きろくが ぜんぶ きえて しまいます。',
+            safeCancel: true,
+            okLabel: 'ぜんぶ けす',
+            onConfirm: () => {
+              historyData.value = { order: {}, random: {}, reverse: {} };
+              trainingFlags.value = { order: {}, random: {}, reverse: {} };
+              saveHistory();
+            }
+          });
+        };
+
+        onMounted(() => {
+          loadSettings();
+          loadHistory();
+          watch([targetTime, soundOn, orderMode], saveSettings, { flush: 'sync' });
+          watch(currentScreen, () => { document.getElementById('app').scrollTop = 0; }, { flush: 'post' });
+          watch(soundOn, (enabled) => {
+            if (!enabled && currentScreen.value === 'drill' && !drillDone.value) {
+              stopDrillSpeech();
+              drillSilentReason.value = 'off';
+              speakDrillOnce(drillRunId);
+            }
+          });
+          window.addEventListener('keydown', handleKeyDown);
+        });
+
+        onUnmounted(() => {
+          clearPendingTimeout();
+          stopDrillSpeech();
+          clearInterval(timerInterval.value);
+          window.removeEventListener('keydown', handleKeyDown);
+        });
+
+        return {
+          soundOn,
+          toggleSound,
+          currentScreen,
+          playState,
+          selectedTables,
+          orderMode,
+          orderOptions,
+          currentOrderLabel,
+          targetTime,
+          autoJudge,
+          selectedModeType,
+          sessionMode,
+          toggleTable,
+          selectAllTables,
+          clearTables,
+          changeTargetTime,
+          setOrderMode,
+          setModeType,
+          wrongTargetProblems,
+          slowOrWrongTargetProblems,
+          isStartDisabled,
+          modeCounts,
+          getGridStatus,
+          hasHistory,
+          canRepeatTraining,
+          retried,
+          selectedCell,
+          selectedCellInfo,
+          selectProblemCell,
+          customModal,
+          openModal,
+          closeModal,
+          startSession,
+          deck,
+          currentCard,
+          activeCardTrack,
+          totalRemainingCards,
+          sessionProgressPercent,
+          userInput,
+          elapsedTime,
+          showExchangeHint,
+          cardGimmick,
+          wrongAnswerDetails,
+          showRevengeStamp,
+          showGraduationStamp,
+          pressNum,
+          pressClear,
+          pressSubmit,
+          retryCurrentCard,
+          showAnswerState,
+          nextAfterAnswer,
+          praiseMessages,
+          sessionSummary,
+          goHome,
+          confirmSampleData,
+          confirmClearData,
+          drillQueue,
+          drillIndex,
+          drillCount,
+          drillSpeaking,
+          drillDone,
+          drillSilentReason,
+          drillRepeat: DRILL_REPEAT,
+          drillShownCount,
+          currentDrillProblem,
+          currentDrillYomi,
+          nextDrillProblem
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
