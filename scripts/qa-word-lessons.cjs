@@ -115,6 +115,25 @@ async function checkWago(page, exhaustive) {
   await page.waitForTimeout(400);
   assert.deepEqual(await page.evaluate(()=>spoken), []);
   await page.locator('[data-k=a]').click();
+  await page.evaluate(()=>{Q2=[Q[0],Q[1]];show();});
+  for (const [word, note] of [['山','漢字で 書いても'],['空','日本で むかしから']]) {
+    await page.locator('[data-t=w]').click();
+    assert.match(await page.locator('#fb').innerText(), new RegExp(word));
+    assert.match(await page.locator('#fb').innerText(), new RegExp(note));
+    await page.waitForFunction(()=>spoken.length>0);
+    const speech=await page.evaluate(()=>spoken.pop());
+    assert.match(speech,new RegExp(note));
+    if(word==='空'){
+      assert.doesNotMatch(await page.locator('#fb').innerText(), /山/);
+      assert.doesNotMatch(speech,/山/);
+    }
+    await page.locator('#nx').click();
+  }
+  await page.locator('.result-review summary').click();
+  assert.match(await page.locator('.result-review li').first().innerText(), /漢字で 書いても/);
+  assert.doesNotMatch(await page.locator('.result-review li').last().innerText(), /山/);
+  await page.locator('#bk').click();
+  await page.locator('[data-k=a]').click();
   await page.locator('#sn').click();
   assert(await page.locator('#sp').isDisabled());
   for(let n=0;n<15;n++){
@@ -148,6 +167,7 @@ async function checkWago(page, exhaustive) {
     await page.evaluate(n=>{m='q';kd='a';qi=sc=done=0;Q2=[Q[n]];answers=[];show();},n);
     await page.locator('[data-t="'+letter+'"]').click();
     assert.match(await page.locator('#fb').innerText(), /せいかい/);
+    if(n!==0)assert.doesNotMatch(await page.locator('#fb').innerText(), /漢字で 書いても 和語/);
   }
   for (let n=0;n<expected.length;n++) for (const letter of 'wkg') {
     await page.evaluate(n=>{m='q';kd='b';qi=sc=done=0;Q2=[C[n]];answers=[];show();},n);

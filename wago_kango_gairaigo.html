@@ -93,10 +93,11 @@ const cd=(t,h,a)=>`<div class="cd ${t}"><b>${h}</b>${a.join('<br>')}</div>`;
 const d=(t,a,b,imp,c)=>`<div class="col"><p>${a}</p><p class="sm">${b}</p><div class="imp ${t}">いんしょう：${imp}</div>${ch(t,c)}</div>`;
 const ln=(a,t,nt)=>`<div class="ln"><span>${a}</span>${tg(t)}<span class="nt">（${nt}）</span></div>`;
 const E={
- w:'日本で むかしから 使われてきた ことば。「山」は、漢字で 書いても 和語だよ。',
+ w:'日本で むかしから 使われてきた ことばだよ。',
  k:'中国から 入った ことばや、漢字の 音読みを 使って 日本で 作られた ことばだよ。',
  g:'おもに 中国語 以外の 外国の ことばから 入った ことば。カタカナで 書くことが 多いよ。'
 };
+const typeExplanation=([,,type,note])=>note||E[type];
 const S=[
  {h:'ことばの なかま',b:`<div class="col"><p>「のみもの」「飲料」「ドリンク」<br>どれも のむ ものを 表すよ。<br>ことばの なりたちを くらべよう。</p>${rw(T.map(t=>`<div class="big ${t}">${rb(N[t],NY[t])}</div>`))}</div>`,s:'のみもの、いんりょう、ドリンク。どれも のむ ものを あらわします。わご、かんご、がいらいごの なりたちを くらべましょう。'},
  {t:'w',h:'和語（わご）',b:d('w','日本で むかしから 使われてきた ことば','漢字で 書くと、訓読みが 手がかり。','親しみやすく 感じることが ある',['やま（山）','はな（花）','はしる（走る）']),s:'わごは、日本で むかしから つかわれてきた ことばです。やま、はな、はしる。かんじで かくと、くんよみが てがかりに なります。'},
@@ -110,7 +111,7 @@ const S=[
  {h:'まとめ',b:`<div class="col">${rw([cd('w','和語',['日本で むかしから 使用','訓読みが 手がかり']),cd('k','漢語',['中国から 入った語も、日本で 作った語も','音読みが 手がかり']),cd('g','外来語',['外国の ことばを 取り入れた','カタカナが 多い'])])}<p class="sm">書き方や いんしょうは 手がかり。ことばの なりたちと、使う 場面を くらべよう。</p><p class="refs"><a href="https://www.mext.go.jp/content/20230809-mxt_kyokoku-000029482_5.pdf" target="_blank" rel="noopener">文部科学省の 指導資料</a> ・ <a href="https://repository.ninjal.ac.jp/record/1852/files/kk_nkss_012.pdf" target="_blank" rel="noopener">国立国語研究所の 資料</a></p></div>`,s:'書き方や いんしょうは、見分ける てがかりです。ことばの なりたちと、どんな 場面で つかうかを、くらべてみましょう。'}
 ];
 const Q=[
-[rb('山','やま'),'やま','w'],[rb('空','そら'),'そら','w'],[rb('食','た')+'べる','たべる','w'],[rb('青','あお')+'い','あおい','w'],
+[rb('山','やま'),'やま','w','「山（やま）」は、漢字で 書いても 和語だよ。'],[rb('空','そら'),'そら','w'],[rb('食','た')+'べる','たべる','w'],[rb('青','あお')+'い','あおい','w'],
 [rb('川','かわ'),'かわ','w'],[rb('遊','あそ')+'ぶ','あそぶ','w'],[rb('大','おお')+'きい','おおきい','w'],[rb('友','とも')+'だち','ともだち','w'],
 [rb('星','ほし'),'ほし','w'],[rb('雨','あめ'),'あめ','w'],[rb('風','かぜ'),'かぜ','w'],['ねこ','ねこ','w'],[rb('鳥','とり'),'とり','w'],['やさしい','やさしい','w'],[rb('新','あたら')+'しい','あたらしい','w'],
 [rb('手紙','てがみ'),'てがみ','w'],[rb('花火','はなび'),'はなび','w'],[rb('朝顔','あさがお'),'あさがお','w'],[rb('夏休','なつやす')+'み','なつやすみ','w'],[rb('走','はし')+'る','はしる','w'],
@@ -214,7 +215,7 @@ function show(focus=true){
   ti='けっか';pg.textContent='';sp.hidden=true;
   const B=kd==='b';
   b.innerHTML=`<div class="col"><div class="qw">${sc} / ${Q2.length}</div><p>${B?'場面に 合う 言い方を えらべた 数':'せいかいした 数'}</p>
-  <details class="result-review"><summary>こたえを ふりかえる</summary><ol>${answers.map(({x,t,ok})=>`<li>${ok?'○':'△'} ${B?x[1].replace('＿＿',x[3][t]):x[0]}<br>${B?x[4]:E[x[2]]}</li>`).join('')}</ol></details></div>`;
+  <details class="result-review"><summary>こたえを ふりかえる</summary><ol>${answers.map(({x,t,ok})=>`<li>${ok?'○':'△'} ${B?x[1].replace('＿＿',x[3][t]):x[0]}<br>${B?x[4]:typeExplanation(x)}</li>`).join('')}</ol></details></div>`;
   bk.textContent='◀ ひょうしへ';nx.textContent='もういちど ▶';
  }
  h.innerHTML=`<h1>${ti}</h1><div id="bn">${m==='s'?'<button id="hm">🏠 ひょうし</button>':''}<button id="sn" aria-pressed="${snd}">おと ${snd?'ON':'OFF'}</button></div>`;
@@ -237,12 +238,13 @@ $('#bd').onclick=e=>{
   const key=choice.dataset.t,fits=key===x[2]||accepted.includes(key);
   choice.disabled=true;choice.classList.add(fits?'ok':key===t?'ng':'dim');
  });
- const title=B?(ok?'○ 場面に 合うね！':'△ 入れた 文を くらべよう'):(ok?'○ せいかい！':`△ この ことばは「${N[x[2]]}」`);
- const detail=B?`<div>${x[1].replace('＿＿',x[3][t])}</div>${t!==x[2]?`<div>言いかえると ${x[1].replace('＿＿',x[3][x[2]])}</div>`:''}${x[4]}`:E[x[2]];
+ const title=B?(ok?'○ 場面に 合うね！':'△ 入れた 文を くらべよう'):`${ok?'○ せいかい！':'△'} 「${x[0]}」は ${N[x[2]]}`;
+ const explanation=B?x[4]:typeExplanation(x);
+ const detail=B?`<div>${x[1].replace('＿＿',x[3][t])}</div>${t!==x[2]?`<div>言いかえると ${x[1].replace('＿＿',x[3][x[2]])}</div>`:''}${explanation}`:explanation;
  $('#fb').innerHTML=`<b class="${ok?'o':'x'}">${title}</b><div>${detail}</div>`;
  $('#nx').disabled=false;$('#nx').focus({preventScroll:true});$('#fb').scrollIntoView({block:'nearest'});
  stop();beep(ok?[660,880]:[320]);
- if(snd)feedbackTimer=setTimeout(()=>say((ok?'いいですね。':'くらべてみましょう。')+yomi(B?x[4]:E[x[2]])),320);
+ if(snd)feedbackTimer=setTimeout(()=>say((ok?'いいですね。':'くらべてみましょう。')+yomi(explanation)),320);
 };
 $('#bk').onclick=()=>{if(m=='s'){if(i>0){i--;show()}else goTitle()}else goTitle()};
 const sh=a=>{a=[...a];for(let n=a.length;n>1;){const j=Math.random()*n--|0;[a[n],a[j]]=[a[j],a[n]]}return a};
