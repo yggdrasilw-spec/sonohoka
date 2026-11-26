@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
   modal.addEventListener('close',()=>{modalVideo.pause();modalVideo.removeAttribute('src');modalVideo.load();document.body.classList.remove('modal-open');opener?.focus({preventScroll:true})});
   modalVideo.addEventListener('error',()=>{$('videoError').hidden=false});
   items.forEach(item=>{
+    if (item.card.classList.contains('card-private')) return;
     const card=item.card,link=card.querySelector('.actions a.primary'),file=card.dataset.video;
     const media=document.createElement(file?'button':'div');media.className='card-media'+(file?' has-video':'');if(file){media.type='button';media.setAttribute('aria-label',item.title+'の紹介動画を見る');media.setAttribute('aria-haspopup','dialog')}
     const img=document.createElement('img');img.loading='lazy';img.decoding='async';img.alt=item.title+'の画面';img.src='media/'+(card.dataset.poster||(file?file.replace(/\.(mp4|webm)$/i,'.png'):''));img.addEventListener('error',()=>{img.remove();const fallback=document.createElement('span');fallback.className='media-fallback';fallback.textContent=item.title;media.prepend(fallback)});media.append(img);card.prepend(media);
