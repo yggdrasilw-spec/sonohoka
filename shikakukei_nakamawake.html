@@ -66,6 +66,7 @@
 
     :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
     .sort-card-selected { box-shadow: 0 0 0 3px #1d4ed8; background: #eff6ff; }
+    #btn-next[aria-disabled="true"] { background-color: #475569; cursor: default; transform: none; }
     @media (max-width: 1023px) {
       html, body { height: auto !important; overflow: visible !important; }
       body { width: 100%; min-height: 100dvh; }
@@ -179,10 +180,11 @@
           <g id="layer-check-marks"></g>
 
           <!-- 5. レール役の紫の三角定規 (30°-60°-90°) -->
-          <g id="layer-rail-ruler" filter="url(#ruler-shadow)" opacity="0"></g>
-
-          <!-- 6. スライド役の青い三角定規 (45°-45°-90°) -->
-          <g id="layer-slide-ruler" filter="url(#ruler-shadow)" opacity="0"></g>
+          <g id="layer-rulers" opacity="0">
+            <g id="layer-rail-ruler" filter="url(#ruler-shadow)"></g>
+            <!-- スライド役の青い三角定規 (45°-45°-90°) -->
+            <g id="layer-slide-ruler" filter="url(#ruler-shadow)"></g>
+          </g>
         </svg>
 
         <!-- キャンバス左上：大きな図形番号バッジ -->
@@ -237,7 +239,7 @@
           </div>
         </div>
 
-        <!-- ステップ5（完了時）に大きく出るまとめ結論ボックス -->
+        <!-- 完了時に大きく出るまとめ結論ボックス -->
         <div id="check-bottom-summary" class="hidden shrink-0 animate-pop">
           <div id="summary-box"
             class="w-full rounded-2xl p-2.5 border-2 flex flex-col items-center justify-center text-center gap-1">
@@ -256,7 +258,7 @@
 
       <!-- 3. 操作ボタンエリア（下部固定・スクロール不要） -->
       <div class="bg-white rounded-3xl p-2.5 sm:p-3 shadow-sm border-2 border-slate-200 shrink-0 flex flex-col gap-2">
-        <!-- ステップ進行ドット (0..5) -->
+        <!-- ステップ進行ドット -->
         <div class="flex items-center justify-center gap-2" id="step-dots"></div>
 
         <!-- 通常時の操作ボタン（さいしょ / じどうさいせい / つぎへ） -->
@@ -275,7 +277,7 @@
           </button>
         </div>
 
-        <!-- ステップ5（完了時）のアクションボタン -->
+        <!-- 完了時のアクションボタン -->
         <div id="complete-controls" class="hidden grid grid-cols-2 gap-2 animate-pop">
           <button id="btn-next-shape" onclick="goToNextShape()"
             class="py-3 px-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 font-black text-white text-sm sm:text-base shadow-md transition">
@@ -546,15 +548,28 @@
       s.quadVertices = [v1, v2, v3, v4];
     });
 
+    const RED_PLACE = 3;
+    const RED_SLIDE = 4;
+    const BLUE_PLACE = 5;
+    const BLUE_SLIDE = 6;
+    const SUMMARY = 7;
+    const stepLabels = [
+      '図形を しらべる', '四角形を 見つける', '向かい合う 辺を 色分けする',
+      '赤い 辺に 三角定規を あてる', '赤い 辺の チェックで 三角定規を 動かす',
+      '青い 辺に 三角定規を あてる', '青い 辺の チェックで 三角定規を 動かす', 'まとめ'
+    ];
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
     /**
      * アプリ状態
      */
     const state = {
       mode: 'check',          // 'check' | 'sort'
       currentIndex: 0,        // 0..8
-      step: 0,                // 0..5
+      step: 0,
       animProgress: 1.0,      // 各ステップ内のアニメーション進行度 0..1
       autoPlay: false,        // じどう再生モード
+      autoHoldTimer: 0,
       soundOn: true,
       showInnerDots: false,   // 内部5x5ドットの表示切替
       checkedIds: new Set(),  // チェック完了した図形ID
@@ -581,6 +596,7 @@
       quadFill: document.getElementById('quad-fill'),
       layerLines: document.getElementById('layer-lines'),
       layerCheckMarks: document.getElementById('layer-check-marks'),
+      layerRulers: document.getElementById('layer-rulers'),
       layerRailRuler: document.getElementById('layer-rail-ruler'),
       layerSlideRuler: document.getElementById('layer-slide-ruler'),
       statusRedCard: document.getElementById('status-red-card'),
@@ -822,7 +838,6 @@
       const bCenter = [(bp0[0] + bp1[0] + bp2[0]) / 3, (bp0[1] + bp1[1] + bp2[1]) / 3];
       const bHole = [shrinkPt(bp0, bCenter, 0.45), shrinkPt(bp1, bCenter, 0.45), shrinkPt(bp2, bCenter, 0.45)];
 
-      dom.layerSlideRuler.style.opacity = '1';
       dom.layerSlideRuler.innerHTML = `
         <polygon points="${bp0[0].toFixed(1)},${bp0[1].toFixed(1)} ${bp1[0].toFixed(1)},${bp1[1].toFixed(1)} ${bp2[0].toFixed(1)},${bp2[1].toFixed(1)}"
           fill="url(#ruler-blue-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
@@ -839,7 +854,6 @@
       const pCenter = [(pp0[0] + pp1[0] + pp2[0]) / 3, (pp0[1] + pp1[1] + pp2[1]) / 3];
       const pHole = [shrinkPt(pp0, pCenter, 0.45), shrinkPt(pp1, pCenter, 0.45), shrinkPt(pp2, pCenter, 0.45)];
 
-      dom.layerRailRuler.style.opacity = '1';
       dom.layerRailRuler.innerHTML = `
         <polygon points="${pp0[0].toFixed(1)},${pp0[1].toFixed(1)} ${pp1[0].toFixed(1)},${pp1[1].toFixed(1)} ${pp2[0].toFixed(1)},${pp2[1].toFixed(1)}"
           fill="url(#ruler-purple-grad)" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round" />
@@ -930,20 +944,18 @@
 
       dom.canvasShapeNumber.textContent = s.label;
 
-      // ステップドット描画 (0..5)
-      let dotsHtml = '';
-      for (let i = 0; i <= 5; i++) {
-        const active = (i === state.step);
-        const passed = (i < state.step);
-        dotsHtml += `
-          <button onclick="jumpStep(${i})" aria-label="手順 ${i + 1}" aria-current="${active ? 'step' : 'false'}"
-            class="h-2.5 rounded-full transition-all ${active ? 'w-9 bg-blue-600' : (passed ? 'w-3 bg-blue-300' : 'w-3 bg-slate-300')}">
-          </button>
-        `;
-      }
+      // ステップドット描画
       if (dom.stepDots.dataset.step !== String(state.step)) {
         const restore = dom.stepDots.contains(document.activeElement);
-        dom.stepDots.innerHTML = dotsHtml;
+        dom.stepDots.innerHTML = stepLabels.map((label, i) => {
+          const active = i === state.step;
+          const passed = i < state.step;
+          return `
+            <button onclick="jumpStep(${i})" aria-label="${label}" aria-current="${active ? 'step' : 'false'}"
+              class="h-2.5 rounded-full transition-all ${active ? 'w-9 bg-blue-600' : (passed ? 'w-3 bg-blue-300' : 'w-3 bg-slate-300')}">
+            </button>
+          `;
+        }).join('');
         dom.stepDots.dataset.step = state.step;
         if (restore) dom.stepDots.children[state.step].focus();
       }
@@ -967,17 +979,17 @@
       } else if (state.step === 2) {
         linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#ef4444', 5.5);
         linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#2563eb', 5.5);
-      } else if (state.step === 3) {
+      } else if (state.step <= RED_SLIDE) {
         linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#ef4444', 6.5);
         linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#93c5fd', 3.5);
-      } else if (state.step === 4) {
+      } else if (state.step <= BLUE_SLIDE) {
         if (s.redParallel) {
           linesHtml += buildGlowingPair(s.redPair[0], s.redPair[1], '#ef4444', '#fca5a5', 'glow-red');
         } else {
           linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#1e293b', 4.2);
         }
         linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#2563eb', 6.5);
-      } else if (state.step === 5) {
+      } else if (state.step === SUMMARY) {
         if (s.redParallel) {
           linesHtml += buildGlowingPair(s.redPair[0], s.redPair[1], '#ef4444', '#fca5a5', 'glow-red');
         } else {
@@ -991,26 +1003,43 @@
       }
       dom.layerLines.innerHTML = linesHtml;
 
-      // 3. 三角定規アニメーション（Step 3: 赤い辺チェック, Step 4: 青い辺チェック）
-      if (state.step === 3 || state.step === 4) {
-        const pair = (state.step === 3) ? s.redPair : s.bluePair;
-        const isParallel = (state.step === 3) ? s.redParallel : s.blueParallel;
+      // 3. 三角定規をあててから、別の手順で動かす
+      const placing = state.step === RED_PLACE || state.step === BLUE_PLACE;
+      const sliding = state.step === RED_SLIDE || state.step === BLUE_SLIDE;
+      if (placing || sliding) {
+        const isRed = state.step <= RED_SLIDE;
+        const pair = isRed ? s.redPair : s.bluePair;
+        const isParallel = isRed ? s.redParallel : s.blueParallel;
         const geom = computeRulerCheckGeometry(pair[0], pair[1]);
 
+        // 手順が表示されてから、SVGの右端の外から入る。
+        const entrance = placing ? Math.max(0, (p - 0.15) / 0.85) : 1;
+        const approach = entrance * entrance * (3 - 2 * entrance);
+        const offset = dom.layerRulers.ownerSVGElement.viewBox.baseVal.width * (1 - approach);
+        dom.layerRulers.setAttribute('transform', `translate(${offset} 0)`);
+        dom.layerRulers.setAttribute('opacity', entrance);
         const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-        renderRulers(geom, ease);
-        renderCheckMarks(geom, isParallel, p >= 0.85);
+        renderRulers(geom, sliding ? ease : 0);
+        if (sliding || p >= 1) {
+          renderCheckMarks(geom, isParallel, sliding && p >= 1);
+        } else {
+          dom.layerCheckMarks.innerHTML = '';
+        }
       } else {
-        dom.layerRailRuler.style.opacity = '0';
-        dom.layerSlideRuler.style.opacity = '0';
+        dom.layerRulers.setAttribute('opacity', '0');
         dom.layerCheckMarks.innerHTML = '';
       }
 
       // 4. 判定バナー・キャンバス内バッジ・ステータスカード更新
-      updatePanelsAndBanner(s, p);
+      updatePanelsAndBanner(s, placing, sliding, p >= 1);
+      let nextLabel = 'つぎへ ▶';
+      if (state.step === 2 || state.step === RED_SLIDE) nextLabel = '① あてる ▶';
+      if (placing) nextLabel = '② 動かす ▶';
+      if (dom.btnNext.textContent !== nextLabel) dom.btnNext.textContent = nextLabel;
+      dom.btnNext.setAttribute('aria-disabled', (placing || sliding) && p < 1);
 
       // 5. 完了時のまとめ結論ボックス＆ボタン表示切替
-      if (state.step === 5) {
+      if (state.step === SUMMARY) {
         dom.checkBottomSummary.classList.remove('hidden');
         dom.normalControls.classList.add('hidden');
         dom.completeControls.classList.remove('hidden');
@@ -1056,21 +1085,21 @@
     /**
      * キャンバス内ピル＆右パネルの大きなメッセージと2段ステータス更新
      */
-    function updatePanelsAndBanner(s, p) {
+    function updatePanelsAndBanner(s, placing, sliding, animationDone) {
       const base = 'w-full flex-1 min-h-[70px] rounded-2xl px-3 py-2 flex flex-col items-center justify-center text-center font-black border-2 transition-all leading-snug ';
+      const isRed = state.step <= RED_SLIDE;
+      const ok = isRed ? s.redParallel : s.blueParallel;
+      const showJudgment = sliding && animationDone;
+      const judgment = ok ? '平行だね！ ⭕' : '平行じゃないね！ ❌';
 
       // キャンバス内のリアルタイム判定バッジ
-      if ((state.step === 3 || state.step === 4) && p >= 0.85) {
-        const isRed = (state.step === 3);
-        const ok = isRed ? s.redParallel : s.blueParallel;
-        dom.canvasLivePill.classList.remove('hidden');
+      if (showJudgment) {
         if (ok) {
           dom.canvasLivePill.className = 'animate-pop absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full font-black text-base sm:text-lg shadow-lg border-2 whitespace-nowrap pointer-events-none bg-emerald-600 border-white text-white';
-          dom.canvasLivePill.textContent = '平行だね！ ⭕';
         } else {
           dom.canvasLivePill.className = 'animate-pop absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full font-black text-base sm:text-lg shadow-lg border-2 whitespace-nowrap pointer-events-none bg-rose-600 border-white text-white';
-          dom.canvasLivePill.textContent = '平行じゃないね！ ❌';
         }
+        dom.canvasLivePill.textContent = judgment;
       } else {
         dom.canvasLivePill.classList.add('hidden');
       }
@@ -1085,39 +1114,27 @@
       } else if (state.step === 2) {
         dom.checkTopBanner.className = base + 'bg-indigo-50 border-indigo-300 text-indigo-950';
         dom.checkTopBanner.innerHTML = `<span class="nobr">むかいあう 辺を</span><br><span class="nobr"><span class="text-red-600">赤</span> と <span class="text-blue-600">青</span> に わけたよ</span>`;
-      } else if (state.step === 3) {
-        if (p < 0.85) {
-          dom.checkTopBanner.className = base + 'bg-red-50 border-red-300 text-red-900';
-          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-red-600">赤い 辺</span>を 三角定規で</span><br><span class="nobr">チェック中…</span>`;
-        } else if (s.redParallel) {
-          dom.checkTopBanner.className = base + 'animate-pop bg-emerald-50 border-emerald-500 text-emerald-900';
-          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-red-600">赤い 辺</span>：</span><br><span class="nobr">平行だね！ ⭕</span>`;
+      } else if (placing || sliding) {
+        const edge = isRed ? '<span class="text-red-600">赤い 辺</span>' : '<span class="text-blue-600">青い 辺</span>';
+        if (showJudgment) {
+          dom.checkTopBanner.className = base + (ok ? 'animate-pop bg-emerald-50 border-emerald-500 text-emerald-900' : 'animate-pop bg-rose-50 border-rose-500 text-rose-900');
+          dom.checkTopBanner.innerHTML = `<span class="nobr">${edge}</span><br><span class="nobr">${judgment}</span>`;
         } else {
-          dom.checkTopBanner.className = base + 'animate-pop bg-rose-50 border-rose-500 text-rose-900';
-          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-red-600">赤い 辺</span>：</span><br><span class="nobr">平行じゃないね！ ❌</span>`;
+          const action = placing ? '① 三角定規を あてる' : '② 三角定規を 動かす';
+          dom.checkTopBanner.className = base + (isRed ? 'bg-red-50 border-red-300 text-red-900' : 'bg-blue-50 border-blue-300 text-blue-900');
+          dom.checkTopBanner.innerHTML = `<span class="nobr">${edge}の チェック</span><br><span class="nobr">${action}</span>`;
         }
-      } else if (state.step === 4) {
-        if (p < 0.85) {
-          dom.checkTopBanner.className = base + 'bg-blue-50 border-blue-300 text-blue-900';
-          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-blue-600">青い 辺</span>を 三角定規で</span><br><span class="nobr">チェック中…</span>`;
-        } else if (s.blueParallel) {
-          dom.checkTopBanner.className = base + 'animate-pop bg-emerald-50 border-emerald-500 text-emerald-900';
-          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-blue-600">青い 辺</span>：</span><br><span class="nobr">平行だね！ ⭕</span>`;
-        } else {
-          dom.checkTopBanner.className = base + 'animate-pop bg-rose-50 border-rose-500 text-rose-900';
-          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-blue-600">青い 辺</span>：</span><br><span class="nobr">平行じゃないね！ ❌</span>`;
-        }
-      } else if (state.step === 5) {
+      } else if (state.step === SUMMARY) {
         dom.checkTopBanner.className = base + 'bg-indigo-600 border-indigo-700 text-white shadow-sm';
         dom.checkTopBanner.innerHTML = `<span class="nobr">✨ 平行な 辺だけが</span><br><span class="nobr">光ったよ！</span>`;
       }
 
       // 赤い辺のステータスカード
-      const redDone = (state.step > 3) || (state.step === 3 && p >= 0.85);
+      const redDone = state.step > RED_SLIDE || (state.step === RED_SLIDE && animationDone);
       if (!redDone) {
         dom.statusRedCard.className = 'rounded-2xl p-2 border-2 border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center';
         dom.statusRedValue.className = 'text-sm sm:text-base font-black text-slate-400 mt-0.5';
-        dom.statusRedValue.textContent = (state.step === 3) ? 'チェック中…' : 'まだ';
+        dom.statusRedValue.textContent = state.step === RED_SLIDE ? 'チェック中…' : 'まだ';
       } else if (s.redParallel) {
         dom.statusRedCard.className = 'rounded-2xl p-2 border-2 border-emerald-400 bg-emerald-50 flex flex-col items-center justify-center text-center';
         dom.statusRedValue.className = 'text-sm sm:text-base font-black text-emerald-700 mt-0.5';
@@ -1129,11 +1146,11 @@
       }
 
       // 青い辺のステータスカード
-      const blueDone = (state.step > 4) || (state.step === 4 && p >= 0.85);
+      const blueDone = state.step > BLUE_SLIDE || (state.step === BLUE_SLIDE && animationDone);
       if (!blueDone) {
         dom.statusBlueCard.className = 'rounded-2xl p-2 border-2 border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center';
         dom.statusBlueValue.className = 'text-sm sm:text-base font-black text-slate-400 mt-0.5';
-        dom.statusBlueValue.textContent = (state.step === 4) ? 'チェック中…' : 'まだ';
+        dom.statusBlueValue.textContent = state.step === BLUE_SLIDE ? 'チェック中…' : 'まだ';
       } else if (s.blueParallel) {
         dom.statusBlueCard.className = 'rounded-2xl p-2 border-2 border-emerald-400 bg-emerald-50 flex flex-col items-center justify-center text-center';
         dom.statusBlueValue.className = 'text-sm sm:text-base font-black text-emerald-700 mt-0.5';
@@ -1153,6 +1170,7 @@
       state.step = 0;
       state.animProgress = 1.0;
       state.autoPlay = false;
+      state.autoHoldTimer = 0;
       updateAutoButton();
       renderShapeSelectorBar();
       renderCheckScreen();
@@ -1160,8 +1178,10 @@
 
     function jumpStep(stepNum) {
       state.step = stepNum;
-      state.animProgress = (stepNum === 1 || stepNum === 3 || stepNum === 4) ? 0.0 : 1.0;
-      if (stepNum === 5) {
+      const rulerStep = stepNum >= RED_PLACE && stepNum <= BLUE_SLIDE;
+      state.animProgress = stepNum === 1 || (rulerStep && !reducedMotion.matches) ? 0 : 1;
+      state.autoHoldTimer = 0;
+      if (stepNum === SUMMARY) {
         state.checkedIds.add(SHAPES_DATA[state.currentIndex].id);
         renderShapeSelectorBar();
       }
@@ -1169,7 +1189,7 @@
     }
 
     function handleNextStep() {
-      if (state.step < 5) {
+      if (state.step < SUMMARY && dom.btnNext.getAttribute('aria-disabled') !== 'true') {
         playTone('step');
         jumpStep(state.step + 1);
       }
@@ -1188,7 +1208,8 @@
 
     function toggleAutoPlay() {
       state.autoPlay = !state.autoPlay;
-      if (state.autoPlay && state.step === 5) {
+      state.autoHoldTimer = 0;
+      if (state.autoPlay && state.step === SUMMARY) {
         state.step = 0;
         state.animProgress = 1.0;
       }
@@ -1209,7 +1230,6 @@
     /**
      * アニメーションループ
      */
-    let autoHoldTimer = 0;
     function tick(now) {
       if (!state.lastTime) state.lastTime = now;
       const dt = (now - state.lastTime) / 1000;
@@ -1219,14 +1239,15 @@
         let needsRender = false;
 
         if (state.animProgress < 1.0) {
-          const speed = (state.step === 1) ? 1.8 : 0.75;
+          let speed = 0.75;
+          if (state.step === 1) speed = 1.8;
+          if (state.step === RED_PLACE || state.step === BLUE_PLACE) speed = 1 / 1.6;
           state.animProgress = Math.min(1.0, state.animProgress + dt * speed);
           needsRender = true;
         } else if (state.autoPlay) {
-          autoHoldTimer += dt;
-          if (autoHoldTimer >= 1.05) {
-            autoHoldTimer = 0;
-            if (state.step < 5) {
+          state.autoHoldTimer += dt;
+          if (state.autoHoldTimer >= 1.05) {
+            if (state.step < SUMMARY) {
               jumpStep(state.step + 1);
             } else {
               state.autoPlay = false;
