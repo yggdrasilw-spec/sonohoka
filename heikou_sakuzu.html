@@ -74,8 +74,69 @@
     .experiment-controls label { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 700; }
     #experiment-note { margin: 0; color: #14532d; flex-basis: 100%; font-size: .82rem; }
     :focus-visible, label:focus-within { outline: 3px solid #0369a1; outline-offset: 3px; }
-    .audio-controls { background: #fff; border-top: 1px solid #dcfce7; }
-    #audio-status { margin: 0; align-self: center; font-size: .82rem; color: #334155; }
+    .header-audio { display: flex; gap: .125rem; margin-right: .25rem; }
+    .header-audio button { display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; border-radius: .65rem; font-size: 1.2rem; }
+    .header-audio button[aria-pressed="true"] { background: #ffffff24; }
+    .header-audio button:disabled { opacity: .5; }
+    .header-audio button:focus-visible { outline-color: #fff; outline-offset: -2px; }
+    #audio-status { margin: .35rem 0; font-size: .82rem; color: #334155; }
+    body:has(#presentation[open]) { overflow: hidden; }
+    #presentation[open] {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      max-width: none;
+      max-height: none;
+      margin: 0;
+      border: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #fff;
+      color: #064e3b;
+    }
+    #presentation::backdrop { background: #fff; }
+    #presentation-frame {
+      position: relative;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+    }
+    #presentation-board { min-height: 0; min-width: 0; }
+    #presentation #drawing-board { width: 100%; height: 100%; aspect-ratio: auto; }
+    #presentation :is(#drag-hint, #layer-callout, #rail-guide-label) { display: none; }
+    .presentation-nav {
+      display: flex;
+      justify-content: center;
+      gap: clamp(1rem, 5vw, 3.75rem);
+      padding: .55rem 1rem max(.55rem, env(safe-area-inset-bottom));
+      border-top: 1px solid #a7f3d0;
+      background: #f0fdf4;
+    }
+    .presentation-nav button, #close-presentation {
+      min-width: 44px;
+      min-height: 44px;
+      border: 1px solid #a7c8b7;
+      border-radius: .75rem;
+      background: #fff;
+      font-weight: 700;
+    }
+    .presentation-nav button { padding: .55rem 2rem; font-size: clamp(1rem, 2vw, 1.3rem); }
+    .presentation-nav button:disabled { opacity: .45; }
+    #close-presentation {
+      position: absolute;
+      top: max(.5rem, env(safe-area-inset-top));
+      right: max(.5rem, env(safe-area-inset-right));
+      padding: 0;
+      font-size: 1.5rem;
+    }
+    @media (max-width: 520px) {
+      #method-controls > button { min-width: 0; padding-inline: .4rem; }
+      .presentation-nav button { padding-inline: 1.25rem; }
+    }
     #drawing-board { aspect-ratio: 8 / 5.65; }
     .moving-rulers :is(#layer-left-ruler, #layer-right-ruler:has([data-ruler]), #layer-guide-lines, #layer-drawn-line, #layer-angle-top, #layer-angle-bottom, #layer-pencil) { visibility: hidden; }
     @media (max-width: 1023px) {
@@ -110,7 +171,11 @@
       </div>
 
       <!-- ひき方切り替えタブ -->
-      <div class="flex bg-emerald-800/50 p-1 rounded-2xl border border-emerald-400/30 w-full md:w-auto">
+      <div id="method-controls" class="flex bg-emerald-800/50 p-1 rounded-2xl border border-emerald-400/30 w-full md:w-auto">
+        <div class="header-audio" role="group" aria-label="音の設定">
+          <button id="sound-effects" type="button" aria-label="効果音" aria-pressed="true" title="効果音：オン">🔔</button>
+          <button id="step-narration" type="button" aria-label="読み上げ" aria-pressed="true" title="読み上げ：オン">🗣️</button>
+        </div>
         <button id="tab-method1" onclick="setMethod(1)"
           class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-emerald-800 shadow">
           ひき方 1（<ruby>直角<rt>ちょっかく</rt></ruby> 90° を使う）
@@ -156,6 +221,10 @@
               title="最初からやり直す">
               最初から
             </button>
+            <button id="open-presentation" type="button" aria-haspopup="dialog" aria-controls="presentation"
+              class="px-3 py-1.5 rounded-xl bg-white border border-emerald-200 font-bold text-xs sm:text-sm text-emerald-800">
+              ⛶ 全画面
+            </button>
           </div>
         </div>
 
@@ -191,11 +260,7 @@
           <p id="experiment-note" role="status">作図を始める前に配置を変えてみよう。滑らせている間は、動かす定規の向きを変えないよ。</p>
         </div>
 
-        <div class="experiment-controls audio-controls" aria-label="音の設定">
-          <button id="sound-effects" type="button" aria-pressed="false">効果音：オフ</button>
-          <button id="step-narration" type="button" aria-pressed="false">読み上げ：オフ</button>
-          <p id="audio-status" role="status" hidden></p>
-        </div>
+        <p id="audio-status" class="px-4" role="status" hidden></p>
 
         <!-- SVG キャンバス -->
         <div id="drawing-board" class="relative w-full aspect-[8/5] notebook-grid overflow-hidden">
@@ -449,6 +514,17 @@
     </div>
   </main>
 
+  <dialog id="presentation" aria-label="作図の全画面表示">
+    <div id="presentation-frame">
+      <div id="presentation-board"></div>
+      <nav class="presentation-nav" aria-label="作図の手順">
+        <button id="presentation-prev" type="button" aria-keyshortcuts="ArrowLeft">← 戻る</button>
+        <button id="presentation-next" type="button" aria-keyshortcuts="ArrowRight" autofocus>進む →</button>
+      </nav>
+      <button id="close-presentation" type="button" aria-label="全画面を閉じる" title="全画面を閉じる">×</button>
+    </div>
+  </dialog>
+
   <script>
     /**
      * アプリケーションの状態管理
@@ -618,6 +694,8 @@
       iconPause: document.getElementById('icon-pause'),
       btnPrev: document.getElementById('btn-prev'),
       btnNext: document.getElementById('btn-next'),
+      presentationPrev: document.getElementById('presentation-prev'),
+      presentationNext: document.getElementById('presentation-next'),
       slider: document.getElementById('slide-slider'),
       slidePercent: document.getElementById('slide-percent'),
       dragHint: document.getElementById('drag-hint'),
@@ -1151,6 +1229,8 @@
       // 前へ・次へボタンの有効/無効
       el.btnPrev.disabled = (state.step === 1);
       el.btnNext.disabled = (state.step === 5);
+      el.presentationPrev.disabled = el.btnPrev.disabled;
+      el.presentationNext.disabled = el.btnNext.disabled;
 
       // 再生/一時停止ボタンの表示
       if (state.isPlaying) {
@@ -1483,12 +1563,65 @@
       window.addEventListener('blur', () => { state.isDragging = false; });
     }
 
+    function installPresentation() {
+      const dialog = document.getElementById('presentation');
+      const frame = document.getElementById('presentation-frame');
+      const board = document.getElementById('drawing-board');
+      const svg = board.querySelector('svg');
+      const normalViewBox = svg.getAttribute('viewBox');
+      const slot = document.getElementById('presentation-board');
+      const open = document.getElementById('open-presentation');
+      const close = document.getElementById('close-presentation');
+      const anchor = document.createComment('drawing-board');
+      board.before(anchor);
+      let nativeFullscreen = false;
+
+      open.addEventListener('click', async () => {
+        state.isDragging = false;
+        slot.append(board);
+        svg.setAttribute('viewBox', '105 0 590 565');
+        dialog.showModal();
+        (el.presentationNext.disabled ? el.presentationPrev : el.presentationNext).focus();
+        try {
+          await frame.requestFullscreen?.();
+          if (document.fullscreenElement !== frame) return;
+          if (dialog.open) nativeFullscreen = true;
+          else await document.exitFullscreen();
+        } catch {
+          // 全画面APIが使えない端末では、ブラウザーの表示領域いっぱいに表示する。
+        }
+      });
+      function exitPresentation() {
+        nativeFullscreen = false;
+        if (document.fullscreenElement === frame) document.exitFullscreen().catch(() => {});
+        state.isDragging = false;
+        dialog.close();
+        svg.setAttribute('viewBox', normalViewBox);
+        anchor.after(board);
+        open.focus();
+      }
+      close.addEventListener('click', exitPresentation);
+      dialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        exitPresentation();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (nativeFullscreen && document.fullscreenElement !== frame && dialog.open) exitPresentation();
+      });
+      el.presentationPrev.addEventListener('click', prevStep);
+      el.presentationNext.addEventListener('click', nextStep);
+    }
+
     const effects = {
       step: [480], place: [440, 590], point: [660, 880], done: [523, 659, 784]
     };
     let audioContext;
-    let effectsOn = false;
-    let narrationOn = false;
+    const AudioEngine = window.AudioContext || window.webkitAudioContext;
+    let effectsOn = Boolean(AudioEngine);
+    let narrationOn = Boolean(window.speechSynthesis && window.SpeechSynthesisUtterance);
+    let audioActivated = false;
+    let audioReady;
+    let speechRequested = false;
     let speaking = null;
     let speechTimeout;
 
@@ -1498,7 +1631,19 @@
       status.hidden = !message;
     }
 
-    function playEffect(name) {
+    function unlockEffects() {
+      if (!effectsOn || audioContext?.state === 'running') return;
+      try {
+        audioContext ||= new AudioEngine();
+        audioReady = audioContext.resume().catch(() => false);
+      } catch {
+        audioReady = null;
+      }
+    }
+
+    async function playEffect(name) {
+      if (!effectsOn || !audioActivated) return;
+      if (audioContext?.state !== 'running' && audioReady) await audioReady;
       if (!effectsOn || audioContext?.state !== 'running') return;
       effects[name].forEach((frequency, index) => {
         const start = audioContext.currentTime + index * .085;
@@ -1523,7 +1668,8 @@
     }
 
     function narrateStep() {
-      if (!narrationOn) return;
+      if (!narrationOn || !audioActivated) return;
+      speechRequested = true;
       stopNarration();
       const m = getMethod();
       const rail = state.useStraightRuler ? '直線定規' : m.leftColor === 'blue' ? '青の三角定規' : '紫の三角定規';
@@ -1554,37 +1700,58 @@
         clearTimeout(speechTimeout);
         setAudioStatus('読み上げを再生できませんでした。');
       };
-      window.speechSynthesis.speak(utterance);
-      speechTimeout = setTimeout(stopNarration, 12000);
+      try {
+        window.speechSynthesis.speak(utterance);
+        speechTimeout = setTimeout(stopNarration, 12000);
+      } catch {
+        utterance.onerror();
+      }
     }
 
     function installAudioControls() {
       const sound = document.getElementById('sound-effects');
       const voice = document.getElementById('step-narration');
-      const Audio = window.AudioContext || window.webkitAudioContext;
-      sound.disabled = !Audio;
-      voice.disabled = !window.speechSynthesis || !window.SpeechSynthesisUtterance;
-      sound.addEventListener('click', async () => {
-        effectsOn = !effectsOn;
+
+      function syncAudioControls() {
         sound.setAttribute('aria-pressed', String(effectsOn));
-        sound.textContent = `効果音：${effectsOn ? 'オン' : 'オフ'}`;
-        if (!effectsOn) return;
-        try {
-          audioContext ||= new Audio();
-          await audioContext.resume();
-          setAudioStatus('');
+        voice.setAttribute('aria-pressed', String(narrationOn));
+        sound.textContent = effectsOn ? '🔔' : '🔕';
+        voice.textContent = narrationOn ? '🗣️' : '🤐';
+        sound.title = `効果音：${effectsOn ? 'オン' : 'オフ'}`;
+        voice.title = `読み上げ：${narrationOn ? 'オン' : 'オフ'}`;
+      }
+
+      sound.disabled = !AudioEngine;
+      voice.disabled = !narrationOn;
+      syncAudioControls();
+
+      const activate = event => {
+        if (!event.isTrusted || (event.type === 'keydown' && (event.isComposing || event.altKey || event.ctrlKey || event.metaKey))) return;
+        const first = !audioActivated;
+        audioActivated = true;
+        if (event.target !== sound) unlockEffects();
+        if (first && !event.target.closest?.('#sound-effects, #step-narration')) {
+          // 先にその操作が選んだ手順を優先し、同じ説明を二重に再生しない。
+          setTimeout(() => { if (!speechRequested) narrateStep(); }, 0);
+        }
+      };
+      document.addEventListener('click', activate, true);
+      document.addEventListener('keydown', activate, true);
+      document.addEventListener('pointerdown', event => {
+        if (event.target.closest?.('#layer-right-ruler')) activate(event);
+      }, true);
+
+      sound.addEventListener('click', () => {
+        effectsOn = !effectsOn;
+        syncAudioControls();
+        if (effectsOn) {
+          unlockEffects();
           playEffect('place');
-        } catch {
-          effectsOn = false;
-          sound.setAttribute('aria-pressed', 'false');
-          sound.textContent = '効果音：オフ';
-          setAudioStatus('効果音を再生できませんでした。');
         }
       });
       voice.addEventListener('click', () => {
         narrationOn = !narrationOn;
-        voice.setAttribute('aria-pressed', String(narrationOn));
-        voice.textContent = `読み上げ：${narrationOn ? 'オン' : 'オフ'}`;
+        syncAudioControls();
         setAudioStatus('');
         if (narrationOn) narrateStep();
         else stopNarration();
@@ -1603,6 +1770,7 @@
       renderScene();
       setupDragInteraction();
       installAudioControls();
+      installPresentation();
       document.addEventListener('keydown', handleStepKey);
     });
   </script>
