@@ -74,7 +74,8 @@
     .experiment-controls label { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 700; }
     #experiment-note { margin: 0; color: #14532d; flex-basis: 100%; font-size: .82rem; }
     :focus-visible, label:focus-within { outline: 3px solid #0369a1; outline-offset: 3px; }
-    @media (max-width: 640px) { #drawing-board[data-orientation="vertical"] { aspect-ratio: 1; } }
+    #drawing-board { aspect-ratio: 8 / 5.65; }
+    .moving-rulers :is(#layer-left-ruler, #layer-right-ruler:has([data-ruler]), #layer-guide-lines, #layer-drawn-line, #layer-angle-top, #layer-angle-bottom, #layer-pencil) { visibility: hidden; }
     @media (max-width: 1023px) {
       header > .max-w-7xl { flex-direction: column; }
     }
@@ -186,9 +187,9 @@
           <p id="experiment-note" role="status">作図を始める前に配置を変えてみよう。滑らせている間は、動かす定規の向きを変えないよ。</p>
         </div>
 
-        <!-- SVG キャンバス (viewBox="0 0 800 500") -->
+        <!-- SVG キャンバス -->
         <div id="drawing-board" class="relative w-full aspect-[8/5] notebook-grid overflow-hidden">
-          <svg id="scene-svg" viewBox="0 0 800 500" class="w-full h-full block touch-none">
+          <svg id="scene-svg" viewBox="0 0 800 565" class="w-full h-full block touch-none">
             <defs>
               <!-- 青い直角二等辺三角定規 (45°-45°-90°) -->
               <linearGradient id="blue-ruler-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -269,6 +270,7 @@
               </g>
             </g>
 
+              <g id="ruler-motion" pointer-events="none"></g>
             </g>
 
             <!-- 同じ角度を示す図解 -->
@@ -452,6 +454,7 @@
       swapped: false,
       alternateRailEdge: false,
       rotation: 0,
+      viewAngle: 0,
       showAngles: true,        // 角度マークと補助線を表示するか
       animFrameId: null,
       lastTimestamp: 0,
@@ -461,7 +464,7 @@
     };
 
     /**
-     * 厳密な幾何学定数（SVG viewBox="0 0 800 500"）
+     * 作図のローカル座標
      * 基準の直線「ア」: y = 115, x = 130 〜 670
      * 点A: (430, 215) -> y方向の垂直距離 DY = 215 - 115 = 100px
      */
@@ -469,6 +472,13 @@
     const TARGET_Y = 215;
     const DY = TARGET_Y - BASE_Y; // 100px
     const SQRT3 = Math.sqrt(3);
+    // 青の斜辺と、紫の直角をはさむ長い辺が同じ長さの一組。
+    const SET_SIZE = 240;
+    const TRIANGLES = {
+      blue: [[0, 0], [SET_SIZE / Math.SQRT2, 0], [0, SET_SIZE / Math.SQRT2]],
+      purple: [[0, 0], [SET_SIZE / SQRT3, 0], [0, SET_SIZE]]
+    };
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
     const METHODS = {
       1: {
@@ -478,19 +488,9 @@
         leftRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 border border-purple-200',
         rightRoleText: '青い三角定規（45°・45°・90°）',
         rightRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200',
-        // レール方向単位ベクトル：真下 (0, 1)
-        dirX: 0,
-        dirY: 1,
-        totalDist: DY, // 100px
         // ステップ1での右定規（青い45-45-90）の左上90°頂点 P0 = (310, 115)
         originX: 310,
         originY: 115,
-        // 左定規がスライドインしてくるときの開始オフセット
-        leftEntryOffsetX: -120,
-        leftEntryOffsetY: 0,
-        // 引く平行線のローカル開始・終了X（P0のx座標からの相対）
-        drawLocalStartX: 0,
-        drawLocalEndX: 200,
         blockDrawEndX: 210,
         steps: {
           1: {
@@ -527,20 +527,9 @@
         leftRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200',
         rightRoleText: '紫の三角定規（30°・60°・90°）',
         rightRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 border border-purple-200',
-        // レール方向単位ベクトル：右斜め下60° (cos60°, sin60°) = (0.5, 0.8660254)
-        dirX: 0.5,
-        dirY: SQRT3 / 2,
-        // y方向に100px移動するための斜め移動距離 = 100 / sin(60°) = 115.47px
-        totalDist: DY / (SQRT3 / 2),
         // ステップ1での右定規（紫の30-60-90）の左上60°頂点 P0 = (270, 115)
         originX: 270,
         originY: 115,
-        // 左定規（青い45-45-90）が左側からスライドインしてくるときのオフセット（レール法線方向）
-        leftEntryOffsetX: -110 * (SQRT3 / 2),
-        leftEntryOffsetY: 110 * 0.5,
-        // 引く平行線のローカル開始・終了X（P0のx座標からの相対）
-        drawLocalStartX: 0,
-        drawLocalEndX: 280,
         blockDrawEndX: 270,
         steps: {
           1: {
@@ -574,23 +563,26 @@
 
     function getMethod() {
       const m = METHODS[state.method];
-      if (!state.swapped) return m;
-      const oblique = state.method === 2 && !state.useCustomShape;
-      const dirX = oblique ? Math.SQRT1_2 : m.dirX;
-      const dirY = oblique ? Math.SQRT1_2 : m.dirY;
+      const oblique = state.method === 2;
+      const angle = oblique && state.swapped && !state.useCustomShape ? 45 : m.angle;
+      const rad = angle * Math.PI / 180;
+      const dirX = oblique ? Math.cos(rad) : 0;
+      const dirY = Math.sin(rad);
+      const blueMoves = (state.method === 1) !== state.swapped;
       return {
         ...m,
-        angle: oblique ? 45 : m.angle,
+        angle,
         dirX,
         dirY,
         totalDist: DY / dirY,
-        leftEntryOffsetX: -110 * dirY,
-        leftEntryOffsetY: 110 * dirX,
-        drawLocalEndX: state.method === 1 ? 200 : 260,
-        leftRoleText: m.rightRoleText,
-        leftRoleClass: m.rightRoleClass,
-        rightRoleText: m.leftRoleText,
-        rightRoleClass: m.leftRoleClass
+        leftEntryOffsetX: -90 * dirY,
+        leftEntryOffsetY: 90 * dirX,
+        leftColor: blueMoves ? 'purple' : 'blue',
+        rightColor: blueMoves ? 'blue' : 'purple',
+        leftRoleText: state.swapped ? m.rightRoleText : m.leftRoleText,
+        leftRoleClass: state.swapped ? m.rightRoleClass : m.leftRoleClass,
+        rightRoleText: state.swapped ? m.leftRoleText : m.rightRoleText,
+        rightRoleClass: state.swapped ? m.leftRoleClass : m.rightRoleClass
       };
     }
 
@@ -615,7 +607,7 @@
       slidePercent: document.getElementById('slide-percent'),
       dragHint: document.getElementById('drag-hint'),
       // SVGレイヤー
-      svg: document.getElementById('scene-svg'),
+      rulerMotion: document.getElementById('ruler-motion'),
       construction: document.getElementById('construction'),
       guideLines: document.getElementById('layer-guide-lines'),
       railGuideLine: document.getElementById('rail-guide-line'),
@@ -699,39 +691,61 @@
       return pts.map(p => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ');
     }
 
-    function renderTriangle(points, color, tickEdge = [0, 1], rotation = 0) {
+    function sideLength(color, [from, to]) {
+      const [a, b] = [TRIANGLES[color][from], TRIANGLES[color][to]];
+      return Math.hypot(b[0] - a[0], b[1] - a[1]);
+    }
+
+    function movingEdge(m) {
+      return m.angle === 90 ? [0, 1] : [1, 2];
+    }
+
+    function poseOnEdge(color, [from, to], x, y, angle) {
+      const [a, b] = [TRIANGLES[color][from], TRIANGLES[color][to]];
+      const degrees = angle - Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+      return `translate(${x} ${y}) rotate(${degrees}) translate(${-a[0]} ${-a[1]})`;
+    }
+
+    function renderTriangle(color) {
+      const points = TRIANGLES[color];
       const blue = color === 'blue';
       const label = blue ? '45°・45°・90°' : '30°・60°・90°';
       const stroke = blue ? '#0284c7' : '#7c3aed';
       const textColor = blue ? '#075985' : '#5b21b6';
       const hole = computeInsetTriangle(...points, 17);
-      const [a, b] = tickEdge.map(i => points[i]);
-      const [cx, cy] = [0, 1].map(i => points.reduce((sum, point) => sum + point[i], 0) / 3);
+      const [cx, cy] = triangleCenter(color);
+      const ticks = points.map((a, index) => createTicksSVG(...a, ...points[(index + 1) % 3], 5, 12)).join('');
       return `
         <polygon points="${ptsToStr(points)}" fill="url(#${color}-ruler-grad)" stroke="${stroke}" stroke-width="2.2" stroke-linejoin="round" />
         <polygon points="${ptsToStr(hole)}" fill="#fff" fill-opacity="0.88" stroke="${stroke}" stroke-width="1.6" stroke-linejoin="round" />
-        ${createTicksSVG(...a, ...b, 6, 12)}
-        <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotation} ${cx} ${cy})"
+        ${ticks}
+        <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
           font-size="12" font-weight="900" fill="${textColor}">${label}</text>`;
+    }
+
+    function triangleCenter(color) {
+      return [0, 1].map(i => TRIANGLES[color].reduce((sum, point) => sum + point[i], 0) / 3);
     }
 
     function renderLeftRuler() {
       const m = getMethod();
-      const color = m.leftRoleText.startsWith('青') ? 'blue' : 'purple';
+      const color = m.leftColor;
       const blue = color === 'blue';
       const contact = (along, offset = 0) => [
         m.originX + m.dirX * along - m.dirY * offset,
         m.originY + m.dirY * along + m.dirX * offset
       ];
-      // 定規の接触辺はレール上に置き、残りの頂点は動かす道具と反対側に置く。
-      const start = -38;
-      const end = 214;
-      const length = end - start;
-      const a = contact(start);
-      const b = contact(end);
+      const movingContact = state.useCustomShape ? (state.method === 1 ? 200 : 140)
+        : sideLength(m.rightColor, m.angle === 90 ? [0, 2] : [1, 0]);
+      // 接する辺が、移動前から点Aまでずっとレールに重なる位置に置く。
+      const center = (m.totalDist + movingContact) / 2;
       if (state.useStraightRuler) {
+        const start = center - 126;
+        const end = center + 126;
+        const a = contact(start);
+        const b = contact(end);
         const corners = [a, b, contact(end, 56), contact(start, 56)];
-        const [x, y] = contact((start + end) / 2, 28);
+        const [x, y] = contact(center, 28);
         el.leftRuler.innerHTML = `
           <polygon points="${ptsToStr(corners)}" fill="url(#straight-ruler-grad)" stroke="#d97706" stroke-width="2.2" />
           ${createTicksSVG(...a, ...b)}
@@ -740,100 +754,36 @@
         return;
       }
       const useHypotenuse = (blue || state.method === 2) !== state.alternateRailEdge;
-      const tip = useHypotenuse
-        ? contact(start + length * (blue ? .5 : .75), length * (blue ? .5 : SQRT3 / 4))
-        : contact(end, blue ? length : length / SQRT3);
-      el.leftRuler.innerHTML = renderTriangle([a, b, tip], color, [0, 1], m.angle - 180);
+      const edge = useHypotenuse ? [1, 2] : blue ? [0, 1] : [2, 0];
+      const [x, y] = contact(center - sideLength(color, edge) / 2);
+      const transform = poseOnEdge(color, edge, x, y, m.angle);
+      el.leftRuler.innerHTML = `<g data-ruler="${color}" transform="${transform}">${renderTriangle(color)}</g>`;
     }
 
-    /**
-     * 右側の定規（スライド役・動く定規）を描画
-     * ローカル座標系は左上頂点 P0 = (0, 0) を原点とする
-     */
     function renderRightRuler() {
       const m = getMethod();
-      if (state.swapped && !state.useCustomShape) {
-        const end = m.drawLocalEndX;
-        const tip = state.method === 1 ? [0, end / SQRT3] : [end / 2, end / 2];
-        el.rightRuler.innerHTML = renderTriangle([[0, 0], [end, 0], tip], state.method === 1 ? 'purple' : 'blue');
+      if (!state.useCustomShape) {
+        const transform = poseOnEdge(m.rightColor, movingEdge(m), 0, 0, 0);
+        el.rightRuler.innerHTML = `<g data-ruler="${m.rightColor}" transform="${transform}">${renderTriangle(m.rightColor)}</g>`;
         return;
       }
-
-      let html = '';
-
-      if (state.method === 1) {
-        // 【ひき方1】青い直角二等辺三角定規（45°・45°・90°）
-        // ローカル座標: P0=(0, 0) [90°], P1=(200, 0) [45°], P2=(0, 200) [45°]
-        const p0 = [0, 0];
-        const p1 = [200, 0];
-        const p2 = [0, 200];
-
-        if (state.useCustomShape) {
-          // 不思議な形のブロック（左上の角だけは厳密に 90°！）
-          html = `
-            <g>
+      el.rightRuler.innerHTML = state.method === 1 ? `<g>
               <path d="M 0,0 L 210,0 C 228,35 192,68 205,102 C 218,136 168,162 132,155 C 98,148 82,198 46,192 C 18,187 8,200 0,200 Z"
                 fill="url(#custom-shape-grad)" stroke="#ea580c" stroke-width="2.5" stroke-linejoin="round" />
               ${createTicksSVG(14, 0, 196, 0, 6, 12, 1)}
               <circle cx="105" cy="82" r="27" fill="#ffffff" fill-opacity="0.9" stroke="#f97316" stroke-width="1.6" />
               <text x="105" y="79" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">ふしぎな</text>
               <text x="105" y="92" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">形でもOK!</text>
-            </g>
-          `;
-        } else {
-          const hole = computeInsetTriangle(p0, p1, p2, 22);
-          html = `
-            <g>
-              <polygon points="${ptsToStr([p0, p1, p2])}" fill="url(#blue-ruler-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
-              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#0ea5e9" stroke-width="1.6" stroke-linejoin="round" />
-              ${createTicksSVG(12, 0, 188, 0, 6, 12, 1)}
-              <text x="64" y="18" font-size="11" font-weight="900" fill="#0369a1">45°・45°・90°</text>
-            </g>
-          `;
-        }
-      } else {
-        // 【ひき方2】紫の三角定規（厳密な 30°・60°・90°）
-        // ローカル座標: P0=(0, 0) [60°], P1=(280, 0) [30°], P2=(70, 121.2435565) [90°]
-        // 検証:
-        // |P0-P1| = 280 (斜辺 c)
-        // |P0-P2| = hypot(70, 121.2435565) = 140 (短辺 a = c * cos60°)
-        // |P1-P2| = hypot(-210, 121.2435565) = 242.487113 (長辺 b = c * sin60° = 140 * √3)
-        // 内角: P0=60°, P1=30°, P2=90° 完全に厳密！
-        const p0 = [0, 0];
-        const p1 = [280, 0];
-        const p2 = [70, 70 * SQRT3]; // (70, 121.24)
-
-        if (state.useCustomShape) {
-          // 不思議な形のブロック（左上の角だけは厳密に 60°！左辺は P0-P2 に一致）
-          html = `
-            <g>
+            </g>` : `<g>
               <path d="M 0,0 L 270,0 C 285,32 245,62 252,92 C 258,120 205,138 165,130 C 128,123 105,148 70,121.24 Z"
                 fill="url(#custom-shape-grad)" stroke="#ea580c" stroke-width="2.5" stroke-linejoin="round" />
               ${createTicksSVG(14, 0, 255, 0, 6, 12, 1)}
               <circle cx="155" cy="64" r="27" fill="#ffffff" fill-opacity="0.9" stroke="#f97316" stroke-width="1.6" />
               <text x="155" y="61" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">ふしぎな</text>
               <text x="155" y="74" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">形でもOK!</text>
-            </g>
-          `;
-        } else {
-          const hole = computeInsetTriangle(p0, p1, p2, 18);
-          html = `
-            <g>
-              <polygon points="${ptsToStr([p0, p1, p2])}" fill="url(#purple-ruler-grad)" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round" />
-              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#8b5cf6" stroke-width="1.6" stroke-linejoin="round" />
-              ${createTicksSVG(14, 0, 266, 0, 6, 12, 1)}
-              <text x="145" y="16" text-anchor="middle" font-size="11" font-weight="900" fill="#5b21b6">30°・60°・90°</text>
-            </g>
-          `;
-        }
-      }
-
-      el.rightRuler.innerHTML = html;
+            </g>`;
     }
 
-    /**
-     * 角度マーク（赤い直角記号 ┐ や 二重弧 ◠）を描画
-     */
     function angleMark(m, x, y, radius, color) {
       if (m.angle === 90) {
         return `<polyline points="${x},${y + radius} ${x + radius},${y + radius} ${x + radius},${y}" fill="none" stroke="${color}" stroke-width="2.4" />`;
@@ -853,7 +803,7 @@
         const labelY = y + 22;
         const arcs = angleMark(m, x, y, 20, '#b91c1c')
           + (m.angle === 90 ? '' : angleMark(m, x, y, 26, '#b91c1c'));
-        return arcs + `<text x="${labelX}" y="${labelY}" transform="rotate(${-state.rotation} ${labelX} ${labelY})"
+        return arcs + `<text x="${labelX}" y="${labelY}" transform="rotate(${-state.viewAngle} ${labelX} ${labelY})"
           font-size="17" font-weight="900" fill="#991b1b" stroke="#fff" stroke-width="2.5" paint-order="stroke">${m.angle}°</text>`;
       };
       el.angleTop.innerHTML = mark(m.originX, m.originY);
@@ -892,34 +842,112 @@
       el.railGuideLabel.style.display = state.rotation ? 'none' : '';
     }
 
+    const rotationLabels = el.construction.querySelectorAll('#layer-base-line text, #layer-point-a text');
+    let rotationFrame = 0;
+    let rulerFrame = 0;
+    let visibleRulers = null;
+
+    function drawConstructionAngle(angle) {
+      state.viewAngle = angle;
+      el.construction.setAttribute('transform', `translate(400 282.5) rotate(${angle}) scale(.8) translate(-400 -250)`);
+      for (const label of rotationLabels) {
+        label.setAttribute('transform', `rotate(${-angle} ${label.getAttribute('x')} ${label.getAttribute('y')})`);
+      }
+    }
+
+    function easeMotion(t) {
+      return t * t * (3 - 2 * t);
+    }
+
     function setConstructionAngle(value) {
       state.isDragging = false;
+      stopPlay();
+      cancelAnimationFrame(rotationFrame);
+      const start = state.viewAngle;
       state.rotation = Number(value);
-      const vertical = state.rotation === 90;
-      el.svg.setAttribute('viewBox', vertical ? '150 0 500 500' : '0 0 800 500');
-      document.getElementById('drawing-board').dataset.orientation = vertical ? 'vertical' : '';
-      const rad = state.rotation * Math.PI / 180;
-      const cos = Math.abs(Math.cos(rad));
-      const sin = Math.abs(Math.sin(rad));
-      const scale = Math.min(1, 770 / (760 * cos + 470 * sin), 480 / (760 * sin + 470 * cos));
-      el.construction.setAttribute('transform', `translate(400 250) rotate(${state.rotation}) scale(${scale}) translate(-400 -250)`);
-      for (const label of el.construction.querySelectorAll('#layer-base-line text, #layer-point-a text')) {
-        label.setAttribute('transform', `rotate(${-state.rotation} ${label.getAttribute('x')} ${label.getAttribute('y')})`);
-      }
       updateGuideLine();
       updateUI();
-      renderScene();
+      if (start === state.rotation || reducedMotion.matches) {
+        drawConstructionAngle(state.rotation);
+        renderScene();
+        return;
+      }
+      const begun = performance.now();
+      const tick = now => {
+        const t = Math.min(1, (now - begun) / 560);
+        drawConstructionAngle(start + (state.rotation - start) * easeMotion(t));
+        renderScene();
+        if (t < 1) rotationFrame = requestAnimationFrame(tick);
+      };
+      rotationFrame = requestAnimationFrame(tick);
     }
 
-    function swapRulers() {
-      state.swapped = !state.swapped;
-      refreshArrangement();
+    function rulerPoses() {
+      return [el.leftRuler, el.rightRuler].flatMap(layer => {
+        const shape = layer.querySelector('[data-ruler]');
+        if (!shape) return [];
+        const color = shape.dataset.ruler;
+        const inner = shape.transform.baseVal.consolidate().matrix;
+        const outer = layer.transform.baseVal.consolidate().matrix;
+        const matrix = outer.multiply(inner);
+        const [cx, cy] = triangleCenter(color);
+        const center = new DOMPoint(cx, cy).matrixTransform(matrix);
+        return [{color, x: center.x, y: center.y,
+          angle: Math.atan2(matrix.b, matrix.a) * 180 / Math.PI,
+          opacity: Number(layer.style.opacity || 1)}];
+      });
     }
 
-    function turnRail() {
-      state.alternateRailEdge = !state.alternateRailEdge;
-      refreshArrangement();
+    function clearRulerMotion() {
+      cancelAnimationFrame(rulerFrame);
+      visibleRulers = null;
+      el.rulerMotion.replaceChildren();
+      el.construction.classList.remove('moving-rulers');
     }
+
+    function changeRulers(key) {
+      stopPlay();
+      const before = visibleRulers || rulerPoses();
+      clearRulerMotion();
+      state[key] = !state[key];
+      refreshArrangement();
+      if (reducedMotion.matches) return;
+      const after = rulerPoses();
+      const changingRole = key === 'swapped';
+      const railColor = getMethod().leftColor;
+      const transitions = after.map(next => ({next, old: before.find(pose => pose.color === next.color)}))
+        .filter(({old}) => old);
+      el.rulerMotion.innerHTML = transitions.map(({next}) => `<g data-ruler="${next.color}">${renderTriangle(next.color)}</g>`).join('');
+      el.construction.classList.add('moving-rulers');
+      const begun = performance.now();
+
+      const tick = now => {
+        const progress = Math.min(1, (now - begun) / 650);
+        if (progress === 1) {
+          clearRulerMotion();
+          return;
+        }
+        const t = easeMotion(progress);
+        visibleRulers = transitions.map(({old, next}, index) => {
+          const moving = changingRole || old.color === railColor;
+          const lift = changingRole ? (index === 0 ? -42 : 42) * Math.sin(Math.PI * t) : 0;
+          const change = (next.angle - old.angle + 540) % 360 - 180;
+          const [cx, cy] = triangleCenter(next.color);
+          const pose = {color: next.color, x: old.x + (next.x - old.x) * t, y: old.y + (next.y - old.y) * t + lift,
+            angle: old.angle + change * t,
+            opacity: Math.min(1, old.opacity + (next.opacity - old.opacity) * t + (moving ? .27 * Math.sin(Math.PI * t) : 0))};
+          const shape = el.rulerMotion.children[index];
+          shape.setAttribute('transform', `translate(${pose.x} ${pose.y}) rotate(${pose.angle}) translate(${-cx} ${-cy})`);
+          shape.setAttribute('opacity', pose.opacity);
+          return pose;
+        });
+        rulerFrame = requestAnimationFrame(tick);
+      };
+      tick(begun);
+    }
+
+    function swapRulers() { changeRulers('swapped'); }
+    function turnRail() { changeRulers('alternateRailEdge'); }
 
     function refreshArrangement() {
       state.isDragging = false;
@@ -971,8 +999,8 @@
       renderAngleMarks(m, curX, curY);
 
       // 引かれた平行線の更新（点A (430, 215) を通る水平線 y = 215）
-      const lineStartX = curX + m.drawLocalStartX;
-      const lineEndX = curX + (state.useCustomShape ? m.blockDrawEndX : m.drawLocalEndX);
+      const lineStartX = curX;
+      const lineEndX = curX + (state.useCustomShape ? m.blockDrawEndX : sideLength(m.rightColor, movingEdge(m)));
       if (state.drawProgress > 0) {
         const currentEndX = lineStartX + (lineEndX - lineStartX) * state.drawProgress;
         el.parallelLine.setAttribute('x1', lineStartX.toFixed(1));
@@ -994,7 +1022,7 @@
       }
 
       // 吹き出し図解（ステップ3〜5で角度マークONのときに表示）
-      if (state.step >= 3 && state.showAngles && state.rotation === 0) {
+      if (state.step >= 3 && state.showAngles && state.rotation === 0 && Math.abs(state.viewAngle) < .01) {
         el.callout.style.opacity = '1';
       } else {
         el.callout.style.opacity = '0';
@@ -1111,6 +1139,7 @@
      * ひき方（1 or 2）の切り替え
      */
     function setMethod(methodId) {
+      clearRulerMotion();
       stopPlay();
       stepTimer = 0;
       state.isDragging = false;
@@ -1133,6 +1162,7 @@
      */
     function goToStep(stepNum, keepPlaying = false) {
       if (!keepPlaying) {
+        clearRulerMotion();
         stopPlay();
         stepTimer = 0;
         state.isDragging = false;
@@ -1207,6 +1237,7 @@
      * 実験スイッチ（オプション）の更新
      */
     function updateOptions() {
+      clearRulerMotion();
       state.useStraightRuler = document.getElementById('toggle-straight-ruler').checked;
       state.useCustomShape = document.getElementById('toggle-custom-shape').checked;
       state.showAngles = document.getElementById('toggle-angles').checked;
@@ -1228,6 +1259,7 @@
     }
 
     function startPlay() {
+      clearRulerMotion();
       if (state.step === 5) {
         stepTimer = 0;
         state.step = 1;
@@ -1323,7 +1355,7 @@
       };
 
       const onStart = (e) => {
-        if (state.step === 5) return;
+        if (state.step === 5 || visibleRulers || Math.abs(state.viewAngle - state.rotation) > .01) return;
         stopPlay();
         state.dragStart = localPoint(e);
         state.isDragging = true;
@@ -1385,6 +1417,7 @@
 
     // 初期化処理
     window.addEventListener('DOMContentLoaded', () => {
+      drawConstructionAngle(0);
       renderLeftRuler();
       renderRightRuler();
       renderCalloutDiagram();
