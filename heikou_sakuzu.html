@@ -360,15 +360,16 @@
 
         <!-- 前へ・次へナビゲーション -->
         <div class="mt-3 flex justify-between gap-2">
-          <button onclick="prevStep()" id="btn-prev"
+          <button onclick="prevStep()" id="btn-prev" aria-keyshortcuts="ArrowLeft"
             class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-bold text-sm text-slate-700 transition">
             ◀ まえのステップ
           </button>
-          <button onclick="nextStep()" id="btn-next"
+          <button onclick="nextStep()" id="btn-next" aria-keyshortcuts="ArrowRight"
             class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 font-bold text-sm text-white shadow-sm transition">
             つぎのステップ ▶
           </button>
         </div>
+        <p class="mt-2 text-xs text-slate-500">キーボードでも操作できます。← 前の手順 ／ → 次の手順</p>
       </div>
 
       <!-- 本質理解のための実験スイッチパネル -->
@@ -1238,11 +1239,21 @@
     }
 
     function prevStep() {
-      if (state.step > 1) goToStep(state.step - 1);
+      if (state.step > 1) requestStep(state.step - 1);
     }
 
     function nextStep() {
       if (state.step < 5) requestStep(state.step + 1);
+    }
+
+    function handleStepKey(event) {
+      if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      if (event.target.isContentEditable || event.target.closest?.('input, select, textarea, [role="slider"]')) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      if (event.key === 'ArrowLeft') prevStep();
+      else nextStep();
     }
 
     function resetAnimation() {
@@ -1592,6 +1603,7 @@
       renderScene();
       setupDragInteraction();
       installAudioControls();
+      document.addEventListener('keydown', handleStepKey);
     });
   </script>
 </body>
