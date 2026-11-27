@@ -67,7 +67,14 @@
       cursor: grabbing;
     }
 
+    .experiment-controls { display: flex; flex-wrap: wrap; gap: .65rem .9rem; padding: .65rem .9rem; background: #f0fdf4; }
+    .experiment-controls button, .experiment-controls select { border: 1px solid #86a895; border-radius: .65rem; background: #fff; padding: .48rem .65rem; min-height: 44px; color: #064e3b; font-weight: 700; }
+    .experiment-controls button[aria-pressed="true"] { background: #047857; color: #fff; border-color: #047857; }
+    .experiment-controls button:disabled { opacity: .55; }
+    .experiment-controls label { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 700; }
+    #experiment-note { margin: 0; color: #14532d; flex-basis: 100%; font-size: .82rem; }
     :focus-visible, label:focus-within { outline: 3px solid #0369a1; outline-offset: 3px; }
+    @media (max-width: 640px) { #drawing-board[data-orientation="vertical"] { aspect-ratio: 1; } }
     @media (max-width: 1023px) {
       header > .max-w-7xl { flex-direction: column; }
     }
@@ -107,7 +114,7 @@
         </button>
         <button id="tab-method2" onclick="setMethod(2)"
           class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-emerald-100 hover:text-white">
-          ひき方 2（60°の<ruby>角<rt>かど</rt></ruby>を使う）
+          ひき方 2（<span id="oblique-angle">60°</span>の<ruby>角<rt>かど</rt></ruby>を使う）
         </button>
       </div>
     </div>
@@ -152,21 +159,35 @@
         <!-- 2枚の三角定規の役割インジケーターバー -->
         <div class="bg-slate-50/90 px-4 py-1.5 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div class="flex items-center gap-2">
-            <span class="font-bold text-slate-500">レール役（左）：</span>
+            <span class="font-bold text-slate-500">レール役（固定）：</span>
             <span id="role-left-badge" class="px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 border border-purple-200">
               紫の三角定規（30°・60°・90°）
             </span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="font-bold text-slate-500">動かす定規（右）：</span>
+            <span class="font-bold text-slate-500">動かす役：</span>
             <span id="role-right-badge" class="px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200">
               青い三角定規（45°・45°・90°）
             </span>
           </div>
         </div>
 
+        <div class="experiment-controls" aria-label="三角定規の配置を試す">
+          <button id="swap-rulers" type="button" aria-pressed="false" onclick="swapRulers()">青と紫の役を入れ替える</button>
+          <button id="turn-rail" type="button" aria-pressed="false" onclick="turnRail()">レール役の当てる辺を変える</button>
+          <label for="construction-angle">作図全体の向き
+            <select id="construction-angle" onchange="setConstructionAngle(this.value)">
+              <option value="0">横向き</option>
+              <option value="30">右下がり</option>
+              <option value="-30">右上がり</option>
+              <option value="90">縦向き</option>
+            </select>
+          </label>
+          <p id="experiment-note" role="status">作図を始める前に配置を変えてみよう。滑らせている間は、動かす定規の向きを変えないよ。</p>
+        </div>
+
         <!-- SVG キャンバス (viewBox="0 0 800 500") -->
-        <div class="relative w-full aspect-[8/5] notebook-grid overflow-hidden">
+        <div id="drawing-board" class="relative w-full aspect-[8/5] notebook-grid overflow-hidden">
           <svg id="scene-svg" viewBox="0 0 800 500" class="w-full h-full block touch-none">
             <defs>
               <!-- 青い直角二等辺三角定規 (45°-45°-90°) -->
@@ -195,6 +216,7 @@
               </filter>
             </defs>
 
+            <g id="construction">
             <!-- 1. レール補助線（オレンジ破線） -->
             <g id="layer-guide-lines" class="transition-opacity duration-300">
               <line id="rail-guide-line" x1="310" y1="20" x2="310" y2="480"
@@ -212,29 +234,29 @@
               <line x1="130" y1="115" x2="670" y2="115" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round" />
             </g>
 
-            <!-- 3. 新しく引く平行線（点Aを通る直線 y = 215） -->
-            <g id="layer-drawn-line">
-              <line id="parallel-line" x1="250" y1="215" x2="250" y2="215"
-                stroke="#059669" stroke-width="4" stroke-linecap="round" />
-            </g>
-
-            <!-- 4. 点A (430, 215) -->
-            <g id="layer-point-a">
-              <circle cx="430" cy="215" r="5.5" fill="#dc2626" />
-              <text x="430" y="200" text-anchor="middle" font-size="20" font-weight="900" fill="#1e293b">A</text>
-            </g>
-
-            <!-- 5. 角度マーク（直線アのところ・固定） -->
-            <g id="layer-angle-top"></g>
-
-            <!-- 6. 角度マーク（点Aのところ・スライドに追従） -->
-            <g id="layer-angle-bottom"></g>
-
             <!-- 7. 左側の定規（レール役・ガイド定規） -->
             <g id="layer-left-ruler" filter="url(#drop-shadow)" opacity="0"></g>
 
             <!-- 8. 右側の定規（スライド役・動く定規） -->
             <g id="layer-right-ruler" filter="url(#drop-shadow)" class="grab-cursor"></g>
+
+            <!-- 3. 新しく引く平行線（点Aを通る直線 y = 215） -->
+            <g id="layer-drawn-line" pointer-events="none">
+              <line id="parallel-line" x1="250" y1="215" x2="250" y2="215"
+                stroke="#059669" stroke-width="4" stroke-linecap="round" />
+            </g>
+
+            <!-- 4. 点A (430, 215) -->
+            <g id="layer-point-a" pointer-events="none">
+              <circle cx="430" cy="215" r="5.5" fill="#dc2626" />
+              <text x="430" y="200" text-anchor="middle" font-size="20" font-weight="900" fill="#1e293b">A</text>
+            </g>
+
+            <!-- 5. 角度マーク（直線アのところ・固定） -->
+            <g id="layer-angle-top" pointer-events="none"></g>
+
+            <!-- 6. 角度マーク（点Aのところ・スライドに追従） -->
+            <g id="layer-angle-bottom" pointer-events="none"></g>
 
             <!-- 9. 鉛筆（線を引くアニメーション） -->
             <g id="layer-pencil" pointer-events="none" opacity="0">
@@ -247,7 +269,9 @@
               </g>
             </g>
 
-            <!-- 10. 教科書の吹き出し図解（右下配置） -->
+            </g>
+
+            <!-- 同じ角度を示す図解 -->
             <g id="layer-callout" transform="translate(595, 330)" opacity="0" class="transition-opacity duration-300">
               <rect x="0" y="0" width="180" height="145" rx="16" fill="#ffffff" stroke="#38bdf8" stroke-width="3" filter="url(#drop-shadow)" />
               <text x="90" y="23" text-anchor="middle" font-size="13" font-weight="900" fill="#0284c7">同じ角度でずらす！</text>
@@ -258,7 +282,7 @@
           <!-- ステップ3のときに出るドラッグ案内バッジ -->
           <div id="drag-hint" class="hidden absolute bottom-3 left-3 bg-amber-500/95 text-white px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg flex items-center gap-1.5 animate-bounce pointer-events-none">
             <span>👆</span>
-            <span>右の定規をドラッグしてレールに沿って動かせるよ！</span>
+            <span>動かす役の定規を、レールに沿ってドラッグできるよ！</span>
           </div>
         </div>
 
@@ -349,12 +373,12 @@
           </p>
 
           <div class="space-y-3">
-            <!-- スイッチ①：左の定規を「ただの直線定規」に変える -->
+            <!-- スイッチ①：レール役を「ただの直線定規」に変える -->
             <label class="flex items-start justify-between gap-3 bg-white/90 hover:bg-white p-3 rounded-2xl border border-amber-200/80 cursor-pointer transition shadow-sm">
               <div class="flex-1">
                 <div class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
                   <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                  左の定規を「ただの直線定規」に変える
+                  レール役を「ただの直線定規」に変える
                 </div>
                 <p class="text-xs text-slate-500 mt-0.5 leading-snug">
                   レール役は<strong>まっすぐな線</strong>であれば何でもOK！三角定規でなくても滑らせられます。
@@ -425,12 +449,14 @@
       isPlaying: false,   // 自動再生中かどうか
       useStraightRuler: false, // 左の定規をただの直線定規にするか
       useCustomShape: false,   // 右の定規を不思議な形の角ブロックにするか
+      swapped: false,
+      alternateRailEdge: false,
+      rotation: 0,
       showAngles: true,        // 角度マークと補助線を表示するか
       animFrameId: null,
       lastTimestamp: 0,
       isDragging: false,
-      dragStartClientX: 0,
-      dragStartClientY: 0,
+      dragStart: null,
       dragStartProgress: 0
     };
 
@@ -446,6 +472,7 @@
 
     const METHODS = {
       1: {
+        angle: 90,
         subtitle: 'ひき方1：直角（90°）を使う方法',
         leftRoleText: '紫の三角定規（30°・60°・90°）',
         leftRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 border border-purple-200',
@@ -484,7 +511,7 @@
           4: {
             short: '点Aを通る直線をえんぴつで引く',
             title: '④ 2まいの定規をしっかり押さえて、点Aを通る直線を引く。',
-            desc: '定規がずれないように押さえながら、点A（430, 215）を通る直線をえんぴつで引きます。'
+            desc: '定規がずれないように押さえながら、点Aを通る直線をえんぴつで引きます。'
           },
           5: {
             short: '完成！平行な2本の直線',
@@ -494,6 +521,7 @@
         }
       },
       2: {
+        angle: 60,
         subtitle: 'ひき方2：60°の角を使う方法',
         leftRoleText: '青い三角定規（45°・45°・90°）',
         leftRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200',
@@ -523,7 +551,7 @@
           2: {
             short: 'レール役の青い三角定規（45°・45°・90°）を当てる',
             title: '② 左側の斜めの辺に、青い三角定規の斜辺をぴったり合わせる。',
-            desc: '左側から青い三角定規（45°・45°・90°）を寄せて、斜辺同士をレール線上でぴったり合わせます。2まいの定規は重ならずに向かい合います。'
+            desc: '左側から青い三角定規（45°・45°・90°）を寄せて、青い定規の斜辺を、紫の定規の左側の辺に合わせます。2まいの定規は重ならずに向かい合います。'
           },
           3: {
             short: '右斜め下60°のレールに沿って点Aまで滑らせる',
@@ -533,7 +561,7 @@
           4: {
             short: '点Aを通る直線をえんぴつで引く',
             title: '④ 2まいの定規をしっかり押さえて、点Aを通る直線を引く。',
-            desc: '定規が動かないように押さえながら、点A（430, 215）を通る直線をえんぴつで引きます。'
+            desc: '定規が動かないように押さえながら、点Aを通る直線をえんぴつで引きます。'
           },
           5: {
             short: '完成！同じ角度（60°）のままずらしたので平行！',
@@ -543,6 +571,28 @@
         }
       }
     };
+
+    function getMethod() {
+      const m = METHODS[state.method];
+      if (!state.swapped) return m;
+      const oblique = state.method === 2 && !state.useCustomShape;
+      const dirX = oblique ? Math.SQRT1_2 : m.dirX;
+      const dirY = oblique ? Math.SQRT1_2 : m.dirY;
+      return {
+        ...m,
+        angle: oblique ? 45 : m.angle,
+        dirX,
+        dirY,
+        totalDist: DY / dirY,
+        leftEntryOffsetX: -110 * dirY,
+        leftEntryOffsetY: 110 * dirX,
+        drawLocalEndX: state.method === 1 ? 200 : 260,
+        leftRoleText: m.rightRoleText,
+        leftRoleClass: m.rightRoleClass,
+        rightRoleText: m.leftRoleText,
+        rightRoleClass: m.leftRoleClass
+      };
+    }
 
     // DOM要素の参照キャッシュ
     const el = {
@@ -566,6 +616,7 @@
       dragHint: document.getElementById('drag-hint'),
       // SVGレイヤー
       svg: document.getElementById('scene-svg'),
+      construction: document.getElementById('construction'),
       guideLines: document.getElementById('layer-guide-lines'),
       railGuideLine: document.getElementById('rail-guide-line'),
       railGuideLabel: document.getElementById('rail-guide-label'),
@@ -648,90 +699,51 @@
       return pts.map(p => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ');
     }
 
-    /**
-     * 左側の定規（レール役・ガイド定規）を描画
-     */
+    function renderTriangle(points, color, tickEdge = [0, 1], rotation = 0) {
+      const blue = color === 'blue';
+      const label = blue ? '45°・45°・90°' : '30°・60°・90°';
+      const stroke = blue ? '#0284c7' : '#7c3aed';
+      const textColor = blue ? '#075985' : '#5b21b6';
+      const hole = computeInsetTriangle(...points, 17);
+      const [a, b] = tickEdge.map(i => points[i]);
+      const [cx, cy] = [0, 1].map(i => points.reduce((sum, point) => sum + point[i], 0) / 3);
+      return `
+        <polygon points="${ptsToStr(points)}" fill="url(#${color}-ruler-grad)" stroke="${stroke}" stroke-width="2.2" stroke-linejoin="round" />
+        <polygon points="${ptsToStr(hole)}" fill="#fff" fill-opacity="0.88" stroke="${stroke}" stroke-width="1.6" stroke-linejoin="round" />
+        ${createTicksSVG(...a, ...b, 6, 12)}
+        <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotation} ${cx} ${cy})"
+          font-size="12" font-weight="900" fill="${textColor}">${label}</text>`;
+    }
+
     function renderLeftRuler() {
-      let html = '';
-
-      if (state.method === 1) {
-        // 【ひき方1】レール線 x = 310 の左側に配置
-        if (state.useStraightRuler) {
-          // ただの直線定規（幅 60px、右辺が x = 310）
-          html = `
-            <g>
-              <rect x="250" y="55" width="60" height="360" rx="6" fill="url(#straight-ruler-grad)" stroke="#d97706" stroke-width="2.2" />
-              ${createTicksSVG(310, 68, 310, 402, 7, 12, -1)}
-              <text x="280" y="235" text-anchor="middle" transform="rotate(-90, 280, 235)" font-size="14" font-weight="900" fill="#92400e" letter-spacing="2">
-                ただの直線定規（レール役）
-              </text>
-            </g>
-          `;
-        } else {
-          // 紫の三角定規（厳密な 30°・60°・90°）
-          // Q0=(310, 80) [30°], Q1=(310, 357.1) [60°], Q2=(150, 357.1) [90°]
-          const q0 = [310, 80];
-          const q1 = [310, 357.13];
-          const q2 = [150, 357.13];
-          const hole = computeInsetTriangle(q0, q1, q2, 24);
-          html = `
-            <g>
-              <polygon points="${ptsToStr([q0, q1, q2])}" fill="url(#purple-ruler-grad)" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round" />
-              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#8b5cf6" stroke-width="1.6" stroke-linejoin="round" />
-              ${createTicksSVG(310, 92, 310, 345, 6, 12, -1)}
-              <text x="230" y="345" text-anchor="middle" font-size="11" font-weight="900" fill="#5b21b6">30°・60°・90°</text>
-            </g>
-          `;
-        }
-      } else {
-        // 【ひき方2】レール線（(270, 115) と (340, 236.24) を結ぶ右斜め下60°の直線）の左側に配置
-        // Q0 = (250, 80.36) [45°], Q1 = (380, 305.53) [45°], Q2 = (202.42, 257.94) [90°]
-        const q0 = [250, 80.36];
-        const q1 = [380, 305.53];
-        const q2 = [202.42, 257.94];
-
-        if (state.useStraightRuler) {
-          // ただの直線定規（斜辺 Q0-Q1 に右辺をぴったり合わせ、幅 58px で左側に展開）
-          // レール方向単位ベクトル u = (0.5, 0.866025), 左向き法線 n = (-0.866025, 0.5)
-          const w = 58;
-          const nx = -SQRT3 / 2;
-          const ny = 0.5;
-          // 少し上下に延長した長方形の4頂点
-          const a0 = [q0[0] - 10 * 0.5, q0[1] - 10 * (SQRT3 / 2)];
-          const a1 = [q1[0] + 15 * 0.5, q1[1] + 15 * (SQRT3 / 2)];
-          const a2 = [a1[0] + w * nx, a1[1] + w * ny];
-          const a3 = [a0[0] + w * nx, a0[1] + w * ny];
-          const midX = (a0[0] + a1[0] + a2[0] + a3[0]) / 4;
-          const midY = (a0[1] + a1[1] + a2[1] + a3[1]) / 4;
-
-          html = `
-            <g>
-              <polygon points="${ptsToStr([a0, a1, a2, a3])}" fill="url(#straight-ruler-grad)" stroke="#d97706" stroke-width="2.2" stroke-linejoin="round" />
-              ${createTicksSVG(q0[0], q0[1], q1[0], q1[1], 7, 12, 1)}
-              <text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" text-anchor="middle" dominant-baseline="middle"
-                transform="rotate(60, ${midX.toFixed(1)}, ${midY.toFixed(1)})"
-                font-size="13" font-weight="900" fill="#92400e" letter-spacing="1.5">
-                ただの直線定規（レール役）
-              </text>
-            </g>
-          `;
-        } else {
-          // 青い直角二等辺三角定規（厳密な 45°・45°・90°）
-          const hole = computeInsetTriangle(q0, q1, q2, 22);
-          html = `
-            <g>
-              <polygon points="${ptsToStr([q0, q1, q2])}" fill="url(#blue-ruler-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
-              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#0ea5e9" stroke-width="1.6" stroke-linejoin="round" />
-              ${createTicksSVG(q0[0], q0[1], q1[0], q1[1], 6, 12, 1)}
-              <text x="275" y="218" text-anchor="middle" transform="rotate(60, 275, 218)" font-size="11" font-weight="900" fill="#0369a1">
-                45°・45°・90°
-              </text>
-            </g>
-          `;
-        }
+      const m = getMethod();
+      const color = m.leftRoleText.startsWith('青') ? 'blue' : 'purple';
+      const blue = color === 'blue';
+      const contact = (along, offset = 0) => [
+        m.originX + m.dirX * along - m.dirY * offset,
+        m.originY + m.dirY * along + m.dirX * offset
+      ];
+      // 定規の接触辺はレール上に置き、残りの頂点は動かす道具と反対側に置く。
+      const start = -38;
+      const end = 214;
+      const length = end - start;
+      const a = contact(start);
+      const b = contact(end);
+      if (state.useStraightRuler) {
+        const corners = [a, b, contact(end, 56), contact(start, 56)];
+        const [x, y] = contact((start + end) / 2, 28);
+        el.leftRuler.innerHTML = `
+          <polygon points="${ptsToStr(corners)}" fill="url(#straight-ruler-grad)" stroke="#d97706" stroke-width="2.2" />
+          ${createTicksSVG(...a, ...b)}
+          <text x="${x}" y="${y}" transform="rotate(${m.angle - 180} ${x} ${y})" text-anchor="middle"
+            dominant-baseline="middle" font-size="13" font-weight="900" fill="#92400e">直線定規</text>`;
+        return;
       }
-
-      el.leftRuler.innerHTML = html;
+      const useHypotenuse = (blue || state.method === 2) !== state.alternateRailEdge;
+      const tip = useHypotenuse
+        ? contact(start + length * (blue ? .5 : .75), length * (blue ? .5 : SQRT3 / 4))
+        : contact(end, blue ? length : length / SQRT3);
+      el.leftRuler.innerHTML = renderTriangle([a, b, tip], color, [0, 1], m.angle - 180);
     }
 
     /**
@@ -739,6 +751,14 @@
      * ローカル座標系は左上頂点 P0 = (0, 0) を原点とする
      */
     function renderRightRuler() {
+      const m = getMethod();
+      if (state.swapped && !state.useCustomShape) {
+        const end = m.drawLocalEndX;
+        const tip = state.method === 1 ? [0, end / SQRT3] : [end / 2, end / 2];
+        el.rightRuler.innerHTML = renderTriangle([[0, 0], [end, 0], tip], state.method === 1 ? 'purple' : 'blue');
+        return;
+      }
+
       let html = '';
 
       if (state.method === 1) {
@@ -814,86 +834,46 @@
     /**
      * 角度マーク（赤い直角記号 ┐ や 二重弧 ◠）を描画
      */
-    function renderAngleMarks(curX, curY) {
+    function angleMark(m, x, y, radius, color) {
+      if (m.angle === 90) {
+        return `<polyline points="${x},${y + radius} ${x + radius},${y + radius} ${x + radius},${y}" fill="none" stroke="${color}" stroke-width="2.4" />`;
+      }
+      return `<path d="M ${x + radius},${y} A ${radius},${radius} 0 0,1 ${x + radius * m.dirX},${y + radius * m.dirY}"
+        fill="none" stroke="${color}" stroke-width="2.4" />`;
+    }
+
+    function renderAngleMarks(m, curX, curY) {
       if (!state.showAngles) {
         el.angleTop.innerHTML = '';
         el.angleBottom.innerHTML = '';
         return;
       }
-
-      if (state.method === 1) {
-        // 【ひき方1】直線アとの交点 (310, 115) の右下内側に直角マーク (90°)
-        el.angleTop.innerHTML = `
-          <polyline points="310,135 330,135 330,115" fill="none" stroke="#ef4444" stroke-width="2.6" />
-          <text x="336" y="136" font-size="13" font-weight="900" fill="#ef4444">90°</text>
-        `;
-
-        // 移動後の点Aを通る直線との交点 (curX, curY) の右下内側に直角マーク
-        if (state.step >= 3 && state.slideProgress > 0.12) {
-          el.angleBottom.innerHTML = `
-            <polyline points="${curX},${curY + 20} ${curX + 20},${curY + 20} ${curX + 20},${curY}" fill="none" stroke="#ef4444" stroke-width="2.6" />
-            <text x="${curX + 26}" y="${curY + 21}" font-size="13" font-weight="900" fill="#ef4444">90°（同じ！）</text>
-          `;
-        } else {
-          el.angleBottom.innerHTML = '';
-        }
-      } else {
-        // 【ひき方2】直線ア（水平右 0°）とレール線（右斜め下 60°）の間の内角 = 60°！
-        // 交点 (vx, vy) の右下内側（0° 〜 60°）に赤い二重弧を描く
-        const drawDoubleArc60 = (vx, vy, labelText) => {
-          const r1 = 22;
-          const r2 = 28;
-          const rad = Math.PI / 3; // 60° (cos60° = 0.5, sin60° = 0.866)
-          const x1a = vx + r1, y1a = vy;
-          const x1b = vx + r1 * Math.cos(rad), y1b = vy + r1 * Math.sin(rad);
-          const x2a = vx + r2, y2a = vy;
-          const x2b = vx + r2 * Math.cos(rad), y2b = vy + r2 * Math.sin(rad);
-
-          return `
-            <path d="M ${x1a},${y1a} A ${r1},${r1} 0 0,1 ${x1b.toFixed(1)},${y1b.toFixed(1)}" fill="none" stroke="#ef4444" stroke-width="2.4" />
-            <path d="M ${x2a},${y2a} A ${r2},${r2} 0 0,1 ${x2b.toFixed(1)},${y2b.toFixed(1)}" fill="none" stroke="#ef4444" stroke-width="2.4" />
-            <text x="${(vx + 33).toFixed(1)}" y="${(vy + 22).toFixed(1)}" font-size="13" font-weight="900" fill="#ef4444">${labelText}</text>
-          `;
-        };
-
-        el.angleTop.innerHTML = drawDoubleArc60(270, 115, '60°');
-
-        if (state.step >= 3 && state.slideProgress > 0.12) {
-          el.angleBottom.innerHTML = drawDoubleArc60(curX, curY, '60°（同じ！）');
-        } else {
-          el.angleBottom.innerHTML = '';
-        }
-      }
+      const mark = (x, y) => {
+        const labelX = x + 32;
+        const labelY = y + 22;
+        const arcs = angleMark(m, x, y, 20, '#b91c1c')
+          + (m.angle === 90 ? '' : angleMark(m, x, y, 26, '#b91c1c'));
+        return arcs + `<text x="${labelX}" y="${labelY}" transform="rotate(${-state.rotation} ${labelX} ${labelY})"
+          font-size="17" font-weight="900" fill="#991b1b" stroke="#fff" stroke-width="2.5" paint-order="stroke">${m.angle}°</text>`;
+      };
+      el.angleTop.innerHTML = mark(m.originX, m.originY);
+      el.angleBottom.innerHTML = state.step >= 3 && state.slideProgress > 0.12 ? mark(curX, curY) : '';
     }
 
-    /**
-     * 吹き出し内のミニ図解（教科書と同じ2本の平行線と交わるレール直線）を描画
-     */
     function renderCalloutDiagram() {
-      if (state.method === 1) {
-        el.calloutDiagram.innerHTML = `
-          <line x1="12" y1="24" x2="118" y2="24" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" />
-          <line x1="12" y1="68" x2="118" y2="68" stroke="#059669" stroke-width="2.8" stroke-linecap="round" />
-          <line x1="52" y1="6" x2="52" y2="90" stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="4 3" />
-          <!-- 右下内側の直角マーク -->
-          <polyline points="52,35 63,35 63,24" fill="none" stroke="#ef4444" stroke-width="2.2" />
-          <polyline points="52,79 63,79 63,68" fill="none" stroke="#ef4444" stroke-width="2.2" />
-        `;
-      } else {
-        // 右斜め下60°に傾くレール直線と2本の平行線、右下内側(0°〜60°)の二重弧
-        el.calloutDiagram.innerHTML = `
-          <line x1="12" y1="24" x2="118" y2="24" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" />
-          <line x1="12" y1="68" x2="118" y2="68" stroke="#059669" stroke-width="2.8" stroke-linecap="round" />
-          <!-- (42, 24) と (67.4, 68) を通る60°斜線 -->
-          <line x1="31.6" y1="6" x2="80.1" y2="90" stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="4 3" />
-          <!-- 上の交点 (42, 24) の右下内側二重弧 -->
-          <path d="M 54,24 A 12,12 0 0,1 48,34.4" fill="none" stroke="#ef4444" stroke-width="2" />
-          <path d="M 58,24 A 16,16 0 0,1 50,37.9" fill="none" stroke="#ef4444" stroke-width="2" />
-          <!-- 下の交点 (67.4, 68) の右下内側二重弧 -->
-          <path d="M 79.4,68 A 12,12 0 0,1 73.4,78.4" fill="none" stroke="#ef4444" stroke-width="2" />
-          <path d="M 83.4,68 A 16,16 0 0,1 75.4,81.9" fill="none" stroke="#ef4444" stroke-width="2" />
-        `;
-      }
+      const m = getMethod();
+      const topX = 44;
+      const topY = 24;
+      const bottomY = 68;
+      const slope = m.dirX / m.dirY;
+      const bottomX = topX + (bottomY - topY) * slope;
+      el.calloutDiagram.innerHTML = `
+        <line x1="12" y1="${topY}" x2="118" y2="${topY}" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" />
+        <line x1="12" y1="${bottomY}" x2="118" y2="${bottomY}" stroke="#059669" stroke-width="2.8" stroke-linecap="round" />
+        <line x1="${topX + (6 - topY) * slope}" y1="6" x2="${bottomX + (90 - bottomY) * slope}" y2="90"
+          stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="4 3" />
+        ${angleMark(m, topX, topY, 11, '#b91c1c')}
+        ${angleMark(m, bottomX, bottomY, 11, '#b91c1c')}`;
     }
 
     /**
@@ -901,39 +881,61 @@
      */
     function updateGuideLine() {
       el.guideLines.style.opacity = state.showAngles ? '1' : '0';
-      if (state.method === 1) {
-        // x = 310 の垂直線
-        el.railGuideLine.setAttribute('x1', '310');
-        el.railGuideLine.setAttribute('y1', '20');
-        el.railGuideLine.setAttribute('x2', '310');
-        el.railGuideLine.setAttribute('y2', '480');
-        el.railGuideLabel.setAttribute('x', '300');
-        el.railGuideLabel.setAttribute('y', '472');
-        el.railGuideLabel.setAttribute('text-anchor', 'end');
-      } else {
-        // (270, 115) と (340, 236.24) を結ぶ右斜め下60°の直線
-        // u = (0.5, 0.866025)
-        const ux = 0.5;
-        const uy = SQRT3 / 2;
-        const x1 = 270 - 105 * ux; // 217.5
-        const y1 = 115 - 105 * uy; // 24.07
-        const x2 = 270 + 410 * ux; // 475.0
-        const y2 = 115 + 410 * uy; // 470.07
-        el.railGuideLine.setAttribute('x1', x1.toFixed(1));
-        el.railGuideLine.setAttribute('y1', y1.toFixed(1));
-        el.railGuideLine.setAttribute('x2', x2.toFixed(1));
-        el.railGuideLine.setAttribute('y2', y2.toFixed(1));
-        el.railGuideLabel.setAttribute('x', (x2 - 14).toFixed(1));
-        el.railGuideLabel.setAttribute('y', '472');
-        el.railGuideLabel.setAttribute('text-anchor', 'end');
+      const m = getMethod();
+      const xAt = y => m.originX + (y - m.originY) * m.dirX / m.dirY;
+      el.railGuideLine.setAttribute('x1', xAt(35));
+      el.railGuideLine.setAttribute('y1', 35);
+      el.railGuideLine.setAttribute('x2', xAt(437));
+      el.railGuideLine.setAttribute('y2', 437);
+      el.railGuideLabel.setAttribute('x', xAt(437) - 12);
+      el.railGuideLabel.setAttribute('y', 433);
+      el.railGuideLabel.style.display = state.rotation ? 'none' : '';
+    }
+
+    function setConstructionAngle(value) {
+      state.isDragging = false;
+      state.rotation = Number(value);
+      const vertical = state.rotation === 90;
+      el.svg.setAttribute('viewBox', vertical ? '150 0 500 500' : '0 0 800 500');
+      document.getElementById('drawing-board').dataset.orientation = vertical ? 'vertical' : '';
+      const rad = state.rotation * Math.PI / 180;
+      const cos = Math.abs(Math.cos(rad));
+      const sin = Math.abs(Math.sin(rad));
+      const scale = Math.min(1, 770 / (760 * cos + 470 * sin), 480 / (760 * sin + 470 * cos));
+      el.construction.setAttribute('transform', `translate(400 250) rotate(${state.rotation}) scale(${scale}) translate(-400 -250)`);
+      for (const label of el.construction.querySelectorAll('#layer-base-line text, #layer-point-a text')) {
+        label.setAttribute('transform', `rotate(${-state.rotation} ${label.getAttribute('x')} ${label.getAttribute('y')})`);
       }
+      updateGuideLine();
+      updateUI();
+      renderScene();
+    }
+
+    function swapRulers() {
+      state.swapped = !state.swapped;
+      refreshArrangement();
+    }
+
+    function turnRail() {
+      state.alternateRailEdge = !state.alternateRailEdge;
+      refreshArrangement();
+    }
+
+    function refreshArrangement() {
+      state.isDragging = false;
+      renderLeftRuler();
+      renderRightRuler();
+      renderCalloutDiagram();
+      updateGuideLine();
+      updateUI();
+      renderScene();
     }
 
     /**
      * 全体のビジュアル状態をフレームごとに更新
      */
     function renderScene() {
-      const m = METHODS[state.method];
+      const m = getMethod();
 
       // 現在の右定規の基準頂点 P0 の位置を計算
       const dist = m.totalDist * state.slideProgress;
@@ -966,7 +968,7 @@
       }
 
       // 角度マークの更新
-      renderAngleMarks(curX, curY);
+      renderAngleMarks(m, curX, curY);
 
       // 引かれた平行線の更新（点A (430, 215) を通る水平線 y = 215）
       const lineStartX = curX + m.drawLocalStartX;
@@ -992,7 +994,7 @@
       }
 
       // 吹き出し図解（ステップ3〜5で角度マークONのときに表示）
-      if (state.step >= 3 && state.showAngles) {
+      if (state.step >= 3 && state.showAngles && state.rotation === 0) {
         el.callout.style.opacity = '1';
       } else {
         el.callout.style.opacity = '0';
@@ -1015,7 +1017,7 @@
      * UIテキスト・ボタン状態の更新
      */
     function updateUI() {
-      const m = METHODS[state.method];
+      const m = getMethod();
       const stepInfo = m.steps[state.step];
 
       // タブの見た目更新
@@ -1026,6 +1028,19 @@
         el.tab1.className = 'flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-emerald-100 hover:text-white';
         el.tab2.className = 'flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-emerald-800 shadow';
       }
+
+      const swap = document.getElementById('swap-rulers');
+      const turn = document.getElementById('turn-rail');
+      swap.setAttribute('aria-pressed', String(state.swapped));
+      swap.disabled = state.useCustomShape || state.useStraightRuler;
+      turn.setAttribute('aria-pressed', String(state.alternateRailEdge));
+      turn.disabled = state.useStraightRuler;
+      document.getElementById('oblique-angle').textContent = state.swapped && !state.useCustomShape ? '45°' : '60°';
+      const note = document.getElementById('experiment-note');
+      const message = swap.disabled
+        ? '青と紫を入れ替えるには、実験スイッチで三角定規2枚に戻そう。'
+        : '配置を変えても、レール役を固定し、動かす定規は向きを変えずに滑らせよう。';
+      if (note.textContent !== message) note.textContent = message;
 
       // 役割バッジの更新
       el.roleLeftBadge.textContent = state.useStraightRuler ? 'ただの直線定規（レール役）' : m.leftRoleText;
@@ -1043,17 +1058,22 @@
       const rail = state.useStraightRuler ? '直線定規' : m.leftRoleText;
       const moving = state.useCustomShape ? 'ブロック' : m.rightRoleText;
       const experiments = {
-        1: ['上の辺を直線アに合わせる', '① ' + moving + 'の上のまっすぐな辺を、直線アに合わせます。'],
-        2: ['レールを当てる', '② ' + rail + 'のまっすぐな辺を、' + moving + 'の左側の辺に当てます。'],
-        3: ['点Aまで滑らせる', '③ ' + rail + 'を押さえ、' + moving + 'の上の辺が点Aに合うまで、レールに当てたまま滑らせます。'],
-        4: ['上の辺に沿って線を引く', '④ 道具を押さえ、上の辺に沿って点Aを通る線を引きます。']
+        1: ['作図に使う辺を直線アに合わせる', '① ' + moving + 'のまっすぐな辺を、直線アに合わせます。'],
+        2: ['レールを当てる', '② ' + rail + 'のまっすぐな辺を、' + moving + 'のとなりの辺に当てます。'],
+        3: ['点Aまで滑らせる', '③ ' + rail + 'を押さえ、線を引く辺が点Aに合うまで定規を滑らせます。'],
+        4: ['辺に沿って線を引く', '④ 道具を押さえ、そろえた辺に沿って点Aを通る線を引きます。'],
+        5: ['完成！平行な2本の直線', '⑤ 直線アに平行な直線がひけました。']
       };
-      const alternate = (state.useStraightRuler || state.useCustomShape) && experiments[state.step];
+      const changed = state.swapped || state.alternateRailEdge || state.rotation || state.useStraightRuler || state.useCustomShape;
+      const alternate = changed && experiments[state.step];
       el.stepShortTitle.textContent = alternate ? alternate[0] : stepInfo.short;
-      el.methodSubtitle.textContent = m.subtitle;
+      el.methodSubtitle.textContent = state.method === 2 ? `ひき方2：${m.angle}°の角を使う方法` : m.subtitle;
       el.stepDetailTitle.textContent = alternate ? alternate[1] : stepInfo.title;
-      el.stepDetailDesc.hidden = Boolean(alternate);
-      el.stepDetailDesc.textContent = stepInfo.desc;
+      el.stepDetailDesc.hidden = Boolean(alternate && (state.step < 3 || state.step === 4));
+      el.stepDetailDesc.textContent = !alternate ? stepInfo.desc
+        : state.step === 3 ? '動かす定規の向きを変えず、同じ辺をレールに当てたまま動かします。'
+        : state.step === 5 ? `直線アと新しい直線は、レールと同じ角度（${m.angle}°）で交わるので平行です。`
+        : '';
 
       // ステップボタン（1〜5）のアクティブ装飾
       for (let i = 1; i <= 5; i++) {
@@ -1191,11 +1211,7 @@
       state.useCustomShape = document.getElementById('toggle-custom-shape').checked;
       state.showAngles = document.getElementById('toggle-angles').checked;
 
-      renderLeftRuler();
-      renderRightRuler();
-      updateGuideLine();
-      updateUI();
-      renderScene();
+      refreshArrangement();
     }
 
     /**
@@ -1300,20 +1316,17 @@
      * SVG上の右定規の直接ドラッグ操作（マウス＆タッチ対応）
      */
     function setupDragInteraction() {
-      const getClientPos = (e) => {
-        if (e.touches && e.touches.length > 0) {
-          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        }
-        return { x: e.clientX, y: e.clientY };
+      const localPoint = e => {
+        const pointer = e.touches?.[0] || e;
+        const matrix = el.construction.getScreenCTM();
+        return new DOMPoint(pointer.clientX, pointer.clientY).matrixTransform(matrix.inverse());
       };
 
       const onStart = (e) => {
         if (state.step === 5) return;
         stopPlay();
-        const pos = getClientPos(e);
+        state.dragStart = localPoint(e);
         state.isDragging = true;
-        state.dragStartClientX = pos.x;
-        state.dragStartClientY = pos.y;
         state.dragStartProgress = state.slideProgress;
         stepTimer = 0;
         state.slideInProgress = 1;
@@ -1327,15 +1340,10 @@
       const onMove = (e) => {
         if (!state.isDragging) return;
         e.preventDefault();
-        const pos = getClientPos(e);
-        const m = METHODS[state.method];
-
-        const rect = el.svg.getBoundingClientRect();
-        const scaleX = 800 / rect.width;
-        const scaleY = 500 / rect.height;
-
-        const dx = (pos.x - state.dragStartClientX) * scaleX;
-        const dy = (pos.y - state.dragStartClientY) * scaleY;
+        const pos = localPoint(e);
+        const m = getMethod();
+        const dx = pos.x - state.dragStart.x;
+        const dy = pos.y - state.dragStart.y;
 
         // レール方向ベクトルへの射影距離
         const projectedDist = dx * m.dirX + dy * m.dirY;
