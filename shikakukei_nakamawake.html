@@ -113,9 +113,10 @@
         </button>
       </div>
 
-      <button id="btn-sound" onclick="toggleSound()" title="音のオン・オフ"
-        class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-base shrink-0 transition">
-        🔊
+      <button id="btn-sound" onclick="toggleSound()" title="読み上げと効果音のオン・オフ"
+        aria-label="読み上げと効果音" aria-pressed="true"
+        class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-xs font-bold whitespace-nowrap shrink-0 transition">
+        🔊 音声 ON
       </button>
     </div>
   </header>
@@ -401,6 +402,7 @@
   <!-- タッチドラッグ追従用ゴースト -->
   <div id="touch-drag-ghost" class="hidden fixed z-50 pointer-events-none w-20 h-20 bg-white rounded-2xl border-4 border-blue-500 shadow-2xl flex flex-col items-center justify-center p-1"></div>
 
+  <script src="js/shikakukei-narration.js"></script>
   <script>
     /**
      * 教科書画像 (1)〜(9) の厳密な幾何データ
@@ -634,60 +636,145 @@
      * Web Audio API による優しい効果音
      */
     let audioCtx = null;
+    let audioOutput = null;
     function playTone(type) {
       if (!state.soundOn) return;
       try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          audioCtx = new AudioContextClass();
+          audioOutput = audioCtx.createGain();
+          audioOutput.connect(audioCtx.destination);
+        }
+        if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+          // ユーザー操作の中で再開を要求し、再開後に始まる音を予約する。
+          audioCtx.resume().catch(() => {});
+        }
         const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
+        const note = (freq, { endFreq = freq, delay = 0, duration = 0.15, volume = 0.18, wave = 'sine' } = {}) => {
+          const start = now + delay;
+          const stop = start + duration;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = wave;
+          osc.frequency.setValueAtTime(freq, start);
+          osc.frequency.linearRampToValueAtTime(endFreq, stop);
+          gain.gain.setValueAtTime(0.001, start);
+          gain.gain.linearRampToValueAtTime(volume, start + 0.012);
+          gain.gain.exponentialRampToValueAtTime(0.001, stop);
+          osc.connect(gain);
+          gain.connect(audioOutput);
+          osc.onended = () => {
+            osc.disconnect();
+            gain.disconnect();
+          };
+          osc.start(start);
+          osc.stop(stop);
+        };
         if (type === 'step') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(523.25, now);
-          gain.gain.setValueAtTime(0.1, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-          osc.start(now);
-          osc.stop(now + 0.14);
+          note(523.25, { wave: 'triangle' });
+        } else if (type === 'placed') {
+          note(740, { wave: 'triangle', duration: 0.13 });
+        } else if (type === 'slide') {
+          note(420, { endFreq: 660, wave: 'triangle', duration: 0.22 });
+        } else if (type === 'checked') {
+          note(659.25, { duration: 0.24 });
         } else if (type === 'correct') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(659.25, now);
-          osc.frequency.setValueAtTime(880.0, now + 0.12);
-          gain.gain.setValueAtTime(0.18, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-          osc.start(now);
-          osc.stop(now + 0.4);
+          note(659.25, { duration: 0.19 });
+          note(880, { delay: 0.12, duration: 0.25 });
         } else if (type === 'wrong') {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(195, now);
-          osc.frequency.linearRampToValueAtTime(150, now + 0.25);
-          gain.gain.setValueAtTime(0.16, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-          osc.start(now);
-          osc.stop(now + 0.28);
+          note(330, { endFreq: 220, duration: 0.25, wave: 'triangle' });
         } else if (type === 'clear') {
           [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
-            const o = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            o.connect(g);
-            g.connect(audioCtx.destination);
-            o.type = 'sine';
-            o.frequency.setValueAtTime(freq, now + i * 0.09);
-            g.gain.setValueAtTime(0.14, now + i * 0.09);
-            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.45);
-            o.start(now + i * 0.09);
-            o.stop(now + i * 0.09 + 0.45);
+            note(freq, { delay: i * 0.09, duration: 0.3, volume: 0.13 });
           });
         }
       } catch (e) {}
     }
 
+    let narrationAudio = null;
+    let narrationSource = null;
+    let decodingNarration = false;
+    let narrationUntil = 0;
+    const narrationQueue = [];
+
+    function stopNarration() {
+      narrationUntil = 0;
+      narrationQueue.length = 0;
+      const source = narrationSource;
+      narrationSource = null;
+      if (source) source.stop();
+    }
+
+    function playNextNarration() {
+      if (!narrationAudio || narrationSource || narrationQueue.length === 0) return;
+      const [offset, duration] = shikakukeiNarration.clips[narrationQueue.shift()];
+      const source = audioCtx.createBufferSource();
+      source.buffer = narrationAudio;
+      source.connect(audioOutput);
+      source.onended = () => {
+        source.disconnect();
+        if (narrationSource === source) {
+          narrationSource = null;
+          playNextNarration();
+        }
+      };
+      narrationSource = source;
+      source.start(audioCtx.currentTime + 0.06, offset, duration);
+    }
+
+    function narrate(clip, interrupt = true) {
+      if (!state.soundOn || !audioCtx || typeof shikakukeiNarration === 'undefined') return;
+      if (interrupt) stopNarration();
+      narrationUntil = performance.now() + 8000;
+      narrationQueue.push(clip);
+      if (narrationAudio) {
+        playNextNarration();
+      } else if (!decodingNarration) {
+        decodingNarration = true;
+        const data = Uint8Array.from(atob(shikakukeiNarration.mp3), char => char.charCodeAt(0));
+        audioCtx.decodeAudioData(data.buffer).then(buffer => {
+          narrationAudio = buffer;
+          playNextNarration();
+        }).catch(stopNarration).finally(() => { decodingNarration = false; });
+      }
+    }
+
+    function narrationIsPlaying(now) {
+      return now < narrationUntil && (narrationSource !== null || narrationQueue.length > 0);
+    }
+
+    function checkNarrationClip() {
+      const shape = SHAPES_DATA[state.currentIndex];
+      switch (state.step) {
+        case 0: return `shape-${shape.id}`;
+        case 1: return 'outline';
+        case 2: return 'colors';
+        case RED_PLACE: return 'red-place';
+        case BLUE_PLACE: return 'blue-place';
+        case RED_SLIDE:
+        case BLUE_SLIDE: {
+          if (state.animProgress < 1) return 'slide';
+          const isRed = state.step === RED_SLIDE;
+          const isParallel = isRed ? shape.redParallel : shape.blueParallel;
+          return `${isRed ? 'red' : 'blue'}-${isParallel ? 'parallel' : 'not-parallel'}`;
+        }
+        case SUMMARY: return `summary-${shape.parallelCount}`;
+      }
+    }
+
     function toggleSound() {
       state.soundOn = !state.soundOn;
-      dom.btnSound.textContent = state.soundOn ? '🔊' : '🔇';
+      dom.btnSound.textContent = state.soundOn ? '🔊 音声 ON' : '🔇 音声 OFF';
+      dom.btnSound.setAttribute('aria-pressed', String(state.soundOn));
+      if (audioOutput) audioOutput.gain.value = Number(state.soundOn);
+      if (state.soundOn) {
+        playTone('step');
+        narrate(state.mode === 'check' ? checkNarrationClip() : 'sort-guide');
+      } else {
+        stopNarration();
+      }
     }
 
     function toggleInnerDots() {
@@ -702,7 +789,7 @@
     /**
      * 画面モード切替（① へいこうチェック / ② なかまわけ）
      */
-    function switchMode(newMode) {
+    function switchMode(newMode, announce = true) {
       clearTouchDrag();
       draggedShapeId = null;
       state.mode = newMode;
@@ -723,6 +810,10 @@
         dom.sortFeedbackBanner.classList.add('hidden');
         document.getElementById('sort-hint').classList.add('hidden');
         renderSortScreen();
+      }
+      if (announce) {
+        playTone('step');
+        narrate(newMode === 'check' ? checkNarrationClip() : 'sort-guide');
       }
     }
 
@@ -1175,6 +1266,8 @@
       updateAutoButton();
       renderShapeSelectorBar();
       renderCheckScreen();
+      playTone('step');
+      narrate(checkNarrationClip());
     }
 
     function jumpStep(stepNum) {
@@ -1187,11 +1280,29 @@
         renderShapeSelectorBar();
       }
       renderCheckScreen();
+      if (state.animProgress === 1 && rulerStep) {
+        announceRulerArrival();
+        if (stepNum === RED_SLIDE || stepNum === BLUE_SLIDE) return;
+      } else {
+        const sliding = stepNum === RED_SLIDE || stepNum === BLUE_SLIDE;
+        playTone(sliding ? 'slide' : stepNum === SUMMARY ? 'clear' : 'step');
+      }
+      narrate(checkNarrationClip());
+    }
+
+    function announceRulerArrival(interrupt = true) {
+      if (state.step === RED_PLACE || state.step === BLUE_PLACE) {
+        playTone('placed');
+      } else if (state.step === RED_SLIDE || state.step === BLUE_SLIDE) {
+        const shape = SHAPES_DATA[state.currentIndex];
+        const parallel = state.step === RED_SLIDE ? shape.redParallel : shape.blueParallel;
+        playTone(parallel ? 'correct' : 'checked');
+        narrate(checkNarrationClip(), interrupt);
+      }
     }
 
     function handleNextStep() {
       if (state.step < SUMMARY && dom.btnNext.getAttribute('aria-disabled') !== 'true') {
-        playTone('step');
         jumpStep(state.step + 1);
       }
     }
@@ -1216,6 +1327,12 @@
       }
       updateAutoButton();
       renderCheckScreen();
+      if (state.autoPlay) {
+        playTone('step');
+        narrate(checkNarrationClip());
+      } else {
+        stopNarration();
+      }
     }
 
     function updateAutoButton() {
@@ -1237,15 +1354,14 @@
       state.lastTime = now;
 
       if (state.mode === 'check') {
-        let needsRender = false;
-
         if (state.animProgress < 1.0) {
           let speed = 0.75;
           if (state.step === 1) speed = 1.8;
           if (state.step === RED_PLACE || state.step === BLUE_PLACE) speed = 1 / 1.6;
           state.animProgress = Math.min(1.0, state.animProgress + dt * speed);
-          needsRender = true;
-        } else if (state.autoPlay) {
+          renderCheckScreen();
+          if (state.animProgress === 1) announceRulerArrival(false);
+        } else if (state.autoPlay && !narrationIsPlaying(now)) {
           state.autoHoldTimer += dt;
           if (state.autoHoldTimer >= 1.05) {
             if (state.step < SUMMARY) {
@@ -1253,12 +1369,9 @@
             } else {
               state.autoPlay = false;
               updateAutoButton();
-              needsRender = true;
             }
           }
         }
-
-        if (needsRender) renderCheckScreen();
       }
 
       state.rafId = requestAnimationFrame(tick);
@@ -1357,6 +1470,7 @@
 
     function handleTrayCardTap(id) {
       state.selectedSortId = (state.selectedSortId === id) ? null : id;
+      playTone('step');
       document.querySelectorAll('.sort-card').forEach(card => {
         const selected = Number(card.dataset.id) === state.selectedSortId;
         card.setAttribute('aria-pressed', String(selected));
@@ -1465,7 +1579,7 @@
     function openSortHint() {
       const idx = SHAPES_DATA.findIndex(s => String(s.id) === document.getElementById('sort-hint').dataset.id);
       if (idx < 0) return;
-      switchMode('check');
+      switchMode('check', false);
       selectShape(idx);
       dom.btnNext.focus();
     }
@@ -1485,8 +1599,11 @@
 
         if (state.sortedIds.size === 9) {
           playTone('clear');
+          narrate(`sorted-${s.parallelCount}`);
+          narrate('sort-done', false);
         } else {
           playTone('correct');
+          narrate(`sorted-${s.parallelCount}`);
         }
 
         dom.sortFeedbackBanner.className = 'animate-pop rounded-xl px-3 py-1.5 font-black text-center text-sm sm:text-base border-2 bg-emerald-100 border-emerald-500 text-emerald-950';
@@ -1495,6 +1612,7 @@
         renderSortScreen();
       } else {
         playTone('wrong');
+        narrate('sort-retry');
         dom.sortFeedbackBanner.className = 'animate-shake rounded-xl px-3 py-1.5 font-black text-center text-sm sm:text-base border-2 bg-rose-100 border-rose-500 text-rose-950';
         dom.sortFeedbackBanner.innerHTML = `❌ <span class="nobr">むかい合う 辺を</span> <span class="nobr">一組ずつ くらべよう。</span>`;
         hint.dataset.id = shapeId;
@@ -1512,6 +1630,8 @@
       state.selectedSortId = null;
       dom.sortFeedbackBanner.classList.add('hidden');
       renderSortScreen();
+      playTone('step');
+      narrate('sort-guide');
     }
 
     // 初期化
