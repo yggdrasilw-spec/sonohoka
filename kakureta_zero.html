@@ -137,6 +137,7 @@ main{flex:1;display:flex;gap:16px;padding:12px 16px;min-height:0}
 <div id="R"><div id="P"></div><div id="C"></div><div id="X"></div><div id="M" role="status"></div></div>
 </main>
 <footer><button class="s" id="bk">← もどる</button><span class="hint">キーボードの ← → でも すすめます</span><button id="nx">つぎへ →</button></footer>
+<script src="media/kakureta-zero/narration.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const Q='<ruby>位<rt>くらい</rt></ruby>',SS='<ruby>小数<rt>しょうすう</rt></ruby>第一<ruby>位<rt>い</rt></ruby>';
@@ -164,49 +165,37 @@ const PB=[
 ],NS=practice+PB.length;
 const sceneNumbers='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 
-const speech=window.speechSynthesis;
 const narration=new Audio();
-const introClips=['put-two','place-cards','reveal-tenths','count-tenths'];
-const introClip=()=>st<firstQuestion||!done[st]?introClips[st]:undefined;
-const spokenDigits=['れい','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+let narrationQueue=[];
 function stopNarration(){
+ narrationQueue=[];
  narration.pause();
- speech?.cancel();
 }
+
+function narrationText(id){
+ const part=$(id).cloneNode(true);
+ part.querySelectorAll('.no,rt').forEach(node=>node.remove());
+ part.querySelectorAll('br').forEach(node=>node.replaceWith('\n'));
+ return part.textContent.normalize('NFKC').split('\n')
+  .map(line=>line.trim().replace(/\s+/g,' ')).filter(Boolean).join('\n');
+}
+
+function playNextNarration(){
+ const clip=narrationQueue.shift();
+ if(!clip)return;
+ const source=`media/kakureta-zero/${clip}`;
+ if(narration.getAttribute('src')!==source)narration.src=source;
+ narration.currentTime=0;
+ narration.play().catch(()=>{});
+}
+
+narration.onended=()=>{if(narration.ended)playNextNarration()};
 
 function speak(...ids){
  if(!snd)return;
  stopNarration();
- const clip=ids[0]==='P'&&introClip();
- if(clip){
-  const source=`media/kakureta-zero/${clip}.mp3`;
-  if(narration.getAttribute('src')!==source)narration.src=source;
-  narration.currentTime=0;
-  narration.play().catch(()=>{});
-  return;
- }
- if(!speech)return;
- const message=ids.map(id=>{
-  const part=$(id).cloneNode(true);
-  part.querySelector('.no')?.remove();
-  part.querySelectorAll('ruby').forEach(ruby=>ruby.replaceWith(ruby.querySelector('rt').textContent));
-  part.querySelectorAll('br').forEach(br=>br.replaceWith('。'));
-  return part.textContent.trim();
- }).filter(Boolean).join(' ').normalize('NFKC')
-  .replace(/くらい取り表/g,'くらいどりひょう')
-  .replace(/しょうすう第一い/g,'しょうすうだいいちい')
-  .replace(/(\d*)\.(\d+)/g,(_,whole,fraction)=>
-   `${whole==='0'?'れい ':whole?whole+' ':''}てん ${Array.from(fraction,digit=>spokenDigits[digit]).join(' ')}`)
-  .replace(/(^|\D)0(?=\D|$)/g,'$1ゼロ')
-  .replace(/\+/g,' たす ').replace(/[-−]/g,' ひく ').replace(/=/g,' イコール ')
-  .replace(/○/g,'まる').replace(/×/g,'ばつ');
- if(!message)return;
- const utterance=new SpeechSynthesisUtterance(message);
- utterance.lang='ja-JP';
- utterance.rate=.88;
- const voice=speech.getVoices().find(voice=>voice.lang.toLowerCase().startsWith('ja'));
- if(voice)utterance.voice=voice;
- speech.speak(utterance);
+ narrationQueue=ids.map(id=>window.KAKURETA_ZERO_AUDIO?.[narrationText(id)]).filter(Boolean);
+ playNextNarration();
 }
 
 function startAudio(){
@@ -445,7 +434,7 @@ $('bk').onclick=()=>go(-1);
 $('nx').onclick=()=>go(1);
 $('read').onclick=()=>speak('P','M');
 function updateReadButton(){
- $('read').disabled=!snd||(!speech&&!introClip());
+ $('read').disabled=!snd;
 }
 $('sn').onclick=()=>{
  snd=!snd;
