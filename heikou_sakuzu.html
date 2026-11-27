@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>平行な直線のひき方（インタラクティブSVG教材）</title>
+  <link rel="stylesheet" href="css/math-svg-lessons.css">
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #f0f7f4;
+      color: #1e293b;
+      user-select: none;
+    }
+
+    /* 方眼紙風の背景パターン */
+    .notebook-grid {
+      background-color: #ffffff;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.14) 1px, transparent 1px);
+      background-size: 25px 25px;
+    }
+
+    /* ふりがな（ルビ）のスタイル調整 */
+    ruby {
+      ruby-align: center;
+    }
+    rt {
+      font-size: 0.58em;
+      color: #475569;
+      font-weight: 500;
+    }
+
+    /* スライダーのカスタマイズ */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 10px;
+      border-radius: 999px;
+      background: #cbd5e1;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #059669;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      margin-top: -7px;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .grab-cursor {
+      cursor: grab;
+    }
+    .grab-cursor:active {
+      cursor: grabbing;
+    }
+
+    :focus-visible, label:focus-within { outline: 3px solid #0369a1; outline-offset: 3px; }
+    @media (max-width: 1023px) {
+      header > .max-w-7xl { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { #drag-hint { animation: none; } }
+
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ヘッダー -->
+  <header class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+          <!-- 平行線のアイコン -->
+          <svg class="w-7 h-7 text-white" viewBox="0 0 32 32" fill="none">
+            <line x1="4" y1="10" x2="28" y2="10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <line x1="4" y1="22" x2="28" y2="22" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <line x1="12" y1="4" x2="20" y2="28" stroke="#fde047" stroke-width="2.5" stroke-dasharray="3 3"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-2xl font-black tracking-tight">
+            <ruby>平行<rt>へいこう</rt></ruby>な<ruby>直線<rt>ちょくせん</rt></ruby>のひき<ruby>方<rt>かた</rt></ruby>
+          </h1>
+          <p class="text-xs sm:text-sm text-emerald-100">
+            2まいの三角定規の使い方と「なぜ平行になるのか」をアニメで確かめよう！
+          </p>
+        </div>
+      </div>
+
+      <!-- ひき方切り替えタブ -->
+      <div class="flex bg-emerald-800/50 p-1 rounded-2xl border border-emerald-400/30 w-full md:w-auto">
+        <button id="tab-method1" onclick="setMethod(1)"
+          class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-emerald-800 shadow">
+          ひき方 1（<ruby>直角<rt>ちょっかく</rt></ruby> 90° を使う）
+        </button>
+        <button id="tab-method2" onclick="setMethod(2)"
+          class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-emerald-100 hover:text-white">
+          ひき方 2（60°の<ruby>角<rt>かど</rt></ruby>を使う）
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+    <!-- 左側：SVGアニメーションキャンバスエリア (7列) -->
+    <div class="lg:col-span-7 flex flex-col gap-3">
+      <div class="bg-white rounded-3xl shadow-lg border-2 border-emerald-200 overflow-hidden flex flex-col">
+
+        <!-- キャンバス上部ステータスバー -->
+        <div class="bg-emerald-50 px-4 py-2.5 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span id="step-badge" class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-600 text-white font-black text-sm shadow-sm">
+              1
+            </span>
+            <span id="step-short-title" class="font-bold text-emerald-950 text-sm sm:text-base">
+              直線アに三角定規を合わせる
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="btn-play" onclick="togglePlay()"
+              class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow transition">
+              <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+              </svg>
+              <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"/>
+              </svg>
+              <span id="btn-play-text">自動再生</span>
+            </button>
+            <button onclick="resetAnimation()"
+              class="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-700 font-bold text-xs sm:text-sm transition"
+              title="最初からやり直す">
+              最初から
+            </button>
+          </div>
+        </div>
+
+        <!-- 2枚の三角定規の役割インジケーターバー -->
+        <div class="bg-slate-50/90 px-4 py-1.5 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-500">レール役（左）：</span>
+            <span id="role-left-badge" class="px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 border border-purple-200">
+              紫の三角定規（30°・60°・90°）
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-500">動かす定規（右）：</span>
+            <span id="role-right-badge" class="px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200">
+              青い三角定規（45°・45°・90°）
+            </span>
+          </div>
+        </div>
+
+        <!-- SVG キャンバス (viewBox="0 0 800 500") -->
+        <div class="relative w-full aspect-[8/5] notebook-grid overflow-hidden">
+          <svg id="scene-svg" viewBox="0 0 800 500" class="w-full h-full block touch-none">
+            <defs>
+              <!-- 青い直角二等辺三角定規 (45°-45°-90°) -->
+              <linearGradient id="blue-ruler-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#bae6fd" stop-opacity="0.84" />
+                <stop offset="100%" stop-color="#7dd3fc" stop-opacity="0.90" />
+              </linearGradient>
+              <!-- 紫の三角定規 (30°-60°-90°) -->
+              <linearGradient id="purple-ruler-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#e9d5ff" stop-opacity="0.84" />
+                <stop offset="100%" stop-color="#d8b4fe" stop-opacity="0.90" />
+              </linearGradient>
+              <!-- ただの直線定規（イエロー系） -->
+              <linearGradient id="straight-ruler-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#fef3c7" stop-opacity="0.92" />
+                <stop offset="100%" stop-color="#fde68a" stop-opacity="0.96" />
+              </linearGradient>
+              <!-- 不思議な形のブロック（オレンジ系） -->
+              <linearGradient id="custom-shape-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffedd5" stop-opacity="0.88" />
+                <stop offset="100%" stop-color="#fed7aa" stop-opacity="0.94" />
+              </linearGradient>
+              <!-- 影フィルター -->
+              <filter id="drop-shadow" x="-15%" y="-15%" width="130%" height="130%">
+                <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.16"/>
+              </filter>
+            </defs>
+
+            <!-- 1. レール補助線（オレンジ破線） -->
+            <g id="layer-guide-lines" class="transition-opacity duration-300">
+              <line id="rail-guide-line" x1="310" y1="20" x2="310" y2="480"
+                stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6" opacity="0.85" />
+              <text id="rail-guide-label" x="300" y="472" text-anchor="end"
+                fill="#d97706" font-size="14" font-weight="900">
+                まっすぐ進むレール（中心線）
+              </text>
+            </g>
+
+            <!-- 2. 基準の直線「ア」(y = 115, x = 130 〜 670) -->
+            <g id="layer-base-line">
+              <circle cx="102" cy="115" r="16" fill="#ffffff" stroke="#334155" stroke-width="2.2" />
+              <text x="102" y="121" text-anchor="middle" font-size="17" font-weight="900" fill="#1e293b">ア</text>
+              <line x1="130" y1="115" x2="670" y2="115" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round" />
+            </g>
+
+            <!-- 3. 新しく引く平行線（点Aを通る直線 y = 215） -->
+            <g id="layer-drawn-line">
+              <line id="parallel-line" x1="250" y1="215" x2="250" y2="215"
+                stroke="#059669" stroke-width="4" stroke-linecap="round" />
+            </g>
+
+            <!-- 4. 点A (430, 215) -->
+            <g id="layer-point-a">
+              <circle cx="430" cy="215" r="5.5" fill="#dc2626" />
+              <text x="430" y="200" text-anchor="middle" font-size="20" font-weight="900" fill="#1e293b">A</text>
+            </g>
+
+            <!-- 5. 角度マーク（直線アのところ・固定） -->
+            <g id="layer-angle-top"></g>
+
+            <!-- 6. 角度マーク（点Aのところ・スライドに追従） -->
+            <g id="layer-angle-bottom"></g>
+
+            <!-- 7. 左側の定規（レール役・ガイド定規） -->
+            <g id="layer-left-ruler" filter="url(#drop-shadow)" opacity="0"></g>
+
+            <!-- 8. 右側の定規（スライド役・動く定規） -->
+            <g id="layer-right-ruler" filter="url(#drop-shadow)" class="grab-cursor"></g>
+
+            <!-- 9. 鉛筆（線を引くアニメーション） -->
+            <g id="layer-pencil" pointer-events="none" opacity="0">
+              <g transform="translate(0, 0)">
+                <polygon points="0,0 16,-7 16,7" fill="#fde68a" stroke="#78350f" stroke-width="1.3"/>
+                <polygon points="0,0 6,-2.5 6,2.5" fill="#1e293b"/>
+                <rect x="16" y="-7" width="95" height="14" rx="2" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.3"/>
+                <line x1="16" y1="-2.5" x2="111" y2="-2.5" stroke="#fca5a5" stroke-width="1.8"/>
+                <rect x="111" y="-7" width="14" height="14" rx="2" fill="#f472b6" stroke="#831843" stroke-width="1.3"/>
+              </g>
+            </g>
+
+            <!-- 10. 教科書の吹き出し図解（右下配置） -->
+            <g id="layer-callout" transform="translate(595, 330)" opacity="0" class="transition-opacity duration-300">
+              <rect x="0" y="0" width="180" height="145" rx="16" fill="#ffffff" stroke="#38bdf8" stroke-width="3" filter="url(#drop-shadow)" />
+              <text x="90" y="23" text-anchor="middle" font-size="13" font-weight="900" fill="#0284c7">同じ角度でずらす！</text>
+              <g id="callout-diagram" transform="translate(25, 34)"></g>
+            </g>
+          </svg>
+
+          <!-- ステップ3のときに出るドラッグ案内バッジ -->
+          <div id="drag-hint" class="hidden absolute bottom-3 left-3 bg-amber-500/95 text-white px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg flex items-center gap-1.5 animate-bounce pointer-events-none">
+            <span>👆</span>
+            <span>右の定規をドラッグしてレールに沿って動かせるよ！</span>
+          </div>
+        </div>
+
+        <!-- ステップ選択ボタン（1〜5） -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200">
+          <div class="grid grid-cols-5 gap-1.5 sm:gap-2">
+            <button onclick="goToStep(1)" id="step-btn-1"
+              class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
+              <span class="text-[10px] opacity-75">ステップ</span>
+              <span class="text-base sm:text-lg leading-none">1</span>
+            </button>
+            <button onclick="goToStep(2)" id="step-btn-2"
+              class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
+              <span class="text-[10px] opacity-75">ステップ</span>
+              <span class="text-base sm:text-lg leading-none">2</span>
+            </button>
+            <button onclick="goToStep(3)" id="step-btn-3"
+              class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
+              <span class="text-[10px] opacity-75">ステップ</span>
+              <span class="text-base sm:text-lg leading-none">3</span>
+            </button>
+            <button onclick="goToStep(4)" id="step-btn-4"
+              class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
+              <span class="text-[10px] opacity-75">ステップ</span>
+              <span class="text-base sm:text-lg leading-none">4</span>
+            </button>
+            <button onclick="goToStep(5)" id="step-btn-5"
+              class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
+              <span class="text-[10px] opacity-75">ステップ</span>
+              <span class="text-base sm:text-lg leading-none">5</span>
+            </button>
+          </div>
+
+          <!-- スライド量微調整スライダー -->
+          <div class="mt-3 pt-2.5 border-t border-slate-200/80 flex items-center gap-3">
+            <span class="text-xs font-bold text-slate-600 whitespace-nowrap">定規の移動：</span>
+            <input id="slide-slider" aria-label="点Aまでの定規の移動" type="range" min="0" max="100" value="0" class="w-full" oninput="onSliderInput(this.value)" />
+            <span id="slide-percent" class="text-xs font-mono font-bold text-emerald-700 w-10 text-right">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側：解説パネル & 本質理解スイッチ (5列) -->
+    <div class="lg:col-span-5 flex flex-col gap-4">
+
+      <!-- 現在のステップの詳しい解説カード -->
+      <div class="bg-white rounded-3xl p-4 sm:p-5 shadow-md border-2 border-emerald-100">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+            やり方ガイド
+          </span>
+          <span id="method-subtitle" class="text-xs font-bold text-slate-500">
+            ひき方1：直角（90°）を使う方法
+          </span>
+        </div>
+        <h2 id="step-detail-title" class="text-base sm:text-lg font-black text-slate-800 mb-2">
+          ① 直線アに、青い三角定規の直角（90°）の辺をぴったり合わせる。
+        </h2>
+        <p id="step-detail-desc" class="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100">
+          基準（きじゅん）になる直線「ア」に、青い三角定規（45°・45°・90°）の直角の辺をぴったりくっつけます。
+        </p>
+
+        <!-- 前へ・次へナビゲーション -->
+        <div class="mt-3 flex justify-between gap-2">
+          <button onclick="prevStep()" id="btn-prev"
+            class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-bold text-sm text-slate-700 transition">
+            ◀ まえのステップ
+          </button>
+          <button onclick="nextStep()" id="btn-next"
+            class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 font-bold text-sm text-white shadow-sm transition">
+            つぎのステップ ▶
+          </button>
+        </div>
+      </div>
+
+      <!-- 本質理解のための実験スイッチパネル -->
+      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-4 sm:p-5 shadow-md border-2 border-amber-200 flex-1 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-2.5">
+            <span class="text-xl">💡</span>
+            <h3 class="font-black text-amber-950 text-base sm:text-lg">
+              もっと深く理解しよう！実験スイッチ
+            </h3>
+          </div>
+          <p class="text-xs text-amber-900/80 mb-3 leading-relaxed">
+            三角定規を2まい使うのはなぜかな？スイッチを切り替えて、平行な線がひける<strong>「本当の理由」</strong>を確かめよう！
+          </p>
+
+          <div class="space-y-3">
+            <!-- スイッチ①：左の定規を「ただの直線定規」に変える -->
+            <label class="flex items-start justify-between gap-3 bg-white/90 hover:bg-white p-3 rounded-2xl border border-amber-200/80 cursor-pointer transition shadow-sm">
+              <div class="flex-1">
+                <div class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                  <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                  左の定規を「ただの直線定規」に変える
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5 leading-snug">
+                  レール役は<strong>まっすぐな線</strong>であれば何でもOK！三角定規でなくても滑らせられます。
+                </p>
+              </div>
+              <div class="relative inline-flex items-center mt-1">
+                <input type="checkbox" id="toggle-straight-ruler" class="sr-only peer" onchange="updateOptions()">
+                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </div>
+            </label>
+
+            <!-- スイッチ②：動く定規を「不思議な形のブロック」に変える -->
+            <label class="flex items-start justify-between gap-3 bg-white/90 hover:bg-white p-3 rounded-2xl border border-amber-200/80 cursor-pointer transition shadow-sm">
+              <div class="flex-1">
+                <div class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                  <span class="inline-block w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                  動く定規を「不思議な形のブロック」に変える
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5 leading-snug">
+                  まっすぐな辺をレールに当て、向きを変えずに滑らせます。もう一方のまっすぐな辺に沿って線を引けます。
+                </p>
+              </div>
+              <div class="relative inline-flex items-center mt-1">
+                <input type="checkbox" id="toggle-custom-shape" class="sr-only peer" onchange="updateOptions()">
+                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </div>
+            </label>
+
+            <!-- スイッチ③：同じ角マーク＆レール線（補助線）を表示 -->
+            <label class="flex items-start justify-between gap-3 bg-white/90 hover:bg-white p-3 rounded-2xl border border-amber-200/80 cursor-pointer transition shadow-sm">
+              <div class="flex-1">
+                <div class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                  <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                  同じ角マーク＆レール線（補助線）を表示
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5 leading-snug">
+                  2本の直線がレールと<strong>同じ角度（同位角）</strong>で交わっていることを強調します。
+                </p>
+              </div>
+              <div class="relative inline-flex items-center mt-1">
+                <input type="checkbox" id="toggle-angles" checked class="sr-only peer" onchange="updateOptions()">
+                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- まとめポイントボックス -->
+        <div class="mt-4 bg-white/95 rounded-2xl p-3 border border-amber-300 text-xs text-slate-700 leading-relaxed">
+          <span class="font-black text-amber-800">★ まとめ：</span>
+          1つの直線（レール）に対して<strong>「同じ角度」を保ったまま</strong>まっすぐずらして引いた直線は、どこまで伸ばしても交わらない<strong>平行な直線</strong>になります！
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    /**
+     * アプリケーションの状態管理
+     */
+    const state = {
+      method: 1,          // 1: 直角(90°)を使う方法, 2: 60°の角を使う方法
+      step: 1,            // 1 〜 5
+      slideProgress: 0,   // 0.0 〜 1.0 (直線アの位置から点Aの位置までの移動割合)
+      slideInProgress: 0, // 0.0 〜 1.0 (ステップ2で左のレール定規が寄ってくる進捗)
+      drawProgress: 0,    // 0.0 〜 1.0 (点Aを通る線を引く進捗)
+      isPlaying: false,   // 自動再生中かどうか
+      useStraightRuler: false, // 左の定規をただの直線定規にするか
+      useCustomShape: false,   // 右の定規を不思議な形の角ブロックにするか
+      showAngles: true,        // 角度マークと補助線を表示するか
+      animFrameId: null,
+      lastTimestamp: 0,
+      isDragging: false,
+      dragStartClientX: 0,
+      dragStartClientY: 0,
+      dragStartProgress: 0
+    };
+
+    /**
+     * 厳密な幾何学定数（SVG viewBox="0 0 800 500"）
+     * 基準の直線「ア」: y = 115, x = 130 〜 670
+     * 点A: (430, 215) -> y方向の垂直距離 DY = 215 - 115 = 100px
+     */
+    const BASE_Y = 115;
+    const TARGET_Y = 215;
+    const DY = TARGET_Y - BASE_Y; // 100px
+    const SQRT3 = Math.sqrt(3);
+
+    const METHODS = {
+      1: {
+        subtitle: 'ひき方1：直角（90°）を使う方法',
+        leftRoleText: '紫の三角定規（30°・60°・90°）',
+        leftRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 border border-purple-200',
+        rightRoleText: '青い三角定規（45°・45°・90°）',
+        rightRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200',
+        // レール方向単位ベクトル：真下 (0, 1)
+        dirX: 0,
+        dirY: 1,
+        totalDist: DY, // 100px
+        // ステップ1での右定規（青い45-45-90）の左上90°頂点 P0 = (310, 115)
+        originX: 310,
+        originY: 115,
+        // 左定規がスライドインしてくるときの開始オフセット
+        leftEntryOffsetX: -120,
+        leftEntryOffsetY: 0,
+        // 引く平行線のローカル開始・終了X（P0のx座標からの相対）
+        drawLocalStartX: 0,
+        drawLocalEndX: 200,
+        blockDrawEndX: 210,
+        steps: {
+          1: {
+            short: '直線アに青い三角定規（45°・45°・90°）を合わせる',
+            title: '① 直線アに、青い三角定規の直角（90°）の辺をぴったり合わせる。',
+            desc: '基準（きじゅん）になる直線「ア」に、青い三角定規（45°・45°・90°）の上の辺をぴったり合わせます。'
+          },
+          2: {
+            short: 'レール役の紫の三角定規（30°・60°・90°）を当てる',
+            title: '② 左側の辺に、紫の三角定規をぴったり合わせる。',
+            desc: '左側から紫の三角定規（30°・60°・90°）を寄せて、縦の辺にぴったり当てます。この紫の定規が「まっすぐなレール」になります。'
+          },
+          3: {
+            short: 'レールに沿って点Aまで真下へ滑らせる',
+            title: '③ 紫の定規を押さえながら、点Aに合うまで青い定規を動かす。',
+            desc: '定規が回転しないようにレールにぴったりつけたまま真下へ滑らせます。直角（90°）がそのまま保たれています！'
+          },
+          4: {
+            short: '点Aを通る直線をえんぴつで引く',
+            title: '④ 2まいの定規をしっかり押さえて、点Aを通る直線を引く。',
+            desc: '定規がずれないように押さえながら、点A（430, 215）を通る直線をえんぴつで引きます。'
+          },
+          5: {
+            short: '完成！平行な2本の直線',
+            title: '⑤ 完成！直線アに平行な直線がひけました。',
+            desc: '1つの直線（レール）に垂直（90°）に交わる2つの直線は、どこまで伸ばしても交わらない平行な直線になります。'
+          }
+        }
+      },
+      2: {
+        subtitle: 'ひき方2：60°の角を使う方法',
+        leftRoleText: '青い三角定規（45°・45°・90°）',
+        leftRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200',
+        rightRoleText: '紫の三角定規（30°・60°・90°）',
+        rightRoleClass: 'px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 border border-purple-200',
+        // レール方向単位ベクトル：右斜め下60° (cos60°, sin60°) = (0.5, 0.8660254)
+        dirX: 0.5,
+        dirY: SQRT3 / 2,
+        // y方向に100px移動するための斜め移動距離 = 100 / sin(60°) = 115.47px
+        totalDist: DY / (SQRT3 / 2),
+        // ステップ1での右定規（紫の30-60-90）の左上60°頂点 P0 = (270, 115)
+        originX: 270,
+        originY: 115,
+        // 左定規（青い45-45-90）が左側からスライドインしてくるときのオフセット（レール法線方向）
+        leftEntryOffsetX: -110 * (SQRT3 / 2),
+        leftEntryOffsetY: 110 * 0.5,
+        // 引く平行線のローカル開始・終了X（P0のx座標からの相対）
+        drawLocalStartX: 0,
+        drawLocalEndX: 280,
+        blockDrawEndX: 270,
+        steps: {
+          1: {
+            short: '直線アに紫の三角定規（30°・60°・90°）を合わせる',
+            title: '① 直線アに、紫の三角定規の一番長い辺（斜辺）をぴったり合わせる。',
+            desc: '直線「ア」に紫の三角定規（30°・60°・90°）の長い辺を合わせます。左上の60°の角から右斜め下に向かって辺がのびています。'
+          },
+          2: {
+            short: 'レール役の青い三角定規（45°・45°・90°）を当てる',
+            title: '② 左側の斜めの辺に、青い三角定規の斜辺をぴったり合わせる。',
+            desc: '左側から青い三角定規（45°・45°・90°）を寄せて、斜辺同士をレール線上でぴったり合わせます。2まいの定規は重ならずに向かい合います。'
+          },
+          3: {
+            short: '右斜め下60°のレールに沿って点Aまで滑らせる',
+            title: '③ 青い定規を押さえながら、点Aに合うまで紫の定規を斜めに滑らせる。',
+            desc: '右斜め下（60°方向）のレールに沿って滑らせても、定規が回転しないので「60°の角度」はまったく変わりません！'
+          },
+          4: {
+            short: '点Aを通る直線をえんぴつで引く',
+            title: '④ 2まいの定規をしっかり押さえて、点Aを通る直線を引く。',
+            desc: '定規が動かないように押さえながら、点A（430, 215）を通る直線をえんぴつで引きます。'
+          },
+          5: {
+            short: '完成！同じ角度（60°）のままずらしたので平行！',
+            title: '⑤ 完成！同じ60°の角を保ったまま移動したので平行になります。',
+            desc: '直角（90°）でなくても、レールに対して同じ角度（同位角 60°）を保ったままずらせば必ず平行な直線になります！'
+          }
+        }
+      }
+    };
+
+    // DOM要素の参照キャッシュ
+    const el = {
+      tab1: document.getElementById('tab-method1'),
+      tab2: document.getElementById('tab-method2'),
+      roleLeftBadge: document.getElementById('role-left-badge'),
+      roleRightBadge: document.getElementById('role-right-badge'),
+      stepBadge: document.getElementById('step-badge'),
+      stepShortTitle: document.getElementById('step-short-title'),
+      stepDetailTitle: document.getElementById('step-detail-title'),
+      stepDetailDesc: document.getElementById('step-detail-desc'),
+      methodSubtitle: document.getElementById('method-subtitle'),
+      btnPlay: document.getElementById('btn-play'),
+      btnPlayText: document.getElementById('btn-play-text'),
+      iconPlay: document.getElementById('icon-play'),
+      iconPause: document.getElementById('icon-pause'),
+      btnPrev: document.getElementById('btn-prev'),
+      btnNext: document.getElementById('btn-next'),
+      slider: document.getElementById('slide-slider'),
+      slidePercent: document.getElementById('slide-percent'),
+      dragHint: document.getElementById('drag-hint'),
+      // SVGレイヤー
+      svg: document.getElementById('scene-svg'),
+      guideLines: document.getElementById('layer-guide-lines'),
+      railGuideLine: document.getElementById('rail-guide-line'),
+      railGuideLabel: document.getElementById('rail-guide-label'),
+      parallelLine: document.getElementById('parallel-line'),
+      angleTop: document.getElementById('layer-angle-top'),
+      angleBottom: document.getElementById('layer-angle-bottom'),
+      leftRuler: document.getElementById('layer-left-ruler'),
+      rightRuler: document.getElementById('layer-right-ruler'),
+      pencil: document.getElementById('layer-pencil'),
+      callout: document.getElementById('layer-callout'),
+      calloutDiagram: document.getElementById('callout-diagram')
+    };
+
+    /**
+     * 目盛り（ティックマーク）を生成するヘルパー
+     */
+    function createTicksSVG(x1, y1, x2, y2, tickLength = 6, stepPx = 12, side = 1) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      const ux = dx / len;
+      const uy = dy / len;
+      const nx = -uy * side;
+      const ny = ux * side;
+
+      let paths = '';
+      const count = Math.floor(len / stepPx);
+      for (let i = 1; i < count; i++) {
+        const dist = i * stepPx;
+        const px = x1 + ux * dist;
+        const py = y1 + uy * dist;
+        const currentLen = (i % 5 === 0) ? tickLength * 1.55 : tickLength;
+        const qx = px + nx * currentLen;
+        const qy = py + ny * currentLen;
+        paths += `<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${qx.toFixed(1)}" y2="${qy.toFixed(1)}" stroke="#334155" stroke-width="${i % 5 === 0 ? 1.4 : 0.9}" opacity="0.7" />`;
+      }
+      return paths;
+    }
+
+    /**
+     * 3点の座標から内側にオフセットした相似三角形（くり抜き穴）の頂点を計算するヘルパー
+     */
+    function computeInsetTriangle(p0, p1, p2, insetDist) {
+      const pts = [p0, p1, p2];
+      // 符号付き面積で頂点の回り順（時計回り/反時計回り）を判定
+      const area2 = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
+      const sign = area2 > 0 ? 1 : -1;
+
+      // 各辺を内側へ insetDist 平行移動した直線の交点を求める
+      const lines = [];
+      for (let i = 0; i < 3; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % 3];
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        const len = Math.hypot(dx, dy);
+        // 内向き法線ベクトル
+        const nx = (-dy / len) * sign;
+        const ny = (dx / len) * sign;
+        lines.push({
+          x1: a[0] + nx * insetDist,
+          y1: a[1] + ny * insetDist,
+          dx: dx,
+          dy: dy
+        });
+      }
+
+      const insetPts = [];
+      for (let i = 0; i < 3; i++) {
+        const l1 = lines[(i + 2) % 3];
+        const l2 = lines[i];
+        const denom = l1.dx * l2.dy - l1.dy * l2.dx;
+        const t = ((l2.x1 - l1.x1) * l2.dy - (l2.y1 - l1.y1) * l2.dx) / denom;
+        insetPts.push([l1.x1 + t * l1.dx, l1.y1 + t * l1.dy]);
+      }
+      return insetPts;
+    }
+
+    function ptsToStr(pts) {
+      return pts.map(p => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ');
+    }
+
+    /**
+     * 左側の定規（レール役・ガイド定規）を描画
+     */
+    function renderLeftRuler() {
+      let html = '';
+
+      if (state.method === 1) {
+        // 【ひき方1】レール線 x = 310 の左側に配置
+        if (state.useStraightRuler) {
+          // ただの直線定規（幅 60px、右辺が x = 310）
+          html = `
+            <g>
+              <rect x="250" y="55" width="60" height="360" rx="6" fill="url(#straight-ruler-grad)" stroke="#d97706" stroke-width="2.2" />
+              ${createTicksSVG(310, 68, 310, 402, 7, 12, -1)}
+              <text x="280" y="235" text-anchor="middle" transform="rotate(-90, 280, 235)" font-size="14" font-weight="900" fill="#92400e" letter-spacing="2">
+                ただの直線定規（レール役）
+              </text>
+            </g>
+          `;
+        } else {
+          // 紫の三角定規（厳密な 30°・60°・90°）
+          // Q0=(310, 80) [30°], Q1=(310, 357.1) [60°], Q2=(150, 357.1) [90°]
+          const q0 = [310, 80];
+          const q1 = [310, 357.13];
+          const q2 = [150, 357.13];
+          const hole = computeInsetTriangle(q0, q1, q2, 24);
+          html = `
+            <g>
+              <polygon points="${ptsToStr([q0, q1, q2])}" fill="url(#purple-ruler-grad)" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round" />
+              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#8b5cf6" stroke-width="1.6" stroke-linejoin="round" />
+              ${createTicksSVG(310, 92, 310, 345, 6, 12, -1)}
+              <text x="230" y="345" text-anchor="middle" font-size="11" font-weight="900" fill="#5b21b6">30°・60°・90°</text>
+            </g>
+          `;
+        }
+      } else {
+        // 【ひき方2】レール線（(270, 115) と (340, 236.24) を結ぶ右斜め下60°の直線）の左側に配置
+        // Q0 = (250, 80.36) [45°], Q1 = (380, 305.53) [45°], Q2 = (202.42, 257.94) [90°]
+        const q0 = [250, 80.36];
+        const q1 = [380, 305.53];
+        const q2 = [202.42, 257.94];
+
+        if (state.useStraightRuler) {
+          // ただの直線定規（斜辺 Q0-Q1 に右辺をぴったり合わせ、幅 58px で左側に展開）
+          // レール方向単位ベクトル u = (0.5, 0.866025), 左向き法線 n = (-0.866025, 0.5)
+          const w = 58;
+          const nx = -SQRT3 / 2;
+          const ny = 0.5;
+          // 少し上下に延長した長方形の4頂点
+          const a0 = [q0[0] - 10 * 0.5, q0[1] - 10 * (SQRT3 / 2)];
+          const a1 = [q1[0] + 15 * 0.5, q1[1] + 15 * (SQRT3 / 2)];
+          const a2 = [a1[0] + w * nx, a1[1] + w * ny];
+          const a3 = [a0[0] + w * nx, a0[1] + w * ny];
+          const midX = (a0[0] + a1[0] + a2[0] + a3[0]) / 4;
+          const midY = (a0[1] + a1[1] + a2[1] + a3[1]) / 4;
+
+          html = `
+            <g>
+              <polygon points="${ptsToStr([a0, a1, a2, a3])}" fill="url(#straight-ruler-grad)" stroke="#d97706" stroke-width="2.2" stroke-linejoin="round" />
+              ${createTicksSVG(q0[0], q0[1], q1[0], q1[1], 7, 12, 1)}
+              <text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" text-anchor="middle" dominant-baseline="middle"
+                transform="rotate(60, ${midX.toFixed(1)}, ${midY.toFixed(1)})"
+                font-size="13" font-weight="900" fill="#92400e" letter-spacing="1.5">
+                ただの直線定規（レール役）
+              </text>
+            </g>
+          `;
+        } else {
+          // 青い直角二等辺三角定規（厳密な 45°・45°・90°）
+          const hole = computeInsetTriangle(q0, q1, q2, 22);
+          html = `
+            <g>
+              <polygon points="${ptsToStr([q0, q1, q2])}" fill="url(#blue-ruler-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
+              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#0ea5e9" stroke-width="1.6" stroke-linejoin="round" />
+              ${createTicksSVG(q0[0], q0[1], q1[0], q1[1], 6, 12, 1)}
+              <text x="275" y="218" text-anchor="middle" transform="rotate(60, 275, 218)" font-size="11" font-weight="900" fill="#0369a1">
+                45°・45°・90°
+              </text>
+            </g>
+          `;
+        }
+      }
+
+      el.leftRuler.innerHTML = html;
+    }
+
+    /**
+     * 右側の定規（スライド役・動く定規）を描画
+     * ローカル座標系は左上頂点 P0 = (0, 0) を原点とする
+     */
+    function renderRightRuler() {
+      let html = '';
+
+      if (state.method === 1) {
+        // 【ひき方1】青い直角二等辺三角定規（45°・45°・90°）
+        // ローカル座標: P0=(0, 0) [90°], P1=(200, 0) [45°], P2=(0, 200) [45°]
+        const p0 = [0, 0];
+        const p1 = [200, 0];
+        const p2 = [0, 200];
+
+        if (state.useCustomShape) {
+          // 不思議な形のブロック（左上の角だけは厳密に 90°！）
+          html = `
+            <g>
+              <path d="M 0,0 L 210,0 C 228,35 192,68 205,102 C 218,136 168,162 132,155 C 98,148 82,198 46,192 C 18,187 8,200 0,200 Z"
+                fill="url(#custom-shape-grad)" stroke="#ea580c" stroke-width="2.5" stroke-linejoin="round" />
+              ${createTicksSVG(14, 0, 196, 0, 6, 12, 1)}
+              <circle cx="105" cy="82" r="27" fill="#ffffff" fill-opacity="0.9" stroke="#f97316" stroke-width="1.6" />
+              <text x="105" y="79" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">ふしぎな</text>
+              <text x="105" y="92" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">形でもOK!</text>
+            </g>
+          `;
+        } else {
+          const hole = computeInsetTriangle(p0, p1, p2, 22);
+          html = `
+            <g>
+              <polygon points="${ptsToStr([p0, p1, p2])}" fill="url(#blue-ruler-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
+              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#0ea5e9" stroke-width="1.6" stroke-linejoin="round" />
+              ${createTicksSVG(12, 0, 188, 0, 6, 12, 1)}
+              <text x="64" y="18" font-size="11" font-weight="900" fill="#0369a1">45°・45°・90°</text>
+            </g>
+          `;
+        }
+      } else {
+        // 【ひき方2】紫の三角定規（厳密な 30°・60°・90°）
+        // ローカル座標: P0=(0, 0) [60°], P1=(280, 0) [30°], P2=(70, 121.2435565) [90°]
+        // 検証:
+        // |P0-P1| = 280 (斜辺 c)
+        // |P0-P2| = hypot(70, 121.2435565) = 140 (短辺 a = c * cos60°)
+        // |P1-P2| = hypot(-210, 121.2435565) = 242.487113 (長辺 b = c * sin60° = 140 * √3)
+        // 内角: P0=60°, P1=30°, P2=90° 完全に厳密！
+        const p0 = [0, 0];
+        const p1 = [280, 0];
+        const p2 = [70, 70 * SQRT3]; // (70, 121.24)
+
+        if (state.useCustomShape) {
+          // 不思議な形のブロック（左上の角だけは厳密に 60°！左辺は P0-P2 に一致）
+          html = `
+            <g>
+              <path d="M 0,0 L 270,0 C 285,32 245,62 252,92 C 258,120 205,138 165,130 C 128,123 105,148 70,121.24 Z"
+                fill="url(#custom-shape-grad)" stroke="#ea580c" stroke-width="2.5" stroke-linejoin="round" />
+              ${createTicksSVG(14, 0, 255, 0, 6, 12, 1)}
+              <circle cx="155" cy="64" r="27" fill="#ffffff" fill-opacity="0.9" stroke="#f97316" stroke-width="1.6" />
+              <text x="155" y="61" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">ふしぎな</text>
+              <text x="155" y="74" text-anchor="middle" font-size="10.5" font-weight="900" fill="#c2410c">形でもOK!</text>
+            </g>
+          `;
+        } else {
+          const hole = computeInsetTriangle(p0, p1, p2, 18);
+          html = `
+            <g>
+              <polygon points="${ptsToStr([p0, p1, p2])}" fill="url(#purple-ruler-grad)" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round" />
+              <polygon points="${ptsToStr(hole)}" fill="#ffffff" fill-opacity="0.88" stroke="#8b5cf6" stroke-width="1.6" stroke-linejoin="round" />
+              ${createTicksSVG(14, 0, 266, 0, 6, 12, 1)}
+              <text x="145" y="16" text-anchor="middle" font-size="11" font-weight="900" fill="#5b21b6">30°・60°・90°</text>
+            </g>
+          `;
+        }
+      }
+
+      el.rightRuler.innerHTML = html;
+    }
+
+    /**
+     * 角度マーク（赤い直角記号 ┐ や 二重弧 ◠）を描画
+     */
+    function renderAngleMarks(curX, curY) {
+      if (!state.showAngles) {
+        el.angleTop.innerHTML = '';
+        el.angleBottom.innerHTML = '';
+        return;
+      }
+
+      if (state.method === 1) {
+        // 【ひき方1】直線アとの交点 (310, 115) の右下内側に直角マーク (90°)
+        el.angleTop.innerHTML = `
+          <polyline points="310,135 330,135 330,115" fill="none" stroke="#ef4444" stroke-width="2.6" />
+          <text x="336" y="136" font-size="13" font-weight="900" fill="#ef4444">90°</text>
+        `;
+
+        // 移動後の点Aを通る直線との交点 (curX, curY) の右下内側に直角マーク
+        if (state.step >= 3 && state.slideProgress > 0.12) {
+          el.angleBottom.innerHTML = `
+            <polyline points="${curX},${curY + 20} ${curX + 20},${curY + 20} ${curX + 20},${curY}" fill="none" stroke="#ef4444" stroke-width="2.6" />
+            <text x="${curX + 26}" y="${curY + 21}" font-size="13" font-weight="900" fill="#ef4444">90°（同じ！）</text>
+          `;
+        } else {
+          el.angleBottom.innerHTML = '';
+        }
+      } else {
+        // 【ひき方2】直線ア（水平右 0°）とレール線（右斜め下 60°）の間の内角 = 60°！
+        // 交点 (vx, vy) の右下内側（0° 〜 60°）に赤い二重弧を描く
+        const drawDoubleArc60 = (vx, vy, labelText) => {
+          const r1 = 22;
+          const r2 = 28;
+          const rad = Math.PI / 3; // 60° (cos60° = 0.5, sin60° = 0.866)
+          const x1a = vx + r1, y1a = vy;
+          const x1b = vx + r1 * Math.cos(rad), y1b = vy + r1 * Math.sin(rad);
+          const x2a = vx + r2, y2a = vy;
+          const x2b = vx + r2 * Math.cos(rad), y2b = vy + r2 * Math.sin(rad);
+
+          return `
+            <path d="M ${x1a},${y1a} A ${r1},${r1} 0 0,1 ${x1b.toFixed(1)},${y1b.toFixed(1)}" fill="none" stroke="#ef4444" stroke-width="2.4" />
+            <path d="M ${x2a},${y2a} A ${r2},${r2} 0 0,1 ${x2b.toFixed(1)},${y2b.toFixed(1)}" fill="none" stroke="#ef4444" stroke-width="2.4" />
+            <text x="${(vx + 33).toFixed(1)}" y="${(vy + 22).toFixed(1)}" font-size="13" font-weight="900" fill="#ef4444">${labelText}</text>
+          `;
+        };
+
+        el.angleTop.innerHTML = drawDoubleArc60(270, 115, '60°');
+
+        if (state.step >= 3 && state.slideProgress > 0.12) {
+          el.angleBottom.innerHTML = drawDoubleArc60(curX, curY, '60°（同じ！）');
+        } else {
+          el.angleBottom.innerHTML = '';
+        }
+      }
+    }
+
+    /**
+     * 吹き出し内のミニ図解（教科書と同じ2本の平行線と交わるレール直線）を描画
+     */
+    function renderCalloutDiagram() {
+      if (state.method === 1) {
+        el.calloutDiagram.innerHTML = `
+          <line x1="12" y1="24" x2="118" y2="24" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" />
+          <line x1="12" y1="68" x2="118" y2="68" stroke="#059669" stroke-width="2.8" stroke-linecap="round" />
+          <line x1="52" y1="6" x2="52" y2="90" stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="4 3" />
+          <!-- 右下内側の直角マーク -->
+          <polyline points="52,35 63,35 63,24" fill="none" stroke="#ef4444" stroke-width="2.2" />
+          <polyline points="52,79 63,79 63,68" fill="none" stroke="#ef4444" stroke-width="2.2" />
+        `;
+      } else {
+        // 右斜め下60°に傾くレール直線と2本の平行線、右下内側(0°〜60°)の二重弧
+        el.calloutDiagram.innerHTML = `
+          <line x1="12" y1="24" x2="118" y2="24" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" />
+          <line x1="12" y1="68" x2="118" y2="68" stroke="#059669" stroke-width="2.8" stroke-linecap="round" />
+          <!-- (42, 24) と (67.4, 68) を通る60°斜線 -->
+          <line x1="31.6" y1="6" x2="80.1" y2="90" stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="4 3" />
+          <!-- 上の交点 (42, 24) の右下内側二重弧 -->
+          <path d="M 54,24 A 12,12 0 0,1 48,34.4" fill="none" stroke="#ef4444" stroke-width="2" />
+          <path d="M 58,24 A 16,16 0 0,1 50,37.9" fill="none" stroke="#ef4444" stroke-width="2" />
+          <!-- 下の交点 (67.4, 68) の右下内側二重弧 -->
+          <path d="M 79.4,68 A 12,12 0 0,1 73.4,78.4" fill="none" stroke="#ef4444" stroke-width="2" />
+          <path d="M 83.4,68 A 16,16 0 0,1 75.4,81.9" fill="none" stroke="#ef4444" stroke-width="2" />
+        `;
+      }
+    }
+
+    /**
+     * レール補助線（オレンジ破線）の位置更新
+     */
+    function updateGuideLine() {
+      el.guideLines.style.opacity = state.showAngles ? '1' : '0';
+      if (state.method === 1) {
+        // x = 310 の垂直線
+        el.railGuideLine.setAttribute('x1', '310');
+        el.railGuideLine.setAttribute('y1', '20');
+        el.railGuideLine.setAttribute('x2', '310');
+        el.railGuideLine.setAttribute('y2', '480');
+        el.railGuideLabel.setAttribute('x', '300');
+        el.railGuideLabel.setAttribute('y', '472');
+        el.railGuideLabel.setAttribute('text-anchor', 'end');
+      } else {
+        // (270, 115) と (340, 236.24) を結ぶ右斜め下60°の直線
+        // u = (0.5, 0.866025)
+        const ux = 0.5;
+        const uy = SQRT3 / 2;
+        const x1 = 270 - 105 * ux; // 217.5
+        const y1 = 115 - 105 * uy; // 24.07
+        const x2 = 270 + 410 * ux; // 475.0
+        const y2 = 115 + 410 * uy; // 470.07
+        el.railGuideLine.setAttribute('x1', x1.toFixed(1));
+        el.railGuideLine.setAttribute('y1', y1.toFixed(1));
+        el.railGuideLine.setAttribute('x2', x2.toFixed(1));
+        el.railGuideLine.setAttribute('y2', y2.toFixed(1));
+        el.railGuideLabel.setAttribute('x', (x2 - 14).toFixed(1));
+        el.railGuideLabel.setAttribute('y', '472');
+        el.railGuideLabel.setAttribute('text-anchor', 'end');
+      }
+    }
+
+    /**
+     * 全体のビジュアル状態をフレームごとに更新
+     */
+    function renderScene() {
+      const m = METHODS[state.method];
+
+      // 現在の右定規の基準頂点 P0 の位置を計算
+      const dist = m.totalDist * state.slideProgress;
+      const curX = m.originX + m.dirX * dist;
+      const curY = m.originY + m.dirY * dist;
+
+      // 左定規（レール役）の表示とスライドイン演出
+      if (state.step === 1) {
+        el.leftRuler.style.opacity = '0';
+        el.leftRuler.setAttribute('transform', `translate(${m.leftEntryOffsetX.toFixed(1)}, ${m.leftEntryOffsetY.toFixed(1)})`);
+      } else if (state.step === 5) {
+        // 完成時は定規を少し脇へよける
+        el.leftRuler.style.opacity = '0.35';
+        el.leftRuler.setAttribute('transform', `translate(${(m.leftEntryOffsetX * 0.85).toFixed(1)}, ${(m.leftEntryOffsetY * 0.85).toFixed(1)})`);
+      } else {
+        const easeOut = 1 - Math.pow(1 - state.slideInProgress, 3);
+        const lx = m.leftEntryOffsetX * (1 - easeOut);
+        const ly = m.leftEntryOffsetY * (1 - easeOut);
+        el.leftRuler.style.opacity = easeOut.toFixed(2);
+        el.leftRuler.setAttribute('transform', `translate(${lx.toFixed(2)}, ${ly.toFixed(2)})`);
+      }
+
+      // 右定規（スライド役）の位置反映
+      if (state.step === 5) {
+        el.rightRuler.style.opacity = '0.35';
+        el.rightRuler.setAttribute('transform', `translate(${(curX + 95).toFixed(1)}, ${(curY + 45).toFixed(1)})`);
+      } else {
+        el.rightRuler.style.opacity = '1';
+        el.rightRuler.setAttribute('transform', `translate(${curX.toFixed(2)}, ${curY.toFixed(2)})`);
+      }
+
+      // 角度マークの更新
+      renderAngleMarks(curX, curY);
+
+      // 引かれた平行線の更新（点A (430, 215) を通る水平線 y = 215）
+      const lineStartX = curX + m.drawLocalStartX;
+      const lineEndX = curX + (state.useCustomShape ? m.blockDrawEndX : m.drawLocalEndX);
+      if (state.drawProgress > 0) {
+        const currentEndX = lineStartX + (lineEndX - lineStartX) * state.drawProgress;
+        el.parallelLine.setAttribute('x1', lineStartX.toFixed(1));
+        el.parallelLine.setAttribute('y1', TARGET_Y);
+        el.parallelLine.setAttribute('x2', currentEndX.toFixed(1));
+        el.parallelLine.setAttribute('y2', TARGET_Y);
+        el.parallelLine.style.opacity = '1';
+      } else {
+        el.parallelLine.style.opacity = '0';
+      }
+
+      // 鉛筆の表示と位置（ステップ4で線を引いている途中のみ表示）
+      if (state.step === 4 && state.drawProgress > 0 && state.drawProgress < 1) {
+        const pencilX = lineStartX + (lineEndX - lineStartX) * state.drawProgress;
+        el.pencil.style.opacity = '1';
+        el.pencil.setAttribute('transform', `translate(${pencilX.toFixed(1)}, ${TARGET_Y}) rotate(-28)`);
+      } else {
+        el.pencil.style.opacity = '0';
+      }
+
+      // 吹き出し図解（ステップ3〜5で角度マークONのときに表示）
+      if (state.step >= 3 && state.showAngles) {
+        el.callout.style.opacity = '1';
+      } else {
+        el.callout.style.opacity = '0';
+      }
+
+      // ドラッグ案内バッジ（ステップ3のときだけ表示）
+      if (state.step === 3 && !state.isPlaying) {
+        el.dragHint.classList.remove('hidden');
+      } else {
+        el.dragHint.classList.add('hidden');
+      }
+
+      // スライダー同期
+      const pct = Math.round(state.slideProgress * 100);
+      el.slider.value = pct;
+      el.slidePercent.textContent = `${pct}%`;
+    }
+
+    /**
+     * UIテキスト・ボタン状態の更新
+     */
+    function updateUI() {
+      const m = METHODS[state.method];
+      const stepInfo = m.steps[state.step];
+
+      // タブの見た目更新
+      if (state.method === 1) {
+        el.tab1.className = 'flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-emerald-800 shadow';
+        el.tab2.className = 'flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-emerald-100 hover:text-white';
+      } else {
+        el.tab1.className = 'flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-emerald-100 hover:text-white';
+        el.tab2.className = 'flex-1 md:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-emerald-800 shadow';
+      }
+
+      // 役割バッジの更新
+      el.roleLeftBadge.textContent = state.useStraightRuler ? 'ただの直線定規（レール役）' : m.leftRoleText;
+      el.roleLeftBadge.className = state.useStraightRuler
+        ? 'px-2 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 border border-amber-200'
+        : m.leftRoleClass;
+
+      el.roleRightBadge.textContent = state.useCustomShape ? '不思議な形のブロック（同じ角）' : m.rightRoleText;
+      el.roleRightBadge.className = state.useCustomShape
+        ? 'px-2 py-0.5 rounded-md font-bold bg-orange-100 text-orange-800 border border-orange-200'
+        : m.rightRoleClass;
+
+      // ステップ解説の更新
+      el.stepBadge.textContent = state.step;
+      const rail = state.useStraightRuler ? '直線定規' : m.leftRoleText;
+      const moving = state.useCustomShape ? 'ブロック' : m.rightRoleText;
+      const experiments = {
+        1: ['上の辺を直線アに合わせる', '① ' + moving + 'の上のまっすぐな辺を、直線アに合わせます。'],
+        2: ['レールを当てる', '② ' + rail + 'のまっすぐな辺を、' + moving + 'の左側の辺に当てます。'],
+        3: ['点Aまで滑らせる', '③ ' + rail + 'を押さえ、' + moving + 'の上の辺が点Aに合うまで、レールに当てたまま滑らせます。'],
+        4: ['上の辺に沿って線を引く', '④ 道具を押さえ、上の辺に沿って点Aを通る線を引きます。']
+      };
+      const alternate = (state.useStraightRuler || state.useCustomShape) && experiments[state.step];
+      el.stepShortTitle.textContent = alternate ? alternate[0] : stepInfo.short;
+      el.methodSubtitle.textContent = m.subtitle;
+      el.stepDetailTitle.textContent = alternate ? alternate[1] : stepInfo.title;
+      el.stepDetailDesc.hidden = Boolean(alternate);
+      el.stepDetailDesc.textContent = stepInfo.desc;
+
+      // ステップボタン（1〜5）のアクティブ装飾
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`step-btn-${i}`);
+        if (i === state.step) {
+          btn.className = 'step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 border-emerald-600 bg-emerald-600 text-white shadow-sm transition flex flex-col items-center';
+        } else if (i < state.step) {
+          btn.className = 'step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition flex flex-col items-center';
+        } else {
+          btn.className = 'step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition flex flex-col items-center';
+        }
+      }
+
+      // 前へ・次へボタンの有効/無効
+      el.btnPrev.disabled = (state.step === 1);
+      el.btnNext.disabled = (state.step === 5);
+
+      // 再生/一時停止ボタンの表示
+      if (state.isPlaying) {
+        el.iconPlay.classList.add('hidden');
+        el.iconPause.classList.remove('hidden');
+        el.btnPlayText.textContent = '一時停止';
+        el.btnPlay.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+        el.btnPlay.classList.add('bg-amber-600', 'hover:bg-amber-700');
+      } else {
+        el.iconPlay.classList.remove('hidden');
+        el.iconPause.classList.add('hidden');
+        el.btnPlayText.textContent = '自動再生';
+        el.btnPlay.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+        el.btnPlay.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+      }
+    }
+
+    /**
+     * ひき方（1 or 2）の切り替え
+     */
+    function setMethod(methodId) {
+      stopPlay();
+      stepTimer = 0;
+      state.isDragging = false;
+      state.method = methodId;
+      state.step = 1;
+      state.slideProgress = 0;
+      state.slideInProgress = 0;
+      state.drawProgress = 0;
+
+      renderLeftRuler();
+      renderRightRuler();
+      renderCalloutDiagram();
+      updateGuideLine();
+      updateUI();
+      renderScene();
+    }
+
+    /**
+     * 指定したステップへ移動
+     */
+    function goToStep(stepNum, keepPlaying = false) {
+      if (!keepPlaying) {
+        stopPlay();
+        stepTimer = 0;
+        state.isDragging = false;
+      }
+      state.step = Math.max(1, Math.min(5, stepNum));
+
+      if (state.step === 1) {
+        state.slideProgress = 0;
+        state.slideInProgress = 0;
+        state.drawProgress = 0;
+      } else if (state.step === 2) {
+        state.slideProgress = 0;
+        state.slideInProgress = keepPlaying ? 0 : 1;
+        state.drawProgress = 0;
+      } else if (state.step === 3) {
+        state.slideInProgress = 1;
+        if (!keepPlaying) {
+          state.slideProgress = 1;
+        }
+        state.drawProgress = 0;
+      } else if (state.step === 4) {
+        state.slideInProgress = 1;
+        state.slideProgress = 1;
+        if (!keepPlaying) {
+          state.drawProgress = 1;
+        }
+      } else if (state.step === 5) {
+        state.slideInProgress = 1;
+        state.slideProgress = 1;
+        state.drawProgress = 1;
+      }
+
+      updateUI();
+      renderScene();
+    }
+
+    function prevStep() {
+      if (state.step > 1) goToStep(state.step - 1);
+    }
+
+    function nextStep() {
+      if (state.step < 5) goToStep(state.step + 1);
+    }
+
+    function resetAnimation() {
+      stopPlay();
+      goToStep(1);
+    }
+
+    /**
+     * スライダーによる手動スライド操作
+     */
+    function onSliderInput(val) {
+      stopPlay();
+      stepTimer = 0;
+      const progress = Number(val) / 100;
+      state.slideProgress = progress;
+      state.slideInProgress = 1;
+
+      if (progress > 0 && state.step < 3) {
+        state.step = 3;
+      }
+      if (progress < 1 && state.step >= 4) {
+        state.step = 3;
+        state.drawProgress = 0;
+      }
+      updateUI();
+      renderScene();
+    }
+
+    /**
+     * 実験スイッチ（オプション）の更新
+     */
+    function updateOptions() {
+      state.useStraightRuler = document.getElementById('toggle-straight-ruler').checked;
+      state.useCustomShape = document.getElementById('toggle-custom-shape').checked;
+      state.showAngles = document.getElementById('toggle-angles').checked;
+
+      renderLeftRuler();
+      renderRightRuler();
+      updateGuideLine();
+      updateUI();
+      renderScene();
+    }
+
+    /**
+     * 自動再生アニメーションループ
+     */
+    let stepTimer = 0;
+
+    function togglePlay() {
+      if (state.isPlaying) {
+        stopPlay();
+      } else {
+        startPlay();
+      }
+    }
+
+    function startPlay() {
+      if (state.step === 5) {
+        stepTimer = 0;
+        state.step = 1;
+        state.slideProgress = 0;
+        state.slideInProgress = 0;
+        state.drawProgress = 0;
+      }
+      if (state.step === 2 && state.slideInProgress === 1) stepTimer = Math.max(stepTimer, 0.7);
+      if (state.step === 3) {
+        const p = state.slideProgress;
+        const t = p < 0.5 ? Math.cbrt(p / 4) : 1 - Math.cbrt((1 - p) / 4);
+        stepTimer = Math.max(stepTimer, t * 1.8);
+      }
+      if (state.step === 4 && state.drawProgress === 1) stepTimer = Math.max(stepTimer, 1.4);
+      state.isPlaying = true;
+      state.lastTimestamp = performance.now();
+      updateUI();
+      state.animFrameId = requestAnimationFrame(animationLoop);
+    }
+
+    function stopPlay() {
+      state.isPlaying = false;
+      if (state.animFrameId) {
+        cancelAnimationFrame(state.animFrameId);
+        state.animFrameId = null;
+      }
+      updateUI();
+      renderScene();
+    }
+
+    function animationLoop(now) {
+      if (!state.isPlaying) return;
+      const dt = (now - state.lastTimestamp) / 1000;
+      state.lastTimestamp = now;
+      stepTimer += dt;
+
+      if (state.step === 1) {
+        if (stepTimer >= 1.2) {
+          stepTimer = 0;
+          goToStep(2, true);
+        }
+      } else if (state.step === 2) {
+        // 0.7秒かけて左のレール定規がスライドインしてぴったり接する
+        const inDuration = 0.7;
+        state.slideInProgress = Math.min(1, stepTimer / inDuration);
+        renderScene();
+
+        if (stepTimer >= inDuration + 0.7) {
+          stepTimer = 0;
+          state.slideProgress = 0;
+          goToStep(3, true);
+        }
+      } else if (state.step === 3) {
+        // 1.8秒かけて点Aまでレールに沿ってスライド
+        const duration = 1.8;
+        const t = Math.min(1, stepTimer / duration);
+        state.slideProgress = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        renderScene();
+
+        if (stepTimer >= duration + 0.5) {
+          stepTimer = 0;
+          state.drawProgress = 0;
+          goToStep(4, true);
+        }
+      } else if (state.step === 4) {
+        // 1.4秒かけて鉛筆で線を引く
+        const duration = 1.4;
+        state.drawProgress = Math.min(1, stepTimer / duration);
+        renderScene();
+
+        if (stepTimer >= duration + 0.5) {
+          stepTimer = 0;
+          goToStep(5, true);
+        }
+      } else if (state.step === 5) {
+        stopPlay();
+        return;
+      }
+
+      if (state.isPlaying) {
+        state.animFrameId = requestAnimationFrame(animationLoop);
+      }
+    }
+
+    /**
+     * SVG上の右定規の直接ドラッグ操作（マウス＆タッチ対応）
+     */
+    function setupDragInteraction() {
+      const getClientPos = (e) => {
+        if (e.touches && e.touches.length > 0) {
+          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+      };
+
+      const onStart = (e) => {
+        if (state.step === 5) return;
+        stopPlay();
+        const pos = getClientPos(e);
+        state.isDragging = true;
+        state.dragStartClientX = pos.x;
+        state.dragStartClientY = pos.y;
+        state.dragStartProgress = state.slideProgress;
+        stepTimer = 0;
+        state.slideInProgress = 1;
+
+        if (state.step < 3) {
+          state.step = 3;
+          updateUI();
+        }
+      };
+
+      const onMove = (e) => {
+        if (!state.isDragging) return;
+        e.preventDefault();
+        const pos = getClientPos(e);
+        const m = METHODS[state.method];
+
+        const rect = el.svg.getBoundingClientRect();
+        const scaleX = 800 / rect.width;
+        const scaleY = 500 / rect.height;
+
+        const dx = (pos.x - state.dragStartClientX) * scaleX;
+        const dy = (pos.y - state.dragStartClientY) * scaleY;
+
+        // レール方向ベクトルへの射影距離
+        const projectedDist = dx * m.dirX + dy * m.dirY;
+        const deltaProgress = projectedDist / m.totalDist;
+
+        state.slideProgress = Math.max(0, Math.min(1, state.dragStartProgress + deltaProgress));
+        if (state.slideProgress > 0.02 && state.step < 3) {
+          state.step = 3;
+        }
+        if (state.slideProgress < 1 && state.step === 4) {
+          state.step = 3;
+          state.drawProgress = 0;
+        }
+        updateUI();
+        renderScene();
+      };
+
+      const onEnd = () => {
+        if (!state.isDragging) return;
+        state.isDragging = false;
+        // 点A付近（94%以上）まで近づいたらピタッと吸着させる
+        if (state.slideProgress > 0.94) {
+          state.slideProgress = 1;
+          updateUI();
+          renderScene();
+        }
+      };
+
+      el.rightRuler.addEventListener('mousedown', onStart);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+
+      el.rightRuler.addEventListener('touchstart', onStart, { passive: false });
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onEnd);
+      window.addEventListener('touchcancel', () => { state.isDragging = false; });
+      window.addEventListener('blur', () => { state.isDragging = false; });
+    }
+
+    // 初期化処理
+    window.addEventListener('DOMContentLoaded', () => {
+      renderLeftRuler();
+      renderRightRuler();
+      renderCalloutDiagram();
+      updateGuideLine();
+      updateUI();
+      renderScene();
+      setupDragInteraction();
+    });
+  </script>
+</body>
+</html>

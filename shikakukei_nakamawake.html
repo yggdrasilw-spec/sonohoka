@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>四角形の仲間分け（特別支援学級向けUD版SVGアニメ）</title>
+  <link rel="stylesheet" href="css/math-svg-lessons.css">
+  <style>
+    html, body {
+      height: 100dvh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'BIZ UDPGothic', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .ud-title {
+      font-family: 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif;
+    }
+
+    ruby {
+      ruby-align: center;
+    }
+    rt {
+      font-size: 0.52em;
+      color: #334155;
+      font-weight: 700;
+    }
+    .nobr {
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      75% { transform: scale(1.04); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes shakeSoft {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-7px); }
+      50% { transform: translateX(7px); }
+      75% { transform: translateX(-4px); }
+    }
+    .animate-shake {
+      animation: shakeSoft 0.36s ease-in-out;
+    }
+
+    .dragging-item {
+      opacity: 0.4;
+      transform: scale(0.92);
+    }
+
+    .drop-target-hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.45);
+    }
+
+    :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+    .sort-card-selected { box-shadow: 0 0 0 3px #1d4ed8; background: #eff6ff; }
+    @media (max-width: 1023px) {
+      html, body { height: auto !important; overflow: visible !important; }
+      body { width: 100%; min-height: 100dvh; }
+      #screen-check:not(.hidden) { display: flex; flex-direction: column; }
+      #screen-check > div:first-child { min-height: 0; }
+      #main-svg { height: auto; aspect-ratio: 1; }
+    }
+    @media (max-width: 767px) {
+      body > header { flex-wrap: wrap; }
+      body > header > div { max-width: 100%; flex-wrap: wrap; gap: .5rem; }
+      #screen-sort > div:last-child { grid-template-columns: 1fr; }
+      .sort-dropzone { min-height: 106px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-pop, .animate-shake { animation: none; }
+    }
+
+  </style>
+</head>
+<body class="h-[100dvh] w-screen overflow-hidden flex flex-col">
+
+  <!-- コンパクトな上部ヘッダー（高さ約54px） -->
+  <header class="bg-white border-b-2 border-slate-200 shrink-0 px-3 sm:px-5 py-1.5 flex items-center justify-between gap-2 shadow-sm z-20">
+    <div class="flex items-center gap-2">
+      <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-600 text-white font-black text-base shadow-sm">
+        ◇
+      </span>
+      <h1 class="ud-title text-base sm:text-xl font-black text-slate-900 tracking-wide whitespace-nowrap">
+        <ruby>四角形<rt>しかくけい</rt></ruby>の<ruby>仲間分<rt>なかまわ</rt></ruby>け
+      </h1>
+    </div>
+
+    <!-- 2画面切替タブ ＋ ドット切替 ＋ 音声ボタン -->
+    <div class="flex items-center gap-2">
+      <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <button id="tab-check" onclick="switchMode('check')"
+          class="px-3 sm:px-5 py-1.5 rounded-lg font-black text-xs sm:text-sm transition-all bg-blue-600 text-white shadow whitespace-nowrap">
+          ① へいこうチェック
+        </button>
+        <button id="tab-sort" onclick="switchMode('sort')"
+          class="px-3 sm:px-5 py-1.5 rounded-lg font-black text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 whitespace-nowrap">
+          <span>② なかまわけ</span>
+          <span id="tab-sort-badge" class="px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-700 font-black">0/9</span>
+        </button>
+      </div>
+
+      <button id="btn-sound" onclick="toggleSound()" title="音のオン・オフ"
+        class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-base shrink-0 transition">
+        🔊
+      </button>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       画面①：へいこうチェック（Chromebook横長 2カラム・ノンスクロール設計）
+       ===================================================================== -->
+  <main id="screen-check" class="flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-5 py-2.5 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+
+    <!-- 左カラム（7列）：大きな正方形SVGキャンバス -->
+    <div class="lg:col-span-7 min-h-0 flex items-center justify-center bg-white rounded-3xl p-2 sm:p-3 shadow-sm border-2 border-slate-200 relative">
+      <div class="relative h-full max-h-full aspect-square max-w-full flex items-center justify-center">
+        <svg id="main-svg" viewBox="0 0 520 520" class="w-full h-full max-h-full max-w-full block rounded-2xl border-2 border-slate-300 bg-white">
+          <defs>
+            <!-- 青い直角二等辺三角定規 (45°-45°-90°) -->
+            <linearGradient id="ruler-blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#bae6fd" stop-opacity="0.86" />
+              <stop offset="100%" stop-color="#7dd3fc" stop-opacity="0.92" />
+            </linearGradient>
+            <!-- 紫の三角定規 (30°-60°-90°) -->
+            <linearGradient id="ruler-purple-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#e9d5ff" stop-opacity="0.86" />
+              <stop offset="100%" stop-color="#d8b4fe" stop-opacity="0.92" />
+            </linearGradient>
+
+            <!-- 水平・垂直線でも絶対に消えないグロウ発光フィルタ (userSpaceOnUse) -->
+            <filter id="glow-red" filterUnits="userSpaceOnUse" x="0" y="0" width="520" height="520">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6.5" result="blurOuter" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blurInner" />
+              <feMerge>
+                <feMergeNode in="blurOuter" />
+                <feMergeNode in="blurInner" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+
+            <filter id="glow-blue" filterUnits="userSpaceOnUse" x="0" y="0" width="520" height="520">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6.5" result="blurOuter" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blurInner" />
+              <feMerge>
+                <feMergeNode in="blurOuter" />
+                <feMergeNode in="blurInner" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+
+            <filter id="ruler-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="520" height="520">
+              <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.2" />
+            </filter>
+          </defs>
+
+          <!-- 1. ドット格子 -->
+          <g id="layer-grid"></g>
+
+          <!-- 2. 囲まれた四角形の水色塗りつぶし -->
+          <polygon id="quad-fill" points="" fill="#38bdf8" fill-opacity="0" />
+
+          <!-- 3. 4本の直線（赤・青・発光・黒） -->
+          <g id="layer-lines"></g>
+
+          <!-- 4. レール補助線・直角マーク・ズレ角表示 -->
+          <g id="layer-check-marks"></g>
+
+          <!-- 5. レール役の紫の三角定規 (30°-60°-90°) -->
+          <g id="layer-rail-ruler" filter="url(#ruler-shadow)" opacity="0"></g>
+
+          <!-- 6. スライド役の青い三角定規 (45°-45°-90°) -->
+          <g id="layer-slide-ruler" filter="url(#ruler-shadow)" opacity="0"></g>
+        </svg>
+
+        <!-- キャンバス左上：大きな図形番号バッジ -->
+        <div id="canvas-shape-number"
+          class="absolute top-2.5 left-2.5 px-3 py-1 rounded-xl bg-slate-900/85 text-white font-black text-lg sm:text-xl shadow pointer-events-none">
+          (1)
+        </div>
+
+        <!-- キャンバス右上：5×5内部ドット表示トグル -->
+        <button id="btn-inner-dots" onclick="toggleInnerDots()"
+          class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-xl bg-slate-100/90 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold text-xs shadow-sm transition">
+          内部ドット：OFF
+        </button>
+
+        <!-- キャンバス下部オーバーレイ：三角定規の判定をその場で大きく示すバッジ -->
+        <div id="canvas-live-pill"
+          class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full font-black text-base sm:text-lg shadow-lg border-2 whitespace-nowrap pointer-events-none">
+        </div>
+      </div>
+    </div>
+
+    <!-- 右カラム（5列）：問題番号 ＋ 大きな判定パネル ＋ 大きな操作ボタン -->
+    <div class="lg:col-span-5 min-h-0 flex flex-col justify-between gap-2.5">
+
+      <!-- 1. 問題番号セレクタ (1)〜(9) -->
+      <div class="bg-white rounded-2xl p-2 shadow-sm border-2 border-slate-200 shrink-0">
+        <div class="grid grid-cols-9 gap-1" id="shape-selector-bar"></div>
+      </div>
+
+      <!-- 2. メイン判定表示カード（画面の中央で大きく視線を誘導） -->
+      <div class="flex-1 min-h-0 bg-white rounded-3xl p-3 sm:p-4 shadow-sm border-2 border-slate-200 flex flex-col justify-between gap-2">
+
+        <!-- 現在のステップ見出し -->
+        <div id="check-top-banner"
+          class="w-full flex-1 min-h-[70px] rounded-2xl px-3 py-2 flex flex-col items-center justify-center text-center font-black border-2 bg-slate-50 border-slate-200 text-slate-800 transition-all leading-snug"
+          style="font-size: clamp(1.05rem, 1.8vw, 1.45rem);">
+          <div><span class="nobr">(1) の</span> <span class="nobr"><ruby>四角形<rt>しかくけい</rt></ruby>を</span></div>
+          <div><span class="nobr">しらべよう！</span></div>
+        </div>
+
+        <!-- 赤い辺・青い辺の判定ステータス2段ボックス -->
+        <div class="grid grid-cols-2 gap-2 shrink-0">
+          <div id="status-red-card"
+            class="rounded-2xl p-2.5 border-2 border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center transition-all">
+            <span class="text-xs sm:text-sm font-black text-red-600">赤い 辺</span>
+            <span id="status-red-value" class="text-base sm:text-lg font-black text-slate-400 mt-0.5">まだ</span>
+          </div>
+          <div id="status-blue-card"
+            class="rounded-2xl p-2.5 border-2 border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center transition-all">
+            <span class="text-xs sm:text-sm font-black text-blue-600">青い 辺</span>
+            <span id="status-blue-value" class="text-base sm:text-lg font-black text-slate-400 mt-0.5">まだ</span>
+          </div>
+        </div>
+
+        <!-- ステップ5（完了時）に大きく出るまとめ結論ボックス -->
+        <div id="check-bottom-summary" class="hidden shrink-0 animate-pop">
+          <div id="summary-box"
+            class="w-full rounded-2xl p-2.5 border-2 flex flex-col items-center justify-center text-center gap-1">
+            <div class="flex flex-wrap items-center justify-center gap-1.5">
+              <span id="summary-pair-dots" class="flex items-center gap-1"></span>
+              <span id="summary-text" class="ud-title font-black leading-tight" style="font-size: clamp(1.05rem, 1.7vw, 1.35rem);">
+                <span class="nobr">平行な 辺の 組は</span> <span class="nobr">２つ！</span>
+              </span>
+            </div>
+            <span id="summary-sub" class="text-xs sm:text-sm font-bold opacity-85">
+              光っている 辺が 平行だよ
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 操作ボタンエリア（下部固定・スクロール不要） -->
+      <div class="bg-white rounded-3xl p-2.5 sm:p-3 shadow-sm border-2 border-slate-200 shrink-0 flex flex-col gap-2">
+        <!-- ステップ進行ドット (0..5) -->
+        <div class="flex items-center justify-center gap-2" id="step-dots"></div>
+
+        <!-- 通常時の操作ボタン（さいしょ / じどうさいせい / つぎへ） -->
+        <div id="normal-controls" class="grid grid-cols-12 gap-2">
+          <button onclick="resetCurrentStep()"
+            class="col-span-3 py-3 px-1.5 rounded-2xl bg-slate-200 hover:bg-slate-300 active:scale-95 font-black text-slate-700 text-xs sm:text-sm transition">
+            ↺ さいしょ
+          </button>
+          <button id="btn-auto" onclick="toggleAutoPlay()"
+            class="col-span-4 py-3 px-1.5 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 font-black text-white text-xs sm:text-sm shadow transition">
+            ▶ じどうさいせい
+          </button>
+          <button id="btn-next" onclick="handleNextStep()"
+            class="col-span-5 py-3 px-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 font-black text-white text-base sm:text-lg shadow-md transition">
+            つぎへ ▶
+          </button>
+        </div>
+
+        <!-- ステップ5（完了時）のアクションボタン -->
+        <div id="complete-controls" class="hidden grid grid-cols-2 gap-2 animate-pop">
+          <button id="btn-next-shape" onclick="goToNextShape()"
+            class="py-3 px-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 font-black text-white text-sm sm:text-base shadow-md transition">
+            つぎの 図形へ ▶
+          </button>
+          <button onclick="switchMode('sort')"
+            class="py-3 px-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 font-black text-white text-sm sm:text-base shadow-md transition">
+            ② なかまわけへ ▶
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- =====================================================================
+       画面②：なかまわけ画面（Chromebook横長 1画面完結・ドラッグ＆ドロップ）
+       ===================================================================== -->
+  <main id="screen-sort" class="hidden flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex flex-col justify-between gap-2.5">
+
+    <!-- 上段：指示 ＋ フィードバックバナー ＋ 9枚のカードトレイ（1画面に凝縮） -->
+    <div class="bg-white rounded-3xl p-2.5 sm:p-3 shadow-sm border-2 border-indigo-200 shrink-0 flex flex-col gap-2">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h2 class="ud-title text-base sm:text-xl font-black text-slate-900">
+            <span class="nobr"><ruby>平行<rt>へいこう</rt></ruby>な <ruby>辺<rt>へん</rt></ruby>の <ruby>組<rt>くみ</rt></ruby>の <ruby>数<rt>かず</rt></ruby>で</span> <span class="nobr">3つの <ruby>箱<rt>はこ</rt></ruby>に わけよう！</span>
+          </h2>
+          <span class="text-xs font-bold text-slate-500">
+            （カードをえらぶ → 箱をえらぶ）
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span id="sort-progress-pill" class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-900 font-black text-xs sm:text-sm">
+            できた数：0 / 9
+          </span>
+          <button onclick="resetSortingOnly()"
+            class="px-2.5 py-1 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-xs text-slate-700 transition">
+            やり直す
+          </button>
+        </div>
+      </div>
+
+      <!-- 正解・ヒントのフィードバック（コンパクト表示） -->
+      <div id="sort-feedback-banner" role="status" class="hidden rounded-xl px-3 py-1.5 font-black text-center text-sm sm:text-base border-2"></div>
+
+      <button id="sort-hint" type="button" class="hidden self-start px-3 py-2 rounded-xl bg-sky-100 font-bold text-sky-950" onclick="openSortHint()">この図形の平行をたしかめる</button>
+      <!-- 未分類カード一覧（横1列でコンパクトに表示） -->
+      <div id="unsorted-tray" class="min-h-[82px] flex flex-wrap gap-2 items-center justify-center p-1.5 rounded-2xl bg-slate-50 border border-slate-200"></div>
+    </div>
+
+    <!-- 下段：3つの大きな分類ボックス（残りの高さいっぱいに広がる） -->
+    <div class="flex-1 min-h-0 grid grid-cols-3 gap-2.5 sm:gap-4">
+
+      <!-- 箱1：平行な辺の組が 2つ → 平行四辺形 (正答5個: (1),(2),(4),(5),(7)) -->
+      <div id="box-cat-2" data-cat="2" role="button" tabindex="0" aria-label="平行な辺の組が2つの箱" onclick="handleBoxTap(2)"
+        class="sort-dropzone min-h-0 rounded-3xl bg-emerald-50/90 border-4 border-emerald-400 p-2.5 sm:p-3.5 flex flex-col justify-between cursor-pointer transition-all hover:bg-emerald-100/70">
+        <div class="shrink-0 pointer-events-none">
+          <div class="flex items-center justify-between gap-1">
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-black text-xs sm:text-sm">
+              <span class="nobr">平行な 辺の 組が ２つ</span>
+            </span>
+            <span id="box-count-2" class="font-black text-emerald-900 text-xs sm:text-sm">0 / 5</span>
+          </div>
+          <h3 class="ud-title text-lg sm:text-2xl font-black text-emerald-950 mt-1">
+            <ruby>平行四辺形<rt>へいこうしへんけい</rt></ruby>
+          </h3>
+        </div>
+
+        <div id="box-items-2"
+          class="flex-1 min-h-0 mt-2 bg-white rounded-2xl p-2 border-2 border-emerald-200 flex flex-wrap gap-1.5 items-center justify-center content-center overflow-hidden">
+          <span class="text-xs sm:text-sm font-bold text-emerald-600/60 pointer-events-none">ここに入れる（2つ）</span>
+        </div>
+      </div>
+
+      <!-- 箱2：平行な辺の組が 1つ → 台形 (正答2個: (3),(8)) -->
+      <div id="box-cat-1" data-cat="1" role="button" tabindex="0" aria-label="平行な辺の組が1つの箱" onclick="handleBoxTap(1)"
+        class="sort-dropzone min-h-0 rounded-3xl bg-amber-50/90 border-4 border-amber-400 p-2.5 sm:p-3.5 flex flex-col justify-between cursor-pointer transition-all hover:bg-amber-100/70">
+        <div class="shrink-0 pointer-events-none">
+          <div class="flex items-center justify-between gap-1">
+            <span class="px-2.5 py-0.5 rounded-full bg-amber-500 text-white font-black text-xs sm:text-sm">
+              <span class="nobr">平行な 辺の 組が １つ</span>
+            </span>
+            <span id="box-count-1" class="font-black text-amber-900 text-xs sm:text-sm">0 / 2</span>
+          </div>
+          <h3 class="ud-title text-lg sm:text-2xl font-black text-amber-950 mt-1">
+            <ruby>台形<rt>だいけい</rt></ruby>
+          </h3>
+        </div>
+
+        <div id="box-items-1"
+          class="flex-1 min-h-0 mt-2 bg-white rounded-2xl p-2 border-2 border-amber-200 flex flex-wrap gap-1.5 items-center justify-center content-center overflow-hidden">
+          <span class="text-xs sm:text-sm font-bold text-amber-600/60 pointer-events-none">ここに入れる（1つ）</span>
+        </div>
+      </div>
+
+      <!-- 箱3：平行な辺の組が 0 → ただの四角形 (正答2個: (6),(9)) -->
+      <div id="box-cat-0" data-cat="0" role="button" tabindex="0" aria-label="平行な辺の組が0つの箱" onclick="handleBoxTap(0)"
+        class="sort-dropzone min-h-0 rounded-3xl bg-slate-100 border-4 border-slate-400 p-2.5 sm:p-3.5 flex flex-col justify-between cursor-pointer transition-all hover:bg-slate-200/60">
+        <div class="shrink-0 pointer-events-none">
+          <div class="flex items-center justify-between gap-1">
+            <span class="px-2.5 py-0.5 rounded-full bg-slate-600 text-white font-black text-xs sm:text-sm">
+              <span class="nobr">平行な 辺の 組が ０</span>
+            </span>
+            <span id="box-count-0" class="font-black text-slate-800 text-xs sm:text-sm">0 / 2</span>
+          </div>
+          <h3 class="ud-title text-lg sm:text-2xl font-black text-slate-900 mt-1">
+            ただの <ruby>四角形<rt>しかくけい</rt></ruby>
+          </h3>
+        </div>
+
+        <div id="box-items-0"
+          class="flex-1 min-h-0 mt-2 bg-white rounded-2xl p-2 border-2 border-slate-300 flex flex-wrap gap-1.5 items-center justify-center content-center overflow-hidden">
+          <span class="text-xs sm:text-sm font-bold text-slate-500/60 pointer-events-none">ここに入れる（0）</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- タッチドラッグ追従用ゴースト -->
+  <div id="touch-drag-ghost" class="hidden fixed z-50 pointer-events-none w-20 h-20 bg-white rounded-2xl border-4 border-blue-500 shadow-2xl flex flex-col items-center justify-center p-1"></div>
+
+  <script>
+    /**
+     * 教科書画像 (1)〜(9) の厳密な幾何データ
+     * 5x5ドット格子: 列 c = 0..4, 行 r = 0..4
+     * メインSVG (520x520): 左上(0,0) = (110, 110), 1マス = 75px
+     */
+    const GRID_ORIGIN = 110;
+    const GRID_STEP = 75;
+    const SQRT3 = Math.sqrt(3);
+
+    function gridToPx(pt) {
+      return [
+        GRID_ORIGIN + pt[0] * GRID_STEP,
+        GRID_ORIGIN + pt[1] * GRID_STEP
+      ];
+    }
+
+    function intersectLines(p1, p2, p3, p4) {
+      const x1 = p1[0], y1 = p1[1];
+      const x2 = p2[0], y2 = p2[1];
+      const x3 = p3[0], y3 = p3[1];
+      const x4 = p4[0], y4 = p4[1];
+      const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+      if (Math.abs(denom) < 1e-6) return null;
+      const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+      return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+    }
+
+    /**
+     * 教科書 (1)〜(9) の定義データ
+     * (1) 平行2組（平行四辺形）
+     * (2) 平行2組（平行四辺形）
+     * (3) 平行1組（台形）
+     * (4) 平行2組（平行四辺形）
+     * (5) 平行2組（平行四辺形）
+     * (6) 平行0組（ただの四角形）
+     * (7) 平行2組（平行四辺形：傾き +1 と 傾き -1/2 の2組とも平行！）
+     * (8) 平行1組（台形）
+     * (9) 平行0組（ただの四角形）
+     */
+    const SHAPES_DATA = [
+      {
+        id: 1,
+        label: '(1)',
+        redPair: [{ p1: [0, 1], p2: [4, 1] }, { p1: [0, 3], p2: [4, 3] }],
+        bluePair: [{ p1: [1, 0], p2: [1, 4] }, { p1: [3, 0], p2: [3, 4] }],
+        redParallel: true,
+        blueParallel: true,
+        parallelCount: 2,
+        categoryName: '平行四辺形'
+      },
+      {
+        id: 2,
+        label: '(2)',
+        redPair: [{ p1: [0, 0], p2: [4, 0] }, { p1: [0, 4], p2: [4, 4] }],
+        bluePair: [{ p1: [1, 0], p2: [0, 4] }, { p1: [4, 0], p2: [3, 4] }],
+        redParallel: true,
+        blueParallel: true,
+        parallelCount: 2,
+        categoryName: '平行四辺形'
+      },
+      {
+        id: 3,
+        label: '(3)',
+        redPair: [{ p1: [0, 1], p2: [4, 1] }, { p1: [0, 3], p2: [4, 3] }],
+        bluePair: [{ p1: [1, 0], p2: [0, 4] }, { p1: [2, 0], p2: [4, 4] }],
+        redParallel: true,
+        blueParallel: false,
+        parallelCount: 1,
+        categoryName: '台形'
+      },
+      {
+        id: 4,
+        label: '(4)',
+        redPair: [{ p1: [0, 0], p2: [4, 2] }, { p1: [0, 2], p2: [4, 4] }],
+        bluePair: [{ p1: [0, 2], p2: [4, 0] }, { p1: [0, 4], p2: [4, 2] }],
+        redParallel: true,
+        blueParallel: true,
+        parallelCount: 2,
+        categoryName: '平行四辺形'
+      },
+      {
+        id: 5,
+        label: '(5)',
+        redPair: [{ p1: [0, 1], p2: [4, 1] }, { p1: [0, 4], p2: [4, 4] }],
+        bluePair: [{ p1: [0, 0], p2: [0, 4] }, { p1: [4, 0], p2: [4, 4] }],
+        redParallel: true,
+        blueParallel: true,
+        parallelCount: 2,
+        categoryName: '平行四辺形'
+      },
+      {
+        id: 6,
+        label: '(6)',
+        redPair: [{ p1: [0, 0], p2: [4, 2] }, { p1: [0, 3], p2: [4, 3] }],
+        bluePair: [{ p1: [2, 0], p2: [0, 4] }, { p1: [3, 0], p2: [4, 4] }],
+        redParallel: false,
+        blueParallel: false,
+        parallelCount: 0,
+        categoryName: 'ただの四角形'
+      },
+      {
+        id: 7,
+        label: '(7)',
+        redPair: [{ p1: [1, 0], p2: [4, 3] }, { p1: [0, 1], p2: [3, 4] }],
+        bluePair: [{ p1: [0, 2], p2: [4, 0] }, { p1: [0, 4], p2: [4, 2] }],
+        redParallel: true,
+        blueParallel: true,
+        parallelCount: 2,
+        categoryName: '平行四辺形'
+      },
+      {
+        id: 8,
+        label: '(8)',
+        redPair: [{ p1: [0, 1], p2: [4, 1] }, { p1: [0, 3], p2: [4, 3] }],
+        bluePair: [{ p1: [1, 0], p2: [0, 4] }, { p1: [3, 0], p2: [4, 4] }],
+        redParallel: true,
+        blueParallel: false,
+        parallelCount: 1,
+        categoryName: '台形'
+      },
+      {
+        id: 9,
+        label: '(9)',
+        redPair: [{ p1: [1, 0], p2: [4, 1] }, { p1: [0, 0], p2: [2, 4] }],
+        bluePair: [{ p1: [2, 0], p2: [0, 2] }, { p1: [4, 0], p2: [2, 4] }],
+        redParallel: false,
+        blueParallel: false,
+        parallelCount: 0,
+        categoryName: 'ただの四角形'
+      }
+    ];
+
+    // 内側四角形の4頂点を事前計算
+    SHAPES_DATA.forEach(s => {
+      const r1a = gridToPx(s.redPair[0].p1), r1b = gridToPx(s.redPair[0].p2);
+      const r2a = gridToPx(s.redPair[1].p1), r2b = gridToPx(s.redPair[1].p2);
+      const b1a = gridToPx(s.bluePair[0].p1), b1b = gridToPx(s.bluePair[0].p2);
+      const b2a = gridToPx(s.bluePair[1].p1), b2b = gridToPx(s.bluePair[1].p2);
+
+      const v1 = intersectLines(r1a, r1b, b1a, b1b);
+      const v2 = intersectLines(r1a, r1b, b2a, b2b);
+      const v3 = intersectLines(r2a, r2b, b2a, b2b);
+      const v4 = intersectLines(r2a, r2b, b1a, b1b);
+      s.quadVertices = [v1, v2, v3, v4];
+    });
+
+    /**
+     * アプリ状態
+     */
+    const state = {
+      mode: 'check',          // 'check' | 'sort'
+      currentIndex: 0,        // 0..8
+      step: 0,                // 0..5
+      animProgress: 1.0,      // 各ステップ内のアニメーション進行度 0..1
+      autoPlay: false,        // じどう再生モード
+      soundOn: true,
+      showInnerDots: false,   // 内部5x5ドットの表示切替
+      checkedIds: new Set(),  // チェック完了した図形ID
+      sortedIds: new Set(),   // なかまわけ完了した図形ID
+      selectedSortId: null,   // タップ操作で選択中のカードID
+      lastTime: 0,
+      rafId: null
+    };
+
+    const dom = {
+      tabCheck: document.getElementById('tab-check'),
+      tabSort: document.getElementById('tab-sort'),
+      tabSortBadge: document.getElementById('tab-sort-badge'),
+      btnSound: document.getElementById('btn-sound'),
+      btnInnerDots: document.getElementById('btn-inner-dots'),
+      screenCheck: document.getElementById('screen-check'),
+      screenSort: document.getElementById('screen-sort'),
+      // チェック画面
+      shapeSelectorBar: document.getElementById('shape-selector-bar'),
+      checkTopBanner: document.getElementById('check-top-banner'),
+      canvasShapeNumber: document.getElementById('canvas-shape-number'),
+      canvasLivePill: document.getElementById('canvas-live-pill'),
+      layerGrid: document.getElementById('layer-grid'),
+      quadFill: document.getElementById('quad-fill'),
+      layerLines: document.getElementById('layer-lines'),
+      layerCheckMarks: document.getElementById('layer-check-marks'),
+      layerRailRuler: document.getElementById('layer-rail-ruler'),
+      layerSlideRuler: document.getElementById('layer-slide-ruler'),
+      statusRedCard: document.getElementById('status-red-card'),
+      statusRedValue: document.getElementById('status-red-value'),
+      statusBlueCard: document.getElementById('status-blue-card'),
+      statusBlueValue: document.getElementById('status-blue-value'),
+      checkBottomSummary: document.getElementById('check-bottom-summary'),
+      summaryBox: document.getElementById('summary-box'),
+      summaryPairDots: document.getElementById('summary-pair-dots'),
+      summaryText: document.getElementById('summary-text'),
+      summarySub: document.getElementById('summary-sub'),
+      stepDots: document.getElementById('step-dots'),
+      normalControls: document.getElementById('normal-controls'),
+      completeControls: document.getElementById('complete-controls'),
+      btnAuto: document.getElementById('btn-auto'),
+      btnNext: document.getElementById('btn-next'),
+      btnNextShape: document.getElementById('btn-next-shape'),
+      // なかまわけ画面
+      sortProgressPill: document.getElementById('sort-progress-pill'),
+      sortFeedbackBanner: document.getElementById('sort-feedback-banner'),
+      boxItems2: document.getElementById('box-items-2'),
+      boxItems1: document.getElementById('box-items-1'),
+      boxItems0: document.getElementById('box-items-0'),
+      boxCount2: document.getElementById('box-count-2'),
+      boxCount1: document.getElementById('box-count-1'),
+      boxCount0: document.getElementById('box-count-0'),
+      unsortedTray: document.getElementById('unsorted-tray'),
+      touchDragGhost: document.getElementById('touch-drag-ghost')
+    };
+
+    /**
+     * Web Audio API による優しい効果音
+     */
+    let audioCtx = null;
+    function playTone(type) {
+      if (!state.soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'step') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        } else if (type === 'correct') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(659.25, now);
+          osc.frequency.setValueAtTime(880.0, now + 0.12);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'wrong') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(195, now);
+          osc.frequency.linearRampToValueAtTime(150, now + 0.25);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+          osc.start(now);
+          osc.stop(now + 0.28);
+        } else if (type === 'clear') {
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.type = 'sine';
+            o.frequency.setValueAtTime(freq, now + i * 0.09);
+            g.gain.setValueAtTime(0.14, now + i * 0.09);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.45);
+            o.start(now + i * 0.09);
+            o.stop(now + i * 0.09 + 0.45);
+          });
+        }
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      state.soundOn = !state.soundOn;
+      dom.btnSound.textContent = state.soundOn ? '🔊' : '🔇';
+    }
+
+    function toggleInnerDots() {
+      state.showInnerDots = !state.showInnerDots;
+      dom.btnInnerDots.textContent = state.showInnerDots ? '内部ドット：ON' : '内部ドット：OFF';
+      dom.btnInnerDots.className = state.showInnerDots
+        ? 'absolute top-2.5 right-2.5 px-2.5 py-1 rounded-xl bg-sky-100 hover:bg-sky-200 border border-sky-400 text-sky-900 font-bold text-xs shadow-sm transition'
+        : 'absolute top-2.5 right-2.5 px-2.5 py-1 rounded-xl bg-slate-100/90 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold text-xs shadow-sm transition';
+      buildGridDots();
+    }
+
+    /**
+     * 画面モード切替（① へいこうチェック / ② なかまわけ）
+     */
+    function switchMode(newMode) {
+      clearTouchDrag();
+      draggedShapeId = null;
+      state.mode = newMode;
+      state.autoPlay = false;
+      updateAutoButton();
+
+      if (newMode === 'check') {
+        dom.screenCheck.classList.remove('hidden');
+        dom.screenSort.classList.add('hidden');
+        dom.tabCheck.className = 'px-3 sm:px-5 py-1.5 rounded-lg font-black text-xs sm:text-sm transition-all bg-blue-600 text-white shadow whitespace-nowrap';
+        dom.tabSort.className = 'px-3 sm:px-5 py-1.5 rounded-lg font-black text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 whitespace-nowrap';
+        renderCheckScreen();
+      } else {
+        dom.screenCheck.classList.add('hidden');
+        dom.screenSort.classList.remove('hidden');
+        dom.tabCheck.className = 'px-3 sm:px-5 py-1.5 rounded-lg font-black text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap';
+        dom.tabSort.className = 'px-3 sm:px-5 py-1.5 rounded-lg font-black text-xs sm:text-sm transition-all bg-emerald-600 text-white shadow flex items-center gap-1.5 whitespace-nowrap';
+        dom.sortFeedbackBanner.classList.add('hidden');
+        document.getElementById('sort-hint').classList.add('hidden');
+        renderSortScreen();
+      }
+    }
+
+    /**
+     * 周囲16個（＋任意で内部9個）の青いドット格子を描画
+     */
+    function buildGridDots() {
+      let html = `<rect x="65" y="65" width="390" height="390" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2" />`;
+      for (let r = 0; r <= 4; r++) {
+        for (let c = 0; c <= 4; c++) {
+          const isOuter = (r === 0 || r === 4 || c === 0 || c === 4);
+          if (isOuter || state.showInnerDots) {
+            const [cx, cy] = gridToPx([c, r]);
+            if (isOuter) {
+              html += `<circle cx="${cx}" cy="${cy}" r="5.5" fill="#0ea5e9" />`;
+            } else {
+              html += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="#bae6fd" />`;
+            }
+          }
+        }
+      }
+      dom.layerGrid.innerHTML = html;
+    }
+
+    /**
+     * 問題番号ボタン (1)〜(9) を描画
+     */
+    function renderShapeSelectorBar() {
+      let html = '';
+      SHAPES_DATA.forEach((s, idx) => {
+        const isCurrent = (idx === state.currentIndex);
+        const isChecked = state.checkedIds.has(s.id);
+
+        let cls = 'py-1.5 rounded-xl font-black text-xs sm:text-base border-2 flex flex-col items-center justify-center transition active:scale-95 ';
+        if (isCurrent) {
+          cls += 'bg-blue-600 text-white border-blue-700 shadow-sm scale-105';
+        } else if (isChecked) {
+          cls += 'bg-emerald-50 text-emerald-800 border-emerald-400 hover:bg-emerald-100';
+        } else {
+          cls += 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
+        }
+
+        html += `
+          <button onclick="selectShape(${idx})" class="${cls}">
+            <span class="leading-tight">${s.label}</span>
+            <span class="text-[9px] leading-none mt-0.5">${isChecked ? '★' : '・'}</span>
+          </button>
+        `;
+      });
+      dom.shapeSelectorBar.innerHTML = html;
+    }
+
+    /**
+     * 三角定規スライドの幾何計算
+     */
+    function computeRulerCheckGeometry(seg1, seg2) {
+      const A = gridToPx(seg1.p1);
+      const B = gridToPx(seg1.p2);
+      const C = gridToPx(seg2.p1);
+      const D = gridToPx(seg2.p2);
+
+      const M1 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+      const M2_approx = [(C[0] + D[0]) / 2, (C[1] + D[1]) / 2];
+
+      let ux = B[0] - A[0];
+      let uy = B[1] - A[1];
+      const len1 = Math.hypot(ux, uy);
+      ux /= len1;
+      uy /= len1;
+
+      let nx = -uy;
+      let ny = ux;
+      const toM2x = M2_approx[0] - M1[0];
+      const toM2y = M2_approx[1] - M1[1];
+      if (nx * toM2x + ny * toM2y < 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+
+      let M2 = intersectLines(M1, [M1[0] + nx * 100, M1[1] + ny * 100], C, D);
+      if (!M2) M2 = M2_approx;
+
+      const slideDist = Math.hypot(M2[0] - M1[0], M2[1] - M1[1]);
+
+      let vx = D[0] - C[0];
+      let vy = D[1] - C[1];
+      const len2 = Math.hypot(vx, vy);
+      vx /= len2;
+      vy /= len2;
+      if (ux * vx + uy * vy < 0) {
+        vx = -vx;
+        vy = -vy;
+      }
+
+      return { M1, M2, ux, uy, nx, ny, vx, vy, slideDist };
+    }
+
+    /**
+     * 三角定規2枚（青 45-45-90 と 紫 30-60-90）を SVG に描画
+     */
+    function renderRulers(geom, slideProgress) {
+      const { M1, M2, ux, uy, nx, ny, slideDist } = geom;
+      const curX = M1[0] + (M2[0] - M1[0]) * slideProgress;
+      const curY = M1[1] + (M2[1] - M1[1]) * slideProgress;
+
+      const shrinkPt = (pt, center, ratio) => [
+        center[0] + (pt[0] - center[0]) * ratio,
+        center[1] + (pt[1] - center[1]) * ratio
+      ];
+
+      // 青い三角定規（45°・45°・90°）
+      const blueSize = 115;
+      const bp0 = [curX, curY];
+      const bp1 = [curX + blueSize * ux, curY + blueSize * uy];
+      const bp2 = [curX + blueSize * nx, curY + blueSize * ny];
+      const bCenter = [(bp0[0] + bp1[0] + bp2[0]) / 3, (bp0[1] + bp1[1] + bp2[1]) / 3];
+      const bHole = [shrinkPt(bp0, bCenter, 0.45), shrinkPt(bp1, bCenter, 0.45), shrinkPt(bp2, bCenter, 0.45)];
+
+      dom.layerSlideRuler.style.opacity = '1';
+      dom.layerSlideRuler.innerHTML = `
+        <polygon points="${bp0[0].toFixed(1)},${bp0[1].toFixed(1)} ${bp1[0].toFixed(1)},${bp1[1].toFixed(1)} ${bp2[0].toFixed(1)},${bp2[1].toFixed(1)}"
+          fill="url(#ruler-blue-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
+        <polygon points="${bHole[0][0].toFixed(1)},${bHole[0][1].toFixed(1)} ${bHole[1][0].toFixed(1)},${bHole[1][1].toFixed(1)} ${bHole[2][0].toFixed(1)},${bHole[2][1].toFixed(1)}"
+          fill="#ffffff" fill-opacity="0.88" stroke="#0ea5e9" stroke-width="1.4" stroke-linejoin="round" />
+      `;
+
+      // 紫の三角定規（30°・60°・90°）
+      const railLen = Math.max(175, slideDist + blueSize + 20);
+      const shortLen = railLen / SQRT3;
+      const pp0 = [M1[0] - 25 * nx, M1[1] - 25 * ny];
+      const pp1 = [pp0[0] + railLen * nx, pp0[1] + railLen * ny];
+      const pp2 = [pp1[0] - shortLen * ux, pp1[1] - shortLen * uy];
+      const pCenter = [(pp0[0] + pp1[0] + pp2[0]) / 3, (pp0[1] + pp1[1] + pp2[1]) / 3];
+      const pHole = [shrinkPt(pp0, pCenter, 0.45), shrinkPt(pp1, pCenter, 0.45), shrinkPt(pp2, pCenter, 0.45)];
+
+      dom.layerRailRuler.style.opacity = '1';
+      dom.layerRailRuler.innerHTML = `
+        <polygon points="${pp0[0].toFixed(1)},${pp0[1].toFixed(1)} ${pp1[0].toFixed(1)},${pp1[1].toFixed(1)} ${pp2[0].toFixed(1)},${pp2[1].toFixed(1)}"
+          fill="url(#ruler-purple-grad)" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round" />
+        <polygon points="${pHole[0][0].toFixed(1)},${pHole[0][1].toFixed(1)} ${pHole[1][0].toFixed(1)},${pHole[1][1].toFixed(1)} ${pHole[2][0].toFixed(1)},${pHole[2][1].toFixed(1)}"
+          fill="#ffffff" fill-opacity="0.88" stroke="#8b5cf6" stroke-width="1.4" stroke-linejoin="round" />
+      `;
+    }
+
+    /**
+     * チェック中の補助線・直角マーク・ズレ角を描画
+     */
+    function renderCheckMarks(geom, isParallel, showJudgment) {
+      const { M1, M2, ux, uy, nx, ny, vx, vy } = geom;
+      const rSize = 16;
+
+      let html = `
+        <line x1="${(M1[0] - 25 * nx).toFixed(1)}" y1="${(M1[1] - 25 * ny).toFixed(1)}"
+              x2="${(M2[0] + 35 * nx).toFixed(1)}" y2="${(M2[1] + 35 * ny).toFixed(1)}"
+              stroke="#f59e0b" stroke-width="3" stroke-dasharray="6 5" />
+      `;
+
+      const m1a = [M1[0] + rSize * nx, M1[1] + rSize * ny];
+      const m1b = [M1[0] + rSize * nx + rSize * ux, M1[1] + rSize * ny + rSize * uy];
+      const m1c = [M1[0] + rSize * ux, M1[1] + rSize * uy];
+      html += `
+        <polyline points="${m1a[0].toFixed(1)},${m1a[1].toFixed(1)} ${m1b[0].toFixed(1)},${m1b[1].toFixed(1)} ${m1c[0].toFixed(1)},${m1c[1].toFixed(1)}"
+          fill="none" stroke="#ef4444" stroke-width="2.8" />
+      `;
+
+      if (showJudgment) {
+        if (isParallel) {
+          const m2a = [M2[0] + rSize * nx, M2[1] + rSize * ny];
+          const m2b = [M2[0] + rSize * nx + rSize * ux, M2[1] + rSize * ny + rSize * uy];
+          const m2c = [M2[0] + rSize * ux, M2[1] + rSize * uy];
+          html += `
+            <polyline points="${m2a[0].toFixed(1)},${m2a[1].toFixed(1)} ${m2b[0].toFixed(1)},${m2b[1].toFixed(1)} ${m2c[0].toFixed(1)},${m2c[1].toFixed(1)}"
+              fill="none" stroke="#10b981" stroke-width="3.2" />
+            <circle cx="${M2[0].toFixed(1)}" cy="${M2[1].toFixed(1)}" r="7" fill="#10b981" />
+          `;
+        } else {
+          const gapLen = 100;
+          const rulerEdgeEnd = [M2[0] + gapLen * ux, M2[1] + gapLen * uy];
+          const actualEdgeEnd = [M2[0] + gapLen * vx, M2[1] + gapLen * vy];
+          html += `
+            <polygon points="${M2[0].toFixed(1)},${M2[1].toFixed(1)} ${rulerEdgeEnd[0].toFixed(1)},${rulerEdgeEnd[1].toFixed(1)} ${actualEdgeEnd[0].toFixed(1)},${actualEdgeEnd[1].toFixed(1)}"
+              fill="#f43f5e" fill-opacity="0.42" stroke="#e11d48" stroke-width="2.4" stroke-dasharray="4 3" />
+            <circle cx="${M2[0].toFixed(1)}" cy="${M2[1].toFixed(1)}" r="7" fill="#e11d48" />
+          `;
+        }
+      }
+
+      dom.layerCheckMarks.innerHTML = html;
+    }
+
+    /**
+     * グロウ発光する直線ペア（水平・垂直でも消えない多重レイヤー）
+     */
+    function buildGlowingPair(seg1, seg2, mainColor, haloColor, filterId) {
+      const p1a = gridToPx(seg1.p1), p1b = gridToPx(seg1.p2);
+      const p2a = gridToPx(seg2.p1), p2b = gridToPx(seg2.p2);
+      return `
+        <g filter="url(#${filterId})">
+          <line x1="${p1a[0]}" y1="${p1a[1]}" x2="${p1b[0]}" y2="${p1b[1]}" stroke="${haloColor}" stroke-width="12" stroke-linecap="round" opacity="0.75" />
+          <line x1="${p2a[0]}" y1="${p2a[1]}" x2="${p2b[0]}" y2="${p2b[1]}" stroke="${haloColor}" stroke-width="12" stroke-linecap="round" opacity="0.75" />
+          <line x1="${p1a[0]}" y1="${p1a[1]}" x2="${p1b[0]}" y2="${p1b[1]}" stroke="${mainColor}" stroke-width="7" stroke-linecap="round" />
+          <line x1="${p2a[0]}" y1="${p2a[1]}" x2="${p2b[0]}" y2="${p2b[1]}" stroke="${mainColor}" stroke-width="7" stroke-linecap="round" />
+          <line x1="${p1a[0]}" y1="${p1a[1]}" x2="${p1b[0]}" y2="${p1b[1]}" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" opacity="0.9" />
+          <line x1="${p2a[0]}" y1="${p2a[1]}" x2="${p2b[0]}" y2="${p2b[1]}" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" opacity="0.9" />
+        </g>
+      `;
+    }
+
+    function buildPlainPair(seg1, seg2, color, width) {
+      const p1a = gridToPx(seg1.p1), p1b = gridToPx(seg1.p2);
+      const p2a = gridToPx(seg2.p1), p2b = gridToPx(seg2.p2);
+      return `
+        <line x1="${p1a[0]}" y1="${p1a[1]}" x2="${p1b[0]}" y2="${p1b[1]}" stroke="${color}" stroke-width="${width}" stroke-linecap="round" />
+        <line x1="${p2a[0]}" y1="${p2a[1]}" x2="${p2b[0]}" y2="${p2b[1]}" stroke="${color}" stroke-width="${width}" stroke-linecap="round" />
+      `;
+    }
+
+    /**
+     * ① へいこうチェック画面の全体描画
+     */
+    function renderCheckScreen() {
+      const s = SHAPES_DATA[state.currentIndex];
+      const p = state.animProgress;
+
+      dom.canvasShapeNumber.textContent = s.label;
+
+      // ステップドット描画 (0..5)
+      let dotsHtml = '';
+      for (let i = 0; i <= 5; i++) {
+        const active = (i === state.step);
+        const passed = (i < state.step);
+        dotsHtml += `
+          <button onclick="jumpStep(${i})" aria-label="手順 ${i + 1}" aria-current="${active ? 'step' : 'false'}"
+            class="h-2.5 rounded-full transition-all ${active ? 'w-9 bg-blue-600' : (passed ? 'w-3 bg-blue-300' : 'w-3 bg-slate-300')}">
+          </button>
+        `;
+      }
+      if (dom.stepDots.dataset.step !== String(state.step)) {
+        const restore = dom.stepDots.contains(document.activeElement);
+        dom.stepDots.innerHTML = dotsHtml;
+        dom.stepDots.dataset.step = state.step;
+        if (restore) dom.stepDots.children[state.step].focus();
+      }
+
+      // 1. 水色塗りつぶし
+      const ptsStr = s.quadVertices.map(v => `${v[0].toFixed(1)},${v[1].toFixed(1)}`).join(' ');
+      dom.quadFill.setAttribute('points', ptsStr);
+      if (state.step === 0) {
+        dom.quadFill.setAttribute('fill-opacity', '0');
+      } else if (state.step === 1) {
+        dom.quadFill.setAttribute('fill-opacity', (0.38 * p).toFixed(2));
+      } else {
+        dom.quadFill.setAttribute('fill-opacity', '0.38');
+      }
+
+      // 2. 4本の直線描画
+      let linesHtml = '';
+      if (state.step <= 1) {
+        linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#1e293b', 4.5);
+        linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#1e293b', 4.5);
+      } else if (state.step === 2) {
+        linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#ef4444', 5.5);
+        linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#2563eb', 5.5);
+      } else if (state.step === 3) {
+        linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#ef4444', 6.5);
+        linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#93c5fd', 3.5);
+      } else if (state.step === 4) {
+        if (s.redParallel) {
+          linesHtml += buildGlowingPair(s.redPair[0], s.redPair[1], '#ef4444', '#fca5a5', 'glow-red');
+        } else {
+          linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#1e293b', 4.2);
+        }
+        linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#2563eb', 6.5);
+      } else if (state.step === 5) {
+        if (s.redParallel) {
+          linesHtml += buildGlowingPair(s.redPair[0], s.redPair[1], '#ef4444', '#fca5a5', 'glow-red');
+        } else {
+          linesHtml += buildPlainPair(s.redPair[0], s.redPair[1], '#1e293b', 4.5);
+        }
+        if (s.blueParallel) {
+          linesHtml += buildGlowingPair(s.bluePair[0], s.bluePair[1], '#2563eb', '#93c5fd', 'glow-blue');
+        } else {
+          linesHtml += buildPlainPair(s.bluePair[0], s.bluePair[1], '#1e293b', 4.5);
+        }
+      }
+      dom.layerLines.innerHTML = linesHtml;
+
+      // 3. 三角定規アニメーション（Step 3: 赤い辺チェック, Step 4: 青い辺チェック）
+      if (state.step === 3 || state.step === 4) {
+        const pair = (state.step === 3) ? s.redPair : s.bluePair;
+        const isParallel = (state.step === 3) ? s.redParallel : s.blueParallel;
+        const geom = computeRulerCheckGeometry(pair[0], pair[1]);
+
+        const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        renderRulers(geom, ease);
+        renderCheckMarks(geom, isParallel, p >= 0.85);
+      } else {
+        dom.layerRailRuler.style.opacity = '0';
+        dom.layerSlideRuler.style.opacity = '0';
+        dom.layerCheckMarks.innerHTML = '';
+      }
+
+      // 4. 判定バナー・キャンバス内バッジ・ステータスカード更新
+      updatePanelsAndBanner(s, p);
+
+      // 5. 完了時のまとめ結論ボックス＆ボタン表示切替
+      if (state.step === 5) {
+        dom.checkBottomSummary.classList.remove('hidden');
+        dom.normalControls.classList.add('hidden');
+        dom.completeControls.classList.remove('hidden');
+
+        if (state.currentIndex === 8) {
+          dom.btnNextShape.textContent = '(1) に もどる ↺';
+        } else {
+          dom.btnNextShape.textContent = `つぎの ${SHAPES_DATA[state.currentIndex + 1].label} へ ▶`;
+        }
+
+        let dots = '';
+        if (s.redParallel) {
+          dots += `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-red-600 text-white font-black text-xs">赤の組</span>`;
+        }
+        if (s.blueParallel) {
+          dots += `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-600 text-white font-black text-xs">青の組</span>`;
+        }
+        if (!s.redParallel && !s.blueParallel) {
+          dots += `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-700 text-white font-black text-xs">なし</span>`;
+        }
+        dom.summaryPairDots.innerHTML = dots;
+
+        if (s.parallelCount === 2) {
+          dom.summaryBox.className = 'w-full rounded-2xl p-2.5 border-2 bg-emerald-50 border-emerald-500 text-emerald-950 flex flex-col items-center justify-center text-center gap-0.5';
+          dom.summaryText.innerHTML = '<span class="nobr">平行な 辺の 組は</span> <span class="nobr">２つ！</span>';
+          dom.summarySub.textContent = '光っている 2つとも 平行だよ';
+        } else if (s.parallelCount === 1) {
+          dom.summaryBox.className = 'w-full rounded-2xl p-2.5 border-2 bg-amber-50 border-amber-500 text-amber-950 flex flex-col items-center justify-center text-center gap-0.5';
+          dom.summaryText.innerHTML = '<span class="nobr">平行な 辺の 組は</span> <span class="nobr">１つ！</span>';
+          dom.summarySub.textContent = '光っている 1つだけが 平行だよ';
+        } else {
+          dom.summaryBox.className = 'w-full rounded-2xl p-2.5 border-2 bg-slate-100 border-slate-400 text-slate-900 flex flex-col items-center justify-center text-center gap-0.5';
+          dom.summaryText.innerHTML = '<span class="nobr">平行な 辺の 組は</span> <span class="nobr">０！</span>';
+          dom.summarySub.textContent = 'どちらも 平行じゃないよ';
+        }
+      } else {
+        dom.checkBottomSummary.classList.add('hidden');
+        dom.normalControls.classList.remove('hidden');
+        dom.completeControls.classList.add('hidden');
+      }
+    }
+
+    /**
+     * キャンバス内ピル＆右パネルの大きなメッセージと2段ステータス更新
+     */
+    function updatePanelsAndBanner(s, p) {
+      const base = 'w-full flex-1 min-h-[70px] rounded-2xl px-3 py-2 flex flex-col items-center justify-center text-center font-black border-2 transition-all leading-snug ';
+
+      // キャンバス内のリアルタイム判定バッジ
+      if ((state.step === 3 || state.step === 4) && p >= 0.85) {
+        const isRed = (state.step === 3);
+        const ok = isRed ? s.redParallel : s.blueParallel;
+        dom.canvasLivePill.classList.remove('hidden');
+        if (ok) {
+          dom.canvasLivePill.className = 'animate-pop absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full font-black text-base sm:text-lg shadow-lg border-2 whitespace-nowrap pointer-events-none bg-emerald-600 border-white text-white';
+          dom.canvasLivePill.textContent = '平行だね！ ⭕';
+        } else {
+          dom.canvasLivePill.className = 'animate-pop absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full font-black text-base sm:text-lg shadow-lg border-2 whitespace-nowrap pointer-events-none bg-rose-600 border-white text-white';
+          dom.canvasLivePill.textContent = '平行じゃないね！ ❌';
+        }
+      } else {
+        dom.canvasLivePill.classList.add('hidden');
+      }
+
+      // 上部メインバナー（助詞や文節の途中で折り返されないよう <span class="nobr"> と <br> で綺麗に2行構成）
+      if (state.step === 0) {
+        dom.checkTopBanner.className = base + 'bg-slate-50 border-slate-200 text-slate-800';
+        dom.checkTopBanner.innerHTML = `<span class="nobr">${s.label} の <ruby>四角形<rt>しかくけい</rt></ruby>を</span><br><span class="nobr">しらべよう！</span>`;
+      } else if (state.step === 1) {
+        dom.checkTopBanner.className = base + 'bg-sky-50 border-sky-300 text-sky-900';
+        dom.checkTopBanner.innerHTML = `<span class="nobr">かこまれた <ruby>四角形<rt>しかくけい</rt></ruby>は</span><br><span class="nobr">これだね！</span>`;
+      } else if (state.step === 2) {
+        dom.checkTopBanner.className = base + 'bg-indigo-50 border-indigo-300 text-indigo-950';
+        dom.checkTopBanner.innerHTML = `<span class="nobr">むかいあう 辺を</span><br><span class="nobr"><span class="text-red-600">赤</span> と <span class="text-blue-600">青</span> に わけたよ</span>`;
+      } else if (state.step === 3) {
+        if (p < 0.85) {
+          dom.checkTopBanner.className = base + 'bg-red-50 border-red-300 text-red-900';
+          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-red-600">赤い 辺</span>を 三角定規で</span><br><span class="nobr">チェック中…</span>`;
+        } else if (s.redParallel) {
+          dom.checkTopBanner.className = base + 'animate-pop bg-emerald-50 border-emerald-500 text-emerald-900';
+          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-red-600">赤い 辺</span>：</span><br><span class="nobr">平行だね！ ⭕</span>`;
+        } else {
+          dom.checkTopBanner.className = base + 'animate-pop bg-rose-50 border-rose-500 text-rose-900';
+          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-red-600">赤い 辺</span>：</span><br><span class="nobr">平行じゃないね！ ❌</span>`;
+        }
+      } else if (state.step === 4) {
+        if (p < 0.85) {
+          dom.checkTopBanner.className = base + 'bg-blue-50 border-blue-300 text-blue-900';
+          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-blue-600">青い 辺</span>を 三角定規で</span><br><span class="nobr">チェック中…</span>`;
+        } else if (s.blueParallel) {
+          dom.checkTopBanner.className = base + 'animate-pop bg-emerald-50 border-emerald-500 text-emerald-900';
+          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-blue-600">青い 辺</span>：</span><br><span class="nobr">平行だね！ ⭕</span>`;
+        } else {
+          dom.checkTopBanner.className = base + 'animate-pop bg-rose-50 border-rose-500 text-rose-900';
+          dom.checkTopBanner.innerHTML = `<span class="nobr"><span class="text-blue-600">青い 辺</span>：</span><br><span class="nobr">平行じゃないね！ ❌</span>`;
+        }
+      } else if (state.step === 5) {
+        dom.checkTopBanner.className = base + 'bg-indigo-600 border-indigo-700 text-white shadow-sm';
+        dom.checkTopBanner.innerHTML = `<span class="nobr">✨ 平行な 辺だけが</span><br><span class="nobr">光ったよ！</span>`;
+      }
+
+      // 赤い辺のステータスカード
+      const redDone = (state.step > 3) || (state.step === 3 && p >= 0.85);
+      if (!redDone) {
+        dom.statusRedCard.className = 'rounded-2xl p-2 border-2 border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center';
+        dom.statusRedValue.className = 'text-sm sm:text-base font-black text-slate-400 mt-0.5';
+        dom.statusRedValue.textContent = (state.step === 3) ? 'チェック中…' : 'まだ';
+      } else if (s.redParallel) {
+        dom.statusRedCard.className = 'rounded-2xl p-2 border-2 border-emerald-400 bg-emerald-50 flex flex-col items-center justify-center text-center';
+        dom.statusRedValue.className = 'text-sm sm:text-base font-black text-emerald-700 mt-0.5';
+        dom.statusRedValue.textContent = '平行だね ⭕';
+      } else {
+        dom.statusRedCard.className = 'rounded-2xl p-2 border-2 border-rose-300 bg-rose-50 flex flex-col items-center justify-center text-center';
+        dom.statusRedValue.className = 'text-sm sm:text-base font-black text-rose-700 mt-0.5';
+        dom.statusRedValue.textContent = 'ちがう ❌';
+      }
+
+      // 青い辺のステータスカード
+      const blueDone = (state.step > 4) || (state.step === 4 && p >= 0.85);
+      if (!blueDone) {
+        dom.statusBlueCard.className = 'rounded-2xl p-2 border-2 border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center';
+        dom.statusBlueValue.className = 'text-sm sm:text-base font-black text-slate-400 mt-0.5';
+        dom.statusBlueValue.textContent = (state.step === 4) ? 'チェック中…' : 'まだ';
+      } else if (s.blueParallel) {
+        dom.statusBlueCard.className = 'rounded-2xl p-2 border-2 border-emerald-400 bg-emerald-50 flex flex-col items-center justify-center text-center';
+        dom.statusBlueValue.className = 'text-sm sm:text-base font-black text-emerald-700 mt-0.5';
+        dom.statusBlueValue.textContent = '平行だね ⭕';
+      } else {
+        dom.statusBlueCard.className = 'rounded-2xl p-2 border-2 border-rose-300 bg-rose-50 flex flex-col items-center justify-center text-center';
+        dom.statusBlueValue.className = 'text-sm sm:text-base font-black text-rose-700 mt-0.5';
+        dom.statusBlueValue.textContent = 'ちがう ❌';
+      }
+    }
+
+    /**
+     * ステップ操作ハンドラ
+     */
+    function selectShape(idx) {
+      state.currentIndex = idx;
+      state.step = 0;
+      state.animProgress = 1.0;
+      state.autoPlay = false;
+      updateAutoButton();
+      renderShapeSelectorBar();
+      renderCheckScreen();
+    }
+
+    function jumpStep(stepNum) {
+      state.step = stepNum;
+      state.animProgress = (stepNum === 1 || stepNum === 3 || stepNum === 4) ? 0.0 : 1.0;
+      if (stepNum === 5) {
+        state.checkedIds.add(SHAPES_DATA[state.currentIndex].id);
+        renderShapeSelectorBar();
+      }
+      renderCheckScreen();
+    }
+
+    function handleNextStep() {
+      if (state.step < 5) {
+        playTone('step');
+        jumpStep(state.step + 1);
+      }
+    }
+
+    function resetCurrentStep() {
+      state.autoPlay = false;
+      updateAutoButton();
+      jumpStep(0);
+    }
+
+    function goToNextShape() {
+      const nextIdx = (state.currentIndex + 1) % SHAPES_DATA.length;
+      selectShape(nextIdx);
+    }
+
+    function toggleAutoPlay() {
+      state.autoPlay = !state.autoPlay;
+      if (state.autoPlay && state.step === 5) {
+        state.step = 0;
+        state.animProgress = 1.0;
+      }
+      updateAutoButton();
+      renderCheckScreen();
+    }
+
+    function updateAutoButton() {
+      if (state.autoPlay) {
+        dom.btnAuto.textContent = '⏸ とめる';
+        dom.btnAuto.className = 'col-span-4 py-3 px-1.5 rounded-2xl bg-rose-500 hover:bg-rose-600 active:scale-95 font-black text-white text-xs sm:text-sm shadow transition';
+      } else {
+        dom.btnAuto.textContent = '▶ じどうさいせい';
+        dom.btnAuto.className = 'col-span-4 py-3 px-1.5 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 font-black text-white text-xs sm:text-sm shadow transition';
+      }
+    }
+
+    /**
+     * アニメーションループ
+     */
+    let autoHoldTimer = 0;
+    function tick(now) {
+      if (!state.lastTime) state.lastTime = now;
+      const dt = (now - state.lastTime) / 1000;
+      state.lastTime = now;
+
+      if (state.mode === 'check') {
+        let needsRender = false;
+
+        if (state.animProgress < 1.0) {
+          const speed = (state.step === 1) ? 1.8 : 0.75;
+          state.animProgress = Math.min(1.0, state.animProgress + dt * speed);
+          needsRender = true;
+        } else if (state.autoPlay) {
+          autoHoldTimer += dt;
+          if (autoHoldTimer >= 1.05) {
+            autoHoldTimer = 0;
+            if (state.step < 5) {
+              jumpStep(state.step + 1);
+            } else {
+              state.autoPlay = false;
+              updateAutoButton();
+              needsRender = true;
+            }
+          }
+        }
+
+        if (needsRender) renderCheckScreen();
+      }
+
+      state.rafId = requestAnimationFrame(tick);
+    }
+
+    /**
+     * =====================================================================
+     * 画面②：なかまわけ画面（ドラッグ＆ドロップ ＆ タップ操作）
+     * =====================================================================
+     */
+    function buildMiniCardSVG(s, highlightParallel) {
+      const pts = s.quadVertices.map(v => `${16 + (v[0] - 110) * (68 / 300)},${16 + (v[1] - 110) * (68 / 300)}`).join(' ');
+      const toMini = (pt) => [16 + pt[0] * 17, 16 + pt[1] * 17];
+      const r1a = toMini(s.redPair[0].p1), r1b = toMini(s.redPair[0].p2);
+      const r2a = toMini(s.redPair[1].p1), r2b = toMini(s.redPair[1].p2);
+      const b1a = toMini(s.bluePair[0].p1), b1b = toMini(s.bluePair[0].p2);
+      const b2a = toMini(s.bluePair[1].p1), b2b = toMini(s.bluePair[1].p2);
+
+      const rCol = highlightParallel ? (s.redParallel ? '#ef4444' : '#334155') : '#334155';
+      const bCol = highlightParallel ? (s.blueParallel ? '#2563eb' : '#334155') : '#334155';
+      const rW = (highlightParallel && s.redParallel) ? 4.4 : 2.5;
+      const bW = (highlightParallel && s.blueParallel) ? 4.4 : 2.5;
+
+      return `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+          <polygon points="${pts}" fill="#bae6fd" fill-opacity="0.68" />
+          <line x1="${r1a[0]}" y1="${r1a[1]}" x2="${r1b[0]}" y2="${r1b[1]}" stroke="${rCol}" stroke-width="${rW}" stroke-linecap="round"/>
+          <line x1="${r2a[0]}" y1="${r2a[1]}" x2="${r2b[0]}" y2="${r2b[1]}" stroke="${rCol}" stroke-width="${rW}" stroke-linecap="round"/>
+          <line x1="${b1a[0]}" y1="${b1a[1]}" x2="${b1b[0]}" y2="${b1b[1]}" stroke="${bCol}" stroke-width="${bW}" stroke-linecap="round"/>
+          <line x1="${b2a[0]}" y1="${b2a[1]}" x2="${b2b[0]}" y2="${b2b[1]}" stroke="${bCol}" stroke-width="${bW}" stroke-linecap="round"/>
+        </svg>
+      `;
+    }
+
+    function renderSortScreen() {
+      dom.tabSortBadge.textContent = `${state.sortedIds.size}/9`;
+      dom.sortProgressPill.textContent = `できた数：${state.sortedIds.size} / 9`;
+
+      const cat2 = SHAPES_DATA.filter(s => state.sortedIds.has(s.id) && s.parallelCount === 2);
+      const cat1 = SHAPES_DATA.filter(s => state.sortedIds.has(s.id) && s.parallelCount === 1);
+      const cat0 = SHAPES_DATA.filter(s => state.sortedIds.has(s.id) && s.parallelCount === 0);
+
+      dom.boxCount2.textContent = `${cat2.length} / 5`;
+      dom.boxCount1.textContent = `${cat1.length} / 2`;
+      dom.boxCount0.textContent = `${cat0.length} / 2`;
+
+      const renderInBox = (list, emptyText, borderColor) => {
+        if (list.length === 0) {
+          return `<span class="text-xs sm:text-sm font-bold text-slate-400 pointer-events-none">${emptyText}</span>`;
+        }
+        return list.map(s => `
+          <div class="animate-pop bg-white p-1 rounded-xl border-2 ${borderColor} shadow-sm flex flex-col items-center w-14 sm:w-16">
+            <span class="text-[11px] font-black text-slate-900 leading-none">${s.label}</span>
+            <div class="w-10 h-10 sm:w-12 sm:h-12">${buildMiniCardSVG(s, true)}</div>
+          </div>
+        `).join('');
+      };
+
+      dom.boxItems2.innerHTML = renderInBox(cat2, 'ここに入れる（2つ）', 'border-emerald-400');
+      dom.boxItems1.innerHTML = renderInBox(cat1, 'ここに入れる（1つ）', 'border-amber-400');
+      dom.boxItems0.innerHTML = renderInBox(cat0, 'ここに入れる（0）', 'border-slate-400');
+
+      const unsorted = SHAPES_DATA.filter(s => !state.sortedIds.has(s.id));
+      if (unsorted.length === 0) {
+        dom.unsortedTray.innerHTML = `
+          <div class="animate-pop py-2 text-center">
+            <div class="ud-title text-lg sm:text-2xl font-black text-emerald-700">
+              🎉 ぜんぶ なかまわけ できたね！大せいかい！
+            </div>
+          </div>
+        `;
+      } else {
+        dom.unsortedTray.innerHTML = unsorted.map(s => {
+          const isSelected = (state.selectedSortId === s.id);
+          const isChecked = state.checkedIds.has(s.id);
+          return `
+            <button type="button" draggable="true" aria-pressed="${isSelected}" aria-label="図形 ${s.label}"
+              data-id="${s.id}"
+              onclick="handleTrayCardTap(${s.id})"
+              ondragstart="handleDragStart(event, ${s.id})"
+              ondragend="handleDragEnd(event)"
+              ontouchstart="handleTouchStart(event, ${s.id})"
+              class="sort-card cursor-grab active:cursor-grabbing bg-white p-1.5 rounded-xl border-2 transition-all flex flex-col items-center w-16 sm:w-20 shadow-sm hover:shadow-md ${isSelected ? 'border-slate-300 sort-card-selected' : 'border-slate-300'}">
+              <span class="w-full flex items-center justify-between px-0.5 pointer-events-none">
+                <span class="text-xs font-black text-slate-900 leading-none">${s.label}</span>
+                ${isChecked ? '<span class="text-[10px] text-amber-500 leading-none">★</span>' : ''}
+              </span>
+              <span class="w-11 h-11 sm:w-12 sm:h-12 pointer-events-none">
+                ${buildMiniCardSVG(s, isChecked)}
+              </span>
+            </button>
+          `;
+        }).join('');
+      }
+    }
+
+    function handleTrayCardTap(id) {
+      state.selectedSortId = (state.selectedSortId === id) ? null : id;
+      document.querySelectorAll('.sort-card').forEach(card => {
+        const selected = Number(card.dataset.id) === state.selectedSortId;
+        card.setAttribute('aria-pressed', String(selected));
+        card.classList.toggle('sort-card-selected', selected);
+      });
+    }
+
+    function handleBoxTap(targetCategory) {
+      if (state.selectedSortId !== null) evaluateClassification(state.selectedSortId, targetCategory);
+    }
+
+    let draggedShapeId = null;
+    function handleDragStart(e, id) {
+      draggedShapeId = id;
+      e.currentTarget.classList.add('dragging-item');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(id));
+    }
+
+    function handleDragEnd(e) {
+      draggedShapeId = null;
+      e.currentTarget.classList.remove('dragging-item');
+      document.querySelectorAll('.sort-dropzone').forEach(el => el.classList.remove('drop-target-hover'));
+    }
+
+    function setupSortDropzones() {
+      document.querySelectorAll('.sort-dropzone').forEach(zone => {
+        const cat = Number(zone.dataset.cat);
+        zone.addEventListener('keydown', e => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          const count = state.sortedIds.size;
+          handleBoxTap(cat);
+          if (state.sortedIds.size > count) {
+            (dom.unsortedTray.querySelector('.sort-card') || dom.screenSort.querySelector('button')).focus();
+          }
+        });
+        zone.addEventListener('dragover', e => {
+          if (draggedShapeId === null) return;
+          e.preventDefault();
+          zone.classList.add('drop-target-hover');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drop-target-hover'));
+        zone.addEventListener('drop', e => {
+          e.preventDefault();
+          zone.classList.remove('drop-target-hover');
+          if (draggedShapeId !== null) evaluateClassification(draggedShapeId, cat);
+          draggedShapeId = null;
+        });
+      });
+    }
+
+    let touchDrag = null;
+    function clearTouchDrag() {
+      touchDrag = null;
+      dom.touchDragGhost.classList.add('hidden');
+      document.querySelectorAll('.sort-dropzone').forEach(z => z.classList.remove('drop-target-hover'));
+    }
+
+    function handleTouchStart(e, id) {
+      if (e.touches.length !== 1 || matchMedia('(max-width: 767px)').matches) {
+        clearTouchDrag();
+        return;
+      }
+      const t = e.changedTouches[0];
+      touchDrag = { id, pointer: t.identifier, x: t.clientX, y: t.clientY, moved: false };
+    }
+
+    function boxAt(t) {
+      return document.elementFromPoint(t.clientX, t.clientY)?.closest('.sort-dropzone');
+    }
+
+    window.addEventListener('touchmove', e => {
+      if (!touchDrag || state.mode !== 'sort') return;
+      const t = Array.from(e.touches).find(t => t.identifier === touchDrag.pointer);
+      if (!t) return;
+      if (!touchDrag.moved && Math.hypot(t.clientX - touchDrag.x, t.clientY - touchDrag.y) < 10) return;
+      if (e.cancelable) e.preventDefault();
+      if (!touchDrag.moved) {
+        const s = SHAPES_DATA.find(item => item.id === touchDrag.id);
+        dom.touchDragGhost.innerHTML = '<span class="text-xs font-black text-blue-700">' + s.label + '</span>'
+          + '<div class="w-12 h-12">' + buildMiniCardSVG(s, state.checkedIds.has(s.id)) + '</div>';
+        touchDrag.moved = true;
+      }
+      dom.touchDragGhost.style.left = (t.clientX - 40) + 'px';
+      dom.touchDragGhost.style.top = (t.clientY - 40) + 'px';
+      dom.touchDragGhost.classList.remove('hidden');
+      const box = boxAt(t);
+      document.querySelectorAll('.sort-dropzone').forEach(z => z.classList.toggle('drop-target-hover', z === box));
+    }, { passive: false });
+
+    window.addEventListener('touchend', e => {
+      if (!touchDrag) return;
+      const t = Array.from(e.changedTouches).find(t => t.identifier === touchDrag.pointer);
+      if (!t) return;
+      const {id, moved} = touchDrag;
+      clearTouchDrag();
+      if (!moved) return; // 通常のクリックに任せる。
+      if (e.cancelable) e.preventDefault();
+      const box = boxAt(t);
+      if (box) evaluateClassification(id, Number(box.dataset.cat));
+    }, { passive: false });
+    window.addEventListener('touchcancel', clearTouchDrag);
+    window.addEventListener('blur', clearTouchDrag);
+
+    function openSortHint() {
+      const idx = SHAPES_DATA.findIndex(s => String(s.id) === document.getElementById('sort-hint').dataset.id);
+      if (idx < 0) return;
+      switchMode('check');
+      selectShape(idx);
+      dom.btnNext.focus();
+    }
+
+    function evaluateClassification(shapeId, chosenCat) {
+      const s = SHAPES_DATA.find(item => item.id === shapeId);
+      if (!s || state.mode !== 'sort' || state.sortedIds.has(shapeId)) return;
+      const hint = document.getElementById('sort-hint');
+
+      dom.sortFeedbackBanner.classList.remove('hidden', 'animate-pop', 'animate-shake');
+      void dom.sortFeedbackBanner.offsetWidth;
+
+      if (chosenCat === s.parallelCount) {
+        state.sortedIds.add(s.id);
+        state.selectedSortId = null;
+        hint.classList.add('hidden');
+
+        if (state.sortedIds.size === 9) {
+          playTone('clear');
+        } else {
+          playTone('correct');
+        }
+
+        dom.sortFeedbackBanner.className = 'animate-pop rounded-xl px-3 py-1.5 font-black text-center text-sm sm:text-base border-2 bg-emerald-100 border-emerald-500 text-emerald-950';
+        dom.sortFeedbackBanner.textContent = `⭕ せいかい！ ${s.label} は 「${s.categoryName}」 だね！`;
+        renderShapeSelectorBar();
+        renderSortScreen();
+      } else {
+        playTone('wrong');
+        dom.sortFeedbackBanner.className = 'animate-shake rounded-xl px-3 py-1.5 font-black text-center text-sm sm:text-base border-2 bg-rose-100 border-rose-500 text-rose-950';
+        dom.sortFeedbackBanner.innerHTML = `❌ <span class="nobr">むかい合う 辺を</span> <span class="nobr">一組ずつ くらべよう。</span>`;
+        hint.dataset.id = shapeId;
+        hint.classList.remove('hidden');
+      }
+    }
+
+    function resetSortingOnly() {
+      clearTouchDrag();
+      draggedShapeId = null;
+      state.sortedIds.clear();
+      state.checkedIds.clear();
+      renderShapeSelectorBar();
+      document.getElementById('sort-hint').classList.add('hidden');
+      state.selectedSortId = null;
+      dom.sortFeedbackBanner.classList.add('hidden');
+      renderSortScreen();
+    }
+
+    // 初期化
+    window.addEventListener('DOMContentLoaded', () => {
+      buildGridDots();
+      renderShapeSelectorBar();
+      setupSortDropzones();
+      renderCheckScreen();
+      renderSortScreen();
+      state.rafId = requestAnimationFrame(tick);
+    });
+  </script>
+</body>
+</html>
