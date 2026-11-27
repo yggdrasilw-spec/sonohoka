@@ -74,6 +74,8 @@
     .experiment-controls label { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 700; }
     #experiment-note { margin: 0; color: #14532d; flex-basis: 100%; font-size: .82rem; }
     :focus-visible, label:focus-within { outline: 3px solid #0369a1; outline-offset: 3px; }
+    .audio-controls { background: #fff; border-top: 1px solid #dcfce7; }
+    #audio-status { margin: 0; align-self: center; font-size: .82rem; color: #334155; }
     #drawing-board { aspect-ratio: 8 / 5.65; }
     .moving-rulers :is(#layer-left-ruler, #layer-right-ruler:has([data-ruler]), #layer-guide-lines, #layer-drawn-line, #layer-angle-top, #layer-angle-bottom, #layer-pencil) { visibility: hidden; }
     @media (max-width: 1023px) {
@@ -176,6 +178,8 @@
         <div class="experiment-controls" aria-label="三角定規の配置を試す">
           <button id="swap-rulers" type="button" aria-pressed="false" onclick="swapRulers()">青と紫の役を入れ替える</button>
           <button id="turn-rail" type="button" aria-pressed="false" onclick="turnRail()">レール役の当てる辺を変える</button>
+          <button id="flip-moving" type="button" aria-pressed="false" onclick="changeRulers('flippedMoving'); narrateStep()"
+            hidden>紫を裏返す（線を引く辺：短い辺）</button>
           <label for="construction-angle">作図全体の向き
             <select id="construction-angle" onchange="setConstructionAngle(this.value)">
               <option value="0">横向き</option>
@@ -185,6 +189,12 @@
             </select>
           </label>
           <p id="experiment-note" role="status">作図を始める前に配置を変えてみよう。滑らせている間は、動かす定規の向きを変えないよ。</p>
+        </div>
+
+        <div class="experiment-controls audio-controls" aria-label="音の設定">
+          <button id="sound-effects" type="button" aria-pressed="false">効果音：オフ</button>
+          <button id="step-narration" type="button" aria-pressed="false">読み上げ：オフ</button>
+          <p id="audio-status" role="status" hidden></p>
         </div>
 
         <!-- SVG キャンバス -->
@@ -291,27 +301,27 @@
         <!-- ステップ選択ボタン（1〜5） -->
         <div class="p-3 bg-slate-50 border-t border-slate-200">
           <div class="grid grid-cols-5 gap-1.5 sm:gap-2">
-            <button onclick="goToStep(1)" id="step-btn-1"
+            <button onclick="requestStep(1)" id="step-btn-1"
               class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
               <span class="text-[10px] opacity-75">ステップ</span>
               <span class="text-base sm:text-lg leading-none">1</span>
             </button>
-            <button onclick="goToStep(2)" id="step-btn-2"
+            <button onclick="requestStep(2)" id="step-btn-2"
               class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
               <span class="text-[10px] opacity-75">ステップ</span>
               <span class="text-base sm:text-lg leading-none">2</span>
             </button>
-            <button onclick="goToStep(3)" id="step-btn-3"
+            <button onclick="requestStep(3)" id="step-btn-3"
               class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
               <span class="text-[10px] opacity-75">ステップ</span>
               <span class="text-base sm:text-lg leading-none">3</span>
             </button>
-            <button onclick="goToStep(4)" id="step-btn-4"
+            <button onclick="requestStep(4)" id="step-btn-4"
               class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
               <span class="text-[10px] opacity-75">ステップ</span>
               <span class="text-base sm:text-lg leading-none">4</span>
             </button>
-            <button onclick="goToStep(5)" id="step-btn-5"
+            <button onclick="requestStep(5)" id="step-btn-5"
               class="step-btn py-2 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition flex flex-col items-center">
               <span class="text-[10px] opacity-75">ステップ</span>
               <span class="text-base sm:text-lg leading-none">5</span>
@@ -447,12 +457,14 @@
       step: 1,            // 1 〜 5
       slideProgress: 0,   // 0.0 〜 1.0 (直線アの位置から点Aの位置までの移動割合)
       slideInProgress: 0, // 0.0 〜 1.0 (ステップ2で左のレール定規が寄ってくる進捗)
+      finishProgress: 0,
       drawProgress: 0,    // 0.0 〜 1.0 (点Aを通る線を引く進捗)
       isPlaying: false,   // 自動再生中かどうか
       useStraightRuler: false, // 左の定規をただの直線定規にするか
       useCustomShape: false,   // 右の定規を不思議な形の角ブロックにするか
       swapped: false,
       alternateRailEdge: false,
+      flippedMoving: false,
       rotation: 0,
       viewAngle: 0,
       showAngles: true,        // 角度マークと補助線を表示するか
@@ -579,6 +591,8 @@
         leftEntryOffsetY: 90 * dirX,
         leftColor: blueMoves ? 'purple' : 'blue',
         rightColor: blueMoves ? 'blue' : 'purple',
+        canFlipMoving: !oblique && !blueMoves && !state.useCustomShape,
+        flipMoving: !oblique && !blueMoves && !state.useCustomShape && state.flippedMoving,
         leftRoleText: state.swapped ? m.rightRoleText : m.leftRoleText,
         leftRoleClass: state.swapped ? m.rightRoleClass : m.leftRoleClass,
         rightRoleText: state.swapped ? m.leftRoleText : m.rightRoleText,
@@ -697,16 +711,17 @@
     }
 
     function movingEdge(m) {
-      return m.angle === 90 ? [0, 1] : [1, 2];
+      return m.angle === 90 ? [0, m.flipMoving ? 2 : 1] : [1, 2];
     }
 
-    function poseOnEdge(color, [from, to], x, y, angle) {
+    function poseOnEdge(color, [from, to], x, y, angle, flip = false) {
       const [a, b] = [TRIANGLES[color][from], TRIANGLES[color][to]];
-      const degrees = angle - Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
-      return `translate(${x} ${y}) rotate(${degrees}) translate(${-a[0]} ${-a[1]})`;
+      const side = flip ? -1 : 1;
+      const degrees = angle - Math.atan2((b[1] - a[1]) * side, b[0] - a[0]) * 180 / Math.PI;
+      return `translate(${x} ${y}) rotate(${degrees}) scale(1 ${side}) translate(${-a[0]} ${-a[1]})`;
     }
 
-    function renderTriangle(color) {
+    function renderTriangle(color, facing = 1) {
       const points = TRIANGLES[color];
       const blue = color === 'blue';
       const label = blue ? '45°・45°・90°' : '30°・60°・90°';
@@ -720,7 +735,7 @@
         <polygon points="${ptsToStr(hole)}" fill="#fff" fill-opacity="0.88" stroke="${stroke}" stroke-width="1.6" stroke-linejoin="round" />
         ${ticks}
         <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
-          font-size="12" font-weight="900" fill="${textColor}">${label}</text>`;
+          font-size="12" font-weight="900" fill="${textColor}" transform="translate(${cx} ${cy}) scale(1 ${facing}) translate(${-cx} ${-cy})">${label}</text>`;
     }
 
     function triangleCenter(color) {
@@ -736,7 +751,7 @@
         m.originY + m.dirY * along + m.dirX * offset
       ];
       const movingContact = state.useCustomShape ? (state.method === 1 ? 200 : 140)
-        : sideLength(m.rightColor, m.angle === 90 ? [0, 2] : [1, 0]);
+        : sideLength(m.rightColor, m.angle === 90 ? [0, m.flipMoving ? 1 : 2] : [1, 0]);
       // 接する辺が、移動前から点Aまでずっとレールに重なる位置に置く。
       const center = (m.totalDist + movingContact) / 2;
       if (state.useStraightRuler) {
@@ -763,8 +778,8 @@
     function renderRightRuler() {
       const m = getMethod();
       if (!state.useCustomShape) {
-        const transform = poseOnEdge(m.rightColor, movingEdge(m), 0, 0, 0);
-        el.rightRuler.innerHTML = `<g data-ruler="${m.rightColor}" transform="${transform}">${renderTriangle(m.rightColor)}</g>`;
+        const transform = poseOnEdge(m.rightColor, movingEdge(m), 0, 0, 0, m.flipMoving);
+        el.rightRuler.innerHTML = `<g data-ruler="${m.rightColor}" transform="${transform}">${renderTriangle(m.rightColor, m.flipMoving ? -1 : 1)}</g>`;
         return;
       }
       el.rightRuler.innerHTML = state.method === 1 ? `<g>
@@ -865,6 +880,7 @@
       cancelAnimationFrame(rotationFrame);
       const start = state.viewAngle;
       state.rotation = Number(value);
+      playEffect('place');
       updateGuideLine();
       updateUI();
       if (start === state.rotation || reducedMotion.matches) {
@@ -878,6 +894,7 @@
         drawConstructionAngle(start + (state.rotation - start) * easeMotion(t));
         renderScene();
         if (t < 1) rotationFrame = requestAnimationFrame(tick);
+        else runQueuedStep();
       };
       rotationFrame = requestAnimationFrame(tick);
     }
@@ -894,6 +911,7 @@
         const center = new DOMPoint(cx, cy).matrixTransform(matrix);
         return [{color, x: center.x, y: center.y,
           angle: Math.atan2(matrix.b, matrix.a) * 180 / Math.PI,
+          side: Math.sign(matrix.a * matrix.d - matrix.b * matrix.c),
           opacity: Number(layer.style.opacity || 1)}];
       });
     }
@@ -907,6 +925,7 @@
 
     function changeRulers(key) {
       stopPlay();
+      playEffect('place');
       const before = visibleRulers || rulerPoses();
       clearRulerMotion();
       state[key] = !state[key];
@@ -914,7 +933,7 @@
       if (reducedMotion.matches) return;
       const after = rulerPoses();
       const changingRole = key === 'swapped';
-      const railColor = getMethod().leftColor;
+      const movedColor = key === 'flippedMoving' ? getMethod().rightColor : getMethod().leftColor;
       const transitions = after.map(next => ({next, old: before.find(pose => pose.color === next.color)}))
         .filter(({old}) => old);
       el.rulerMotion.innerHTML = transitions.map(({next}) => `<g data-ruler="${next.color}">${renderTriangle(next.color)}</g>`).join('');
@@ -925,20 +944,23 @@
         const progress = Math.min(1, (now - begun) / 650);
         if (progress === 1) {
           clearRulerMotion();
+          runQueuedStep();
           return;
         }
         const t = easeMotion(progress);
         visibleRulers = transitions.map(({old, next}, index) => {
-          const moving = changingRole || old.color === railColor;
-          const lift = changingRole ? (index === 0 ? -42 : 42) * Math.sin(Math.PI * t) : 0;
+          const moving = changingRole || old.color === movedColor;
+          const lift = (changingRole ? (index === 0 ? -42 : 42) : key === 'flippedMoving' && moving ? 30 : 0) * Math.sin(Math.PI * t);
           const change = (next.angle - old.angle + 540) % 360 - 180;
           const [cx, cy] = triangleCenter(next.color);
           const pose = {color: next.color, x: old.x + (next.x - old.x) * t, y: old.y + (next.y - old.y) * t + lift,
             angle: old.angle + change * t,
+            side: old.side === -next.side ? old.side * Math.cos(Math.PI * t) : old.side + (next.side - old.side) * t,
             opacity: Math.min(1, old.opacity + (next.opacity - old.opacity) * t + (moving ? .27 * Math.sin(Math.PI * t) : 0))};
           const shape = el.rulerMotion.children[index];
-          shape.setAttribute('transform', `translate(${pose.x} ${pose.y}) rotate(${pose.angle}) translate(${-cx} ${-cy})`);
+          shape.setAttribute('transform', `translate(${pose.x} ${pose.y}) rotate(${pose.angle}) scale(1 ${pose.side}) translate(${-cx} ${-cy})`);
           shape.setAttribute('opacity', pose.opacity);
+          shape.querySelector('text').setAttribute('transform', `translate(${cx} ${cy}) scale(1 ${pose.side < 0 ? -1 : 1}) translate(${-cx} ${-cy})`);
           return pose;
         });
         rulerFrame = requestAnimationFrame(tick);
@@ -946,7 +968,7 @@
       tick(begun);
     }
 
-    function swapRulers() { changeRulers('swapped'); }
+    function swapRulers() { changeRulers('swapped'); narrateStep(); }
     function turnRail() { changeRulers('alternateRailEdge'); }
 
     function refreshArrangement() {
@@ -976,8 +998,9 @@
         el.leftRuler.setAttribute('transform', `translate(${m.leftEntryOffsetX.toFixed(1)}, ${m.leftEntryOffsetY.toFixed(1)})`);
       } else if (state.step === 5) {
         // 完成時は定規を少し脇へよける
-        el.leftRuler.style.opacity = '0.35';
-        el.leftRuler.setAttribute('transform', `translate(${(m.leftEntryOffsetX * 0.85).toFixed(1)}, ${(m.leftEntryOffsetY * 0.85).toFixed(1)})`);
+        const finish = easeMotion(state.finishProgress);
+        el.leftRuler.style.opacity = 1 - .65 * finish;
+        el.leftRuler.setAttribute('transform', `translate(${m.leftEntryOffsetX * .85 * finish}, ${m.leftEntryOffsetY * .85 * finish})`);
       } else {
         const easeOut = 1 - Math.pow(1 - state.slideInProgress, 3);
         const lx = m.leftEntryOffsetX * (1 - easeOut);
@@ -988,8 +1011,9 @@
 
       // 右定規（スライド役）の位置反映
       if (state.step === 5) {
-        el.rightRuler.style.opacity = '0.35';
-        el.rightRuler.setAttribute('transform', `translate(${(curX + 95).toFixed(1)}, ${(curY + 45).toFixed(1)})`);
+        const finish = easeMotion(state.finishProgress);
+        el.rightRuler.style.opacity = 1 - .65 * finish;
+        el.rightRuler.setAttribute('transform', `translate(${curX + 95 * finish}, ${curY + 45 * finish})`);
       } else {
         el.rightRuler.style.opacity = '1';
         el.rightRuler.setAttribute('transform', `translate(${curX.toFixed(2)}, ${curY.toFixed(2)})`);
@@ -1063,11 +1087,19 @@
       swap.disabled = state.useCustomShape || state.useStraightRuler;
       turn.setAttribute('aria-pressed', String(state.alternateRailEdge));
       turn.disabled = state.useStraightRuler;
+      const flip = document.getElementById('flip-moving');
+      flip.hidden = !m.canFlipMoving;
+      flip.setAttribute('aria-pressed', String(m.flipMoving));
+      if (m.canFlipMoving) {
+        flip.textContent = `紫を裏返す（線を引く辺：${m.flipMoving ? '長い辺' : '短い辺'}）`;
+      }
       document.getElementById('oblique-angle').textContent = state.swapped && !state.useCustomShape ? '45°' : '60°';
       const note = document.getElementById('experiment-note');
       const message = swap.disabled
         ? '青と紫を入れ替えるには、実験スイッチで三角定規2枚に戻そう。'
-        : '配置を変えても、レール役を固定し、動かす定規は向きを変えずに滑らせよう。';
+        : m.canFlipMoving
+          ? '紫は、直角をはさむ長い辺と短い辺を入れ替えられるよ。置いたあとは、向きを変えずに滑らせよう。'
+          : '配置を変えても、レール役を固定し、動かす定規は向きを変えずに滑らせよう。';
       if (note.textContent !== message) note.textContent = message;
 
       // 役割バッジの更新
@@ -1139,6 +1171,7 @@
      * ひき方（1 or 2）の切り替え
      */
     function setMethod(methodId) {
+      queuedStep = null;
       clearRulerMotion();
       stopPlay();
       stepTimer = 0;
@@ -1155,6 +1188,8 @@
       updateGuideLine();
       updateUI();
       renderScene();
+      playEffect('step');
+      narrateStep();
     }
 
     /**
@@ -1168,6 +1203,7 @@
         state.isDragging = false;
       }
       state.step = Math.max(1, Math.min(5, stepNum));
+      state.finishProgress = state.step === 5 && !keepPlaying ? 1 : 0;
 
       if (state.step === 1) {
         state.slideProgress = 0;
@@ -1197,6 +1233,8 @@
 
       updateUI();
       renderScene();
+      playEffect(state.step === 5 ? 'done' : 'step');
+      narrateStep();
     }
 
     function prevStep() {
@@ -1204,10 +1242,11 @@
     }
 
     function nextStep() {
-      if (state.step < 5) goToStep(state.step + 1);
+      if (state.step < 5) requestStep(state.step + 1);
     }
 
     function resetAnimation() {
+      queuedStep = null;
       stopPlay();
       goToStep(1);
     }
@@ -1218,7 +1257,9 @@
     function onSliderInput(val) {
       stopPlay();
       stepTimer = 0;
+      const previousStep = state.step;
       const progress = Number(val) / 100;
+      if (progress === 1 && state.slideProgress < 1) playEffect('point');
       state.slideProgress = progress;
       state.slideInProgress = 1;
 
@@ -1231,6 +1272,7 @@
       }
       updateUI();
       renderScene();
+      if (state.step !== previousStep) narrateStep();
     }
 
     /**
@@ -1249,32 +1291,70 @@
      * 自動再生アニメーションループ
      */
     let stepTimer = 0;
+    let stopAtStep = null;
+    let queuedStep = null;
+    const stepDuration = [0, 0, .7, 1.8, 1.4, .65];
+    const autoHold = [0, 1.2, .7, .5, .5, 0];
+
+    function arrangementInMotion() {
+      return visibleRulers || Math.abs(state.viewAngle - state.rotation) > .01;
+    }
+
+    function requestStep(target) {
+      if (arrangementInMotion()) {
+        queuedStep = target;
+        return;
+      }
+      if (target < state.step) {
+        goToStep(target);
+        return;
+      }
+      if (state.isPlaying) {
+        stopAtStep = target;
+      } else if (target !== state.step || stepElapsed() < stepDuration[target]) {
+        startPlay(target);
+      }
+    }
+
+    function runQueuedStep() {
+      if (queuedStep === null || arrangementInMotion()) return;
+      const target = queuedStep;
+      queuedStep = null;
+      requestStep(target);
+    }
+
+    function stepElapsed() {
+      const duration = stepDuration[state.step];
+      switch (state.step) {
+        case 2: return state.slideInProgress * duration;
+        case 3: {
+          const p = state.slideProgress;
+          return duration * (p < .5 ? Math.cbrt(p / 4) : 1 - Math.cbrt((1 - p) / 4));
+        }
+        case 4: return state.drawProgress * duration;
+        case 5: return state.finishProgress * duration;
+        default: return 0;
+      }
+    }
 
     function togglePlay() {
       if (state.isPlaying) {
+        stopNarration();
         stopPlay();
       } else {
         startPlay();
       }
     }
 
-    function startPlay() {
-      clearRulerMotion();
-      if (state.step === 5) {
-        stepTimer = 0;
-        state.step = 1;
-        state.slideProgress = 0;
-        state.slideInProgress = 0;
-        state.drawProgress = 0;
+    function startPlay(target = null) {
+      if (arrangementInMotion()) return;
+      stopAtStep = target;
+      if (target === null && state.step === 5 && state.finishProgress === 1) {
+        goToStep(1);
       }
-      if (state.step === 2 && state.slideInProgress === 1) stepTimer = Math.max(stepTimer, 0.7);
-      if (state.step === 3) {
-        const p = state.slideProgress;
-        const t = p < 0.5 ? Math.cbrt(p / 4) : 1 - Math.cbrt((1 - p) / 4);
-        stepTimer = Math.max(stepTimer, t * 1.8);
-      }
-      if (state.step === 4 && state.drawProgress === 1) stepTimer = Math.max(stepTimer, 1.4);
+      stepTimer = stepElapsed();
       state.isPlaying = true;
+      if (!speaking && (target === null || stepTimer < stepDuration[state.step])) narrateStep();
       state.lastTimestamp = performance.now();
       updateUI();
       state.animFrameId = requestAnimationFrame(animationLoop);
@@ -1292,61 +1372,36 @@
 
     function animationLoop(now) {
       if (!state.isPlaying) return;
-      const dt = (now - state.lastTimestamp) / 1000;
+      stepTimer += Math.max(0, (now - state.lastTimestamp) / 1000);
       state.lastTimestamp = now;
-      stepTimer += dt;
+      const step = state.step;
+      const duration = stepDuration[step];
+      const progress = duration ? Math.min(1, stepTimer / duration) : 1;
 
-      if (state.step === 1) {
-        if (stepTimer >= 1.2) {
-          stepTimer = 0;
-          goToStep(2, true);
-        }
-      } else if (state.step === 2) {
-        // 0.7秒かけて左のレール定規がスライドインしてぴったり接する
-        const inDuration = 0.7;
-        state.slideInProgress = Math.min(1, stepTimer / inDuration);
-        renderScene();
-
-        if (stepTimer >= inDuration + 0.7) {
-          stepTimer = 0;
-          state.slideProgress = 0;
-          goToStep(3, true);
-        }
-      } else if (state.step === 3) {
-        // 1.8秒かけて点Aまでレールに沿ってスライド
-        const duration = 1.8;
-        const t = Math.min(1, stepTimer / duration);
-        state.slideProgress = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-        renderScene();
-
-        if (stepTimer >= duration + 0.5) {
-          stepTimer = 0;
-          state.drawProgress = 0;
-          goToStep(4, true);
-        }
-      } else if (state.step === 4) {
-        // 1.4秒かけて鉛筆で線を引く
-        const duration = 1.4;
-        state.drawProgress = Math.min(1, stepTimer / duration);
-        renderScene();
-
-        if (stepTimer >= duration + 0.5) {
-          stepTimer = 0;
-          goToStep(5, true);
-        }
-      } else if (state.step === 5) {
-        stopPlay();
-        return;
+      if (step === 2) state.slideInProgress = progress;
+      if (step === 3) {
+        const reached = state.slideProgress < 1 && progress === 1;
+        state.slideProgress = progress < .5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
+        if (reached) playEffect('point');
       }
+      if (step === 4) state.drawProgress = progress;
+      if (step === 5) state.finishProgress = progress;
+      renderScene();
 
-      if (state.isPlaying) {
-        state.animFrameId = requestAnimationFrame(animationLoop);
+      const hold = stopAtStep === null ? autoHold[step] : 0;
+      if (progress === 1 && stepTimer >= duration + hold && !speaking) {
+        if (step === stopAtStep || step === 5) {
+          stopPlay();
+          return;
+        }
+        stepTimer = 0;
+        if (step === 2) state.slideProgress = 0;
+        if (step === 3) state.drawProgress = 0;
+        goToStep(step + 1, true);
       }
+      state.animFrameId = requestAnimationFrame(animationLoop);
     }
 
-    /**
-     * SVG上の右定規の直接ドラッグ操作（マウス＆タッチ対応）
-     */
     function setupDragInteraction() {
       const localPoint = e => {
         const pointer = e.touches?.[0] || e;
@@ -1355,7 +1410,7 @@
       };
 
       const onStart = (e) => {
-        if (state.step === 5 || visibleRulers || Math.abs(state.viewAngle - state.rotation) > .01) return;
+        if (state.step === 5 || arrangementInMotion()) return;
         stopPlay();
         state.dragStart = localPoint(e);
         state.isDragging = true;
@@ -1366,6 +1421,7 @@
         if (state.step < 3) {
           state.step = 3;
           updateUI();
+          narrateStep();
         }
       };
 
@@ -1399,6 +1455,7 @@
         // 点A付近（94%以上）まで近づいたらピタッと吸着させる
         if (state.slideProgress > 0.94) {
           state.slideProgress = 1;
+          playEffect('point');
           updateUI();
           renderScene();
         }
@@ -1415,6 +1472,115 @@
       window.addEventListener('blur', () => { state.isDragging = false; });
     }
 
+    const effects = {
+      step: [480], place: [440, 590], point: [660, 880], done: [523, 659, 784]
+    };
+    let audioContext;
+    let effectsOn = false;
+    let narrationOn = false;
+    let speaking = null;
+    let speechTimeout;
+
+    function setAudioStatus(message) {
+      const status = document.getElementById('audio-status');
+      status.textContent = message;
+      status.hidden = !message;
+    }
+
+    function playEffect(name) {
+      if (!effectsOn || audioContext?.state !== 'running') return;
+      effects[name].forEach((frequency, index) => {
+        const start = audioContext.currentTime + index * .085;
+        const tone = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        tone.frequency.value = frequency;
+        gain.gain.setValueAtTime(.001, start);
+        gain.gain.exponentialRampToValueAtTime(.075, start + .014);
+        gain.gain.exponentialRampToValueAtTime(.001, start + .12);
+        tone.connect(gain).connect(audioContext.destination);
+        tone.start(start);
+        tone.stop(start + .125);
+      });
+    }
+
+    function stopNarration() {
+      clearTimeout(speechTimeout);
+      if (speaking) {
+        speaking = null;
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function narrateStep() {
+      if (!narrationOn) return;
+      stopNarration();
+      const m = getMethod();
+      const rail = state.useStraightRuler ? '直線定規' : m.leftColor === 'blue' ? '青の三角定規' : '紫の三角定規';
+      const moving = state.useCustomShape ? 'ブロック' : m.rightColor === 'blue' ? '青の三角定規' : '紫の三角定規';
+      const edge = m.canFlipMoving ? (m.flipMoving ? '直角をはさむ長い辺' : '直角をはさむ短い辺') : '線を引く辺';
+      const lines = [
+        '',
+        `${moving}の${edge}を、直線アに合わせます。`,
+        `${rail}を、動かす道具のとなりの辺に当てます。`,
+        'レール役を押さえます。動かす道具の向きを保ったまま、線を引く辺が点エーに合うまで滑らせます。',
+        '道具を押さえ、そろえた辺に沿って、点エーを通る直線を引きます。',
+        `2本の直線は、レールと同じ角度、${m.angle}度で交わります。だから平行です。`
+      ];
+      const utterance = new SpeechSynthesisUtterance(`手順${state.step}。${lines[state.step]}`);
+      utterance.lang = 'ja-JP';
+      utterance.rate = .94;
+      const japanese = window.speechSynthesis.getVoices().find(voice => voice.lang.toLowerCase().startsWith('ja'));
+      if (japanese) utterance.voice = japanese;
+      speaking = utterance;
+      utterance.onend = () => {
+        if (speaking !== utterance) return;
+        speaking = null;
+        clearTimeout(speechTimeout);
+      };
+      utterance.onerror = () => {
+        if (speaking !== utterance) return;
+        speaking = null;
+        clearTimeout(speechTimeout);
+        setAudioStatus('読み上げを再生できませんでした。');
+      };
+      window.speechSynthesis.speak(utterance);
+      speechTimeout = setTimeout(stopNarration, 12000);
+    }
+
+    function installAudioControls() {
+      const sound = document.getElementById('sound-effects');
+      const voice = document.getElementById('step-narration');
+      const Audio = window.AudioContext || window.webkitAudioContext;
+      sound.disabled = !Audio;
+      voice.disabled = !window.speechSynthesis || !window.SpeechSynthesisUtterance;
+      sound.addEventListener('click', async () => {
+        effectsOn = !effectsOn;
+        sound.setAttribute('aria-pressed', String(effectsOn));
+        sound.textContent = `効果音：${effectsOn ? 'オン' : 'オフ'}`;
+        if (!effectsOn) return;
+        try {
+          audioContext ||= new Audio();
+          await audioContext.resume();
+          setAudioStatus('');
+          playEffect('place');
+        } catch {
+          effectsOn = false;
+          sound.setAttribute('aria-pressed', 'false');
+          sound.textContent = '効果音：オフ';
+          setAudioStatus('効果音を再生できませんでした。');
+        }
+      });
+      voice.addEventListener('click', () => {
+        narrationOn = !narrationOn;
+        voice.setAttribute('aria-pressed', String(narrationOn));
+        voice.textContent = `読み上げ：${narrationOn ? 'オン' : 'オフ'}`;
+        setAudioStatus('');
+        if (narrationOn) narrateStep();
+        else stopNarration();
+      });
+      window.addEventListener('pagehide', stopNarration);
+    }
+
     // 初期化処理
     window.addEventListener('DOMContentLoaded', () => {
       drawConstructionAngle(0);
@@ -1425,6 +1591,7 @@
       updateUI();
       renderScene();
       setupDragInteraction();
+      installAudioControls();
     });
   </script>
 </body>
