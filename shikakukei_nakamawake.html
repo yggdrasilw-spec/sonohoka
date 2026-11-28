@@ -66,12 +66,13 @@
 
     :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
     .sort-card-selected { box-shadow: 0 0 0 3px #1d4ed8; background: #eff6ff; }
-    #unsorted-tray {
-      --card-width: min(7rem, calc((100% - 1rem) / 3));
-      min-height: 7rem;
+    #screen-sort {
+      container-type: inline-size;
+      --sort-card-width: min(7rem, calc((100cqw - 3.5rem) / 3));
     }
-    .sort-card {
-      width: var(--card-width);
+    #unsorted-tray:not(:has(.sort-complete)) { min-height: 7rem; }
+    .sort-shape-card {
+      width: var(--sort-card-width);
       flex: none;
     }
     .sort-card-shape {
@@ -100,14 +101,16 @@
     }
     .sort-box-items { min-height: 4.25rem; }
     @media (min-width: 600px) {
-      #unsorted-tray { --card-width: min(7rem, calc((100% - 2rem) / 5)); }
+      #screen-sort { --sort-card-width: min(7rem, calc((100cqw - 4.75rem) / 5)); }
     }
     @media (min-width: 960px) {
-      #unsorted-tray {
-        --card-width: min(7.75rem, calc((100% - 5rem) / 9));
-        min-height: clamp(7rem, 11vw, 9.25rem);
+      #screen-sort { --sort-card-width: min(7.75rem, calc((100cqw - 7.75rem) / 9)); }
+      #unsorted-tray:not(:has(.sort-complete)) { min-height: clamp(7rem, 11vw, 9.25rem); }
+      .sort-boxes {
+        flex: 1 0 auto;
+        max-width: 66rem;
+        grid-template-columns: minmax(0, 3fr) repeat(2, minmax(0, 2fr));
       }
-      .sort-boxes { flex: 1 0 auto; }
     }
     #btn-next[aria-disabled="true"] { background-color: #475569; cursor: default; transform: none; }
     #canvas-live-pill { top: 3rem; left: .625rem; }
@@ -1487,14 +1490,20 @@
       dom.boxCount1.textContent = `${cat1.length} / 2`;
       dom.boxCount0.textContent = `${cat0.length} / 2`;
 
+      const cardContent = (s, highlightParallel, isChecked = false) => `
+        <span class="w-full flex items-center justify-between px-0.5 pointer-events-none">
+          <span class="text-base font-black text-slate-900 leading-none">${s.label}</span>
+          ${isChecked ? '<span class="text-sm text-amber-600 leading-none">★</span>' : ''}
+        </span>
+        <span class="sort-card-shape pointer-events-none">${buildMiniCardSVG(s, highlightParallel)}</span>
+      `;
       const renderInBox = (list, borderColor) => {
         if (list.length === 0) {
           return '<span class="text-sm font-bold text-slate-600 pointer-events-none">ここに入れる</span>';
         }
         return list.map(s => `
-          <div class="animate-pop bg-white p-0.5 rounded-lg border-2 ${borderColor} shadow-sm flex flex-col items-center w-14">
-            <span class="text-[11px] font-black text-slate-900 leading-none">${s.label}</span>
-            <div class="w-12 h-12">${buildMiniCardSVG(s, true)}</div>
+          <div class="sort-shape-card bg-white p-1.5 rounded-xl border-2 ${borderColor} shadow-sm flex flex-col items-center">
+            ${cardContent(s, true)}
           </div>
         `).join('');
       };
@@ -1506,7 +1515,7 @@
       const unsorted = SHAPES_DATA.filter(s => !state.sortedIds.has(s.id));
       if (unsorted.length === 0) {
         dom.unsortedTray.innerHTML = `
-          <div class="animate-pop py-2 text-center">
+          <div class="sort-complete animate-pop py-2 text-center">
             <div class="ud-title text-lg sm:text-2xl font-black text-emerald-700">
               🎉 ぜんぶ なかまわけ できたね！大せいかい！
             </div>
@@ -1523,14 +1532,8 @@
               ondragstart="handleDragStart(event, ${s.id})"
               ondragend="handleDragEnd(event)"
               ontouchstart="handleTouchStart(event, ${s.id})"
-              class="sort-card cursor-grab active:cursor-grabbing bg-white p-1.5 rounded-xl border-2 border-slate-300 transition-all flex flex-col items-center shadow-sm hover:shadow-md ${isSelected ? 'sort-card-selected' : ''}">
-              <span class="w-full flex items-center justify-between px-0.5 pointer-events-none">
-                <span class="text-base font-black text-slate-900 leading-none">${s.label}</span>
-                ${isChecked ? '<span class="text-sm text-amber-600 leading-none">★</span>' : ''}
-              </span>
-              <span class="sort-card-shape pointer-events-none">
-                ${buildMiniCardSVG(s, isChecked)}
-              </span>
+              class="sort-card sort-shape-card cursor-grab active:cursor-grabbing bg-white p-1.5 rounded-xl border-2 border-slate-300 transition-all flex flex-col items-center shadow-sm hover:shadow-md ${isSelected ? 'sort-card-selected' : ''}">
+              ${cardContent(s, isChecked, isChecked)}
             </button>
           `;
         }).join('');
