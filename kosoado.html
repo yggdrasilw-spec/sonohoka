@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-こそあど言葉マスター(単一HTML・外部ファイルなし) 記録: Phase 8 = おうようへん追加＋読み上げ(2026-11-12) ／ Phase 7 完了
+こそあど言葉マスター 記録: Phase 8 = おうようへん追加＋読み上げ(2026-11-12) ／ Phase 7 完了
 問題: 91問(RAW=[系列,根拠0〜3,物,文,place])。新しい問題は RAW の末尾に足す(IDが通し番号のため)
 根拠 0=話し手の近く 1=聞き手の近く 2=遠い 3=たずねる
 place(省略=ground): hand(手に持つ) desk・shelf(へや) window(窓の外・根拠2) fold・roll・cut(やり方の実演・根拠0/1) kidfold・kidplane(遠くの子・根拠2) wide(両腕で大きさ・根拠0/1) trio(同じ物3つ・根拠0〜2)
@@ -8,7 +8,7 @@ Phase 7: 敵対的レビュー修正(保存データ検証・修飾キー・消�
 確認: ?dev=1 で検証結果／#gallery で全場面の一覧(左右反転・ヒント0〜3の切りかえ)
 動き: reduced() のとき止めて、静止した完成形を出す。縦画面(PORT)の viewBox は 100 -96 600 496
 おうようへん: ADV=[題名,場面,人物,物,会話,空欄](末尾に足す) advScene(話者ごとに指さし・はねる)・advStart/advPick・validateAdv。成績は P.adv。
-読み上げ: TTS(warm=無音ウォームアップ/say/stop)・yomi()と YOMI(読み直し辞書。読み違いを見つけたら1行足す)。P.tts=false でオフ。
+読み上げ: TTS(warm/say/stop) は収録済みMP3を優先。Web Speech APIでは yomi()と YOMI(読み直し辞書)を使用。P.tts=false でオフ。
 主な関数: renderScene(場面) person・gArm(人物と腕) PDEMO・KID・TRIO(実演) ROOM・ROOM_W・DESK・SHELF(へや) validateQuestionBank(検証)
 -->
 <html lang="ja"><head><meta charset="utf-8">
@@ -268,6 +268,7 @@ body{background:radial-gradient(900px 420px at 12% -8%,#fff 0,rgba(255,255,255,0
 @media(hover:hover){.choices .btn:not(:disabled):hover{transform:translateY(-3px) rotate(-1.2deg)}}
 </style></head>
 <body><div id="app"></div>
+<script src="js/kosoado-recordings.js?v=20261128"></script>
 <script>
 /* ===== 1. 設定・言葉の系列 ===== */
 const APP_CONFIG={key:'kosoado_v1',mixCount:10};
@@ -1832,22 +1833,54 @@ document.addEventListener('keydown',e=>{if(CUR!=='adv'||!S||!S.adv||e.ctrlKey||e
  else if((e.key==='Enter'||e.key===' ')&&S.answered&&document.activeElement.tagName!=='BUTTON'){e.preventDefault();$('#anx').click()}
  else if(e.key==='h')advHint()});
 
-/* ===== 読み上げ(Web Speech API) =====
- 遅れ対策: 起動時にvoicesを先読みし、最初の操作で音量0の発話を1回流してエンジンを温める。声は一度だけ選んで使い回す。
- 読み間違い対策: 読み上げる文は必ず yomi() を通す(漢字の読み・記号・空欄を直す)。読みを足すときは YOMI に1行足す */
+/* ===== 読み上げ(収録済みMP3とWeb Speech API) ===== */
 const YOMI=[[/校長室/g,'こうちょうしつ'],[/三百円/g,'さんびゃくえん'],[/一つ/g,'ひとつ'],[/一しょ/g,'いっしょ'],[/花火/g,'ハナビ'],[/花/g,'ハナ'],[/晴れ/g,'ハレ'],[/箱/g,'ハコ'],[/初めて/g,'ハジメテ'],[/見え/g,'みえ'],[/四時/g,'よじ'],[/入口/g,'いりぐち'],[/お店/g,'おみせ'],[/木かげ/g,'こかげ'],[/日なた/g,'ひなた'],[/手洗い/g,'てあらい'],[/(?<![一-龥])本/g,'ほん'],[/方向/g,'ほうこう'],[/方/g,'ほう'],[/何て/g,'なんて'],[/何/g,'なに'],[/上/g,'うえ'],[/中/g,'なか'],[/外/g,'そと'],[/家/g,'いえ'],[/席/g,'せき'],[/受付/g,'うけつけ'],[/空/g,'そら'],[/行([くこけっき])/g,'い$1'],[/来て/g,'きて'],[/[①-④]/g,'はてな'],[/[「」『』()（）・]/g,'、'],[/[ 　]+/g,' ']];
 /* 語頭の「は」は「わ」と読まれたり助詞と間違われたりするので、文節の頭の「は＋次の1字」をカタカナにする(ハしを→ハシを) */
 const haKata=s=>s.replace(/(^|[ 、。！？])は([ぁ-ん])/g,(m,p,c)=>p+'ハ'+String.fromCharCode(c.charCodeAt(0)+96));
 const yomi=t=>haKata(YOMI.reduce((s,[a,b])=>s.replace(a,b),String(t)).trim());
-const TTS=(()=>{const ss=window.speechSynthesis,ok=!!ss&&typeof SpeechSynthesisUtterance==='function';let v=null,warm=false,tk=0;
- const pick=()=>{if(!ok)return null;if(v)return v;const l=ss.getVoices().filter(x=>/^ja/i.test(x.lang));return v=l.find(x=>/kyoko|nanami|haruka|sayaka|o-ren|otoya|google/i.test(x.name))||l.find(x=>x.localService)||l[0]||null};
+const TTS=(()=>{const ss=window.speechSynthesis,native=!!ss&&typeof SpeechSynthesisUtterance==='function';
+ const recorded=window.KOSOADO_RECORDINGS||{},player=typeof Audio==='function'&&Object.keys(recorded).length?new Audio():null;
+ let v=null,warm=false,tk=0;
+ const pick=()=>{if(!native)return null;if(v)return v;const l=ss.getVoices().filter(x=>/^ja/i.test(x.lang));return v=l.find(x=>/kyoko|nanami|haruka|sayaka|o-ren|otoya|google/i.test(x.name))||l.find(x=>x.localService)||l[0]||null};
  const mk=(t,p,r,vol)=>{const x=new SpeechSynthesisUtterance(t),w=pick();x.lang='ja-JP';if(w)x.voice=w;x.rate=r||.9;x.pitch=p||1;x.volume=vol==null?1:vol;return x};
- const T={ok,
-  warm(){if(!ok||warm)return;try{const x=mk('あ',1,2,0);x.onstart=()=>{warm=true};ss.speak(x)}catch(e){}},
-  say(items,force){if(!ok||(P.tts===false&&!force))return;try{const vs=ss.getVoices();if(vs.length&&!pick())return;const my=++tk;ss.cancel();ss.resume&&ss.resume();
-   setTimeout(()=>{if(my!==tk)return;items.forEach(([t,p,r])=>{const s=yomi(t);if(s)ss.speak(mk(s,p,r))})},40)}catch(e){}},
-  stop(){tk++;try{ok&&ss.cancel()}catch(e){}}};
- if(ok){ss.onvoiceschanged=()=>{v=null;pick()};pick();T.warm();['pointerdown','keydown'].forEach(e=>addEventListener(e,()=>T.warm(),true))}
+ const T={ok:!!player||native,
+  warm(){if(!native||warm)return;try{const x=mk('あ',1,2,0);x.onstart=()=>{warm=true};ss.speak(x)}catch(e){}},
+  say(items,force){
+   T.stop();if(!T.ok||(P.tts===false&&!force))return;
+   const my=tk;
+   const play=i=>{
+    if(my!==tk||i>=items.length)return;
+    const [text,pitch,rate]=items[i],next=()=>play(i+1);
+    const speak=()=>{
+     if(my!==tk)return;
+     const reading=yomi(text);
+     if(!native||!reading)return next();
+     try{
+      if(ss.getVoices().length&&!pick())return next();
+      const words=mk(reading,pitch,rate);
+      words.onend=words.onerror=next;
+      ss.resume?.();ss.speak(words);
+     }catch(e){next()}
+    };
+    if(!player||!Object.hasOwn(recorded,text))return setTimeout(speak,40);
+    let pending=true;
+    const finish=callback=>{
+     if(my!==tk||!pending)return;
+     pending=false;player.onended=player.onerror=null;callback();
+    };
+    player.onended=()=>{if(player.ended)finish(next)};
+    player.onerror=()=>finish(speak);
+    player.src='media/kosoado/'+recorded[text]+'.mp3';
+    player.play().catch(()=>finish(speak));
+   };
+   play(0);
+  },
+  stop(){
+   tk++;
+   if(player){player.onended=player.onerror=null;player.pause();player.removeAttribute('src');player.load()}
+   try{if(native)ss.cancel()}catch(e){}
+  }};
+ if(native){ss.onvoiceschanged=()=>{v=null;pick()};pick();T.warm();['pointerdown','keydown'].forEach(e=>addEventListener(e,()=>T.warm(),true))}
  return T})();
 const readQ=(q,f)=>TTS.say([[q.sentence.replace('{b}','はてな'),1,.85]],f);
 const advIt=(q,k)=>[q.lines[k][1].replace(/\{(\d)\}/g,(_,d)=>S.fill[d-1]||'はてな'),q.lines[k][0]==='a'?.95:1.35,.88];
