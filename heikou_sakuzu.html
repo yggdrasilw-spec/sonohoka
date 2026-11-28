@@ -138,7 +138,7 @@
       .presentation-nav button { padding-inline: 1.25rem; }
     }
     #drawing-board { aspect-ratio: 8 / 5.65; }
-    .moving-rulers :is(#layer-left-ruler, #layer-right-ruler:has([data-ruler]), #layer-guide-lines, #layer-drawn-line, #layer-angle-top, #layer-angle-bottom, #layer-pencil) { visibility: hidden; }
+    .moving-rulers :is(#layer-left-ruler, #layer-right-ruler:has([data-ruler]), #layer-left-hand, #layer-guide-lines, #layer-drawn-line, #layer-angle-top, #layer-angle-bottom, #layer-pencil) { visibility: hidden; }
     @media (max-width: 1023px) {
       header > .max-w-7xl { flex-direction: column; }
     }
@@ -315,6 +315,7 @@
 
             <!-- 8. 右側の定規（スライド役・動く定規） -->
             <g id="layer-right-ruler" filter="url(#drop-shadow)" class="grab-cursor"></g>
+            <g id="layer-left-hand" pointer-events="none" opacity="0"></g>
 
             <!-- 3. 新しく引く平行線（点Aを通る直線 y = 215） -->
             <g id="layer-drawn-line" pointer-events="none">
@@ -334,16 +335,8 @@
             <!-- 6. 角度マーク（点Aのところ・スライドに追従） -->
             <g id="layer-angle-bottom" pointer-events="none"></g>
 
-            <!-- 9. 鉛筆（線を引くアニメーション） -->
-            <g id="layer-pencil" pointer-events="none" opacity="0">
-              <g transform="translate(0, 0)">
-                <polygon points="0,0 16,-7 16,7" fill="#fde68a" stroke="#78350f" stroke-width="1.3"/>
-                <polygon points="0,0 6,-2.5 6,2.5" fill="#1e293b"/>
-                <rect x="16" y="-7" width="95" height="14" rx="2" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.3"/>
-                <line x1="16" y1="-2.5" x2="111" y2="-2.5" stroke="#fca5a5" stroke-width="1.8"/>
-                <rect x="111" y="-7" width="14" height="14" rx="2" fill="#f472b6" stroke="#831843" stroke-width="1.3"/>
-              </g>
-            </g>
+            <!-- 9. 鉛筆を持つ手 -->
+            <g id="layer-pencil" pointer-events="none" opacity="0"></g>
 
               <g id="ruler-motion" pointer-events="none"></g>
             </g>
@@ -525,6 +518,7 @@
     </div>
   </dialog>
 
+  <script src="js/construction-hands.js"></script>
   <script>
     /**
      * アプリケーションの状態管理
@@ -535,6 +529,7 @@
       slideProgress: 0,   // 0.0 〜 1.0 (直線アの位置から点Aの位置までの移動割合)
       slideInProgress: 0, // 0.0 〜 1.0 (ステップ2で左のレール定規が寄ってくる進捗)
       finishProgress: 0,
+      gripProgress: 0,
       drawProgress: 0,    // 0.0 〜 1.0 (点Aを通る線を引く進捗)
       isPlaying: false,   // 自動再生中かどうか
       useStraightRuler: false, // 左の定規をただの直線定規にするか
@@ -562,7 +557,7 @@
     const DY = TARGET_Y - BASE_Y; // 100px
     const SQRT3 = Math.sqrt(3);
     // 青の斜辺と、紫の直角をはさむ長い辺が同じ長さの一組。
-    const SET_SIZE = 240;
+    const SET_SIZE = 264;
     const TRIANGLES = {
       blue: [[0, 0], [SET_SIZE / Math.SQRT2, 0], [0, SET_SIZE / Math.SQRT2]],
       purple: [[0, 0], [SET_SIZE / SQRT3, 0], [0, SET_SIZE]]
@@ -599,8 +594,8 @@
           },
           4: {
             short: '点Aを通る直線をえんぴつで引く',
-            title: '④ 2まいの定規をしっかり押さえて、点Aを通る直線を引く。',
-            desc: '定規がずれないように押さえながら、点Aを通る直線をえんぴつで引きます。'
+            title: '④ 左手で右の定規を押さえ、点Aを通る直線を引く。',
+            desc: '左手をレールから右の定規に移します。右の定規を押さえたまま、右手でえんぴつを持って線を引きます。'
           },
           5: {
             short: '完成！平行な2本の直線',
@@ -638,8 +633,8 @@
           },
           4: {
             short: '点Aを通る直線をえんぴつで引く',
-            title: '④ 2まいの定規をしっかり押さえて、点Aを通る直線を引く。',
-            desc: '定規が動かないように押さえながら、点Aを通る直線をえんぴつで引きます。'
+            title: '④ 左手で右の定規を押さえ、点Aを通る直線を引く。',
+            desc: '左手をレールから右の定規に移します。右の定規を押さえたまま、右手でえんぴつを持って線を引きます。'
           },
           5: {
             short: '完成！同じ角度（60°）のままずらしたので平行！',
@@ -710,6 +705,7 @@
       angleBottom: document.getElementById('layer-angle-bottom'),
       leftRuler: document.getElementById('layer-left-ruler'),
       rightRuler: document.getElementById('layer-right-ruler'),
+      leftHand: document.getElementById('layer-left-hand'),
       pencil: document.getElementById('layer-pencil'),
       callout: document.getElementById('layer-callout'),
       calloutDiagram: document.getElementById('callout-diagram')
@@ -821,6 +817,16 @@
       return [0, 1].map(i => TRIANGLES[color].reduce((sum, point) => sum + point[i], 0) / 3);
     }
 
+    let railGrip, drawGrip;
+
+    function positionedTriangle(layer, color) {
+      const matrix = layer.firstElementChild.transform.baseVal.consolidate().matrix;
+      return TRIANGLES[color].map(([x, y]) => {
+        const point = new DOMPoint(x, y).matrixTransform(matrix);
+        return [point.x, point.y];
+      });
+    }
+
     function renderLeftRuler() {
       const m = getMethod();
       const color = m.leftColor;
@@ -839,6 +845,7 @@
         const a = contact(start);
         const b = contact(end);
         const corners = [a, b, contact(end, 56), contact(start, 56)];
+        railGrip = rulerHandPose(a, b, corners[2]);
         const [x, y] = contact(center, 28);
         el.leftRuler.innerHTML = `
           <polygon points="${ptsToStr(corners)}" fill="url(#straight-ruler-grad)" stroke="#d97706" stroke-width="2.2" />
@@ -852,15 +859,32 @@
       const [x, y] = contact(center - sideLength(color, edge) / 2);
       const transform = poseOnEdge(color, edge, x, y, m.angle);
       el.leftRuler.innerHTML = `<g data-ruler="${color}" transform="${transform}">${renderTriangle(color)}</g>`;
+      const points = positionedTriangle(el.leftRuler, color);
+      const [start, end] = edge;
+      railGrip = rulerHandPose(points[start], points[end], points[3 - start - end]);
     }
 
     function renderRightRuler() {
       const m = getMethod();
       if (!state.useCustomShape) {
-        const transform = poseOnEdge(m.rightColor, movingEdge(m), 0, 0, 0, m.flipMoving);
-        el.rightRuler.innerHTML = `<g data-ruler="${m.rightColor}" transform="${transform}">${renderTriangle(m.rightColor, m.flipMoving ? -1 : 1)}</g>`;
+        const edge = movingEdge(m);
+        const transform = poseOnEdge(m.rightColor, edge, 0, 0, 0, m.flipMoving);
+        el.rightRuler.innerHTML = `<g data-ruler="${m.rightColor}" transform="${transform}">
+          ${renderTriangle(m.rightColor, m.flipMoving ? -1 : 1)}
+        </g>`;
+        // 定規を裏返した場合にも手の左右は維持し、指先の位置だけを合わせる。
+        const points = positionedTriangle(el.rightRuler, m.rightColor);
+        const [start, end] = edge;
+        const hand = rulerHoldingHand(points[start], points[end], points[3 - start - end], 'right');
+        el.rightRuler.insertAdjacentHTML('beforeend', `<g data-sliding-hand display="none">${hand}</g>`);
+        // 左手は描画辺から離れた、レールに接する側を押さえる。
+        const [near, far] = m.angle === 90 ? [0, m.flipMoving ? 1 : 2] : [1, 0];
+        drawGrip = rulerHandPose(points[near], points[far], points[3 - near - far]);
         return;
       }
+      drawGrip = state.method === 1
+        ? rulerHandPose([0, 0], [0, 200], [210, 0])
+        : rulerHandPose([0, 0], [70, 121.24], [270, 0]);
       el.rightRuler.innerHTML = state.method === 1 ? `<g>
               <path d="M 0,0 L 210,0 C 228,35 192,68 205,102 C 218,136 168,162 132,155 C 98,148 82,198 46,192 C 18,187 8,200 0,200 Z"
                 fill="url(#custom-shape-grad)" stroke="#ea580c" stroke-width="2.5" stroke-linejoin="round" />
@@ -1060,6 +1084,19 @@
       renderScene();
     }
 
+    function renderLeftHand(curX, curY) {
+      el.leftHand.setAttribute('opacity', state.step >= 2 && state.step <= 4 ? el.leftRuler.style.opacity : '0');
+      if (state.step < 2 || state.step > 4) return;
+      const railOffset = el.leftRuler.transform.baseVal.consolidate().matrix;
+      const t = state.step === 4 ? easeMotion(state.gripProgress) : 0;
+      const fromX = railGrip.x + railOffset.e;
+      const fromY = railGrip.y + railOffset.f;
+      const x = fromX + (curX + drawGrip.x - fromX) * t;
+      const y = fromY + (curY + drawGrip.y - fromY) * t - 18 * Math.sin(Math.PI * t);
+      const turn = (drawGrip.angle - railGrip.angle + 540) % 360 - 180;
+      el.leftHand.setAttribute('transform', `translate(${x} ${y}) rotate(${railGrip.angle + turn * t})`);
+    }
+
     /**
      * 全体のビジュアル状態をフレームごとに更新
      */
@@ -1089,6 +1126,7 @@
       }
 
       // 右定規（スライド役）の位置反映
+      el.rightRuler.querySelector('[data-sliding-hand]')?.setAttribute('display', state.step === 3 ? 'inline' : 'none');
       if (state.step === 5) {
         const finish = easeMotion(state.finishProgress);
         el.rightRuler.style.opacity = 1 - .65 * finish;
@@ -1097,6 +1135,7 @@
         el.rightRuler.style.opacity = '1';
         el.rightRuler.setAttribute('transform', `translate(${curX.toFixed(2)}, ${curY.toFixed(2)})`);
       }
+      renderLeftHand(curX, curY);
 
       // 角度マークの更新
       renderAngleMarks(m, curX, curY);
@@ -1104,11 +1143,11 @@
       // 引かれた平行線の更新（点A (430, 215) を通る水平線 y = 215）
       const lineStartX = curX;
       const lineEndX = curX + (state.useCustomShape ? m.blockDrawEndX : sideLength(m.rightColor, movingEdge(m)));
+      const currentEndX = (lineStartX + (lineEndX - lineStartX) * state.drawProgress).toFixed(1);
       if (state.drawProgress > 0) {
-        const currentEndX = lineStartX + (lineEndX - lineStartX) * state.drawProgress;
         el.parallelLine.setAttribute('x1', lineStartX.toFixed(1));
         el.parallelLine.setAttribute('y1', TARGET_Y);
-        el.parallelLine.setAttribute('x2', currentEndX.toFixed(1));
+        el.parallelLine.setAttribute('x2', currentEndX);
         el.parallelLine.setAttribute('y2', TARGET_Y);
         el.parallelLine.style.opacity = '1';
       } else {
@@ -1117,9 +1156,8 @@
 
       // 鉛筆の表示と位置（ステップ4で線を引いている途中のみ表示）
       if (state.step === 4 && state.drawProgress > 0 && state.drawProgress < 1) {
-        const pencilX = lineStartX + (lineEndX - lineStartX) * state.drawProgress;
         el.pencil.style.opacity = '1';
-        el.pencil.setAttribute('transform', `translate(${pencilX.toFixed(1)}, ${TARGET_Y}) rotate(-28)`);
+        el.pencil.setAttribute('transform', `translate(${currentEndX} ${TARGET_Y})`);
       } else {
         el.pencil.style.opacity = '0';
       }
@@ -1200,7 +1238,7 @@
         1: ['作図に使う辺を直線アに合わせる', '① ' + moving + 'のまっすぐな辺を、直線アに合わせます。'],
         2: ['レールを当てる', '② ' + rail + 'のまっすぐな辺を、' + moving + 'のとなりの辺に当てます。'],
         3: ['点Aまで滑らせる', '③ ' + rail + 'を押さえ、線を引く辺が点Aに合うまで定規を滑らせます。'],
-        4: ['辺に沿って線を引く', '④ 道具を押さえ、そろえた辺に沿って点Aを通る線を引きます。'],
+        4: ['左手を移して線を引く', '④ 左手をレールから右の' + (state.useCustomShape ? 'ブロック' : '定規') + 'に移し、押さえながら右手で線を引きます。'],
         5: ['完成！平行な2本の直線', '⑤ 直線アに平行な直線がひけました。']
       };
       const changed = state.swapped || state.alternateRailEdge || state.rotation || state.useStraightRuler || state.useCustomShape;
@@ -1285,6 +1323,7 @@
       }
       state.step = Math.max(1, Math.min(5, stepNum));
       state.finishProgress = state.step === 5 && !keepPlaying ? 1 : 0;
+      state.gripProgress = state.step === 4 && (!keepPlaying || reducedMotion.matches) ? 1 : 0;
 
       if (state.step === 1) {
         state.slideProgress = 0;
@@ -1303,9 +1342,7 @@
       } else if (state.step === 4) {
         state.slideInProgress = 1;
         state.slideProgress = 1;
-        if (!keepPlaying) {
-          state.drawProgress = 1;
-        }
+        state.drawProgress = keepPlaying ? 0 : 1;
       } else if (state.step === 5) {
         state.slideInProgress = 1;
         state.slideProgress = 1;
@@ -1384,7 +1421,9 @@
     let stepTimer = 0;
     let stopAtStep = null;
     let queuedStep = null;
-    const stepDuration = [0, 0, .7, 1.8, 1.4, .65];
+    const gripDuration = reducedMotion.matches ? 0 : .75;
+    const lineDuration = 1.4;
+    const stepDuration = [0, 0, .7, 1.8, gripDuration + lineDuration, .65];
     const autoHold = [0, 1.2, .7, .5, .5, 0];
 
     function arrangementInMotion() {
@@ -1422,7 +1461,7 @@
           const p = state.slideProgress;
           return duration * (p < .5 ? Math.cbrt(p / 4) : 1 - Math.cbrt((1 - p) / 4));
         }
-        case 4: return state.drawProgress * duration;
+        case 4: return state.gripProgress * gripDuration + state.drawProgress * lineDuration;
         case 5: return state.finishProgress * duration;
         default: return 0;
       }
@@ -1475,7 +1514,10 @@
         state.slideProgress = progress < .5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
         if (reached) playEffect('point');
       }
-      if (step === 4) state.drawProgress = progress;
+      if (step === 4) {
+        state.gripProgress = gripDuration ? Math.min(1, stepTimer / gripDuration) : 1;
+        state.drawProgress = Math.max(0, Math.min(1, (stepTimer - gripDuration) / lineDuration));
+      }
       if (step === 5) state.finishProgress = progress;
       renderScene();
 
@@ -1680,7 +1722,7 @@
         `${moving}の${edge}を、直線アに合わせます。`,
         `${rail}を、動かす道具のとなりの辺に当てます。`,
         'レール役を押さえます。動かす道具の向きを保ったまま、線を引く辺が点エーに合うまで滑らせます。',
-        '道具を押さえ、そろえた辺に沿って、点エーを通る直線を引きます。',
+        '左手をレールから右の道具に移します。左手でしっかり押さえて、右手で点エーを通る線を引きます。',
         `2本の直線は、レールと同じ角度、${m.angle}度で交わります。だから平行です。`
       ];
       const utterance = new SpeechSynthesisUtterance(`手順${state.step}。${lines[state.step]}`);
@@ -1761,6 +1803,8 @@
 
     // 初期化処理
     window.addEventListener('DOMContentLoaded', () => {
+      el.pencil.innerHTML = pencilHandImage(115);
+      el.leftHand.innerHTML = rulerHandImage('left');
       drawConstructionAngle(0);
       renderLeftRuler();
       renderRightRuler();

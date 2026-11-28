@@ -185,6 +185,7 @@
             <g id="layer-rail-ruler" filter="url(#ruler-shadow)"></g>
             <!-- スライド役の青い三角定規 (45°-45°-90°) -->
             <g id="layer-slide-ruler" filter="url(#ruler-shadow)"></g>
+            <g id="layer-holding-hand"></g>
           </g>
         </svg>
 
@@ -403,6 +404,7 @@
   <div id="touch-drag-ghost" class="hidden fixed z-50 pointer-events-none w-20 h-20 bg-white rounded-2xl border-4 border-blue-500 shadow-2xl flex flex-col items-center justify-center p-1"></div>
 
   <script src="js/shikakukei-narration.js"></script>
+  <script src="js/construction-hands.js"></script>
   <script>
     /**
      * 教科書画像 (1)〜(9) の厳密な幾何データ
@@ -413,7 +415,7 @@
     const GRID_STEP = 75;
     const SQRT3 = Math.sqrt(3);
     // 市販のセットと同じく、30°定規の長い直角辺と45°定規の斜辺をそろえる。
-    const RULER_SIZE = 200;
+    const RULER_SIZE = 224;
     const RULER_RAIL_START_OFFSET = 20;
 
     function gridToPx(pt) {
@@ -604,6 +606,7 @@
       layerRulers: document.getElementById('layer-rulers'),
       layerRailRuler: document.getElementById('layer-rail-ruler'),
       layerSlideRuler: document.getElementById('layer-slide-ruler'),
+      layerHoldingHand: document.getElementById('layer-holding-hand'),
       statusRedCard: document.getElementById('status-red-card'),
       statusRedValue: document.getElementById('status-red-value'),
       statusBlueCard: document.getElementById('status-blue-card'),
@@ -912,7 +915,7 @@
     /**
      * 三角定規2枚（青 45-45-90 と 紫 30-60-90）を SVG に描画
      */
-    function renderRulers(geom, slideProgress) {
+    function renderRulers(geom, slideProgress, sliding) {
       const { M1, M2, ux, uy, nx, ny } = geom;
       const curX = M1[0] + (M2[0] - M1[0]) * slideProgress;
       const curY = M1[1] + (M2[1] - M1[1]) * slideProgress;
@@ -936,6 +939,7 @@
           fill="url(#ruler-blue-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
         <polygon points="${bHole[0][0].toFixed(1)},${bHole[0][1].toFixed(1)} ${bHole[1][0].toFixed(1)},${bHole[1][1].toFixed(1)} ${bHole[2][0].toFixed(1)},${bHole[2][1].toFixed(1)}"
           fill="#ffffff" fill-opacity="0.88" stroke="#0ea5e9" stroke-width="1.4" stroke-linejoin="round" />
+        ${sliding ? rulerHoldingHand(bp0, bp1, bp2, 'right') : ''}
       `;
 
       // 紫の三角定規（30°・60°・90°）
@@ -952,6 +956,11 @@
         <polygon points="${pHole[0][0].toFixed(1)},${pHole[0][1].toFixed(1)} ${pHole[1][0].toFixed(1)},${pHole[1][1].toFixed(1)} ${pHole[2][0].toFixed(1)},${pHole[2][1].toFixed(1)}"
           fill="#ffffff" fill-opacity="0.88" stroke="#8b5cf6" stroke-width="1.4" stroke-linejoin="round" />
       `;
+      const holdingHand = rulerHoldingHand(pp0, pp1, pp2);
+      if (dom.layerHoldingHand.dataset.markup !== holdingHand) {
+        dom.layerHoldingHand.innerHTML = holdingHand;
+        dom.layerHoldingHand.dataset.markup = holdingHand;
+      }
     }
 
     /**
@@ -1111,7 +1120,7 @@
         dom.layerRulers.setAttribute('transform', `translate(${offset} 0)`);
         dom.layerRulers.setAttribute('opacity', entrance);
         const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-        renderRulers(geom, sliding ? ease : 0);
+        renderRulers(geom, sliding ? ease : 0, sliding);
         if (sliding || p >= 1) {
           renderCheckMarks(geom, isParallel, sliding && p >= 1);
         } else {
