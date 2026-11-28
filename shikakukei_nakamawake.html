@@ -405,7 +405,7 @@
   <!-- タッチドラッグ追従用ゴースト -->
   <div id="touch-drag-ghost" class="hidden fixed z-50 pointer-events-none w-20 h-20 bg-white rounded-2xl border-4 border-blue-500 shadow-2xl flex flex-col items-center justify-center p-1"></div>
 
-  <script src="js/shikakukei-narration.js"></script>
+  <script src="js/shikakukei-narration.js?v=sort-guide-20261128"></script>
   <script src="js/construction-hands.js?v=20261128-2"></script>
   <script>
     /**
@@ -701,6 +701,7 @@
     }
 
     let narrationAudio = null;
+    let sortGuideAudio = null;
     let narrationSource = null;
     let decodingNarration = false;
     let narrationUntil = 0;
@@ -716,9 +717,11 @@
 
     function playNextNarration() {
       if (!narrationAudio || narrationSource || narrationQueue.length === 0) return;
-      const [offset, duration] = shikakukeiNarration.clips[narrationQueue.shift()];
+      const clip = narrationQueue.shift();
+      const buffer = clip === 'sort-guide' ? sortGuideAudio : narrationAudio;
+      const [offset, duration] = clip === 'sort-guide' ? [0, buffer.duration] : shikakukeiNarration.clips[clip];
       const source = audioCtx.createBufferSource();
-      source.buffer = narrationAudio;
+      source.buffer = buffer;
       source.connect(audioOutput);
       source.onended = () => {
         source.disconnect();
@@ -740,9 +743,10 @@
         playNextNarration();
       } else if (!decodingNarration) {
         decodingNarration = true;
-        const data = Uint8Array.from(atob(shikakukeiNarration.mp3), char => char.charCodeAt(0));
-        audioCtx.decodeAudioData(data.buffer).then(buffer => {
-          narrationAudio = buffer;
+        const decode = mp3 => audioCtx.decodeAudioData(Uint8Array.from(atob(mp3), char => char.charCodeAt(0)).buffer);
+        Promise.all([decode(shikakukeiNarration.mp3), decode(shikakukeiNarration.sortGuideMp3)]).then(([sprite, guide]) => {
+          narrationAudio = sprite;
+          sortGuideAudio = guide;
           playNextNarration();
         }).catch(stopNarration).finally(() => { decodingNarration = false; });
       }
