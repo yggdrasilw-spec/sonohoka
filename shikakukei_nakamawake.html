@@ -66,6 +66,51 @@
 
     :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
     .sort-card-selected { box-shadow: 0 0 0 3px #1d4ed8; background: #eff6ff; }
+    #unsorted-tray {
+      --card-width: min(7rem, calc((100% - 1rem) / 3));
+      min-height: 7rem;
+    }
+    .sort-card {
+      width: var(--card-width);
+      flex: none;
+    }
+    .sort-card-shape {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+    }
+    .sort-boxes {
+      width: 100%;
+      max-width: 65rem;
+      margin-inline: auto;
+    }
+    .sort-dropzone { min-width: 0; }
+    .sort-box-label {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 .35em;
+      font-size: clamp(1.125rem, 2vw, 1.5rem);
+      line-height: 1.35;
+      font-weight: 900;
+    }
+    .sort-box-label strong {
+      font-size: 1.55em;
+      line-height: 1.05;
+    }
+    .sort-box-items { min-height: 4.25rem; }
+    @media (min-width: 600px) {
+      #unsorted-tray { --card-width: min(7rem, calc((100% - 2rem) / 5)); }
+    }
+    @media (min-width: 960px) {
+      #unsorted-tray {
+        --card-width: min(7.75rem, calc((100% - 5rem) / 9));
+        min-height: clamp(7rem, 11vw, 9.25rem);
+      }
+      .sort-box-items {
+        min-height: clamp(4.25rem, calc(24dvh - 4rem), 8rem);
+      }
+    }
     #btn-next[aria-disabled="true"] { background-color: #475569; cursor: default; transform: none; }
     #canvas-live-pill { top: 3rem; left: .625rem; }
     @media (max-width: 1023px) {
@@ -78,8 +123,7 @@
     @media (max-width: 767px) {
       body > header { flex-wrap: wrap; }
       body > header > div { max-width: 100%; flex-wrap: wrap; gap: .5rem; }
-      #screen-sort > div:last-child { grid-template-columns: 1fr; }
-      .sort-dropzone { min-height: 106px; }
+      .sort-boxes { grid-template-columns: 1fr; }
     }
     @media (prefers-reduced-motion: reduce) {
       .animate-pop, .animate-shake { animation: none; }
@@ -300,7 +344,7 @@
   <!-- =====================================================================
        画面②：なかまわけ画面（Chromebook横長 1画面完結・ドラッグ＆ドロップ）
        ===================================================================== -->
-  <main id="screen-sort" class="hidden flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex flex-col justify-between gap-2.5">
+  <main id="screen-sort" class="hidden flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex flex-col gap-3 overflow-y-auto">
 
     <!-- 上段：指示 ＋ フィードバックバナー ＋ 9枚のカードトレイ（1画面に凝縮） -->
     <div class="bg-white rounded-3xl p-2.5 sm:p-3 shadow-sm border-2 border-indigo-200 shrink-0 flex flex-col gap-2">
@@ -309,7 +353,7 @@
           <h2 class="ud-title text-base sm:text-xl font-black text-slate-900">
             <span class="nobr"><ruby>平行<rt>へいこう</rt></ruby>な <ruby>辺<rt>へん</rt></ruby>の <ruby>組<rt>くみ</rt></ruby>の <ruby>数<rt>かず</rt></ruby>で</span> <span class="nobr">3つの <ruby>箱<rt>はこ</rt></ruby>に わけよう！</span>
           </h2>
-          <span class="text-xs font-bold text-slate-500">
+          <span class="text-sm font-bold text-slate-600">
             （カードをえらぶ → 箱をえらぶ）
           </span>
         </div>
@@ -329,74 +373,65 @@
       <div id="sort-feedback-banner" role="status" class="hidden rounded-xl px-3 py-1.5 font-black text-center text-sm sm:text-base border-2"></div>
 
       <button id="sort-hint" type="button" class="hidden self-start px-3 py-2 rounded-xl bg-sky-100 font-bold text-sky-950" onclick="openSortHint()">この図形の平行をたしかめる</button>
-      <!-- 未分類カード一覧（横1列でコンパクトに表示） -->
-      <div id="unsorted-tray" class="min-h-[82px] flex flex-wrap gap-2 items-center justify-center p-1.5 rounded-2xl bg-slate-50 border border-slate-200"></div>
+      <!-- 未分類カード一覧 -->
+      <div id="unsorted-tray" class="flex flex-wrap gap-2 items-center justify-center p-2 rounded-2xl bg-slate-50 border border-slate-200"></div>
     </div>
 
-    <!-- 下段：3つの大きな分類ボックス（残りの高さいっぱいに広がる） -->
-    <div class="flex-1 min-h-0 grid grid-cols-3 gap-2.5 sm:gap-4">
+    <!-- 下段：3つの分類ボックス -->
+    <div class="sort-boxes grid grid-cols-3 gap-2.5 sm:gap-4">
 
       <!-- 箱1：平行な辺の組が 2つ → 平行四辺形 (正答5個: (1),(2),(4),(5),(7)) -->
       <div id="box-cat-2" data-cat="2" role="button" tabindex="0" aria-label="平行な辺の組が2つの箱" onclick="handleBoxTap(2)"
-        class="sort-dropzone min-h-0 rounded-3xl bg-emerald-50/90 border-4 border-emerald-400 p-2.5 sm:p-3.5 flex flex-col justify-between cursor-pointer transition-all hover:bg-emerald-100/70">
+        class="sort-dropzone rounded-2xl bg-emerald-50/90 border-2 border-emerald-400 p-2.5 flex flex-col cursor-pointer transition-all hover:bg-emerald-100/70">
         <div class="shrink-0 pointer-events-none">
-          <div class="flex items-center justify-between gap-1">
-            <span class="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-black text-xs sm:text-sm">
-              <span class="nobr">平行な 辺の 組が ２つ</span>
-            </span>
-            <span id="box-count-2" class="font-black text-emerald-900 text-xs sm:text-sm">0 / 5</span>
-          </div>
-          <h3 class="ud-title text-lg sm:text-2xl font-black text-emerald-950 mt-1">
-            <ruby>平行四辺形<rt>へいこうしへんけい</rt></ruby>
+          <h3 class="sort-box-label text-emerald-950">
+            <span class="nobr"><ruby>平行<rt>へいこう</rt></ruby>な<ruby>辺<rt>へん</rt></ruby>の<ruby>組<rt>くみ</rt></ruby>が</span>
+            <strong>2つ</strong>
           </h3>
+          <div class="flex items-center justify-between gap-2 text-emerald-900 mt-1">
+            <span class="font-black text-base"><ruby>平行四辺形<rt>へいこうしへんけい</rt></ruby></span>
+            <span id="box-count-2" class="font-bold text-sm whitespace-nowrap">0 / 5</span>
+          </div>
         </div>
 
         <div id="box-items-2"
-          class="flex-1 min-h-0 mt-2 bg-white rounded-2xl p-2 border-2 border-emerald-200 flex flex-wrap gap-1.5 items-center justify-center content-center overflow-hidden">
-          <span class="text-xs sm:text-sm font-bold text-emerald-600/60 pointer-events-none">ここに入れる（2つ）</span>
-        </div>
+          class="sort-box-items flex-1 mt-2 bg-white rounded-xl p-1.5 border border-emerald-200 flex flex-wrap gap-1 items-center justify-center content-center"></div>
       </div>
 
       <!-- 箱2：平行な辺の組が 1つ → 台形 (正答2個: (3),(8)) -->
       <div id="box-cat-1" data-cat="1" role="button" tabindex="0" aria-label="平行な辺の組が1つの箱" onclick="handleBoxTap(1)"
-        class="sort-dropzone min-h-0 rounded-3xl bg-amber-50/90 border-4 border-amber-400 p-2.5 sm:p-3.5 flex flex-col justify-between cursor-pointer transition-all hover:bg-amber-100/70">
+        class="sort-dropzone rounded-2xl bg-amber-50/90 border-2 border-amber-400 p-2.5 flex flex-col cursor-pointer transition-all hover:bg-amber-100/70">
         <div class="shrink-0 pointer-events-none">
-          <div class="flex items-center justify-between gap-1">
-            <span class="px-2.5 py-0.5 rounded-full bg-amber-500 text-white font-black text-xs sm:text-sm">
-              <span class="nobr">平行な 辺の 組が １つ</span>
-            </span>
-            <span id="box-count-1" class="font-black text-amber-900 text-xs sm:text-sm">0 / 2</span>
-          </div>
-          <h3 class="ud-title text-lg sm:text-2xl font-black text-amber-950 mt-1">
-            <ruby>台形<rt>だいけい</rt></ruby>
+          <h3 class="sort-box-label text-amber-950">
+            <span class="nobr"><ruby>平行<rt>へいこう</rt></ruby>な<ruby>辺<rt>へん</rt></ruby>の<ruby>組<rt>くみ</rt></ruby>が</span>
+            <strong>1つ</strong>
           </h3>
+          <div class="flex items-center justify-between gap-2 text-amber-900 mt-1">
+            <span class="font-black text-base"><ruby>台形<rt>だいけい</rt></ruby></span>
+            <span id="box-count-1" class="font-bold text-sm whitespace-nowrap">0 / 2</span>
+          </div>
         </div>
 
         <div id="box-items-1"
-          class="flex-1 min-h-0 mt-2 bg-white rounded-2xl p-2 border-2 border-amber-200 flex flex-wrap gap-1.5 items-center justify-center content-center overflow-hidden">
-          <span class="text-xs sm:text-sm font-bold text-amber-600/60 pointer-events-none">ここに入れる（1つ）</span>
-        </div>
+          class="sort-box-items flex-1 mt-2 bg-white rounded-xl p-1.5 border border-amber-200 flex flex-wrap gap-1 items-center justify-center content-center"></div>
       </div>
 
       <!-- 箱3：平行な辺の組が 0 → ただの四角形 (正答2個: (6),(9)) -->
-      <div id="box-cat-0" data-cat="0" role="button" tabindex="0" aria-label="平行な辺の組が0つの箱" onclick="handleBoxTap(0)"
-        class="sort-dropzone min-h-0 rounded-3xl bg-slate-100 border-4 border-slate-400 p-2.5 sm:p-3.5 flex flex-col justify-between cursor-pointer transition-all hover:bg-slate-200/60">
+      <div id="box-cat-0" data-cat="0" role="button" tabindex="0" aria-label="平行な辺の組がない箱" onclick="handleBoxTap(0)"
+        class="sort-dropzone rounded-2xl bg-slate-100 border-2 border-slate-400 p-2.5 flex flex-col cursor-pointer transition-all hover:bg-slate-200/60">
         <div class="shrink-0 pointer-events-none">
-          <div class="flex items-center justify-between gap-1">
-            <span class="px-2.5 py-0.5 rounded-full bg-slate-600 text-white font-black text-xs sm:text-sm">
-              <span class="nobr">平行な 辺の 組が ０</span>
-            </span>
-            <span id="box-count-0" class="font-black text-slate-800 text-xs sm:text-sm">0 / 2</span>
-          </div>
-          <h3 class="ud-title text-lg sm:text-2xl font-black text-slate-900 mt-1">
-            ただの <ruby>四角形<rt>しかくけい</rt></ruby>
+          <h3 class="sort-box-label text-slate-900">
+            <span class="nobr"><ruby>平行<rt>へいこう</rt></ruby>な<ruby>辺<rt>へん</rt></ruby>の<ruby>組<rt>くみ</rt></ruby>が</span>
+            <strong>0</strong>
           </h3>
+          <div class="flex items-center justify-between gap-2 text-slate-800 mt-1">
+            <span class="font-black text-base">ただの <ruby>四角形<rt>しかくけい</rt></ruby></span>
+            <span id="box-count-0" class="font-bold text-sm whitespace-nowrap">0 / 2</span>
+          </div>
         </div>
 
         <div id="box-items-0"
-          class="flex-1 min-h-0 mt-2 bg-white rounded-2xl p-2 border-2 border-slate-300 flex flex-wrap gap-1.5 items-center justify-center content-center overflow-hidden">
-          <span class="text-xs sm:text-sm font-bold text-slate-500/60 pointer-events-none">ここに入れる（0）</span>
-        </div>
+          class="sort-box-items flex-1 mt-2 bg-white rounded-xl p-1.5 border border-slate-300 flex flex-wrap gap-1 items-center justify-center content-center"></div>
       </div>
     </div>
 
@@ -1454,21 +1489,21 @@
       dom.boxCount1.textContent = `${cat1.length} / 2`;
       dom.boxCount0.textContent = `${cat0.length} / 2`;
 
-      const renderInBox = (list, emptyText, borderColor) => {
+      const renderInBox = (list, borderColor) => {
         if (list.length === 0) {
-          return `<span class="text-xs sm:text-sm font-bold text-slate-400 pointer-events-none">${emptyText}</span>`;
+          return '<span class="text-sm font-bold text-slate-600 pointer-events-none">ここに入れる</span>';
         }
         return list.map(s => `
-          <div class="animate-pop bg-white p-1 rounded-xl border-2 ${borderColor} shadow-sm flex flex-col items-center w-14 sm:w-16">
+          <div class="animate-pop bg-white p-0.5 rounded-lg border-2 ${borderColor} shadow-sm flex flex-col items-center w-14">
             <span class="text-[11px] font-black text-slate-900 leading-none">${s.label}</span>
-            <div class="w-10 h-10 sm:w-12 sm:h-12">${buildMiniCardSVG(s, true)}</div>
+            <div class="w-12 h-12">${buildMiniCardSVG(s, true)}</div>
           </div>
         `).join('');
       };
 
-      dom.boxItems2.innerHTML = renderInBox(cat2, 'ここに入れる（2つ）', 'border-emerald-400');
-      dom.boxItems1.innerHTML = renderInBox(cat1, 'ここに入れる（1つ）', 'border-amber-400');
-      dom.boxItems0.innerHTML = renderInBox(cat0, 'ここに入れる（0）', 'border-slate-400');
+      dom.boxItems2.innerHTML = renderInBox(cat2, 'border-emerald-400');
+      dom.boxItems1.innerHTML = renderInBox(cat1, 'border-amber-400');
+      dom.boxItems0.innerHTML = renderInBox(cat0, 'border-slate-400');
 
       const unsorted = SHAPES_DATA.filter(s => !state.sortedIds.has(s.id));
       if (unsorted.length === 0) {
@@ -1490,12 +1525,12 @@
               ondragstart="handleDragStart(event, ${s.id})"
               ondragend="handleDragEnd(event)"
               ontouchstart="handleTouchStart(event, ${s.id})"
-              class="sort-card cursor-grab active:cursor-grabbing bg-white p-1.5 rounded-xl border-2 transition-all flex flex-col items-center w-16 sm:w-20 shadow-sm hover:shadow-md ${isSelected ? 'border-slate-300 sort-card-selected' : 'border-slate-300'}">
+              class="sort-card cursor-grab active:cursor-grabbing bg-white p-1.5 rounded-xl border-2 border-slate-300 transition-all flex flex-col items-center shadow-sm hover:shadow-md ${isSelected ? 'sort-card-selected' : ''}">
               <span class="w-full flex items-center justify-between px-0.5 pointer-events-none">
-                <span class="text-xs font-black text-slate-900 leading-none">${s.label}</span>
-                ${isChecked ? '<span class="text-[10px] text-amber-500 leading-none">★</span>' : ''}
+                <span class="text-base font-black text-slate-900 leading-none">${s.label}</span>
+                ${isChecked ? '<span class="text-sm text-amber-600 leading-none">★</span>' : ''}
               </span>
-              <span class="w-11 h-11 sm:w-12 sm:h-12 pointer-events-none">
+              <span class="sort-card-shape pointer-events-none">
                 ${buildMiniCardSVG(s, isChecked)}
               </span>
             </button>
