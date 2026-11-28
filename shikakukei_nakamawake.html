@@ -187,6 +187,7 @@
             <g id="layer-slide-ruler" filter="url(#ruler-shadow)"></g>
             <g id="layer-holding-hand"></g>
           </g>
+          <g id="layer-exiting-rulers" aria-hidden="true" pointer-events="none"></g>
         </svg>
 
         <!-- キャンバス左上：大きな図形番号バッジ -->
@@ -607,6 +608,7 @@
       layerRailRuler: document.getElementById('layer-rail-ruler'),
       layerSlideRuler: document.getElementById('layer-slide-ruler'),
       layerHoldingHand: document.getElementById('layer-holding-hand'),
+      layerExitingRulers: document.getElementById('layer-exiting-rulers'),
       statusRedCard: document.getElementById('status-red-card'),
       statusRedValue: document.getElementById('status-red-value'),
       statusBlueCard: document.getElementById('status-blue-card'),
@@ -915,7 +917,7 @@
     /**
      * 三角定規2枚（青 45-45-90 と 紫 30-60-90）を SVG に描画
      */
-    function renderRulers(geom, slideProgress, sliding) {
+    function renderRulers(geom, slideProgress, sliding, reach) {
       const { M1, M2, ux, uy, nx, ny } = geom;
       const curX = M1[0] + (M2[0] - M1[0]) * slideProgress;
       const curY = M1[1] + (M2[1] - M1[1]) * slideProgress;
@@ -939,7 +941,9 @@
           fill="url(#ruler-blue-grad)" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round" />
         <polygon points="${bHole[0][0].toFixed(1)},${bHole[0][1].toFixed(1)} ${bHole[1][0].toFixed(1)},${bHole[1][1].toFixed(1)} ${bHole[2][0].toFixed(1)},${bHole[2][1].toFixed(1)}"
           fill="#ffffff" fill-opacity="0.88" stroke="#0ea5e9" stroke-width="1.4" stroke-linejoin="round" />
-        ${sliding ? rulerHoldingHand(bp0, bp1, bp2, 'right') : ''}
+        ${sliding ? `<g opacity="${reach}" transform="translate(${55 * (1 - reach)} ${28 * (1 - reach)})">
+          ${rulerHoldingHand(bp0, bp1, bp2, 'right')}
+        </g>` : ''}
       `;
 
       // 紫の三角定規（30°・60°・90°）
@@ -1114,13 +1118,15 @@
         const geom = computeRulerCheckGeometry(pair[0], pair[1]);
 
         // 手順が表示されてから、SVGの右端の外から入る。
-        const entrance = placing ? Math.max(0, (p - 0.15) / 0.85) : 1;
+        const entrance = placing ? Math.max(0, (p - .28) / .72) : 1;
         const approach = entrance * entrance * (3 - 2 * entrance);
         const offset = dom.layerRulers.ownerSVGElement.viewBox.baseVal.width * (1 - approach);
         dom.layerRulers.setAttribute('transform', `translate(${offset} 0)`);
         dom.layerRulers.setAttribute('opacity', entrance);
-        const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-        renderRulers(geom, sliding ? ease : 0, sliding);
+        const reach = Math.min(1, p / .22);
+        const slide = Math.max(0, (p - .22) / .78);
+        const ease = slide < 0.5 ? 4 * slide * slide * slide : 1 - Math.pow(-2 * slide + 2, 3) / 2;
+        renderRulers(geom, sliding ? ease : 0, sliding, reach * reach * (3 - 2 * reach));
         if (sliding || p >= 1) {
           renderCheckMarks(geom, isParallel, sliding && p >= 1);
         } else {
@@ -1280,6 +1286,17 @@
     }
 
     function jumpStep(stepNum) {
+      dom.layerExitingRulers.replaceChildren();
+      if ((state.step === RED_SLIDE || state.step === BLUE_SLIDE) && state.step !== stepNum && !reducedMotion.matches) {
+        const leaving = dom.layerRulers.cloneNode(true);
+        leaving.removeAttribute('id');
+        leaving.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+        dom.layerExitingRulers.append(leaving);
+        leaving.animate([
+          { transform: 'translateX(0)', opacity: 1 },
+          { transform: 'translateX(100px)', opacity: 0 }
+        ], { duration: 420, easing: 'ease-in', fill: 'forwards' }).onfinish = () => leaving.remove();
+      }
       state.step = stepNum;
       const rulerStep = stepNum >= RED_PLACE && stepNum <= BLUE_SLIDE;
       state.animProgress = stepNum === 1 || (rulerStep && !reducedMotion.matches) ? 0 : 1;
@@ -1367,6 +1384,7 @@
           let speed = 0.75;
           if (state.step === 1) speed = 1.8;
           if (state.step === RED_PLACE || state.step === BLUE_PLACE) speed = 1 / 1.6;
+          if (state.step === RED_SLIDE || state.step === BLUE_SLIDE) speed = 1 / 1.7;
           state.animProgress = Math.min(1.0, state.animProgress + dt * speed);
           renderCheckScreen();
           if (state.animProgress === 1) announceRulerArrival(false);
