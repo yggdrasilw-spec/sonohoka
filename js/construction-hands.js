@@ -20,15 +20,16 @@ function rulerHandPose(start, end, inside, hand = 'left', along = .5) {
   return { x, y, angle };
 }
 
-function rulerHandImage(hand) {
+function rulerHandImage(hand, size = 1) {
   const grip = RULER_HANDS[hand];
+  const scale = grip.scale * size;
   return `<image href="media/construction-hands/${hand}-hand.png" aria-hidden="true" pointer-events="none"
-    width="${328 * grip.scale}" height="${544 * grip.scale}" x="${-grip.x * grip.scale}" y="${-grip.y * grip.scale}" />`;
+    width="${328 * scale}" height="${544 * scale}" x="${-grip.x * scale}" y="${-grip.y * scale}" />`;
 }
 
-function rulerHoldingHand(start, end, inside, hand = 'left') {
+function rulerHoldingHand(start, end, inside, hand = 'left', size = 1) {
   const { x, y, angle } = rulerHandPose(start, end, inside, hand);
-  return `<g transform="translate(${x} ${y}) rotate(${angle})">${rulerHandImage(hand)}</g>`;
+  return `<g transform="translate(${x} ${y}) rotate(${angle})">${rulerHandImage(hand, size)}</g>`;
 }
 
 function pencilHandImage(width) {
