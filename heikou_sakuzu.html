@@ -518,7 +518,7 @@
     </div>
   </dialog>
 
-  <script src="js/construction-hands.js"></script>
+  <script src="js/construction-hands.js?v=20261128"></script>
   <script>
     /**
      * アプリケーションの状態管理
@@ -595,7 +595,7 @@
           4: {
             short: '点Aを通る直線をえんぴつで引く',
             title: '④ 左手で右の定規を押さえ、点Aを通る直線を引く。',
-            desc: '左手をレールから右の定規に移します。右の定規を押さえたまま、右手でえんぴつを持って線を引きます。'
+            desc: '左手をレールから右の定規に移し、線を引く辺の近くを押さえます。右手でえんぴつを持って線を引きます。'
           },
           5: {
             short: '完成！平行な2本の直線',
@@ -634,7 +634,7 @@
           4: {
             short: '点Aを通る直線をえんぴつで引く',
             title: '④ 左手で右の定規を押さえ、点Aを通る直線を引く。',
-            desc: '左手をレールから右の定規に移します。右の定規を押さえたまま、右手でえんぴつを持って線を引きます。'
+            desc: '左手をレールから右の定規に移し、線を引く辺の近くを押さえます。右手でえんぴつを持って線を引きます。'
           },
           5: {
             short: '完成！同じ角度（60°）のままずらしたので平行！',
@@ -877,14 +877,10 @@
         const [start, end] = edge;
         const hand = rulerHoldingHand(points[start], points[end], points[3 - start - end], 'right');
         el.rightRuler.insertAdjacentHTML('beforeend', `<g data-sliding-hand display="none">${hand}</g>`);
-        // 左手は描画辺から離れた、レールに接する側を押さえる。
-        const [near, far] = m.angle === 90 ? [0, m.flipMoving ? 1 : 2] : [1, 0];
-        drawGrip = rulerHandPose(points[near], points[far], points[3 - near - far]);
+        drawGrip = rulerHandPose(points[start], points[end], points[3 - start - end], 'left', .42);
         return;
       }
-      drawGrip = state.method === 1
-        ? rulerHandPose([0, 0], [0, 200], [210, 0])
-        : rulerHandPose([0, 0], [70, 121.24], [270, 0]);
+      drawGrip = rulerHandPose([0, 0], [m.blockDrawEndX, 0], [105, 55], 'left', .42);
       el.rightRuler.innerHTML = state.method === 1 ? `<g>
               <path d="M 0,0 L 210,0 C 228,35 192,68 205,102 C 218,136 168,162 132,155 C 98,148 82,198 46,192 C 18,187 8,200 0,200 Z"
                 fill="url(#custom-shape-grad)" stroke="#ea580c" stroke-width="2.5" stroke-linejoin="round" />
@@ -1238,7 +1234,7 @@
         1: ['作図に使う辺を直線アに合わせる', '① ' + moving + 'のまっすぐな辺を、直線アに合わせます。'],
         2: ['レールを当てる', '② ' + rail + 'のまっすぐな辺を、' + moving + 'のとなりの辺に当てます。'],
         3: ['点Aまで滑らせる', '③ ' + rail + 'を押さえ、線を引く辺が点Aに合うまで定規を滑らせます。'],
-        4: ['左手を移して線を引く', '④ 左手をレールから右の' + (state.useCustomShape ? 'ブロック' : '定規') + 'に移し、押さえながら右手で線を引きます。'],
+        4: ['左手を移して線を引く', '④ 左手を右の' + (state.useCustomShape ? 'ブロック' : '定規') + 'に移し、線を引く辺の近くを押さえながら右手で線を引きます。'],
         5: ['完成！平行な2本の直線', '⑤ 直線アに平行な直線がひけました。']
       };
       const changed = state.swapped || state.alternateRailEdge || state.rotation || state.useStraightRuler || state.useCustomShape;
@@ -1722,7 +1718,7 @@
         `${moving}の${edge}を、直線アに合わせます。`,
         `${rail}を、動かす道具のとなりの辺に当てます。`,
         'レール役を押さえます。動かす道具の向きを保ったまま、線を引く辺が点エーに合うまで滑らせます。',
-        '左手をレールから右の道具に移します。左手でしっかり押さえて、右手で点エーを通る線を引きます。',
+        '左手をレールから右の道具に移します。線を引く辺の近くを左手で押さえ、右手で点エーを通る線を引きます。',
         `2本の直線は、レールと同じ角度、${m.angle}度で交わります。だから平行です。`
       ];
       const utterance = new SpeechSynthesisUtterance(`手順${state.step}。${lines[state.step]}`);
