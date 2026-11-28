@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="三角じょうぎを2まい使って、点Aを通り、直線アに垂直な直線をひく練習です。">
+  <title>垂直な直線のひき方</title>
+  <style>
+    :root{color-scheme:light;--ink:#172f2a;--muted:#4b635e;--green:#116548;--dark:#134939;--line:#d5e5dc;--paper:#f4f8f5}
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;color:var(--ink);background:var(--paper);font:1rem/1.65 system-ui,"Yu Gothic",Meiryo,sans-serif}
+    [hidden]{display:none!important}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    :focus-visible{outline:3px solid #1557a7;outline-offset:3px}
+    .hero{background:var(--dark);color:white}
+    .wrap{max-width:1240px;margin:auto;padding-inline:clamp(14px,3vw,34px)}
+    .hero .wrap{padding-block:20px 23px}
+    h1,h2,p,ol{margin:0}
+    h1{font-size:clamp(1.55rem,4vw,2.25rem);line-height:1.25;letter-spacing:.04em}
+    rt{font-size:.48em;letter-spacing:0}
+    .hero p{margin-top:7px;color:#e0f3e9}
+    main.wrap{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(275px,1fr);align-items:start;gap:20px;padding-block:22px 28px}
+    .board-card,.steps-card{background:white;border:1px solid var(--line);border-radius:19px;box-shadow:0 7px 24px #153f3010;overflow:hidden}
+    .board-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 15px;background:#eaf5ed;border-bottom:1px solid var(--line)}
+    .board-title{display:flex;align-items:center;gap:10px;font-size:1.05rem;line-height:1.5}
+    .number{display:inline-grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border-radius:50%;background:#e8f2ec;color:var(--green);font-weight:750}
+    .board-title .number,.step-button[aria-current] .number{background:var(--green);color:white}
+    .toolbar,.navigation{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+    .button{min-height:41px;padding:5px 13px;border:1px solid #bed5c8;border-radius:10px;background:white;color:var(--dark);font-weight:700}
+    .button:hover,.step-button:hover{background:#edf7f0}
+    .button.primary{background:var(--green);border-color:var(--green);color:white}
+    .button.primary:hover{background:#0c5038}
+    .button:disabled{cursor:default;opacity:.5}
+    .legend{display:flex;flex-wrap:wrap;gap:5px 17px;padding:7px 15px;color:var(--muted);font-size:.875rem}
+    .legend span::before{content:"";display:inline-block;width:11px;height:11px;margin-right:5px;border:1px solid;border-radius:3px;vertical-align:0}
+    .legend .purple::before{color:#7648ae;background:#d8c2f3}
+    .legend .blue::before{color:#126a99;background:#b4e0f7}
+    .scene{width:100%;height:auto;display:block;background:#fffcf4;border-block:1px solid var(--line);user-select:none}
+    .scene[data-mode="slide"],.scene[data-mode="draw"]{touch-action:none}
+    .scene[data-mode="slide"] [data-action="slide"]{cursor:ns-resize}
+    .scene[data-mode="draw"] [data-action="draw"]{cursor:ew-resize}
+    .board-foot{display:grid;gap:9px;padding:12px 15px 15px}
+    #instruction{min-height:1.65em;font-weight:650}
+    .practice{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+    .practice label{display:flex;align-items:center;gap:8px;flex:1 1 210px;font-size:.9rem}
+    .practice label span{white-space:nowrap}
+    .practice input{min-width:90px;width:100%;height:42px;margin:0;accent-color:var(--green)}
+    .navigation{justify-content:space-between}
+    .steps-card{padding:15px}
+    .steps-card h2{margin:0 4px 11px;font-size:1.24rem}
+    .steps-card ol{display:grid;gap:7px;list-style:none;padding:0}
+    .step-button{text-align:left;display:flex;align-items:flex-start;gap:10px;width:100%;padding:9px 10px;border:1px solid #e1ebe5;border-radius:12px;background:white;color:inherit}
+    .step-button[aria-current]{background:#e9f5ec;border-color:#91baa3}
+    .step-button strong,.step-button small{display:block}
+    .step-button small{font-size:.875rem;color:var(--muted);line-height:1.5;margin-top:1px}
+    .why{padding:12px 13px;margin-top:12px;border-radius:11px;background:#e9f5ec;font-size:.95rem}
+    .why strong{display:block;color:var(--dark)}
+    body.enlarged{overflow:hidden}
+    body.enlarged .board-card{position:fixed;inset:0;z-index:2;border-radius:0;display:flex;flex-direction:column;overflow:auto}
+    body.enlarged .scene{flex:1 1 0;min-height:210px}
+    @media(max-width:820px){main.wrap{grid-template-columns:1fr;gap:14px;padding-block:14px 20px}}
+    @media(max-width:420px){.board-head,.board-foot{padding-inline:10px}.toolbar{gap:5px}.button{padding-inline:9px}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <h1><ruby>垂直<rt>すいちょく</rt></ruby>な<ruby>直線<rt>ちょくせん</rt></ruby>のひき方</h1>
+      <p>三角じょうぎを2まい使って、点Aを通る<ruby>垂直<rt>すいちょく</rt></ruby>な<ruby>直線<rt>ちょくせん</rt></ruby>をひこう。</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="board-card" aria-labelledby="board-title">
+      <header class="board-head">
+        <h2 class="board-title" id="board-title"><span class="number" id="step-number">1</span><span id="step-title">直線アに合わせる</span></h2>
+        <div class="toolbar">
+          <button type="button" id="play" class="button primary">自動再生</button>
+          <button type="button" id="reset" class="button">最初から</button>
+          <button type="button" id="enlarge" class="button" aria-pressed="false">全画面</button>
+        </div>
+      </header>
+      <div class="legend"><span class="purple">むらさきのじょうぎは固定</span><span class="blue">青いじょうぎを動かす</span></div>
+      <svg class="scene" id="scene" viewBox="0 0 560 390" role="img" aria-labelledby="scene-title scene-description">
+        <title id="scene-title">三角じょうぎで垂直な直線をひく作図板</title>
+        <desc id="scene-description">たての直線アの右に点Aがあります。</desc>
+        <defs>
+          <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M24 0H0V24" fill="none" stroke="#e6eae0"/>
+          </pattern>
+          <linearGradient id="purple" x2="1" y2="1">
+            <stop stop-color="#eee2ff"/><stop offset="1" stop-color="#c5a6ed"/>
+          </linearGradient>
+          <linearGradient id="blue" x2="1" y2="1">
+            <stop stop-color="#d8f2ff"/><stop offset="1" stop-color="#8bcdf0"/>
+          </linearGradient>
+        </defs>
+        <rect width="560" height="390" fill="url(#grid)"/>
+        <g id="tools">
+          <g id="fixed-ruler" aria-hidden="true">
+            <path d="M240 82V321H102Z M224 148V303H135Z" fill="url(#purple)" fill-rule="evenodd" stroke="#744ca2" stroke-width="2.5" stroke-linejoin="round"/>
+            <path id="fixed-ticks" stroke="#744ca2" fill="none"/>
+          </g>
+          <g id="moving-ruler" aria-hidden="true">
+            <path d="M0 0H160L0 160Z M17 18H119L17 120Z" fill="url(#blue)" fill-rule="evenodd" stroke="#196b96" stroke-width="2.5" stroke-linejoin="round"/>
+            <path id="moving-ticks" stroke="#196b96" fill="none"/>
+            <path id="ruler-corner" d="M0 13H13V0" fill="none" stroke="#ad3829" stroke-width="2.5"/>
+            <path d="M0 0H160L0 160Z" fill="transparent" data-action="slide"/>
+          </g>
+        </g>
+        <g pointer-events="none">
+          <path d="M240 55V340" stroke="#20362f" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="240" cy="32" r="15" fill="#fffdf6" stroke="#52685f"/>
+          <text x="240" y="38" text-anchor="middle" font-size="18" font-weight="700" fill="#243b34">ア</text>
+          <path id="new-line" d="M240 147H400" pathLength="1" stroke="#087351" stroke-width="4" stroke-linecap="round"/>
+          <path id="result-corner" d="M240 164H257V147" fill="none" stroke="#ad3829" stroke-width="2.5"/>
+          <circle cx="350" cy="147" r="4.3" fill="#20362f" stroke="#fffdf6" stroke-width="1.6"/>
+          <text x="350" y="133" text-anchor="middle" font-size="21" font-weight="750" fill="#243b34">A</text>
+        </g>
+        <g id="hands" aria-hidden="true" pointer-events="none">
+          <image id="left-hand" href="media/construction-hands/left-hand.png" width="88" height="146"/>
+          <image id="right-hand" href="media/construction-hands/right-hand.png" width="79" height="131"/>
+        </g>
+        <g id="pencil" aria-hidden="true">
+          <image href="media/construction-hands/pencil-hand.png" x="0" y="-95" width="121" height="175" pointer-events="none"/>
+        </g>
+        <g id="drawing-target" aria-hidden="true">
+          <path d="M240 147H418" fill="none" stroke="transparent" stroke-width="44" stroke-linecap="round" data-action="draw"/>
+          <rect id="pencil-hit" x="240" y="62" width="107" height="148" fill="transparent" data-action="draw"/>
+        </g>
+      </svg>
+      <div class="board-foot">
+        <p id="instruction" role="status" aria-atomic="true"></p>
+        <div class="practice" id="practice" hidden>
+          <label for="progress"><span id="progress-label">動かす</span><input id="progress" type="range" min="0" max="100" value="0"></label>
+          <button type="button" class="button" id="show">動きを見る</button>
+        </div>
+        <div class="navigation">
+          <button type="button" class="button" id="back">前の手順</button>
+          <button type="button" class="button primary" id="next">次の手順</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="steps-card" aria-labelledby="steps-heading">
+      <h2 id="steps-heading">作図の手順</h2>
+      <ol id="steps">
+        <li><button type="button" class="step-button" data-step="0" aria-current="step"><span class="number" aria-hidden="true">1</span><span><strong>直線アに合わせる</strong><small>むらさきのじょうぎのたての辺を、直線アにぴったり合わせる。</small></span></button></li>
+        <li><button type="button" class="step-button" data-step="1"><span class="number" aria-hidden="true">2</span><span><strong>もう1まいを当てる</strong><small>青いじょうぎの<ruby>直角<rt>ちょっかく</rt></ruby>をはさむ辺を、直線アに合わせる。</small></span></button></li>
+        <li><button type="button" class="step-button" data-step="2"><span class="number" aria-hidden="true">3</span><span><strong>点Aまでずらす</strong><small>むらさきのじょうぎはそのまま。青いじょうぎを、上の辺が点Aに合うまでずらす。</small></span></button></li>
+        <li><button type="button" class="step-button" data-step="3"><span class="number" aria-hidden="true">4</span><span><strong>2まいをおさえる</strong><small>左手で2まいをおさえ、右手でえんぴつを持つ。</small></span></button></li>
+        <li><button type="button" class="step-button" data-step="4"><span class="number" aria-hidden="true">5</span><span><strong>点Aを通る直線をひく</strong><small>じょうぎをおさえたまま、青いじょうぎの上の辺にそって線をひく。</small></span></button></li>
+      </ol>
+      <p class="why" id="why" hidden><strong>直線アと、ひいた直線は垂直。</strong>2本の直線が<ruby>直角<rt>ちょっかく</rt></ruby>（90°）に交わっているね。</p>
+    </aside>
+  </main>
+
+  <script>
+    const byId = id => document.getElementById(id);
+    const scene = byId('scene');
+    const stepButtons = [...document.querySelectorAll('[data-step]')];
+    const progress = byId('progress');
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const instructions = [
+      'むらさきのじょうぎの辺を、直線アに合わせます。',
+      '青いじょうぎのたての辺を、直線アに合わせます。',
+      '青いじょうぎを上へずらして、上の辺を点Aに合わせよう。',
+      '左手で2まいをおさえ、右手でえんぴつを持ちます。',
+      'えんぴつを右へ動かして、点Aを通る直線をひこう。'
+    ];
+    const duration = [850, 900, 1250, 950, 1600];
+    const pauseBetween = 1050;
+    const baseX = 240;
+    const startY = 216;
+    const targetY = 147;
+    const edgeLength = 160;
+    let step = 0;
+    let amount = 0;
+    let frame = 0;
+    let advancing = 0;
+    let auto = false;
+    let drag = null;
+    let isComplete = false;
+    let hideTools = false;
+    let finishTimer = 0;
+
+    const clamp = value => Math.min(1, Math.max(0, value));
+    const ease = value => value * value * (3 - 2 * value);
+    const slideY = value => startY + (targetY - startY) * value;
+    const move = (element, x, y) => element.setAttribute('transform', `translate(${x} ${y})`);
+    const ticks = (count, draw) => Array.from({length: count}, (_, i) => draw(i + 1, (i + 1) % 5 === 0 ? 7 : 4)).join(' ');
+    byId('fixed-ticks').setAttribute('d', ticks(20, (i, length) => `M240 ${87 + i * 11}h-${length}`));
+    byId('moving-ticks').setAttribute('d', ticks(14, (i, length) => `M${8 + i * 10} 0v${length} M0 ${8 + i * 10}h${length}`));
+
+    function renderScene() {
+      const motion = ease(amount);
+      const leftX = step === 0 ? -64 * (1 - motion) : 0;
+      const rightX = baseX + (step === 0 ? 65 : step === 1 ? 65 * (1 - motion) : 0);
+      const rightY = step === 2 ? slideY(amount) : step > 2 ? targetY : startY;
+      move(byId('fixed-ruler'), leftX, 0);
+      move(byId('moving-ruler'), rightX, rightY);
+      byId('ruler-corner').style.visibility = step > 1 || step === 1 && amount === 1 ? 'visible' : 'hidden';
+
+      const grip = step === 3 ? motion : step === 4 ? 1 : 0;
+      const leftHand = byId('left-hand');
+      leftHand.setAttribute('x', leftX + 145 + grip * 54);
+      leftHand.setAttribute('y', 219 - grip * 43);
+      const rightHand = byId('right-hand');
+      rightHand.setAttribute('x', rightX + 13 + 40 * grip);
+      rightHand.setAttribute('y', rightY + 46 + 55 * grip);
+      rightHand.style.opacity = step === 3 ? 1 - motion : step > 3 ? 0 : 1;
+
+      const pencilX = step === 4 ? baseX + edgeLength * amount : baseX + 162;
+      const pencilY = targetY - (step === 3 ? 24 : 0);
+      move(byId('pencil'), pencilX, pencilY);
+      byId('pencil').style.opacity = step === 3 ? motion : step === 4 && !hideTools ? 1 : 0;
+      byId('pencil-hit').setAttribute('x', pencilX);
+      byId('tools').style.visibility = hideTools ? 'hidden' : 'visible';
+      byId('hands').style.visibility = hideTools ? 'hidden' : 'visible';
+      byId('drawing-target').style.visibility = step === 4 && !hideTools ? 'visible' : 'hidden';
+      const line = byId('new-line');
+      line.style.visibility = step === 4 && amount > 0 ? 'visible' : 'hidden';
+      line.setAttribute('stroke-dasharray', `${amount} 1`);
+      byId('result-corner').style.visibility = hideTools ? 'visible' : 'hidden';
+      scene.dataset.mode = step === 2 ? 'slide' : step === 4 && !hideTools ? 'draw' : '';
+      progress.value = Math.round(amount * 100);
+    }
+
+    function renderControls() {
+      byId('step-number').textContent = step + 1;
+      byId('step-title').textContent = stepButtons[step].querySelector('strong').textContent;
+      byId('play').textContent = auto ? '一時停止' : '自動再生';
+      byId('back').disabled = step === 0;
+      byId('next').textContent = step === 4 ? 'もう一度' : '次の手順';
+      byId('practice').hidden = step !== 2 && step !== 4;
+      byId('progress-label').textContent = step === 2 ? 'じょうぎ' : 'えんぴつ';
+      stepButtons.forEach((button, index) => {
+        if (index === step) button.setAttribute('aria-current', 'step');
+        else button.removeAttribute('aria-current');
+      });
+      updateInstruction();
+    }
+
+    function updateInstruction() {
+      let message = instructions[step];
+      if (step === 2 && amount === 1) message = '青いじょうぎの上の辺が点Aに合いました。';
+      if (isComplete) message = 'できた！ 点Aを通り、直線アに垂直な直線がひけました。';
+      if (byId('instruction').textContent !== message) {
+        byId('instruction').textContent = message;
+        byId('scene-description').textContent = 'たての直線アの右に点Aがあります。' + message;
+      }
+      byId('why').hidden = !isComplete;
+    }
+
+    function setAmount(value) {
+      amount = clamp(value);
+      const complete = step === 4 && amount === 1;
+      if (complete !== isComplete) {
+        clearTimeout(finishTimer);
+        isComplete = complete;
+        hideTools = false;
+        if (complete) {
+          finishTimer = setTimeout(() => {
+            hideTools = true;
+            renderScene();
+          }, reducedMotion.matches ? 0 : 550);
+        }
+      }
+      renderScene();
+      updateInstruction();
+    }
+
+    function stop() {
+      auto = false;
+      cancelAnimationFrame(frame);
+      clearTimeout(advancing);
+      frame = 0;
+      byId('play').textContent = '自動再生';
+    }
+
+    function enter(index) {
+      clearTimeout(finishTimer);
+      step = index;
+      amount = 0;
+      isComplete = false;
+      hideTools = false;
+      if (drag && scene.hasPointerCapture(drag.id)) scene.releasePointerCapture(drag.id);
+      drag = null;
+      renderControls();
+      renderScene();
+    }
+
+    function runMotion() {
+      const origin = amount;
+      const start = performance.now();
+      const runTime = reducedMotion.matches ? 0 : duration[step] * (1 - origin);
+      function animate(now) {
+        const portion = runTime === 0 ? 1 : clamp((now - start) / runTime);
+        setAmount(origin + (1 - origin) * (step === 2 || step === 4 ? ease(portion) : portion));
+        if (portion < 1) {
+          frame = requestAnimationFrame(animate);
+          return;
+        }
+        frame = 0;
+        if (!auto) return;
+        if (step === 4) {
+          stop();
+          return;
+        }
+        advancing = setTimeout(() => {
+          enter(step + 1);
+          runMotion();
+        }, pauseBetween);
+      }
+      frame = requestAnimationFrame(animate);
+    }
+
+    function jump(index) {
+      stop();
+      enter(index);
+      if (step !== 2 && step !== 4) runMotion();
+    }
+
+    byId('play').addEventListener('click', () => {
+      if (auto) {
+        stop();
+        return;
+      }
+      stop();
+      if (isComplete) enter(0);
+      auto = true;
+      renderControls();
+      runMotion();
+    });
+    byId('reset').addEventListener('click', () => jump(0));
+    byId('back').addEventListener('click', () => jump(step - 1));
+    byId('next').addEventListener('click', () => jump(step === 4 ? 0 : step + 1));
+    stepButtons.forEach(button => button.addEventListener('click', () => jump(Number(button.dataset.step))));
+    progress.addEventListener('input', () => {
+      stop();
+      setAmount(Number(progress.value) / 100);
+    });
+    byId('show').addEventListener('click', () => {
+      stop();
+      setAmount(0);
+      runMotion();
+    });
+
+    function pointerPosition(event) {
+      return new DOMPoint(event.clientX, event.clientY).matrixTransform(scene.getScreenCTM().inverse());
+    }
+    scene.addEventListener('pointerdown', event => {
+      const action = event.target.dataset.action;
+      if (drag || event.button !== 0 || !action || action !== scene.dataset.mode) return;
+      stop();
+      const point = pointerPosition(event);
+      drag = {id: event.pointerId, point, amount};
+      scene.setPointerCapture(event.pointerId);
+    });
+    scene.addEventListener('pointermove', event => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const point = pointerPosition(event);
+      if (step === 2) {
+        const value = drag.amount + (point.y - drag.point.y) / (targetY - startY);
+        setAmount(value > .95 ? 1 : value);
+      } else {
+        const value = drag.amount + (point.x - drag.point.x) / edgeLength;
+        setAmount(Math.max(amount, value > .98 ? 1 : value));
+      }
+    });
+    for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      scene.addEventListener(eventName, event => {
+        if (event.pointerId === drag?.id) drag = null;
+      });
+    }
+
+    const enlarge = byId('enlarge');
+    const board = enlarge.closest('.board-card');
+    const outsideBoard = [document.querySelector('.hero'), document.querySelector('.steps-card')];
+    function toggleEnlarged(enlarged) {
+      document.body.classList.toggle('enlarged', enlarged);
+      enlarge.setAttribute('aria-pressed', String(enlarged));
+      enlarge.textContent = enlarged ? '全画面を閉じる' : '全画面';
+      outsideBoard.forEach(element => { element.inert = enlarged; });
+      if (enlarged) {
+        board.setAttribute('role', 'dialog');
+        board.setAttribute('aria-modal', 'true');
+      } else {
+        board.removeAttribute('role');
+        board.removeAttribute('aria-modal');
+        enlarge.focus();
+      }
+    }
+    enlarge.addEventListener('click', () => toggleEnlarged(!document.body.classList.contains('enlarged')));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && document.body.classList.contains('enlarged')) {
+        toggleEnlarged(false);
+        return;
+      }
+      if (event.target === progress || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key === 'ArrowLeft' && step > 0) jump(step - 1);
+      if (event.key === 'ArrowRight' && step < 4) jump(step + 1);
+    });
+    jump(0);
+  </script>
+</body>
+</html>
